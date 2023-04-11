@@ -5,10 +5,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "export": "next export",
     "start": "next start",
+    "tauri": "tauri",
     "lint": "next lint"
   },
   "dependencies": {
+    "@tauri-apps/api": "^1.2.0",
     "@types/node": "18.15.11",
     "@types/react": "18.0.34",
     "@types/react-dom": "18.0.11",
