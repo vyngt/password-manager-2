@@ -25,6 +25,8 @@ fn main() {
         .expect("Error migrating");
 
     tauri::Builder::default()
+        .manage(core::state::AppState::new())
+        .manage(core::state::AppDBState::new())
         .invoke_handler(tauri::generate_handler![
             cmd::greet,
             cmd::create_item,
