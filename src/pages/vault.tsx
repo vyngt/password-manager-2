@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChangeEvent } from "react";
+import { ChangeEvent, MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useState } from "react";
 import { Inter } from "next/font/google";
@@ -39,10 +39,30 @@ export default function Vault() {
     set_item({ ...item, password: e.target.value });
   };
 
-  const perform_create = () => {
+  const reset_value = () => {
+    set_item({
+      name: "",
+      url: "",
+      username: "",
+      password: "",
+    });
+  };
+
+  const perform_create = (e: MouseEvent<HTMLButtonElement>) => {
+    const button = e.currentTarget;
+    button.disabled = true;
+
     invoke("create_item", { ...item })
-      .then((e) => console.log(e))
-      .catch(console.error);
+      .then(() => {
+        console.log("successful");
+      })
+      .catch(console.error)
+      .finally(() => {
+        reset_value();
+        setTimeout(() => {
+          button.disabled = false;
+        }, 1000);
+      });
   };
 
   const perform_fetch_items = () => {
