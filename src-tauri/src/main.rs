@@ -10,7 +10,7 @@ mod core;
 mod db;
 mod encrypt;
 
-use crate::core::{cmd, config};
+use crate::core::{auth, cmd, config};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
@@ -31,7 +31,9 @@ fn main() {
             cmd::greet,
             cmd::create_item,
             cmd::fetch_all_item,
-            cmd::login
+            auth::login,
+            auth::register,
+            auth::is_first_time
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,6 +1,5 @@
 use crate::core::state::AppDBState;
 use crate::db::models::item::Item;
-use crate::encrypt;
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
@@ -33,18 +32,4 @@ pub fn fetch_all_item(conn: tauri::State<AppDBState>) -> Vec<Item> {
     }
 
     return results;
-}
-
-// ----
-
-fn get_master_password() -> String {
-    let master_pw = String::from("");
-
-    master_pw
-}
-
-#[tauri::command]
-pub fn login(password: &str) -> bool {
-    let password_hashed = get_master_password();
-    encrypt::encryptor::check_identity(password, &password_hashed)
 }
