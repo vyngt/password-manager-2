@@ -11,7 +11,7 @@ pub mod schema;
 pub fn establish_connection() -> SqliteConnection {
     let database_url = path::Path::new(&tauri::api::path::home_dir().unwrap())
         .join(config::APP_DIR)
-        .join("vault.db");
+        .join(config::DATABASE);
 
     let database_url = database_url.to_str().clone().unwrap();
     SqliteConnection::establish(&database_url)

@@ -3,7 +3,7 @@ use password_hash::{rand_core::OsRng, PasswordHash, PasswordVerifier, SaltString
 use argon2::{Argon2, PasswordHasher};
 // use pbkdf2::pbkdf2;
 
-pub fn set_master_password(password: &str) -> String {
+pub fn set_master_password(password: &str) {
     let b_pw = password.as_bytes();
     let salt = SaltString::generate(&mut OsRng);
     let hashed = Argon2::default().hash_password(b_pw, &salt);
@@ -12,8 +12,6 @@ pub fn set_master_password(password: &str) -> String {
         Ok(value) => value.to_string(),
         Err(_e) => String::from(""),
     };
-
-    return result;
 }
 
 pub fn check_identity(password: &str, password_hashed: &str) -> bool {
