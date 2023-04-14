@@ -1,10 +1,8 @@
 import Head from "next/head";
-import Image from "next/image";
-import { Inter } from "next/font/google";
-import styles from "@/styles/Home.module.css";
+// import { Inter } from "next/font/google";
 import Link from "next/link";
 
-const inter = Inter({ subsets: ["latin"] });
+// const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
   return (
@@ -15,57 +13,24 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>src/pages/index.tsx</code>
-          </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{" "}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-        </div>
-
-        <div className={styles.grid}>
-          <Link href="/login" className={styles.card}>
-            <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>Hello World</p>
+      <main>
+        <h1 className=" text-3xl font-bold underline">Password Manager</h1>
+        <div>
+          <Link href="/login">
+            <span className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
+              Login
+            </span>
           </Link>
-
-          <Link href="/vault" className={styles.card}>
-            <h2 className={inter.className}>
-              Vault <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>Simple Vault of VyNT</p>
+          <Link href="/vault">
+            <span className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700">
+              Vault
+            </span>
           </Link>
         </div>
+
+        <button className="rounded-full border border-purple-200 px-4 py-1 text-sm font-semibold text-purple-600 hover:border-transparent hover:bg-purple-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2">
+          Test
+        </button>
       </main>
     </>
   );

@@ -3,7 +3,6 @@ import { ChangeEvent, MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useState } from "react";
 import { Inter } from "next/font/google";
-import styles from "@/styles/Home.module.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -73,8 +72,8 @@ export default function Vault() {
 
   return (
     <>
-      <main className={styles.main}>
-        <div className={styles.grid}>
+      <main>
+        <div>
           <form>
             <div>
               <label htmlFor="name" className="form-label">

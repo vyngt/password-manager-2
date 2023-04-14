@@ -23,9 +23,7 @@ export default function Login() {
         <button>
           <Link href="/">Main</Link>
         </button>
-        <div>
-          <p>This is Login Page</p>
-        </div>
+        <h1 className=" text-3xl font-bold underline">Hello world!</h1>
         <div>
           <p>
             Text <span>{display_output}</span>
