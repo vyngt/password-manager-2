@@ -94,6 +94,14 @@ pub fn login(password: &str, app_state: tauri::State<AppState>) -> bool {
 }
 
 #[tauri::command]
-pub fn register(password: &str) -> bool {
-    set_master_password(password).is_ok()
+pub fn register(password: &str, app_state: tauri::State<AppState>) -> bool {
+    let mut state = app_state.0.lock().unwrap();
+    let state = &mut state;
+
+    let ok = set_master_password(password).is_ok();
+    if ok {
+        state.set_key(password);
+    }
+
+    ok
 }
