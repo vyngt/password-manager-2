@@ -41,7 +41,7 @@ fn get_profile_content() -> String {
 
 #[tauri::command]
 pub fn is_first_time() -> bool {
-    get_profile_content().len() != 0
+    get_profile_content().len() == 0
 }
 
 pub fn write_profile(password: &str) -> std::io::Result<()> {
