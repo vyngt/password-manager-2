@@ -28,9 +28,11 @@ fn main() {
         .manage(core::state::AppState::new())
         .manage(core::state::AppDBState::new())
         .invoke_handler(tauri::generate_handler![
-            cmd::greet,
             cmd::create_item,
-            cmd::fetch_all_item,
+            cmd::fetch_item,
+            cmd::update_item,
+            cmd::delete_item,
+            cmd::fetch_all_items,
             auth::login,
             auth::register,
             auth::is_first_time

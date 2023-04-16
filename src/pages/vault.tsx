@@ -133,7 +133,7 @@ export default function Vault() {
           </form>
 
           <button type="button" onClick={perform_fetch_items}>
-            Fetch
+            Fetch All
           </button>
         </div>
       </main>

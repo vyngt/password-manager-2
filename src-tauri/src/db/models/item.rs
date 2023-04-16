@@ -1,7 +1,7 @@
 use crate::db::schema::items;
 use diesel::prelude::*;
 
-#[derive(serde::Serialize, Queryable, Selectable)]
+#[derive(serde::Serialize, Queryable, Selectable, PartialEq)]
 #[diesel(table_name = items)]
 pub struct Item {
     pub id: i32,
