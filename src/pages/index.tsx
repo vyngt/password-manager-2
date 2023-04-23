@@ -1,7 +1,7 @@
 import Head from "next/head";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useState } from "react";
-import { Login, Register } from "./components/Auth";
+import { Login, Register } from "../components/Auth";
 
 export default function Home() {
   const [is_first_time, set_is_first_time] = useState(true);
