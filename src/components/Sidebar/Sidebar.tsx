@@ -1,4 +1,4 @@
-import { Link } from "next/link";
+import Link from "next/link";
 export const Sidebar = () => {
   return (
     <div>
@@ -14,9 +14,20 @@ export const Sidebar = () => {
           data-te-sidenav-menu-ref
         >
           <li className="relative">
-            <a className="flex h-12 cursor-pointer items-center truncate rounded-[5px] px-6 py-4 text-[0.875rem] text-gray-300 outline-none transition duration-300 ease-linear hover:bg-white/10 hover:outline-none focus:bg-white/10 focus:outline-none active:bg-white/10 active:outline-none data-[te-sidenav-state-focus]:outline-none motion-reduce:transition-none">
+            <Link
+              className="flex h-12 cursor-pointer items-center truncate rounded-[5px] px-6 py-4 text-[0.875rem] text-gray-300 outline-none transition duration-300 ease-linear hover:bg-white/10 hover:outline-none focus:bg-white/10 focus:outline-none active:bg-white/10 active:outline-none data-[te-sidenav-state-focus]:outline-none motion-reduce:transition-none"
+              href="/vault"
+            >
               <span>Vault</span>
-            </a>
+            </Link>
+          </li>
+          <li className="relative">
+            <Link
+              className="flex h-12 cursor-pointer items-center truncate rounded-[5px] px-6 py-4 text-[0.875rem] text-gray-300 outline-none transition duration-300 ease-linear hover:bg-white/10 hover:outline-none focus:bg-white/10 focus:outline-none active:bg-white/10 active:outline-none data-[te-sidenav-state-focus]:outline-none motion-reduce:transition-none"
+              href="/sub/vault-form"
+            >
+              <span>Add</span>
+            </Link>
           </li>
         </ul>
       </nav>

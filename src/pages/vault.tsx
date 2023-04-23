@@ -1,11 +1,10 @@
-import { VTable } from "../components/Vault";
-import { Sidebar } from "@/components/Sidebar";
+import { VTable } from "@/components/Vault";
+import { Layout } from "@/components/Layout";
 
 export default function Vault() {
   return (
-    <main className="mx-auto flex w-full flex-wrap text-center">
-      <Sidebar />
+    <Layout>
       <VTable />
-    </main>
+    </Layout>
   );
 }
