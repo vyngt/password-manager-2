@@ -11,6 +11,15 @@ pub struct Item {
     pub password: String,
 }
 
+#[derive(serde::Serialize, Queryable, Selectable, PartialEq)]
+#[diesel(table_name = items)]
+pub struct GItem {
+    pub id: i32,
+    pub name: String,
+    pub url: String,
+    pub username: String,
+}
+
 #[derive(Insertable)]
 #[diesel(table_name = items)]
 pub struct NewItem<'a> {

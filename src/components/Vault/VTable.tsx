@@ -1,4 +1,16 @@
-export const VTable = () => {
+import type { GItem } from "@/models";
+export const VRow = ({ item }: { item: GItem }) => {
+  return (
+    <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
+      <td className="whitespace-nowrap px-6 py-4">{item.name}</td>
+      <td className="whitespace-nowrap px-6 py-4">{item.url}</td>
+      <td className="whitespace-nowrap px-6 py-4">{item.username}</td>
+      <td className="whitespace-nowrap px-6 py-4">Copy | Edit | Delete</td>
+    </tr>
+  );
+};
+
+export const VTable = ({ items }: { items: GItem[] }) => {
   return (
     <div className="grow">
       <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -8,92 +20,23 @@ export const VTable = () => {
               <thead className="border-b font-medium dark:border-neutral-500">
                 <tr>
                   <th scope="col" className="px-6 py-4">
-                    #
+                    Name
                   </th>
                   <th scope="col" className="px-6 py-4">
-                    First
+                    URL
                   </th>
                   <th scope="col" className="px-6 py-4">
-                    Last
+                    Username
                   </th>
                   <th scope="col" className="px-6 py-4">
-                    Handle
+                    Operator
                   </th>
                 </tr>
               </thead>
               <tbody className="object-scale-down ">
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">1</td>
-                  <td className="whitespace-nowrap px-6 py-4">Mark</td>
-                  <td className="whitespace-nowrap px-6 py-4">Otto</td>
-                  <td className="whitespace-nowrap px-6 py-4">@mdo</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">2</td>
-                  <td className="whitespace-nowrap px-6 py-4">Jacob</td>
-                  <td className="whitespace-nowrap px-6 py-4">Thornton</td>
-                  <td className="whitespace-nowrap px-6 py-4">@fat</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">3</td>
-                  <td className="whitespace-nowrap px-6 py-4">Larry</td>
-                  <td className="whitespace-nowrap px-6 py-4">Wild</td>
-                  <td className="whitespace-nowrap px-6 py-4">@twitter</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">1</td>
-                  <td className="whitespace-nowrap px-6 py-4">Mark</td>
-                  <td className="whitespace-nowrap px-6 py-4">Otto</td>
-                  <td className="whitespace-nowrap px-6 py-4">@mdo</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">2</td>
-                  <td className="whitespace-nowrap px-6 py-4">Jacob</td>
-                  <td className="whitespace-nowrap px-6 py-4">Thornton</td>
-                  <td className="whitespace-nowrap px-6 py-4">@fat</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">3</td>
-                  <td className="whitespace-nowrap px-6 py-4">Larry</td>
-                  <td className="whitespace-nowrap px-6 py-4">Wild</td>
-                  <td className="whitespace-nowrap px-6 py-4">@twitter</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">1</td>
-                  <td className="whitespace-nowrap px-6 py-4">Mark</td>
-                  <td className="whitespace-nowrap px-6 py-4">Otto</td>
-                  <td className="whitespace-nowrap px-6 py-4">@mdo</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">2</td>
-                  <td className="whitespace-nowrap px-6 py-4">Jacob</td>
-                  <td className="whitespace-nowrap px-6 py-4">Thornton</td>
-                  <td className="whitespace-nowrap px-6 py-4">@fat</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">3</td>
-                  <td className="whitespace-nowrap px-6 py-4">Larry</td>
-                  <td className="whitespace-nowrap px-6 py-4">Wild</td>
-                  <td className="whitespace-nowrap px-6 py-4">@twitter</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">1</td>
-                  <td className="whitespace-nowrap px-6 py-4">Mark</td>
-                  <td className="whitespace-nowrap px-6 py-4">Otto</td>
-                  <td className="whitespace-nowrap px-6 py-4">@mdo</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">2</td>
-                  <td className="whitespace-nowrap px-6 py-4">Jacob</td>
-                  <td className="whitespace-nowrap px-6 py-4">Thornton</td>
-                  <td className="whitespace-nowrap px-6 py-4">@fat</td>
-                </tr>
-                <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium">3</td>
-                  <td className="whitespace-nowrap px-6 py-4">Larry</td>
-                  <td className="whitespace-nowrap px-6 py-4">Wild</td>
-                  <td className="whitespace-nowrap px-6 py-4">@twitter</td>
-                </tr>
+                {items.map((item) => (
+                  <VRow key={item.id} item={item} />
+                ))}
               </tbody>
             </table>
           </div>

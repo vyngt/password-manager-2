@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
-use crate::db::models::item::{Item, NewItem};
+use crate::db::models::item::{GItem, Item, NewItem};
 
 impl Item {
     pub fn create(
@@ -84,9 +84,12 @@ impl Item {
         }
     }
 
-    pub fn all(conn: &mut SqliteConnection) -> Vec<Item> {
+    pub fn all(conn: &mut SqliteConnection) -> Vec<GItem> {
         use crate::db::schema::items::dsl::*;
-        let results = items.load::<Item>(conn).unwrap_or(vec![]);
+        let results = items
+            .select((id, name, url, username))
+            .load(conn)
+            .unwrap_or(vec![]);
         return results;
     }
 }

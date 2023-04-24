@@ -1,5 +1,5 @@
 use crate::core::state::{AppDBState, AppState};
-use crate::db::models::item::Item;
+use crate::db::models::item::{GItem, Item};
 use crate::encrypt::encryptor;
 
 #[tauri::command]
@@ -87,7 +87,7 @@ pub fn delete_item(id: i32, conn: tauri::State<AppDBState>) -> bool {
 }
 
 #[tauri::command]
-pub fn fetch_all_items(conn: tauri::State<AppDBState>) -> Vec<Item> {
+pub fn fetch_all_items(conn: tauri::State<AppDBState>) -> Vec<GItem> {
     let mut c = conn.0.lock().unwrap();
     let c = &mut c.db;
 
