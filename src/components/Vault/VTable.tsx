@@ -1,16 +1,32 @@
-import type { GItem } from "@/models";
-export const VRow = ({ item }: { item: GItem }) => {
+import type { GItem, Operator } from "@/models";
+export const VRow = ({
+  item,
+  operator,
+}: {
+  item: GItem;
+  operator: Operator;
+}) => {
   return (
     <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
       <td className="whitespace-nowrap px-6 py-4">{item.name}</td>
       <td className="whitespace-nowrap px-6 py-4">{item.url}</td>
       <td className="whitespace-nowrap px-6 py-4">{item.username}</td>
-      <td className="whitespace-nowrap px-6 py-4">Copy | Edit | Delete</td>
+      <td className="whitespace-nowrap px-6 py-4">
+        <button onClick={() => operator.update(item)}>Copy</button>|
+        <button onClick={() => operator.update(item)}>Edit</button>|
+        <button onClick={() => operator.delete(item)}>Delete</button>|
+      </td>
     </tr>
   );
 };
 
-export const VTable = ({ items }: { items: GItem[] }) => {
+export const VTable = ({
+  items,
+  operator,
+}: {
+  items: GItem[];
+  operator: Operator;
+}) => {
   return (
     <div className="grow">
       <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -35,7 +51,7 @@ export const VTable = ({ items }: { items: GItem[] }) => {
               </thead>
               <tbody className="object-scale-down ">
                 {items.map((item) => (
-                  <VRow key={item.id} item={item} />
+                  <VRow key={item.id} item={item} operator={operator} />
                 ))}
               </tbody>
             </table>

@@ -17,3 +17,9 @@ interface NewItem extends BaseItem {
 }
 
 export type { GItem, Item, NewItem };
+
+export interface Operator {
+  add: (item: GItem) => void;
+  delete: (item: GItem) => void;
+  update: (item: GItem) => void;
+}

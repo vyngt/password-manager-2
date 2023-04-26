@@ -1,1 +1,1 @@
-export type { Item, NewItem, GItem } from "./item";
+export type { Item, NewItem, GItem, Operator } from "./item";
