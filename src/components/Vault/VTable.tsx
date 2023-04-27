@@ -28,8 +28,7 @@ export const VRow = ({
             />
           </svg>
         </button>
-
-        <button onClick={() => operator.update(item)}>
+        <button onClick={() => operator.copy(item)}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"

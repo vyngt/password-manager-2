@@ -3,10 +3,11 @@ import { Layout } from "@/components/Layout";
 import { GItem, NewItem, Operator } from "@/models";
 
 import { invoke } from "@tauri-apps/api/tauri";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export default function Vault() {
   const [items, set_items] = useState<GItem[]>([]);
+  const block = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function init_data() {
@@ -17,8 +18,8 @@ export default function Vault() {
   }, []);
 
   const ItemCRUD = () => {
-    const add_item = (item: GItem) => {
-      set_items([...items, item]);
+    const copy = (item: GItem) => {
+      console.log("Call Copy");
     };
 
     const remove_item = (item: GItem) => {
@@ -29,11 +30,14 @@ export default function Vault() {
     };
 
     const update_item = (item: GItem) => {
-      console.log(item);
+      console.log("Call Update");
+      if (block !== null) {
+        console.log(block.current?.className);
+      }
     };
 
     const operator: Operator = {
-      add: add_item,
+      copy: copy,
       delete: remove_item,
       update: update_item,
     };
@@ -42,7 +46,9 @@ export default function Vault() {
 
   return (
     <Layout>
-      <VTable items={items} operator={ItemCRUD()} />
+      <div ref={block} className="vynt">
+        <VTable items={items} operator={ItemCRUD()} />
+      </div>
     </Layout>
   );
 }
