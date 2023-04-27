@@ -1,4 +1,7 @@
 import type { GItem, Operator } from "@/models";
+import { RefObject } from "react";
+import { forwardRef } from "react";
+
 export const VRow = ({
   item,
   operator,
@@ -65,15 +68,12 @@ export const VRow = ({
   );
 };
 
-export const VTable = ({
-  items,
-  operator,
-}: {
-  items: GItem[];
-  operator: Operator;
-}) => {
+export const VTable = forwardRef<
+  HTMLDivElement,
+  { items: GItem[]; operator: Operator }
+>((props, ref) => {
   return (
-    <div className="grow">
+    <div ref={ref} className="grow">
       <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
         <div className="inline-block min-w-full py-2 sm:px-6 lg:px-8">
           <div className="overflow-hidden">
@@ -95,8 +95,8 @@ export const VTable = ({
                 </tr>
               </thead>
               <tbody className="object-scale-down ">
-                {items.map((item) => (
-                  <VRow key={item.id} item={item} operator={operator} />
+                {props.items.map((item) => (
+                  <VRow key={item.id} item={item} operator={props.operator} />
                 ))}
               </tbody>
             </table>
@@ -105,4 +105,4 @@ export const VTable = ({
       </div>
     </div>
   );
-};
+});

@@ -1,12 +1,21 @@
 import { VTable } from "@/components/Vault";
 import { Layout } from "@/components/Layout";
-import { GItem, NewItem, Operator } from "@/models";
+import { GItem, Item, NewItem, Operator } from "@/models";
 
 import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useState, useRef } from "react";
 
+const init_edit_item: Item = {
+  id: 0,
+  name: "",
+  url: "",
+  username: "",
+  password: "",
+};
+
 export default function Vault() {
   const [items, set_items] = useState<GItem[]>([]);
+  const [edit_item, set_edit_item] = useState<Item>(init_edit_item);
   const block = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,9 +40,10 @@ export default function Vault() {
 
     const update_item = (item: GItem) => {
       console.log("Call Update");
-      if (block !== null) {
-        console.log(block.current?.className);
-      }
+      // Hide current block
+      block?.current?.classList?.add("hide");
+
+      // DIsplay Edit Form block
     };
 
     const operator: Operator = {
@@ -46,9 +56,9 @@ export default function Vault() {
 
   return (
     <Layout>
-      <div ref={block} className="vynt">
-        <VTable items={items} operator={ItemCRUD()} />
-      </div>
+      <>
+        <VTable ref={block} items={items} operator={ItemCRUD()} />
+      </>
     </Layout>
   );
 }
