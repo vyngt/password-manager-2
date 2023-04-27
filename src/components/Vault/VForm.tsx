@@ -1,17 +1,7 @@
 import { ChangeEvent, MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useState } from "react";
-
-interface NewItem {
-  name: string;
-  url: string;
-  username: string;
-  password: string;
-}
-
-interface Item extends NewItem {
-  id: number;
-}
+import { NewItem } from "@/models";
 
 export const VForm = () => {
   const [item, set_item] = useState<NewItem>({
@@ -60,20 +50,15 @@ export const VForm = () => {
       });
   };
 
-  const perform_fetch_items = () => {
-    invoke("fetch_all_items")
-      .then((e) => console.log(e))
-      .catch(console.error);
-  };
-
   return (
     <div>
       <form>
-        <div>
-          <label htmlFor="name" className="form-label">
+        <div className="mb-6">
+          <label htmlFor="name" className="vault-label">
             Name
           </label>
           <input
+            className="vault-input"
             type="text"
             id="name"
             placeholder="Name"
@@ -82,11 +67,12 @@ export const VForm = () => {
             onChange={update_name}
           />
         </div>
-        <div>
-          <label htmlFor="url" className="form-label">
+        <div className="mb-6">
+          <label htmlFor="url" className="vault-label">
             URL
           </label>
           <input
+            className="vault-input"
             type="text"
             id="url"
             placeholder="url"
@@ -95,11 +81,12 @@ export const VForm = () => {
             onChange={update_url}
           />
         </div>
-        <div>
-          <label htmlFor="username" className="form-label">
+        <div className="mb-6">
+          <label htmlFor="username" className="vault-label">
             username
           </label>
           <input
+            className="vault-input"
             type="text"
             id="username"
             placeholder="username"
@@ -108,12 +95,13 @@ export const VForm = () => {
             onChange={update_username}
           />
         </div>
-        <div>
-          <label htmlFor="password" className="form-label">
+        <div className="mb-6">
+          <label htmlFor="password" className="vault-label">
             password
           </label>
           <input
-            type="text"
+            className="vault-input"
+            type="password"
             id="password"
             placeholder="password"
             name="password"
@@ -121,8 +109,8 @@ export const VForm = () => {
             onChange={update_password}
           />
         </div>
-        <button type="button" onClick={perform_create}>
-          Submit
+        <button className="btn-primary" type="button" onClick={perform_create}>
+          Add
         </button>
       </form>
     </div>
