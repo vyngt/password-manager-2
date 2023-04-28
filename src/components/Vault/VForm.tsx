@@ -102,7 +102,7 @@ export const VEditItemForm = forwardRef<
     // item_manager: { update: (updated: Item) => void };
     close_handler: () => void;
   }
->((props, ref) => {
+>(function VEditItemForm(props, ref) {
   const init_state = { ...props.item };
   const [state, set_state] = useState(init_state);
   useEffect(() => {

@@ -1,5 +1,4 @@
 import type { GItem, Operator } from "@/models";
-import { RefObject } from "react";
 import { forwardRef } from "react";
 
 export const VRow = ({
@@ -71,7 +70,7 @@ export const VRow = ({
 export const VTable = forwardRef<
   HTMLDivElement,
   { items: GItem[]; operator: Operator<GItem> }
->((props, ref) => {
+>(function VTable(props, ref) {
   return (
     <div ref={ref} className="grow">
       <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
