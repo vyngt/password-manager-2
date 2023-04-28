@@ -88,13 +88,23 @@ pub fn delete_item(id: i32, conn: tauri::State<AppDBState>) -> bool {
 }
 
 #[tauri::command]
-pub fn fetch_all_items(conn: tauri::State<AppDBState>) -> Vec<GItem> {
+pub fn fetch_all_items(
+    conn: tauri::State<AppDBState>,
+    profile: tauri::State<AppState>,
+) -> Vec<GItem> {
     let mut c = conn.0.lock().unwrap();
     let c = &mut c.db;
 
+    let p = profile.0.lock().unwrap();
+    let key = &p.key;
+
     let mut results = vec![];
     for item in Item::all(c) {
-        results.push(item)
+        let display_item = GItem {
+            username: encryptor::decrypt_data(&key, &item.username),
+            ..item
+        };
+        results.push(display_item)
     }
 
     return results;
