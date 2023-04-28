@@ -1,4 +1,4 @@
-import { VTable } from "@/components/Vault";
+import { VTable, VEditItemForm } from "@/components/Vault";
 import { Layout } from "@/components/Layout";
 import { GItem, Item, NewItem, Operator } from "@/models";
 
@@ -16,7 +16,9 @@ const init_edit_item: Item = {
 export default function Vault() {
   const [items, set_items] = useState<GItem[]>([]);
   const [edit_item, set_edit_item] = useState<Item>(init_edit_item);
-  const block = useRef<HTMLDivElement>(null);
+  const vtable = useRef<HTMLDivElement>(null);
+  const veditform = useRef<HTMLDivElement>(null);
+  // const
 
   useEffect(() => {
     async function init_data() {
@@ -39,11 +41,7 @@ export default function Vault() {
     };
 
     const update_item = (item: GItem) => {
-      console.log("Call Update");
-      // Hide current block
-      block?.current?.classList?.add("hide");
-
-      // DIsplay Edit Form block
+      block_operator.to_edit();
     };
 
     const operator: Operator = {
@@ -54,10 +52,30 @@ export default function Vault() {
     return operator;
   };
 
+  const block_operator = {
+    to_edit: () => {
+      vtable?.current?.classList?.add("hide");
+      vtable?.current?.classList?.remove("show");
+      veditform?.current?.classList?.remove("hide");
+      veditform?.current?.classList?.add("show");
+    },
+    to_table: () => {
+      veditform?.current?.classList?.add("hide");
+      veditform?.current?.classList?.remove("show");
+      vtable?.current?.classList?.remove("hide");
+      vtable?.current?.classList?.add("show");
+    },
+  };
+
   return (
     <Layout>
       <>
-        <VTable ref={block} items={items} operator={ItemCRUD()} />
+        <VTable ref={vtable} items={items} operator={ItemCRUD()} />
+        <VEditItemForm
+          ref={veditform}
+          item={edit_item}
+          close_handler={block_operator.to_table}
+        />
       </>
     </Layout>
   );

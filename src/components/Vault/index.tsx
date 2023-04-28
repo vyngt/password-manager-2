@@ -1,3 +1,3 @@
 export { VTable, VRow } from "./VTable";
-export { VForm } from "./VForm";
+export { VForm, VEditItemForm } from "./VForm";
 export { Input, TextInput, PasswordInput } from "./Input";

@@ -1,7 +1,7 @@
 import { ChangeEvent, MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
-import { useState } from "react";
-import { NewItem } from "@/models";
+import { useState, forwardRef } from "react";
+import { NewItem, Item } from "@/models";
 import { TextInput, PasswordInput } from "./Input";
 
 export const VForm = () => {
@@ -88,6 +88,14 @@ export const VCreateForm = () => {
   return <></>;
 };
 
-export const VEditItemForm = () => {
-  return <></>;
-};
+export const VEditItemForm = forwardRef<
+  HTMLDivElement,
+  { item: Item; close_handler: () => void }
+>((props, ref) => {
+  return (
+    <div ref={ref}>
+      <div>Hello World</div>
+      <button onClick={props.close_handler}>Me may</button>
+    </div>
+  );
+});
