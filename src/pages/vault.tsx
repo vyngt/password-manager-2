@@ -30,7 +30,14 @@ export default function Vault() {
 
   const ItemCRUD = () => {
     const copy = (item: GItem) => {
-      console.log("Call Copy");
+      invoke("fetch_item", { id: item.id })
+        .then((_res) => {
+          const res = _res as Item;
+          navigator.clipboard.writeText(res.password);
+        })
+        .catch(() => {
+          navigator.clipboard.writeText("");
+        });
     };
 
     const remove_item = (item: GItem) => {
