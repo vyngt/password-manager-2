@@ -124,11 +124,14 @@ export const VEditItemForm = forwardRef<
     },
   };
 
-  const perform_save = async (e: MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.disabled = true;
-    await invoke("update_item", { ...state });
-    e.currentTarget.disabled = false;
-    props.close_handler();
+  const perform_save = (e: MouseEvent<HTMLButtonElement>) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    invoke("update_item", { ...state })
+      .then(() => {
+        btn.disabled = false;
+      })
+      .finally(props.close_handler);
   };
 
   return (
