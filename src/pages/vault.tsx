@@ -41,10 +41,15 @@ export default function Vault() {
     };
 
     const update_item = (item: GItem) => {
+      invoke("fetch_item", { id: item.id })
+        .then((e) => {
+          set_edit_item(e as Item);
+        })
+        .catch(console.error);
       block_operator.to_edit();
     };
 
-    const operator: Operator = {
+    const operator: Operator<GItem> = {
       copy: copy,
       delete: remove_item,
       update: update_item,

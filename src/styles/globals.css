@@ -125,9 +125,14 @@ a {
 }
 
 .show {
-  visibility: visible;
+  display: block;
 }
 
 .hide {
-  visibility: hidden;
+  display: none;
+}
+
+.v-center {
+  width: 50%;
+  display: inline-block;
 }

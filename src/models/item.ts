@@ -1,3 +1,5 @@
+import { ChangeEvent } from "react";
+
 interface BaseItem {
   name: string;
   url: string;
@@ -16,10 +18,21 @@ interface NewItem extends BaseItem {
   password: string;
 }
 
-export type { GItem, Item, NewItem };
+interface FormItem extends NewItem {
+  id?: number;
+}
 
-export interface Operator {
-  copy: (item: GItem) => void;
-  delete: (item: GItem) => void;
-  update: (item: GItem) => void;
+export type { GItem, Item, NewItem, BaseItem, FormItem };
+
+export interface Operator<T extends BaseItem> {
+  copy: (item: T) => void;
+  delete: (item: T) => void;
+  update: (item: T) => void;
+}
+
+export interface ItemInputUpdater<T extends ChangeEvent<HTMLInputElement>> {
+  update_name: (e: T) => void;
+  update_url: (e: T) => void;
+  update_username: (e: T) => void;
+  update_password: (e: T) => void;
 }

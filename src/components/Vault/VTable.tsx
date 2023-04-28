@@ -7,7 +7,7 @@ export const VRow = ({
   operator,
 }: {
   item: GItem;
-  operator: Operator;
+  operator: Operator<GItem>;
 }) => {
   return (
     <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
@@ -70,7 +70,7 @@ export const VRow = ({
 
 export const VTable = forwardRef<
   HTMLDivElement,
-  { items: GItem[]; operator: Operator }
+  { items: GItem[]; operator: Operator<GItem> }
 >((props, ref) => {
   return (
     <div ref={ref} className="grow">

@@ -1,1 +1,9 @@
-export type { Item, NewItem, GItem, Operator } from "./item";
+export type {
+  BaseItem,
+  Item,
+  NewItem,
+  GItem,
+  Operator,
+  FormItem,
+  ItemInputUpdater,
+} from "./item";
