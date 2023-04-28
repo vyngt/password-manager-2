@@ -44,6 +44,7 @@ pub fn fetch_item(
         Some(item) => {
             output.id = item.id;
             output.name = item.name;
+            output.url = item.url;
             output.username = encryptor::decrypt_data(&key, &item.username);
             output.password = encryptor::decrypt_data(&key, &item.password);
         }
