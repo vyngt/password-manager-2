@@ -35,9 +35,14 @@ export default function Vault() {
 
     const remove_item = (item: GItem) => {
       let new_arr = [...items];
-      const index = items.findIndex((i) => i.id == item.id, item);
-      new_arr.splice(index, 1);
-      set_items(new_arr);
+      const id = item.id;
+      invoke("delete_item", { id: id })
+        .then(() => {
+          const index = items.findIndex((i) => i.id == id, item);
+          new_arr.splice(index, 1);
+          set_items(new_arr);
+        })
+        .catch(() => {});
     };
 
     const update_item = (item: GItem) => {
