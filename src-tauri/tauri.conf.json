@@ -37,7 +37,7 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [],
+      "resources": ["./sqlite3.dll"],
       "shortDescription": "",
       "targets": "all",
       "windows": {
