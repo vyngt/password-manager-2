@@ -1,10 +1,10 @@
 [package]
 name = "app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "0.1.1"
+description = "Vy's PetTool"
+authors = ["vyngt"]
 license = ""
-repository = ""
+repository = "https://github.com/vyngt/password-manager-2"
 default-run = "app"
 edition = "2021"
 rust-version = "1.59"

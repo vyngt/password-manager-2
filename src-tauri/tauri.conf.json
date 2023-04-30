@@ -6,8 +6,8 @@
     "distDir": "../out"
   },
   "package": {
-    "productName": "password_manager",
-    "version": "0.1.0"
+    "productName": "Password Manager",
+    "version": "0.1.1"
   },
   "tauri": {
     "allowlist": {
