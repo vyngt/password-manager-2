@@ -1,13 +1,13 @@
 {
   "build": {
-    "beforeBuildCommand": "npm run build && npm run export",
+    "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
     "devPath": "http://localhost:3000",
     "distDir": "../out"
   },
   "package": {
-    "productName": "Password Manager",
-    "version": "0.1.1"
+    "productName": "password-manager",
+    "version": "1.0.0"
   },
   "tauri": {
     "allowlist": {
@@ -54,7 +54,6 @@
     },
     "windows": [
       {
-        "label": "main_window",
         "fullscreen": false,
         "height": 600,
         "resizable": true,

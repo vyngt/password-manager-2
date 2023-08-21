@@ -5,3 +5,6 @@ CREATE TABLE items (
   `username` VARCHAR NOT NULL,
   `password` VARCHAR NOT NULL
 );
+
+CREATE INDEX idx_item_pk ON items(id);
+CREATE INDEX idx_item_name ON items(name);
