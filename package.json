@@ -1,33 +1,27 @@
 {
-  "name": "password_manager",
-  "version": "0.1.1",
+  "name": "pm",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "export": "next export",
     "start": "next start",
-    "tauri": "tauri",
     "lint": "next lint"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.2.0",
-    "@types/node": "18.15.11",
-    "@types/react": "18.0.34",
-    "@types/react-dom": "18.0.11",
-    "eslint": "8.38.0",
-    "eslint-config-next": "13.3.0",
-    "next": "13.3.0",
+    "@material-tailwind/react": "^2.1.0",
+    "@tauri-apps/api": "^1.4.0",
+    "@types/node": "20.5.1",
+    "@types/react": "18.2.20",
+    "@types/react-dom": "18.2.7",
+    "autoprefixer": "10.4.15",
+    "eslint": "8.47.0",
+    "eslint-config-next": "13.4.19",
+    "next": "13.4.19",
+    "postcss": "8.4.28",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "typescript": "5.0.4"
-  },
-  "devDependencies": {
-    "@tailwindcss/forms": "^0.5.3",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.21",
-    "prettier": "^2.8.7",
-    "prettier-plugin-tailwindcss": "^0.2.7",
-    "tailwindcss": "^3.3.1"
+    "tailwindcss": "3.3.3",
+    "typescript": "5.1.6"
   }
 }
