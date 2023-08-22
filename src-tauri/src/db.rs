@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 use diesel::SqliteConnection;
-use std::path;
+use std::{env, path};
 
 use crate::core::config;
 
@@ -9,11 +9,29 @@ pub mod models;
 pub mod schema;
 
 pub fn establish_connection() -> SqliteConnection {
-    let database_url = path::Path::new(&tauri::api::path::home_dir().unwrap())
+    let is_debug: bool = match env::var("DEBUG") {
+        Ok(s) => {
+            if s != "0" {
+                true
+            } else {
+                false
+            }
+        }
+        Err(_) => false,
+    };
+
+    let debug_db_url = env::var("DATABASE_URL").unwrap_or_else(|_| "local.db".to_string());
+
+    let mut database_url = debug_db_url.as_str();
+
+    let db_path = path::Path::new(&tauri::api::path::home_dir().unwrap())
         .join(config::APP_DIR)
         .join(config::DATABASE);
 
-    let database_url = database_url.to_str().clone().unwrap();
+    if !is_debug {
+        database_url = db_path.to_str().clone().unwrap();
+    }
+
     SqliteConnection::establish(&database_url)
         .expect(&format!("Error connecting to {}", database_url))
 }
