@@ -2,7 +2,7 @@
 
 import { List, ListItem, ListItemPrefix } from "@material-tailwind/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { ISidebarItem, SidebarItems } from "./items";
+import { ISidebarItem, SidebarManager } from "./items";
 
 import { useRouter } from "next/navigation";
 
@@ -28,7 +28,7 @@ export default function Sidebar() {
   return (
     <div className="h-full w-full max-w-[20rem] shadow-xl bg-black">
       <List>
-        {SidebarItems.map((e) => (
+        {SidebarManager.all().map((e) => (
           <SidebarItem key={e.id} item={e} />
         ))}
       </List>

@@ -1,5 +1,7 @@
 "use client";
 
-export default function Home() {
-  return <p>Vault</p>;
+import { redirect } from "next/navigation";
+
+export default async function Page() {
+  redirect("/main/vault");
 }

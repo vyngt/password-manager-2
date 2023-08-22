@@ -13,7 +13,7 @@ export default function MainLayout({
   return (
     <div className="w-full h-full flex">
       <Sidebar />
-      {children}
+      <main className="w-full h-full">{children}</main>
     </div>
   );
 }
