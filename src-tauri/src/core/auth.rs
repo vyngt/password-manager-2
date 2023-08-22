@@ -1,8 +1,9 @@
-use super::{config, state::AppState};
+use super::{state::AppDBState, state::AppState};
 
+use crate::db::models::user::User;
 use argon2::{Argon2, PasswordHasher};
+use diesel::SqliteConnection;
 use password_hash::{rand_core::OsRng, PasswordHash, PasswordVerifier, SaltString};
-use std::{fs, path};
 
 pub fn check_identity(password: &str, password_hashed: &str) -> bool {
     let b_pw = password.as_bytes();
@@ -17,73 +18,49 @@ pub fn check_identity(password: &str, password_hashed: &str) -> bool {
         .is_ok()
 }
 
-fn get_profile_content() -> String {
-    let home_dir = config::get_home_dir();
-
-    match home_dir {
-        Some(dir) => {
-            let profile_path = path::Path::new(&dir);
-            let profile_path = profile_path.join(config::APP_DIR).join(config::PROFILE);
-            let profile_path = profile_path.to_str().unwrap();
-
-            let contents = fs::read_to_string(&profile_path);
-
-            match contents {
-                Ok(contents) => return String::from(contents.trim()),
-                Err(_) => {}
-            }
-        }
-        None => {}
-    }
-
-    String::from("")
+fn get_profile_content(conn: &mut SqliteConnection) -> String {
+    User::fetch(conn)
 }
 
 #[tauri::command]
-pub fn is_first_time() -> bool {
-    get_profile_content().len() == 0
+pub fn is_first_time(conn: tauri::State<AppDBState>) -> bool {
+    let mut c = conn.0.lock().unwrap();
+    let c = &mut c.db;
+    get_profile_content(c).len() == 0
 }
 
-pub fn write_profile(password: &str) -> std::io::Result<()> {
-    let home_dir = config::get_home_dir();
-
-    match home_dir {
-        Some(dir) => {
-            let profile_path = path::Path::new(&dir);
-            let profile_path = profile_path.join(config::APP_DIR).join(config::PROFILE);
-            let profile_path = profile_path.to_str().unwrap();
-
-            fs::write(profile_path, password)?;
-        }
-        None => {}
-    }
-    Ok(())
+pub fn write_profile(conn: &mut SqliteConnection, password: String) -> bool {
+    User::create(conn, password)
 }
 
-pub fn set_master_password(password: &str) -> std::io::Result<()> {
+pub fn set_master_password(conn: &mut SqliteConnection, password: &str) -> bool {
     let b_pw = password.as_bytes();
     let salt = SaltString::generate(&mut OsRng);
     let hashed = Argon2::default().hash_password(b_pw, &salt);
 
-    let result = match hashed {
-        Ok(value) => value.to_string(),
-        Err(_e) => String::from(""),
-    };
-
-    write_profile(&result).unwrap();
-    Ok(())
+    match hashed {
+        Ok(value) => write_profile(conn, value.to_string()),
+        Err(_e) => false,
+    }
 }
 
-fn get_master_password() -> String {
-    get_profile_content()
+fn get_master_password(conn: &mut SqliteConnection) -> String {
+    get_profile_content(conn)
 }
 
 #[tauri::command]
-pub fn login(password: &str, app_state: tauri::State<AppState>) -> bool {
+pub fn login(
+    password: &str,
+    conn: tauri::State<AppDBState>,
+    app_state: tauri::State<AppState>,
+) -> bool {
     let mut state = app_state.0.lock().unwrap();
     let state = &mut state;
 
-    let password_hashed = get_master_password();
+    let mut c = conn.0.lock().unwrap();
+    let c = &mut c.db;
+
+    let password_hashed = get_master_password(c);
     if check_identity(password, &password_hashed) {
         state.set_key(password);
         true
@@ -94,11 +71,18 @@ pub fn login(password: &str, app_state: tauri::State<AppState>) -> bool {
 }
 
 #[tauri::command]
-pub fn register(password: &str, app_state: tauri::State<AppState>) -> bool {
+pub fn register(
+    password: &str,
+    conn: tauri::State<AppDBState>,
+    app_state: tauri::State<AppState>,
+) -> bool {
     let mut state = app_state.0.lock().unwrap();
     let state = &mut state;
 
-    let ok = set_master_password(password).is_ok();
+    let mut c = conn.0.lock().unwrap();
+    let c = &mut c.db;
+
+    let ok = set_master_password(c, password);
     if ok {
         state.set_key(password);
     }
