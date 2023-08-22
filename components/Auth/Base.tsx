@@ -15,32 +15,32 @@ export interface IBase {
 export default function Base({ base }: { base: IBase }) {
   const [password, set_password] = useState("");
   const [error, set_error] = useState(false);
+  const [loading, set_loading] = useState(false);
   const router = useRouter();
 
-  const call_server = (password: string) => {
-    invoke(base.handler, { password: password })
-      .then((e) => {
-        if (e) {
-          set_error(false);
-          router.replace("/main");
-        } else {
-          set_error(true);
-        }
-      })
-      .catch(() => {
+  const call_server = async (password: string) => {
+    try {
+      const ok = await invoke(base.handler, { password: password });
+      if (ok) {
+        set_error(false);
+        router.replace("/main");
+      } else {
         set_error(true);
-      });
+      }
+    } catch (e) {
+      set_error(true);
+    }
   };
 
-  const perform_submit = (e: MouseEvent<HTMLButtonElement>) => {
+  const perform_submit = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (password.length < 1) {
       return;
     }
 
-    e.currentTarget.disabled = true;
-    call_server(password);
-    e.currentTarget.disabled = false;
+    set_loading(true);
+    await call_server(password);
+    set_loading(false);
   };
 
   return (
@@ -68,7 +68,12 @@ export default function Base({ base }: { base: IBase }) {
             ""
           )}
         </div>
-        <Button className="mt-6" fullWidth onClick={perform_submit}>
+        <Button
+          className="mt-6"
+          fullWidth
+          onClick={perform_submit}
+          disabled={loading}
+        >
           {base.button}
         </Button>
       </form>
