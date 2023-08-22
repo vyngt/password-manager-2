@@ -1,4 +1,5 @@
 "use client";
+import { Typography } from "@material-tailwind/react";
 
 import { Login, Register } from "@/components/Auth";
 import { invoke } from "@tauri-apps/api/tauri";
@@ -21,7 +22,9 @@ export default function Home() {
 
   return (
     <main className="w-full h-full flex flex-col justify-center text-center items-center">
-      <h1>Password Manager</h1>
+      <Typography variant="h3" color="black">
+        Password Manager
+      </Typography>
       {is_first_time ? <Register /> : <Login />}
     </main>
   );

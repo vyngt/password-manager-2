@@ -45,7 +45,7 @@ export default function Base({ base }: { base: IBase }) {
 
   return (
     <Card color="transparent" shadow={false}>
-      <Typography variant="h4" color="blue-gray">
+      <Typography variant="lead" color="blue-gray">
         {base.title}
       </Typography>
       <form className="mt-8 mb-2 w-80 max-w-screen-lg sm:w-96">
