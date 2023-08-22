@@ -4,14 +4,15 @@ import { List, ListItem, ListItemPrefix } from "@material-tailwind/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ISidebarItem, SidebarManager } from "./items";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const SidebarItem = ({ item }: { item: ISidebarItem }) => {
   const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <ListItem
-      className="rounded-none focus:text-white"
+      className={`rounded-none ${pathname == item.href ? "text-white" : ""}`}
       onClick={() => {
         router.push(item.href);
       }}
