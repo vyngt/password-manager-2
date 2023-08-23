@@ -14,15 +14,18 @@ interface Item extends GItem {
   password: string;
 }
 
-interface NewItem extends BaseItem {
-  password: string;
+/**
+ * For Item
+ */
+interface ItemManager {
+  name: (name: string) => void;
+  url: (url: string) => void;
+  username: (username: string) => void;
+  password: (password: string) => void;
+  clear: () => void;
 }
 
-interface FormItem extends NewItem {
-  id?: number;
-}
-
-export type { GItem, Item, NewItem, BaseItem, FormItem };
+export type { GItem, Item, BaseItem, ItemManager };
 
 export interface Operator<T extends BaseItem> {
   copy: (item: T) => void;
@@ -37,7 +40,6 @@ export interface ItemInputUpdater<T extends ChangeEvent<HTMLInputElement>> {
   update_password: (e: T) => void;
 }
 
-export interface IVaultHeaderManager<T extends BaseItem> {
+export interface IVaultHeaderManager {
   refresh: () => void;
-  add: (item: T) => void;
 }

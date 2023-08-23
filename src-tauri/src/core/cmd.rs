@@ -11,6 +11,16 @@ pub fn create_item(
     conn: tauri::State<AppDBState>,
     profile: tauri::State<AppState>,
 ) -> bool {
+    let name = name.trim();
+    let url = url.trim();
+    let username = username.trim();
+
+    if *&url.len() == 0 && *&username.len() == 0 && *&name.len() == 0 && *&password.len() == 0
+        || *&password.len() == 0
+    {
+        return false;
+    }
+
     let mut c = conn.0.lock().unwrap();
     let c = &mut c.db;
 
@@ -21,7 +31,8 @@ pub fn create_item(
     let enc_password = encryptor::encrypt_data(&key, password);
 
     Item::create(c, name, url, &enc_username, &enc_password);
-    return true;
+
+    true
 }
 
 #[tauri::command]

@@ -4,7 +4,7 @@ import VaultTable from "./VaultTable";
 import VaultPaginator from "./VaultPaginator";
 import VaultHeader from "./VaultHeader";
 
-import { GItem, IVaultHeaderManager, Item, NewItem, Operator } from "./models";
+import { GItem, IVaultHeaderManager, Item, Operator } from "./models";
 
 import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useState } from "react";
@@ -21,12 +21,8 @@ export default function Vault() {
     set_items(response_data);
   };
 
-  const VaultHeaderManager: IVaultHeaderManager<GItem> = {
+  const VaultHeaderManager: IVaultHeaderManager = {
     refresh: perform_retrieve_items,
-    add: (item: GItem) => {
-      const new_arr = [...items, item];
-      set_items(new_arr);
-    },
   };
 
   const ItemOperator = () => {
