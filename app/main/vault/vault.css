@@ -1,0 +1,8 @@
+.vault-table-scrollbar {
+  scrollbar-width: none;
+}
+
+.vault-table-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}

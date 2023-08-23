@@ -1,9 +1,10 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faVault,
-  faDoorClosed,
   faGear,
   faTags,
+  faFile,
+  faUnlockKeyhole,
 } from "@fortawesome/free-solid-svg-icons";
 
 export interface ISidebarItem {
@@ -33,13 +34,6 @@ export const registry: ISidebarItem[] = [
     sequence: 1,
   },
   {
-    id: "exit",
-    name: "Exit",
-    icon: faDoorClosed,
-    href: "/exit",
-    sequence: 99,
-  },
-  {
     id: "tags",
     name: "Tags",
     icon: faTags,
@@ -47,10 +41,24 @@ export const registry: ISidebarItem[] = [
     sequence: 3,
   },
   {
+    id: "export/import",
+    name: "Export/Import",
+    icon: faFile,
+    href: "/main",
+    sequence: 4,
+  },
+  {
+    id: "password-generator",
+    name: "Password Generator",
+    icon: faUnlockKeyhole,
+    href: "/main",
+    sequence: 5,
+  },
+  {
     id: "settings",
     name: "Settings",
     icon: faGear,
     href: "/main/settings",
-    sequence: 4,
+    sequence: 99,
   },
 ];

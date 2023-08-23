@@ -1,9 +1,13 @@
-import { VTable, VEditItemForm } from "@/components/Vault";
-import { Layout } from "@/components/Layout";
-import { GItem, Item, NewItem, Operator } from "@/models";
+"use client";
+
+import VaultTable from "./VaultTable";
+import VaultPaginator from "./VaultPaginator";
+import VaultHeader from "./VaultHeader";
+
+import { GItem, Item, NewItem, Operator } from "./models";
 
 import { invoke } from "@tauri-apps/api/tauri";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 const init_edit_item: Item = {
   id: 0,
@@ -16,9 +20,6 @@ const init_edit_item: Item = {
 export default function Vault() {
   const [items, set_items] = useState<GItem[]>([]);
   const [edit_item, set_edit_item] = useState<Item>(init_edit_item);
-  const vtable = useRef<HTMLDivElement>(null);
-  const veditform = useRef<HTMLDivElement>(null);
-  // const
 
   useEffect(() => {
     async function init_data() {
@@ -28,7 +29,7 @@ export default function Vault() {
     init_data();
   }, []);
 
-  const ItemCRUD = () => {
+  const ItemOperator = () => {
     const copy = (item: GItem) => {
       invoke("fetch_item", { id: item.id })
         .then((_res) => {
@@ -58,7 +59,6 @@ export default function Vault() {
           set_edit_item(e as Item);
         })
         .catch(console.error);
-      block_operator.to_edit();
     };
 
     const operator: Operator<GItem> = {
@@ -69,31 +69,17 @@ export default function Vault() {
     return operator;
   };
 
-  const block_operator = {
-    to_edit: () => {
-      vtable?.current?.classList?.add("hide");
-      vtable?.current?.classList?.remove("show");
-      veditform?.current?.classList?.remove("hide");
-      veditform?.current?.classList?.add("show");
-    },
-    to_table: () => {
-      veditform?.current?.classList?.add("hide");
-      veditform?.current?.classList?.remove("show");
-      vtable?.current?.classList?.remove("hide");
-      vtable?.current?.classList?.add("show");
-    },
-  };
-
   return (
-    <Layout>
-      <>
-        <VTable ref={vtable} items={items} operator={ItemCRUD()} />
-        <VEditItemForm
-          ref={veditform}
-          item={edit_item}
-          close_handler={block_operator.to_table}
-        />
-      </>
-    </Layout>
+    <div className="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md h-full w-full gap-5">
+      <div className="relative bg-clip-border mt-4 mx-4 bg-white text-gray-700 rounded-none">
+        <VaultHeader />
+      </div>
+      <div className="p-6 overflow-x-scroll px-0 vault-table-scrollbar">
+        <VaultTable items={items} operator={ItemOperator()} />
+      </div>
+      {/* <div className="flex items-center justify-between border-t border-blue-gray-50 p-4">
+        <VaultPaginator />
+      </div> */}
+    </div>
   );
 }
