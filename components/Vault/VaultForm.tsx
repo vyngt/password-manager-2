@@ -98,9 +98,11 @@ export const VaultUpdateForm = () => {
 
   return (
     <>
-      <IconButton variant="text" onClick={handleOpen}>
-        <FontAwesomeIcon icon={faPenToSquare} className="h-4 w-4" />
-      </IconButton>
+      <Tooltip content="Edit Item">
+        <IconButton variant="text" onClick={handleOpen}>
+          <FontAwesomeIcon icon={faPenToSquare} className="h-4 w-4" />
+        </IconButton>
+      </Tooltip>
       <VaultFormDialog title="Update Item" toggler={toggler}>
         <div className="flex gap-2">
           <Button size="sm" onClick={handleOpen}>

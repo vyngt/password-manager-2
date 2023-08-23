@@ -50,9 +50,7 @@ export const VaultRow = ({
             <FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
           </IconButton>
         </Tooltip>
-        <Tooltip content="Edit Item">
-          <VaultUpdateForm />
-        </Tooltip>
+        <VaultUpdateForm />
         <Tooltip content="Delete Item">
           <IconButton variant="text" onClick={() => operator.delete(item)}>
             <FontAwesomeIcon icon={faTrashCan} className="h-4 w-4" />

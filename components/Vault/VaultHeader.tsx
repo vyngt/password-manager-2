@@ -23,11 +23,6 @@ export default function VaultHeader({
         </div>
       </div>
       <div className="flex gap-2">
-        {/* <Tooltip content="Add">
-          <Button size="sm">
-            <FontAwesomeIcon icon={faPlus} />
-          </Button>
-        </Tooltip> */}
         <VaultCreationForm />
 
         <Tooltip content="Refresh">
