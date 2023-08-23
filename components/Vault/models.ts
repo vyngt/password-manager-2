@@ -36,3 +36,8 @@ export interface ItemInputUpdater<T extends ChangeEvent<HTMLInputElement>> {
   update_username: (e: T) => void;
   update_password: (e: T) => void;
 }
+
+export interface IVaultHeaderManager<T extends BaseItem> {
+  refresh: () => void;
+  add: (item: T) => void;
+}

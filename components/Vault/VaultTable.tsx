@@ -6,6 +6,7 @@ import {
   faCopy,
 } from "@fortawesome/free-solid-svg-icons";
 import { GItem, Operator } from "./models";
+import { VaultUpdateForm } from "./VaultForm";
 
 const TABLE_HEAD = ["Name", "URL", "Username", ""];
 
@@ -50,9 +51,7 @@ export const VaultRow = ({
           </IconButton>
         </Tooltip>
         <Tooltip content="Edit Item">
-          <IconButton variant="text" onClick={() => operator.update(item)}>
-            <FontAwesomeIcon icon={faPenToSquare} className="h-4 w-4" />
-          </IconButton>
+          <VaultUpdateForm />
         </Tooltip>
         <Tooltip content="Delete Item">
           <IconButton variant="text" onClick={() => operator.delete(item)}>

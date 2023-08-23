@@ -4,30 +4,30 @@ import VaultTable from "./VaultTable";
 import VaultPaginator from "./VaultPaginator";
 import VaultHeader from "./VaultHeader";
 
-import { GItem, Item, NewItem, Operator } from "./models";
+import { GItem, IVaultHeaderManager, Item, NewItem, Operator } from "./models";
 
 import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useState } from "react";
 
-const init_edit_item: Item = {
-  id: 0,
-  name: "",
-  url: "",
-  username: "",
-  password: "",
-};
-
 export default function Vault() {
   const [items, set_items] = useState<GItem[]>([]);
-  const [edit_item, set_edit_item] = useState<Item>(init_edit_item);
 
   useEffect(() => {
-    async function init_data() {
-      const response_data: GItem[] = await invoke("fetch_all_items");
-      set_items(response_data);
-    }
-    init_data();
+    perform_retrieve_items();
   }, []);
+
+  const perform_retrieve_items = async () => {
+    const response_data: GItem[] = await invoke("fetch_all_items");
+    set_items(response_data);
+  };
+
+  const VaultHeaderManager: IVaultHeaderManager<GItem> = {
+    refresh: perform_retrieve_items,
+    add: (item: GItem) => {
+      const new_arr = [...items, item];
+      set_items(new_arr);
+    },
+  };
 
   const ItemOperator = () => {
     const copy = (item: GItem) => {
@@ -54,11 +54,11 @@ export default function Vault() {
     };
 
     const update_item = (item: GItem) => {
-      invoke("fetch_item", { id: item.id })
-        .then((e) => {
-          set_edit_item(e as Item);
-        })
-        .catch(console.error);
+      const new_arr = [...items];
+      const id = item.id;
+      const index = new_arr.findIndex((i) => i.id == id, item);
+      new_arr[index] = item;
+      set_items(new_arr);
     };
 
     const operator: Operator<GItem> = {
@@ -72,7 +72,7 @@ export default function Vault() {
   return (
     <div className="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md h-full w-full gap-5">
       <div className="relative bg-clip-border mt-4 mx-4 bg-white text-gray-700 rounded-none">
-        <VaultHeader />
+        <VaultHeader manager={VaultHeaderManager} />
       </div>
       <div className="p-6 overflow-x-scroll px-0 vault-table-scrollbar">
         <VaultTable items={items} operator={ItemOperator()} />
