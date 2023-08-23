@@ -1,10 +1,6 @@
 import { Typography, IconButton, Tooltip } from "@material-tailwind/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPenToSquare,
-  faTrashCan,
-  faCopy,
-} from "@fortawesome/free-solid-svg-icons";
+import { faTrashCan, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { GItem, Operator } from "./models";
 import { VaultUpdateForm } from "./VaultForm";
 
@@ -50,7 +46,7 @@ export const VaultRow = ({
             <FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
           </IconButton>
         </Tooltip>
-        <VaultUpdateForm />
+        <VaultUpdateForm item_id={item.id} update_ui={operator.update} />
         <Tooltip content="Delete Item">
           <IconButton variant="text" onClick={() => operator.delete(item)}>
             <FontAwesomeIcon icon={faTrashCan} className="h-4 w-4" />

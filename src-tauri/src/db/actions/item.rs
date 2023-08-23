@@ -3,6 +3,17 @@ use diesel::sqlite::SqliteConnection;
 
 use crate::db::models::item::{GItem, Item, NewItem};
 
+impl GItem {
+    pub fn default() -> GItem {
+        GItem {
+            id: 0,
+            name: String::from(""),
+            url: String::from(""),
+            username: String::from(""),
+        }
+    }
+}
+
 impl Item {
     pub fn create(
         conn: &mut SqliteConnection,

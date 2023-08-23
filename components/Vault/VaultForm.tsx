@@ -22,16 +22,13 @@ import { invoke } from "@tauri-apps/api/tauri";
 const VaultFormDialog = ({
   children,
   title,
-  toggler,
+  open,
   item,
   item_manager,
 }: {
   children: React.ReactNode;
   title: string;
-  toggler: {
-    open: boolean;
-    handleOpen: () => void;
-  };
+  open: boolean;
   item: Item;
   item_manager: ItemManager;
 }) => {
@@ -39,7 +36,7 @@ const VaultFormDialog = ({
     <>
       <Dialog
         size="xs"
-        open={toggler.open}
+        open={open}
         handler={() => {}}
         className="bg-transparent shadow-none"
       >
@@ -142,11 +139,6 @@ export const VaultCreationForm = ({
     }
   };
 
-  const toggler = {
-    open,
-    handleOpen,
-  };
-
   return (
     <>
       <Tooltip content="Add">
@@ -156,7 +148,7 @@ export const VaultCreationForm = ({
       </Tooltip>
       <VaultFormDialog
         title="Add Item"
-        toggler={toggler}
+        open={open}
         item={item}
         item_manager={item_manager}
       >
@@ -183,7 +175,13 @@ export const VaultCreationForm = ({
 // ----------------------------------------------------------------
 // ----------------------------------------------------------------
 
-export const VaultUpdateForm = () => {
+export const VaultUpdateForm = ({
+  item_id,
+  update_ui,
+}: {
+  item_id: number;
+  update_ui: (item: GItem) => void;
+}) => {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen((cur) => !cur);
 
@@ -213,26 +211,45 @@ export const VaultUpdateForm = () => {
     },
   };
 
-  const toggler = {
-    open,
-    handleOpen,
+  const handleOpenEdit = async () => {
+    try {
+      const item: Item = await invoke("fetch_item", { id: item_id });
+      set_item(item);
+    } catch (e) {
+    } finally {
+      handleOpen();
+    }
+  };
+
+  const perform_save = async () => {
+    try {
+      const result = await invoke("update_item", { ...item });
+      if (result) {
+        const new_item: GItem = await invoke("get_item", { id: item_id });
+        update_ui(new_item);
+      }
+    } catch (e) {
+    } finally {
+      item_manager.clear();
+      handleOpen();
+    }
   };
 
   return (
     <>
       <Tooltip content="Edit Item">
-        <IconButton variant="text" onClick={handleOpen}>
+        <IconButton variant="text" onClick={handleOpenEdit}>
           <FontAwesomeIcon icon={faPenToSquare} className="h-4 w-4" />
         </IconButton>
       </Tooltip>
       <VaultFormDialog
         title="Update Item"
-        toggler={toggler}
+        open={open}
         item={item}
         item_manager={item_manager}
       >
         <div className="flex gap-2">
-          <Button size="sm" onClick={handleOpen}>
+          <Button size="sm" onClick={perform_save}>
             Save
           </Button>
           <Button

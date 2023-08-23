@@ -31,6 +31,7 @@ fn main() {
             cmd::fetch_item,
             cmd::update_item,
             cmd::delete_item,
+            cmd::get_item,
             cmd::fetch_all_items,
             auth::login,
             auth::register,

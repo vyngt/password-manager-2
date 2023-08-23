@@ -33,13 +33,6 @@ export interface Operator<T extends BaseItem> {
   update: (item: T) => void;
 }
 
-export interface ItemInputUpdater<T extends ChangeEvent<HTMLInputElement>> {
-  update_name: (e: T) => void;
-  update_url: (e: T) => void;
-  update_username: (e: T) => void;
-  update_password: (e: T) => void;
-}
-
 export interface IVaultHeaderManager {
   refresh: () => void;
 }

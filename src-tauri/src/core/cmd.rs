@@ -66,6 +66,31 @@ pub fn fetch_item(
 }
 
 #[tauri::command]
+pub fn get_item(id: i32, conn: tauri::State<AppDBState>, profile: tauri::State<AppState>) -> GItem {
+    let mut c = conn.0.lock().unwrap();
+    let c = &mut c.db;
+
+    let p = profile.0.lock().unwrap();
+    let key = &p.key;
+
+    let mut output = GItem::default();
+
+    let item = Item::get(c, &id);
+
+    match item {
+        Some(item) => {
+            output.id = item.id;
+            output.name = item.name;
+            output.url = item.url;
+            output.username = encryptor::decrypt_data(&key, &item.username);
+        }
+        None => (),
+    }
+
+    output
+}
+
+#[tauri::command]
 pub fn update_item(
     id: i32,
     name: &str,
