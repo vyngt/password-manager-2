@@ -51,7 +51,7 @@ export const registry: ISidebarItem[] = [
     id: "password-generator",
     name: "Password Generator",
     icon: faUnlockKeyhole,
-    href: "/main",
+    href: "/main/pw-gen",
     sequence: 5,
   },
   {
