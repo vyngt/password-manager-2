@@ -21,8 +21,11 @@ export default function Vault() {
     set_items(response_data);
   };
 
-  const VaultHeaderManager: IVaultHeaderManager = {
+  const VaultHeaderManager: IVaultHeaderManager<GItem> = {
     refresh: perform_retrieve_items,
+    replace(items) {
+      set_items(items);
+    },
   };
 
   const ItemOperator = () => {

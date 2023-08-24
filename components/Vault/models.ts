@@ -33,6 +33,7 @@ export interface Operator<T extends BaseItem> {
   update: (item: T) => void;
 }
 
-export interface IVaultHeaderManager {
+export interface IVaultHeaderManager<T extends BaseItem> {
   refresh: () => void;
+  replace: (items: T[]) => void;
 }

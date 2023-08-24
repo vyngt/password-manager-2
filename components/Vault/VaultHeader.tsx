@@ -8,7 +8,7 @@ import { VaultCreationForm } from ".";
 export default function VaultHeader({
   manager,
 }: {
-  manager: IVaultHeaderManager;
+  manager: IVaultHeaderManager<GItem>;
 }) {
   return (
     <div className="flex flex-col">
@@ -19,7 +19,7 @@ export default function VaultHeader({
           </Typography>
         </div>
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          <VaultSearch />
+          <VaultSearch replace={manager.replace} />
         </div>
       </div>
       <div className="flex gap-2">

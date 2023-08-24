@@ -113,4 +113,16 @@ impl Item {
 
         results
     }
+
+    pub fn filter_by_name(conn: &mut SqliteConnection, _query: &str, _limit: i64) -> Vec<GItem> {
+        use crate::db::schema::items::dsl::*;
+        let results = items
+            .filter(name.like(&format!("%{}%", _query)))
+            .limit(_limit)
+            .select((id, name, url, username))
+            .load(conn)
+            .unwrap_or(vec![]);
+
+        results
+    }
 }

@@ -36,6 +36,7 @@ fn main() {
             cmd::generator::generate_password,
             cmd::backup::export,
             cmd::backup::import,
+            cmd::search::filter_by_name,
             auth::login,
             auth::register,
             auth::is_first_time
