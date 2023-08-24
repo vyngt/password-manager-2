@@ -36,7 +36,7 @@ pub fn generate_password(
 }
 
 pub fn generate(charset: &str, len: i32) -> String {
-    if *&charset.len() == 0 && len == 0 {
+    if *&charset.len() == 0 || len == 0 {
         return String::from("");
     }
 
