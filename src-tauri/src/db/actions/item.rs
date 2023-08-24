@@ -103,4 +103,14 @@ impl Item {
             .unwrap_or(vec![]);
         return results;
     }
+
+    pub fn get_full(conn: &mut SqliteConnection) -> Vec<Item> {
+        use crate::db::schema::items::dsl::*;
+        let results = items
+            .select((id, name, url, username, password))
+            .load(conn)
+            .unwrap_or(vec![]);
+
+        results
+    }
 }

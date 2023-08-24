@@ -1,7 +1,7 @@
 use crate::db::schema::items;
 use diesel::prelude::*;
 
-#[derive(serde::Serialize, Queryable, Selectable, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Queryable, Selectable, PartialEq)]
 #[diesel(table_name = items)]
 pub struct Item {
     pub id: i32,
@@ -20,7 +20,7 @@ pub struct GItem {
     pub username: String,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, serde::Serialize, serde::Deserialize)]
 #[diesel(table_name = items)]
 pub struct NewItem<'a> {
     pub name: &'a str,

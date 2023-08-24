@@ -34,6 +34,8 @@ fn main() {
             cmd::item::get_item,
             cmd::item::fetch_all_items,
             cmd::generator::generate_password,
+            cmd::backup::export,
+            cmd::backup::import,
             auth::login,
             auth::register,
             auth::is_first_time
