@@ -44,7 +44,7 @@ export const registry: ISidebarItem[] = [
     id: "export/import",
     name: "Export/Import",
     icon: faFile,
-    href: "/main",
+    href: "/main/backup",
     sequence: 4,
   },
   {
