@@ -6,7 +6,7 @@
     "distDir": "../out"
   },
   "package": {
-    "productName": "password-manager",
+    "productName": "Password Manager",
     "version": "1.0.0"
   },
   "tauri": {
@@ -15,8 +15,8 @@
     },
     "bundle": {
       "active": true,
-      "category": "DeveloperTool",
-      "copyright": "",
+      "category": "Utility",
+      "copyright": "VyNT",
       "deb": {
         "depends": []
       },
