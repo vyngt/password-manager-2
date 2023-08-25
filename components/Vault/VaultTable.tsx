@@ -21,7 +21,7 @@ export const VaultRow = ({
             <Typography
               variant="small"
               color="blue-gray"
-              className="font-normal"
+              className="font-normal pl-4"
             >
               {item.name}
             </Typography>
@@ -30,13 +30,21 @@ export const VaultRow = ({
       </td>
       <td className="pt-4">
         <div className="flex flex-col">
-          <Typography variant="small" color="blue-gray" className="font-normal">
+          <Typography
+            variant="small"
+            color="blue-gray"
+            className="font-normal pl-4"
+          >
             {item.url}
           </Typography>
         </div>
       </td>
       <td className="pt-4">
-        <Typography variant="small" color="blue-gray" className="font-normal">
+        <Typography
+          variant="small"
+          color="blue-gray"
+          className="font-normal pl-4"
+        >
           {item.username}
         </Typography>
       </td>
