@@ -30,7 +30,11 @@ pub fn is_first_time(conn: tauri::State<AppDBState>) -> bool {
 }
 
 pub fn write_profile(conn: &mut SqliteConnection, password: String) -> bool {
-    User::create(conn, password)
+    let user = User::get_profile(conn);
+    match user {
+        Some(u) => User::set_profile(conn, u, &password),
+        None => User::create(conn, &password),
+    }
 }
 
 pub fn set_master_password(conn: &mut SqliteConnection, password: &str) -> bool {
