@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useState, useRef } from "react";
 import { Input, Button } from "@material-tailwind/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
@@ -10,42 +10,32 @@ export function VaultSearch({
 }: {
   replace: (items: GItem[]) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const query = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const callback_search = setTimeout(async () => {
-      await perform_search();
-    }, 150);
-    return () => clearTimeout(callback_search);
-  }, [query]);
+  const get_query = () => {
+    const input = query.current?.querySelector("input");
+    return input ? input.value : "";
+  };
 
   const perform_search = async () => {
     try {
-      const results: GItem[] = await invoke("filter_by_name", { query: query });
+      const value = get_query();
+      const results: GItem[] = await invoke("filter_by_name", { query: value });
       const items = results ? results : [];
       replace(items);
     } catch {}
   };
 
   return (
-    <div className="relative flex w-full max-w-[24rem]">
+    <div className="relative flex w-full max-w-[24rem]" ref={query}>
       <Input
         type="text"
         label="Keyword"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={perform_search}
         className="pr-20"
         crossOrigin={""}
+        icon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
       />
-      <Button
-        size="sm"
-        color={query ? "gray" : "blue-gray"}
-        disabled={!query}
-        className="!absolute right-1 top-1 rounded"
-        onClick={perform_search}
-      >
-        <FontAwesomeIcon icon={faMagnifyingGlass} />
-      </Button>
     </div>
   );
 }
