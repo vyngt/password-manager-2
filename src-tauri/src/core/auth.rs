@@ -38,10 +38,12 @@ pub fn set_master_password(conn: &mut SqliteConnection, password: &str) -> bool 
     let salt = SaltString::generate(&mut OsRng);
     let hashed = Argon2::default().hash_password(b_pw, &salt);
 
-    match hashed {
+    let ok = match hashed {
         Ok(value) => write_profile(conn, value.to_string()),
         Err(_e) => false,
-    }
+    };
+
+    ok
 }
 
 fn get_master_password(conn: &mut SqliteConnection) -> String {

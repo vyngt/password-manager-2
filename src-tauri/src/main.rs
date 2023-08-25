@@ -37,6 +37,7 @@ fn main() {
             cmd::backup::export,
             cmd::backup::import,
             cmd::search::filter_by_name,
+            cmd::settings::change_master_password,
             auth::login,
             auth::register,
             auth::is_first_time
