@@ -4,6 +4,7 @@ import { Card, Input, Button, Typography } from "@material-tailwind/react";
 import { MouseEvent, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useRouter } from "next/navigation";
+import { useColorScheme } from "../Theme";
 
 export interface IBase {
   title: string;
@@ -17,6 +18,9 @@ export default function Base({ base }: { base: IBase }) {
   const [error, set_error] = useState(false);
   const [loading, set_loading] = useState(false);
   const router = useRouter();
+
+  const { foreground, danger, primary, background, secondary } =
+    useColorScheme();
 
   const call_server = async (password: string) => {
     try {
@@ -45,7 +49,7 @@ export default function Base({ base }: { base: IBase }) {
 
   return (
     <Card color="transparent" shadow={false}>
-      <Typography variant="lead" color="blue-gray">
+      <Typography variant="lead" style={{ color: foreground }}>
         {base.title}
       </Typography>
       <form className="mt-8 mb-2 w-80 max-w-screen-lg sm:w-96">
@@ -54,14 +58,16 @@ export default function Base({ base }: { base: IBase }) {
             type="password"
             size="lg"
             label="Master Password"
+            placeholder="Master Password"
             value={password}
             onChange={(e) => {
               set_password(e.target.value);
             }}
+            // labelProps={{ className: "hidden" }}
             crossOrigin={""}
           />
           {error ? (
-            <Typography variant="small" color="red">
+            <Typography variant="small" style={{ color: danger }}>
               {base.error_msg}
             </Typography>
           ) : (
@@ -73,6 +79,7 @@ export default function Base({ base }: { base: IBase }) {
           fullWidth
           onClick={perform_submit}
           disabled={loading}
+          style={{ backgroundColor: primary, color: foreground }}
         >
           {base.button}
         </Button>
