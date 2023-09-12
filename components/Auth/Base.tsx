@@ -1,5 +1,6 @@
 "use client";
 
+import "./style.css";
 import { Card, Input, Button, Typography } from "@material-tailwind/react";
 import { MouseEvent, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
@@ -57,14 +58,19 @@ export default function Base({ base }: { base: IBase }) {
           <Input
             type="password"
             size="lg"
-            label="Master Password"
             placeholder="Master Password"
             value={password}
             onChange={(e) => {
               set_password(e.target.value);
             }}
-            // labelProps={{ className: "hidden" }}
+            style={{ borderColor: primary, color: foreground }}
             crossOrigin={""}
+            labelProps={{
+              className: "before:content-none after:content-none",
+            }}
+            containerProps={{
+              className: "min-w-0",
+            }}
           />
           {error ? (
             <Typography variant="small" style={{ color: danger }}>
