@@ -1,7 +1,7 @@
 use crate::db::schema::color_scheme;
 use diesel::prelude::*;
 
-#[derive(serde::Serialize, serde::Deserialize, Queryable, Selectable, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Queryable, Selectable, PartialEq, AsChangeset)]
 #[diesel(table_name = color_scheme)]
 pub struct ColorScheme {
     pub id: i32,
@@ -10,6 +10,20 @@ pub struct ColorScheme {
     pub secondary: String,
     pub success: String,
     pub warning: String,
+    pub danger: String,
     pub foreground: String,
     pub background: String,
+}
+
+#[derive(Insertable, serde::Serialize, serde::Deserialize)]
+#[diesel(table_name = color_scheme)]
+pub struct CreateColorScheme<'a> {
+    pub name: &'a str,
+    pub primary: &'a str,
+    pub secondary: &'a str,
+    pub success: &'a str,
+    pub warning: &'a str,
+    pub danger: &'a str,
+    pub foreground: &'a str,
+    pub background: &'a str,
 }

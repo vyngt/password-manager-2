@@ -11,5 +11,5 @@ CREATE TABLE color_scheme (
   background VARCHAR NOT NULL
 );
 
-INSERT INTO color_scheme (`name`, `primary`, `secondary`, success, danger, warning, foreground, background)
-VALUES ('Default','blue', 'gray', 'green', 'red', 'yellow', 'white', 'black');
+INSERT INTO color_scheme (id, `name`, `primary`, `secondary`, success, danger, warning, foreground, background)
+VALUES (1, 'Default','blue', 'gray', 'green', 'red', 'yellow', 'white', 'black');

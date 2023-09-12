@@ -32,15 +32,25 @@ diesel::table! {
 }
 
 diesel::table! {
+    theme (id) {
+        id -> Integer,
+        color_scheme_id -> Integer,
+    }
+}
+
+diesel::table! {
     user (id) {
         id -> Integer,
         password -> Text,
     }
 }
 
+diesel::joinable!(theme -> color_scheme (color_scheme_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     color_scheme,
     item_tags,
     items,
+    theme,
     user,
 );

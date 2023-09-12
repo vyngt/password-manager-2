@@ -8,5 +8,6 @@
     "sqlx",
     "tailwindcss",
     "vyngt"
-  ]
+  ],
+  "rust-analyzer.showUnlinkedFileNotification": false
 }
