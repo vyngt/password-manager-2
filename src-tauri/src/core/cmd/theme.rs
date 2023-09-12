@@ -22,11 +22,19 @@ pub fn get_current_color_scheme(conn: tauri::State<AppDBState>) -> Option<ColorS
 }
 
 #[tauri::command]
-pub fn get_color_schemes(conn: tauri::State<AppDBState>) -> Vec<ColorScheme> {
+pub fn get_all_color_schemes(conn: tauri::State<AppDBState>) -> Vec<ColorScheme> {
     let mut c = conn.0.lock().unwrap();
     let c = &mut c.db;
 
     ColorScheme::all(c)
+}
+
+#[tauri::command]
+pub fn get_color_scheme(id: i32, conn: tauri::State<AppDBState>) -> Option<ColorScheme> {
+    let mut c = conn.0.lock().unwrap();
+    let c = &mut c.db;
+
+    ColorScheme::get(c, &id)
 }
 
 #[tauri::command]
@@ -35,6 +43,14 @@ pub fn create_color_scheme(data: CreateColorScheme, conn: tauri::State<AppDBStat
     let c = &mut c.db;
 
     ColorScheme::create(c, data)
+}
+
+#[tauri::command]
+pub fn update_color_scheme(data: ColorScheme, conn: tauri::State<AppDBState>) -> bool {
+    let mut c = conn.0.lock().unwrap();
+    let c = &mut c.db;
+
+    ColorScheme::update(c, data)
 }
 
 #[tauri::command]
