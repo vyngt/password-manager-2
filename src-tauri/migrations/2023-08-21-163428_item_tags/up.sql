@@ -4,5 +4,5 @@ CREATE TABLE item_tags (
   `name` VARCHAR NOT NULL
 );
 
-CREATE INDEX idx_item_tag_pk ON items(id);
-CREATE INDEX idx_item_tag_name ON items(name);
+CREATE INDEX IF NOT EXISTS idx_item_tag_pk ON items(id);
+CREATE INDEX IF NOT EXISTS idx_item_tag_name ON items(name);
