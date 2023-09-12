@@ -1,18 +1,15 @@
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
-use crate::db::models::theme::{CreateTheme, Theme};
-
-impl CreateTheme {
-    pub fn new() -> Self {
-        CreateTheme { color_scheme_id: 1 }
-    }
-}
+use crate::db::models::theme::Theme;
 
 impl Theme {
     pub fn create(conn: &mut SqliteConnection) -> bool {
         use crate::db::schema::theme;
-        let data = CreateTheme::new();
+        let data = Theme {
+            id: 1,
+            color_scheme_id: 1,
+        };
         match diesel::insert_into(theme::table)
             .values(&data)
             .execute(conn)
@@ -35,6 +32,12 @@ impl Theme {
             }
             Err(_) => None,
         }
+    }
+
+    pub fn get_theme(conn: &mut SqliteConnection) -> Theme {
+        Self::create(conn);
+
+        Self::get(conn).unwrap()
     }
 
     pub fn update(conn: &mut SqliteConnection, data: Theme) -> bool {

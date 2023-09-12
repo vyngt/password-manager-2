@@ -38,9 +38,14 @@ fn main() {
             cmd::backup::import,
             cmd::search::filter_by_name,
             cmd::settings::change_master_password,
+            cmd::theme::save_theme,
+            cmd::theme::get_current_color_scheme,
+            cmd::theme::get_color_schemes,
+            cmd::theme::create_color_scheme,
+            cmd::theme::delete_color_scheme,
             auth::login,
             auth::register,
-            auth::is_first_time
+            auth::is_first_time,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
