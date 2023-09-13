@@ -8,7 +8,7 @@ impl Theme {
         use crate::db::schema::theme;
         let data = Theme {
             id: 1,
-            color_scheme_id: 1,
+            color_scheme_id: Some(1),
         };
         match diesel::insert_into(theme::table)
             .values(&data)

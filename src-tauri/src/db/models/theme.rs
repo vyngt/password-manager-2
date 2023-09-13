@@ -7,5 +7,5 @@ use diesel::prelude::*;
 #[diesel(table_name = theme)]
 pub struct Theme {
     pub id: i32,
-    pub color_scheme_id: i32,
+    pub color_scheme_id: Option<i32>,
 }

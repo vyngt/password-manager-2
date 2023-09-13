@@ -7,8 +7,7 @@ pub fn save_theme(id: i32, conn: tauri::State<AppDBState>) -> bool {
     let mut c = conn.0.lock().unwrap();
     let c = &mut c.db;
     let mut current_theme = Theme::get_theme(c);
-    current_theme.color_scheme_id = id;
-
+    current_theme.color_scheme_id = Some(id);
     Theme::update(c, current_theme)
 }
 
@@ -18,7 +17,10 @@ pub fn get_current_color_scheme(conn: tauri::State<AppDBState>) -> Option<ColorS
     let c = &mut c.db;
     let current_theme = Theme::get_theme(c);
 
-    ColorScheme::get(c, &current_theme.color_scheme_id)
+    match current_theme.color_scheme_id {
+        Some(color_sch_id) => ColorScheme::get(c, &color_sch_id),
+        None => None,
+    }
 }
 
 #[tauri::command]

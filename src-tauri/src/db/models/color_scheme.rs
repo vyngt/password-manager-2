@@ -13,6 +13,7 @@ pub struct ColorScheme {
     pub danger: String,
     pub foreground: String,
     pub background: String,
+    pub selection: String,
 }
 
 #[derive(Insertable, serde::Serialize, serde::Deserialize)]
@@ -26,4 +27,5 @@ pub struct CreateColorScheme<'a> {
     pub danger: &'a str,
     pub foreground: &'a str,
     pub background: &'a str,
+    pub selection: &'a str,
 }

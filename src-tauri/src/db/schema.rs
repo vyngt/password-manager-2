@@ -11,6 +11,7 @@ diesel::table! {
         warning -> Text,
         foreground -> Text,
         background -> Text,
+        selection -> Text,
     }
 }
 
@@ -34,7 +35,7 @@ diesel::table! {
 diesel::table! {
     theme (id) {
         id -> Integer,
-        color_scheme_id -> Integer,
+        color_scheme_id -> Nullable<Integer>,
     }
 }
 
