@@ -5,7 +5,6 @@ import { Card, Input, Button, Typography } from "@material-tailwind/react";
 import { MouseEvent, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useRouter } from "next/navigation";
-import { useColorScheme } from "../Theme";
 
 export interface IBase {
   title: string;
@@ -19,9 +18,6 @@ export default function Base({ base }: { base: IBase }) {
   const [error, set_error] = useState(false);
   const [loading, set_loading] = useState(false);
   const router = useRouter();
-
-  const { foreground, danger, primary, background, secondary } =
-    useColorScheme();
 
   const call_server = async (password: string) => {
     try {
@@ -50,10 +46,10 @@ export default function Base({ base }: { base: IBase }) {
 
   return (
     <Card color="transparent" shadow={false}>
-      <Typography variant="lead" style={{ color: foreground }}>
+      <Typography variant="lead" className="!text-pm-foreground">
         {base.title}
       </Typography>
-      <form className="mt-8 mb-2 w-80 max-w-screen-lg sm:w-96">
+      <form className="mb-2 mt-8 w-80 max-w-screen-lg sm:w-96">
         <div className="mb-4 flex flex-col gap-6">
           <Input
             type="password"
@@ -63,7 +59,6 @@ export default function Base({ base }: { base: IBase }) {
             onChange={(e) => {
               set_password(e.target.value);
             }}
-            style={{ borderColor: primary, color: foreground }}
             crossOrigin={""}
             labelProps={{
               className: "before:content-none after:content-none",
@@ -71,21 +66,19 @@ export default function Base({ base }: { base: IBase }) {
             containerProps={{
               className: "min-w-0",
             }}
+            className="!border-pm-primary text-pm-foreground"
           />
-          {error ? (
-            <Typography variant="small" style={{ color: danger }}>
+          {error && (
+            <Typography variant="small" className="!text-pm-danger">
               {base.error_msg}
             </Typography>
-          ) : (
-            ""
           )}
         </div>
         <Button
-          className="mt-6"
+          className="!bg-pm-primary !text-pm-foreground mt-6"
           fullWidth
           onClick={perform_submit}
           disabled={loading}
-          style={{ backgroundColor: primary, color: foreground }}
         >
           {base.button}
         </Button>

@@ -3,27 +3,27 @@
 import { List, ListItem, ListItemPrefix } from "@material-tailwind/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ISidebarItem, SidebarManager } from "./items";
+import Link from "next/link";
 
-import { useRouter, usePathname } from "next/navigation";
-import { useColorScheme } from "../Theme";
+import { usePathname } from "next/navigation";
 
 const SidebarItem = ({ item }: { item: ISidebarItem }) => {
-  const router = useRouter();
   const pathname = usePathname();
-  const { primary } = useColorScheme();
 
   return (
-    <ListItem
-      className={`rounded-none ${pathname == item.href ? "text-white" : ""}`}
-      onClick={() => {
-        router.push(item.href);
-      }}
+    <Link
+      className={`flex gap-2 p-3 ${
+        pathname == item.href
+          ? "text-pm-primary pointer-events-none"
+          : "text-pm-secondary hover:text-pm-foreground"
+      }`}
+      href={item.href}
     >
-      <ListItemPrefix>
-        <FontAwesomeIcon icon={item.icon} className="h-5 w-5" />
-      </ListItemPrefix>
-      {item.name}
-    </ListItem>
+      <div className="flex flex-col justify-center">
+        <FontAwesomeIcon icon={item.icon} />
+      </div>
+      <div>{item.name}</div>
+    </Link>
   );
 };
 

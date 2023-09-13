@@ -1,6 +1,4 @@
-export interface IColorScheme {
-  id: number;
-  name: string;
+export interface BaseColorScheme {
   primary: string;
   secondary: string;
   success: string;
@@ -9,6 +7,15 @@ export interface IColorScheme {
   foreground: string;
   background: string;
 }
+export interface IColorScheme extends BaseColorScheme {
+  id: number;
+  name: string;
+}
+
+// not need?...
+export type CSSColorSchemeProperties = {
+  [P in keyof BaseColorScheme as `--${P}`]: BaseColorScheme[P];
+};
 
 export type IThemeContextProps = {
   color_scheme: IColorScheme;

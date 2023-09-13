@@ -1,6 +1,6 @@
 "use client";
 
-import { useColorScheme } from "@/components/Theme";
+import { useCurrentTheme } from "@/components/Theme";
 import { Sidebar } from "@/components/Sidebar";
 
 export const metadata = {
@@ -13,14 +13,12 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { background, foreground } = useColorScheme();
+  useCurrentTheme();
+
   return (
-    <div
-      className="w-full h-full flex"
-      style={{ backgroundColor: background, color: foreground }}
-    >
+    <div className="flex h-full w-full">
       <Sidebar className="h-full w-[20rem]" />
-      <main className="w-full h-full">{children}</main>
+      <main className="h-full w-full">{children}</main>
     </div>
   );
 }

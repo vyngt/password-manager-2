@@ -7,7 +7,17 @@ const config = withMT({
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        "pm-primary": "var(--primary)",
+        "pm-secondary": "var(--secondary)",
+        "pm-danger": "var(--danger)",
+        "pm-warning": "var(--warning)",
+        "pm-success": "var(--success)",
+        "pm-background": "var(--background)",
+        "pm-foreground": "var(--foreground)",
+      },
+    },
   },
   plugins: [],
 });
