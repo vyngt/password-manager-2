@@ -17,7 +17,7 @@ export default function MainLayout({
 
   return (
     <div className="relative h-full w-full">
-      <Sidebar className="border-pm-foreground fixed h-full w-[16rem] border-r border-solid" />
+      <Sidebar className="fixed h-full w-[16rem] border-r border-solid border-pm-secondary" />
       <main className="ml-[16rem] mr-[2px]">{children}</main>
     </div>
   );

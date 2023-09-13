@@ -16,6 +16,7 @@ const config = withMT({
         "pm-success": "var(--success)",
         "pm-background": "var(--background)",
         "pm-foreground": "var(--foreground)",
+        "pm-selection": "var(--selection)",
       },
     },
   },

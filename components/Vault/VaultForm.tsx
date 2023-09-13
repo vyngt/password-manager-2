@@ -34,54 +34,65 @@ const VaultFormDialog = ({
 }) => {
   return (
     <>
-      <Dialog
-        size="xs"
-        open={open}
-        handler={() => {}}
-        className="bg-transparent shadow-none"
-      >
-        <Card className="mx-auto w-full max-w-[24rem]">
-          <CardHeader
-            variant="gradient"
-            className="mb-4 grid h-28 place-items-center bg-black"
-          >
-            <Typography variant="h4" color="white">
+      <Dialog size="xs" open={open} handler={() => {}} className="shadow-none">
+        <div className="mx-auto flex w-full max-w-[24rem] flex-col rounded-lg bg-pm-foreground p-6">
+          <div className="mb-4 flex justify-center">
+            <Typography variant="h4" className="!text-pm-primary">
               {title}
             </Typography>
-          </CardHeader>
-          <CardBody className="flex flex-col gap-4">
-            <Input
-              value={item.name}
-              onChange={(e) => item_manager.name(e.target.value)}
-              label="Name"
-              size="lg"
-              crossOrigin={""}
-            />
-            <Input
-              value={item.url}
-              onChange={(e) => item_manager.url(e.target.value)}
-              label="URL"
-              size="lg"
-              crossOrigin={""}
-            />
-            <Input
-              value={item.username}
-              onChange={(e) => item_manager.username(e.target.value)}
-              label="Username"
-              size="lg"
-              crossOrigin={""}
-            />
-            <Input
-              value={item.password}
-              onChange={(e) => item_manager.password(e.target.value)}
-              label="Password"
-              type="password"
-              size="lg"
-              crossOrigin={""}
-            />
-          </CardBody>
-          <CardFooter className="pt-0">{children}</CardFooter>
-        </Card>
+          </div>
+          <div className="mb-3 flex flex-col gap-4">
+            <div className="relative h-10 w-full min-w-[200px]">
+              <input
+                className="pm-input peer text-pm-background"
+                placeholder=" "
+                value={item.name}
+                onChange={(e) => item_manager.name(e.target.value)}
+              />
+              <label className="before:content[' '] after:content[' '] pm-input-label">
+                Name
+              </label>
+            </div>
+
+            <div className="relative h-10 w-full min-w-[200px]">
+              <input
+                className="pm-input peer text-pm-background"
+                placeholder=" "
+                value={item.url}
+                onChange={(e) => item_manager.url(e.target.value)}
+              />
+              <label className="before:content[' '] after:content[' '] pm-input-label">
+                URL
+              </label>
+            </div>
+
+            <div className="relative h-10 w-full min-w-[200px]">
+              <input
+                className="pm-input peer text-pm-background"
+                placeholder=" "
+                value={item.username}
+                onChange={(e) => item_manager.username(e.target.value)}
+              />
+              <label className="before:content[' '] after:content[' '] pm-input-label">
+                Username
+              </label>
+            </div>
+
+            <div className="relative h-10 w-full min-w-[200px]">
+              <input
+                className="pm-input peer text-pm-background"
+                type="password"
+                placeholder=" "
+                value={item.password}
+                onChange={(e) => item_manager.password(e.target.value)}
+              />
+              <label className="before:content[' '] after:content[' '] pm-input-label">
+                Password
+              </label>
+            </div>
+          </div>
+          <div>{children}</div>
+        </div>
       </Dialog>
     </>
   );
@@ -142,7 +153,11 @@ export const VaultCreationForm = ({
   return (
     <>
       <Tooltip content="Add" className="bg-pm-foreground text-pm-background">
-        <Button size="sm" onClick={handleOpen}>
+        <Button
+          size="sm"
+          onClick={handleOpen}
+          className="bg-pm-primary text-pm-foreground"
+        >
           <FontAwesomeIcon icon={faPlus} />
         </Button>
       </Tooltip>
@@ -153,12 +168,16 @@ export const VaultCreationForm = ({
         item_manager={item_manager}
       >
         <div className="flex gap-2">
-          <Button size="sm" onClick={perform_submit}>
+          <Button
+            size="sm"
+            onClick={perform_submit}
+            className="!bg-pm-primary !text-pm-foreground"
+          >
             Add
           </Button>
           <Button
             size="sm"
-            color="white"
+            className="!bg-pm-foreground !text-pm-background"
             onClick={() => {
               item_manager.clear();
               handleOpen();
@@ -243,7 +262,7 @@ export const VaultUpdateForm = ({
       >
         <IconButton
           variant="text"
-          className="text-pm-foreground bg-transparent"
+          className="bg-transparent text-pm-foreground"
           onClick={handleOpenEdit}
         >
           <FontAwesomeIcon icon={faPenToSquare} className="h-4 w-4" />
@@ -256,12 +275,16 @@ export const VaultUpdateForm = ({
         item_manager={item_manager}
       >
         <div className="flex gap-2">
-          <Button size="sm" onClick={perform_save}>
+          <Button
+            size="sm"
+            onClick={perform_save}
+            className="!bg-pm-primary !text-pm-foreground"
+          >
             Save
           </Button>
           <Button
             size="sm"
-            color="white"
+            className="!bg-pm-foreground !text-pm-background"
             onClick={() => {
               handleOpen();
               item_manager.clear();

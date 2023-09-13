@@ -31,12 +31,17 @@ export function VaultSearch({
       <Input
         type="text"
         onChange={perform_search}
-        className="!border-pm-primary pr-20"
+        className="!border-pm-primary pr-20 !text-pm-foreground"
         crossOrigin={""}
         labelProps={{
           className: "before:content-none after:content-none",
         }}
-        icon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+        icon={
+          <FontAwesomeIcon
+            icon={faMagnifyingGlass}
+            className="!text-pm-primary opacity-75"
+          />
+        }
       />
     </div>
   );

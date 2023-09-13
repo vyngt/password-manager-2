@@ -27,7 +27,11 @@ export default function VaultHeader({
           content="Refresh"
           className="bg-pm-foreground text-pm-background"
         >
-          <Button size="sm" onClick={manager.refresh}>
+          <Button
+            size="sm"
+            onClick={manager.refresh}
+            className="bg-pm-primary text-pm-foreground"
+          >
             <FontAwesomeIcon icon={faArrowsRotate} />
           </Button>
         </Tooltip>
