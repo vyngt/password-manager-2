@@ -30,10 +30,12 @@ export function VaultSearch({
     <div className="relative flex w-full max-w-[24rem]" ref={query}>
       <Input
         type="text"
-        label="Keyword"
         onChange={perform_search}
-        className="pr-20"
+        className="!border-pm-primary pr-20"
         crossOrigin={""}
+        labelProps={{
+          className: "before:content-none after:content-none",
+        }}
         icon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
       />
     </div>

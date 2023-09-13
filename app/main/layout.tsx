@@ -16,9 +16,9 @@ export default function MainLayout({
   useCurrentTheme();
 
   return (
-    <div className="flex h-full w-full">
-      <Sidebar className="h-full w-[20rem]" />
-      <main className="h-full w-full">{children}</main>
+    <div className="relative h-full w-full">
+      <Sidebar className="border-pm-foreground fixed h-full w-[16rem] border-r border-solid" />
+      <main className="ml-[16rem] mr-[2px]">{children}</main>
     </div>
   );
 }

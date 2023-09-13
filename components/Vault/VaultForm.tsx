@@ -141,7 +141,7 @@ export const VaultCreationForm = ({
 
   return (
     <>
-      <Tooltip content="Add">
+      <Tooltip content="Add" className="bg-pm-foreground text-pm-background">
         <Button size="sm" onClick={handleOpen}>
           <FontAwesomeIcon icon={faPlus} />
         </Button>
@@ -237,8 +237,15 @@ export const VaultUpdateForm = ({
 
   return (
     <>
-      <Tooltip content="Edit Item">
-        <IconButton variant="text" onClick={handleOpenEdit}>
+      <Tooltip
+        content="Edit Item"
+        className="bg-pm-foreground text-pm-background"
+      >
+        <IconButton
+          variant="text"
+          className="text-pm-foreground bg-transparent"
+          onClick={handleOpenEdit}
+        >
           <FontAwesomeIcon icon={faPenToSquare} className="h-4 w-4" />
         </IconButton>
       </Tooltip>

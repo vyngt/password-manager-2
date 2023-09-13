@@ -14,15 +14,11 @@ export const VaultRow = ({
   operator: Operator<GItem>;
 }) => {
   return (
-    <tr className="hover:bg-blue-gray-100">
+    <tr className="opacity-70 hover:opacity-100">
       <td className="pt-4">
         <div className="flex items-center gap-3">
           <div className="flex flex-col">
-            <Typography
-              variant="small"
-              color="blue-gray"
-              className="font-normal pl-4"
-            >
+            <Typography variant="small" className="pl-4 font-normal">
               {item.name}
             </Typography>
           </div>
@@ -30,33 +26,39 @@ export const VaultRow = ({
       </td>
       <td className="pt-4">
         <div className="flex flex-col">
-          <Typography
-            variant="small"
-            color="blue-gray"
-            className="font-normal pl-4"
-          >
+          <Typography variant="small" className="pl-4 font-normal">
             {item.url}
           </Typography>
         </div>
       </td>
       <td className="pt-4">
-        <Typography
-          variant="small"
-          color="blue-gray"
-          className="font-normal pl-4"
-        >
+        <Typography variant="small" className="pl-4 font-normal">
           {item.username}
         </Typography>
       </td>
       <td className="pt-4">
-        <Tooltip content="Copy Password">
-          <IconButton variant="text" onClick={() => operator.copy(item)}>
+        <Tooltip
+          content="Copy Password"
+          className="bg-pm-foreground text-pm-background"
+        >
+          <IconButton
+            variant="text"
+            className="text-pm-foreground bg-transparent"
+            onClick={() => operator.copy(item)}
+          >
             <FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
           </IconButton>
         </Tooltip>
         <VaultUpdateForm item_id={item.id} update_ui={operator.update} />
-        <Tooltip content="Delete Item">
-          <IconButton variant="text" onClick={() => operator.delete(item)}>
+        <Tooltip
+          content="Delete Item"
+          className="bg-pm-foreground text-pm-background"
+        >
+          <IconButton
+            variant="text"
+            className="text-pm-foreground bg-transparent"
+            onClick={() => operator.delete(item)}
+          >
             <FontAwesomeIcon icon={faTrashCan} className="h-4 w-4" />
           </IconButton>
         </Tooltip>
@@ -77,14 +79,10 @@ export default function VaultTable({
       <thead>
         <tr>
           {TABLE_HEAD.map((head) => (
-            <th
-              key={head}
-              className="cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 p-4 transition-colors hover:bg-blue-gray-50"
-            >
+            <th key={head} className=" bg-pm-secondary border-y p-4">
               <Typography
                 variant="small"
-                color="blue-gray"
-                className="flex items-center justify-between gap-2 font-normal leading-none opacity-70"
+                className="flex items-center justify-between gap-2 font-normal leading-none"
               >
                 {head}
               </Typography>

@@ -69,11 +69,11 @@ export default function Vault() {
   };
 
   return (
-    <div className="relative flex flex-col bg-clip-border bg-white text-gray-700 shadow-md h-full w-full gap-5">
-      <div className="relative bg-clip-border mt-4 mx-4 bg-white text-gray-700 rounded-none">
+    <div className="relative flex h-full w-full flex-col gap-5 bg-clip-border shadow-md">
+      <div className="relative mx-4 mt-4 rounded-none bg-clip-border">
         <VaultHeader manager={VaultHeaderManager} />
       </div>
-      <div className="p-6 overflow-x-scroll px-0 vault-table-scrollbar">
+      <div className="vault-table-scrollbar overflow-x-scroll p-6 px-0">
         <VaultTable items={items} operator={ItemOperator()} />
       </div>
       {/* <div className="flex items-center justify-between border-t border-blue-gray-50 p-4">

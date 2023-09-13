@@ -15,7 +15,7 @@ const SidebarItem = ({ item }: { item: ISidebarItem }) => {
       className={`flex gap-2 p-3 ${
         pathname == item.href
           ? "text-pm-primary pointer-events-none"
-          : "text-pm-secondary hover:text-pm-foreground"
+          : "text-pm-secondary hover:text-pm-foreground transition-colors"
       }`}
       href={item.href}
     >

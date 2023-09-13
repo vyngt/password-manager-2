@@ -14,9 +14,7 @@ export default function VaultHeader({
     <div className="flex flex-col">
       <div className="mb-8 flex items-center justify-between gap-8">
         <div>
-          <Typography variant="h5" color="blue-gray">
-            Item list
-          </Typography>
+          <Typography variant="h5">Item list</Typography>
         </div>
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
           <VaultSearch replace={manager.replace} />
@@ -25,7 +23,10 @@ export default function VaultHeader({
       <div className="flex gap-2">
         <VaultCreationForm refresh_method={manager.refresh} />
 
-        <Tooltip content="Refresh">
+        <Tooltip
+          content="Refresh"
+          className="bg-pm-foreground text-pm-background"
+        >
           <Button size="sm" onClick={manager.refresh}>
             <FontAwesomeIcon icon={faArrowsRotate} />
           </Button>
