@@ -15,6 +15,6 @@ ALTER TABLE theme ADD color_scheme_id INTEGER REFERENCES color_scheme(id);
 
 
 INSERT INTO color_scheme (id, `name`, `primary`, `secondary`, success, danger, warning, foreground, background, selection)
-VALUES (1, 'Default','blue', 'gray', 'green', 'yellow', 'red', 'white', 'black', 'white');
+VALUES (1, 'Default','blue', 'gray', 'green', 'red', 'yellow', 'white', 'black', 'white');
 
 INSERT INTO theme (id, color_scheme_id) VALUES (1, 1);
