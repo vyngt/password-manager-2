@@ -5,10 +5,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ISidebarItem, SidebarManager } from "./items";
 
 import { useRouter, usePathname } from "next/navigation";
+import { useColorScheme } from "../Theme";
 
 const SidebarItem = ({ item }: { item: ISidebarItem }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const { primary } = useColorScheme();
 
   return (
     <ListItem
@@ -25,9 +27,11 @@ const SidebarItem = ({ item }: { item: ISidebarItem }) => {
   );
 };
 
-export default function Sidebar() {
+const Sidebar: React.FunctionComponent<
+  React.HTMLAttributes<HTMLDivElement>
+> = ({ ...rest }) => {
   return (
-    <div className="h-full w-full max-w-[20rem] shadow-xl bg-black">
+    <div {...rest}>
       <List>
         {SidebarManager.all().map((e) => (
           <SidebarItem key={e.id} item={e} />
@@ -35,4 +39,6 @@ export default function Sidebar() {
       </List>
     </div>
   );
-}
+};
+
+export default Sidebar;

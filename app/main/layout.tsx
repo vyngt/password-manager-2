@@ -19,7 +19,7 @@ export default function MainLayout({
       className="w-full h-full flex"
       style={{ backgroundColor: background, color: foreground }}
     >
-      <Sidebar />
+      <Sidebar className="h-full w-[20rem]" />
       <main className="w-full h-full">{children}</main>
     </div>
   );

@@ -69,7 +69,7 @@ export default function Vault() {
   };
 
   return (
-    <div className="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md h-full w-full gap-5">
+    <div className="relative flex flex-col bg-clip-border bg-white text-gray-700 shadow-md h-full w-full gap-5">
       <div className="relative bg-clip-border mt-4 mx-4 bg-white text-gray-700 rounded-none">
         <VaultHeader manager={VaultHeaderManager} />
       </div>
