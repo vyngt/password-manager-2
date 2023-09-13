@@ -6,6 +6,7 @@ export interface BaseColorScheme {
   warning: string;
   foreground: string;
   background: string;
+  selection: string;
 }
 export interface IColorScheme extends BaseColorScheme {
   id: number;

@@ -14,6 +14,7 @@ const default_color_scheme: IColorScheme = {
   warning: "yellow",
   foreground: "#ffffff",
   background: "#000000",
+  selection: "white",
 };
 
 export const ThemeContext = createContext<IThemeContextProps>({
@@ -29,7 +30,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     const root = document.documentElement;
 
     for (const [key, value] of Object.entries(css_color_scheme)) {
-      const is_not_valid = key in ["name", "id"];
+      const is_not_valid = key == "name" || key == "id";
       if (!is_not_valid) {
         root.style.setProperty(`--${key}`, value);
       }
