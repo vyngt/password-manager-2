@@ -40,29 +40,44 @@ const SetMasterPasswordDialog = ({
   };
 
   return (
-    <Dialog open={open} handler={clear}>
-      <DialogHeader>
-        <Typography variant="h5" color="blue-gray">
-          Set New Master Password
-        </Typography>
-      </DialogHeader>
-      <DialogBody divider className="grid place-items-center gap-4">
-        <Input
-          crossOrigin={""}
-          type="password"
-          label="Password"
-          value={password}
-          onChange={(ev) => setPassword(ev.target.value)}
-        />
-      </DialogBody>
-      <DialogFooter className="space-x-2">
-        <Button variant="gradient" onClick={save}>
-          <FontAwesomeIcon icon={faFloppyDisk} />
-        </Button>
-        <Button variant="gradient" onClick={clear}>
-          <FontAwesomeIcon icon={faCancel} />
-        </Button>
-      </DialogFooter>
+    <Dialog size="xs" open={open} handler={clear}>
+      <div className="mx-auto flex w-full flex-col rounded-lg border border-pm-foreground bg-pm-background p-6">
+        <div className="mb-4 flex justify-center">
+          <Typography variant="h4" className="!text-pm-primary">
+            Set New Master Password
+          </Typography>
+        </div>
+        <div className="mb-3 flex flex-col gap-4">
+          <div className="relative h-10">
+            <input
+              className="pm-input peer text-pm-foreground"
+              type="password"
+              placeholder=" "
+              value={password}
+              onChange={(ev) => setPassword(ev.target.value)}
+            />
+            <label className="before:content[' '] after:content[' '] pm-input-label">
+              Password
+            </label>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            variant="outlined"
+            onClick={save}
+            className="!border-pm-primary !text-pm-foreground"
+          >
+            <FontAwesomeIcon icon={faFloppyDisk} />
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={clear}
+            className="!border-pm-primary !text-pm-foreground"
+          >
+            <FontAwesomeIcon icon={faCancel} />
+          </Button>
+        </div>
+      </div>
     </Dialog>
   );
 };
@@ -73,17 +88,21 @@ export default function MasterPassword() {
   const toggle = () => setOpen((cur) => !cur);
 
   return (
-    <>
-      <Typography variant="h6" className="bg-brown-100 pl-4">
+    <div className="mb-5 h-full w-full">
+      <Typography variant="h6" className="border-b border-pm-secondary pl-1">
         Master Password
       </Typography>
-      <br />
-      <div className="pl-8 relative flex w-full max-w-[24rem] gap-3">
-        <Button size="sm" onClick={toggle}>
+      <div className="relative flex w-full gap-3 pl-8 pt-4">
+        <Button
+          size="sm"
+          onClick={toggle}
+          variant="outlined"
+          className="!border-pm-primary !text-pm-foreground"
+        >
           New Master Password
         </Button>
         <SetMasterPasswordDialog open={open} toggle={toggle} />
       </div>
-    </>
+    </div>
   );
 }

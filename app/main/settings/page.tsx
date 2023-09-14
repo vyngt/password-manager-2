@@ -1,15 +1,16 @@
 "use client";
 
 import { Typography } from "@material-tailwind/react";
-import { MasterPassword } from "@/components/Settings";
+import { MasterPassword, ColorSchemeSettings } from "@/components/Settings";
 
 export default function Page() {
   return (
-    <div>
-      <Typography variant="h3" className="text-center">
+    <div className="h-full w-full">
+      <Typography variant="h3" className="pt-2 text-center text-pm-primary">
         Settings
       </Typography>
       <MasterPassword />
+      <ColorSchemeSettings />
     </div>
   );
 }
