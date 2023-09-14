@@ -3,16 +3,7 @@
 import { invoke } from "@tauri-apps/api/tauri";
 
 import { FormEvent, useState } from "react";
-import {
-  Checkbox,
-  Card,
-  CardHeader,
-  CardFooter,
-  CardBody,
-  Typography,
-  Button,
-  Input,
-} from "@material-tailwind/react";
+import { Checkbox, Typography, Button, Input } from "@material-tailwind/react";
 
 import { IPasswordGenerator } from "./models";
 
@@ -58,36 +49,39 @@ export default function PasswordGenerator() {
   };
 
   return (
-    <Card color="transparent" shadow={false} className="h-full w-full">
-      <CardHeader floated={false} shadow={false} className="rounded-none">
-        <div className="mb-8 flex flex-col items-center justify-between gap-8">
-          <Typography variant="h4" color="blue-gray">
-            Password Generator
-          </Typography>
-          <Typography color="gray" className="mt-1 font-normal">
-            Let generate your strong password
-          </Typography>
-        </div>
-      </CardHeader>
-      <CardBody className="flex flex-col justify-center items-center">
-        <form className="mt-8 mb-2 w-80 max-w-screen-lg sm:w-96 flex flex-col items-center gap-2">
-          <Input
-            label="Length"
-            crossOrigin={""}
-            value={state.len}
-            type="number"
-            onInput={UpdateState.len}
-          />
+    <div className="flex flex-col justify-center bg-transparent p-2">
+      <div className="mb-8 flex flex-col items-center justify-between gap-8">
+        <Typography variant="h4" className="!text-pm-primary">
+          Password Generator
+        </Typography>
+        <Typography className="mt-1 font-normal !text-pm-foreground">
+          Let generate your strong password
+        </Typography>
+      </div>
+      <div className="flex justify-center">
+        <form className="mb-2 mt-8 flex flex-col items-center justify-center gap-2">
+          <div className="relative h-10 w-full min-w-[200px]">
+            <input
+              className="pm-input peer text-pm-foreground"
+              placeholder=" "
+              value={state.len}
+              type="number"
+              onInput={UpdateState.len}
+            />
+            <label className="before:content[' '] after:content[' '] pm-input-label">
+              Length
+            </label>
+          </div>
           <div className="flex gap-4">
             <Checkbox
               crossOrigin={""}
+              className="!border-pm-primary bg-transparent checked:!border-transparent checked:bg-pm-primary"
               checked={state.lower}
               onChange={UpdateState.lower}
               label={
                 <Typography
                   variant="small"
-                  color="gray"
-                  className="flex items-center font-normal"
+                  className="flex items-center font-normal !text-pm-foreground"
                 >
                   Lowercase
                 </Typography>
@@ -95,14 +89,14 @@ export default function PasswordGenerator() {
               containerProps={{ className: "-ml-2.5" }}
             />
             <Checkbox
+              className="!border-pm-primary bg-transparent checked:!border-transparent checked:bg-pm-primary"
               crossOrigin={""}
               checked={state.upper}
               onChange={UpdateState.upper}
               label={
                 <Typography
                   variant="small"
-                  color="gray"
-                  className="flex items-center font-normal"
+                  className="flex items-center font-normal !text-pm-foreground"
                 >
                   Uppercase
                 </Typography>
@@ -110,14 +104,14 @@ export default function PasswordGenerator() {
               containerProps={{ className: "-ml-2.5" }}
             />
             <Checkbox
+              className="!border-pm-primary bg-transparent checked:!border-transparent checked:bg-pm-primary"
               crossOrigin={""}
               checked={state.digits}
               onChange={UpdateState.digits}
               label={
                 <Typography
                   variant="small"
-                  color="gray"
-                  className="flex items-center font-normal"
+                  className="flex items-center font-normal !text-pm-foreground"
                 >
                   Digits
                 </Typography>
@@ -125,14 +119,14 @@ export default function PasswordGenerator() {
               containerProps={{ className: "-ml-2.5" }}
             />
             <Checkbox
+              className="!border-pm-primary bg-transparent checked:!border-transparent checked:bg-pm-primary"
               crossOrigin={""}
               checked={state.special}
               onChange={UpdateState.special}
               label={
                 <Typography
                   variant="small"
-                  color="gray"
-                  className="flex items-center font-normal"
+                  className="flex items-center font-normal !text-pm-foreground"
                 >
                   Special
                 </Typography>
@@ -140,12 +134,16 @@ export default function PasswordGenerator() {
               containerProps={{ className: "-ml-2.5" }}
             />
           </div>
-          <div className="w-full flex justify-between">
-            <Button className="mt-6" onClick={perform_generate}>
+          <div className="flex w-full justify-between">
+            <Button
+              className="mt-6 !bg-pm-primary !text-pm-foreground"
+              onClick={perform_generate}
+            >
               Generate
             </Button>
             <Button
-              className="mt-6"
+              variant="outlined"
+              className="mt-6 !border-pm-primary !text-pm-foreground"
               onClick={() => {
                 navigator.clipboard.writeText(password);
               }}
@@ -154,12 +152,14 @@ export default function PasswordGenerator() {
             </Button>
           </div>
         </form>
-      </CardBody>
-      <CardFooter className="flex flex-col text-center items-center bg-gray-100">
-        <div className="overflow-y">
-          <Typography>{password}</Typography>
+      </div>
+      {password && (
+        <div className="mt-6 flex flex-col items-center rounded-lg border border-pm-foreground p-2">
+          <div className="overflow-clip">
+            <Typography className="!text-pm-foreground">{password}</Typography>
+          </div>
         </div>
-      </CardFooter>
-    </Card>
+      )}
+    </div>
   );
 }
