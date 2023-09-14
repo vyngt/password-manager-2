@@ -29,8 +29,9 @@ export default function VaultHeader({
         >
           <Button
             size="sm"
+            variant="outlined"
             onClick={manager.refresh}
-            className="bg-pm-primary text-pm-foreground"
+            className="border-pm-primary text-pm-primary"
           >
             <FontAwesomeIcon icon={faArrowsRotate} />
           </Button>

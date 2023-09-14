@@ -2,12 +2,7 @@ import React from "react";
 import {
   Button,
   Dialog,
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
   Typography,
-  Input,
   Tooltip,
   IconButton,
 } from "@material-tailwind/react";
@@ -35,7 +30,7 @@ const VaultFormDialog = ({
   return (
     <>
       <Dialog size="xs" open={open} handler={() => {}} className="shadow-none">
-        <div className="mx-auto flex w-full max-w-[24rem] flex-col rounded-lg bg-pm-foreground p-6">
+        <div className="mx-auto flex w-full flex-col rounded-lg border border-pm-foreground bg-pm-background p-6">
           <div className="mb-4 flex justify-center">
             <Typography variant="h4" className="!text-pm-primary">
               {title}
@@ -44,7 +39,7 @@ const VaultFormDialog = ({
           <div className="mb-3 flex flex-col gap-4">
             <div className="relative h-10 w-full min-w-[200px]">
               <input
-                className="pm-input peer text-pm-background"
+                className="pm-input peer text-pm-foreground"
                 placeholder=" "
                 value={item.name}
                 onChange={(e) => item_manager.name(e.target.value)}
@@ -56,7 +51,7 @@ const VaultFormDialog = ({
 
             <div className="relative h-10 w-full min-w-[200px]">
               <input
-                className="pm-input peer text-pm-background"
+                className="pm-input peer text-pm-foreground"
                 placeholder=" "
                 value={item.url}
                 onChange={(e) => item_manager.url(e.target.value)}
@@ -68,7 +63,7 @@ const VaultFormDialog = ({
 
             <div className="relative h-10 w-full min-w-[200px]">
               <input
-                className="pm-input peer text-pm-background"
+                className="pm-input peer text-pm-foreground"
                 placeholder=" "
                 value={item.username}
                 onChange={(e) => item_manager.username(e.target.value)}
@@ -80,7 +75,7 @@ const VaultFormDialog = ({
 
             <div className="relative h-10 w-full min-w-[200px]">
               <input
-                className="pm-input peer text-pm-background"
+                className="pm-input peer text-pm-foreground"
                 type="password"
                 placeholder=" "
                 value={item.password}
@@ -169,6 +164,7 @@ export const VaultCreationForm = ({
       >
         <div className="flex gap-2">
           <Button
+            variant="filled"
             size="sm"
             onClick={perform_submit}
             className="!bg-pm-primary !text-pm-foreground"
@@ -176,8 +172,9 @@ export const VaultCreationForm = ({
             Add
           </Button>
           <Button
+            variant="outlined"
             size="sm"
-            className="!bg-pm-foreground !text-pm-background"
+            className="!border-pm-foreground !text-pm-foreground"
             onClick={() => {
               item_manager.clear();
               handleOpen();
@@ -284,7 +281,8 @@ export const VaultUpdateForm = ({
           </Button>
           <Button
             size="sm"
-            className="!bg-pm-foreground !text-pm-background"
+            variant="outlined"
+            className="!border-pm-foreground !text-pm-foreground"
             onClick={() => {
               handleOpen();
               item_manager.clear();
