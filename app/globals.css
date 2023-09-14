@@ -23,6 +23,10 @@ body {
   focus:outline-0 disabled:border-0;
 }
 
+.pm-input-range {
+  @apply w-full accent-pm-primary;
+}
+
 .pm-input-label {
   @apply pointer-events-none 
   absolute -top-1.5 left-0 flex h-full w-full select-none text-[11px] 

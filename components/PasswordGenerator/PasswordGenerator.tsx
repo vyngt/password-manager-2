@@ -3,7 +3,7 @@
 import { invoke } from "@tauri-apps/api/tauri";
 
 import { FormEvent, useState } from "react";
-import { Checkbox, Typography, Button, Input } from "@material-tailwind/react";
+import { Checkbox, Typography, Button } from "@material-tailwind/react";
 
 import { IPasswordGenerator } from "./models";
 
@@ -31,10 +31,6 @@ export default function PasswordGenerator() {
     },
     len: (ev: FormEvent<HTMLInputElement>) => {
       let n = Number(ev.currentTarget.value);
-
-      n = n > 300 ? 300 : n;
-      n = n < 0 ? 0 : n;
-
       setState({ ...state, len: n });
     },
   };
@@ -60,17 +56,16 @@ export default function PasswordGenerator() {
       </div>
       <div className="flex justify-center">
         <form className="mb-2 mt-8 flex flex-col items-center justify-center gap-2">
+          <div>{state.len}</div>
           <div className="relative h-10 w-full min-w-[200px]">
             <input
-              className="pm-input peer text-pm-foreground"
-              placeholder=" "
+              className="pm-input-range"
               value={state.len}
-              type="number"
-              onInput={UpdateState.len}
+              type="range"
+              min={1}
+              max={300}
+              onChange={UpdateState.len}
             />
-            <label className="before:content[' '] after:content[' '] pm-input-label">
-              Length
-            </label>
           </div>
           <div className="flex gap-4">
             <Checkbox
