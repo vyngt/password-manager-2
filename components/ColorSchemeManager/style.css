@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.pm-color-scheme-table {
+  @apply w-full overflow-y-scroll;
+}
+
+.pm-color-scheme-table::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+.pm-color-scheme-table > table {
+  @apply table w-full table-auto border-t border-pm-secondary;
+}
+
+.pm-color-scheme-table > table tr {
+  @apply h-[70px] border-b border-pm-secondary transition-colors hover:opacity-70;
+}

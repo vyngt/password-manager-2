@@ -89,7 +89,7 @@ export default function MasterPassword() {
 
   return (
     <div className="mb-5 h-full w-full">
-      <Typography variant="h6" className="border-b border-pm-secondary pl-1">
+      <Typography variant="h6" className="border-b-2 border-pm-secondary pl-1">
         Master Password
       </Typography>
       <div className="relative flex w-full gap-3 pl-8 pt-4">
