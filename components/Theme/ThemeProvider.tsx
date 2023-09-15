@@ -19,6 +19,7 @@ const default_color_scheme: IColorScheme = {
 
 export const ThemeContext = createContext<IThemeContextProps>({
   color_scheme: default_color_scheme,
+  initialize: () => {},
   change_to: () => {},
   set_color_scheme() {},
 });
@@ -52,7 +53,16 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     },
     set_color_scheme: (scheme) => {
       apply_root_color_scheme(scheme);
-      // setTheme(scheme);
+    },
+    initialize: async () => {
+      if (theme.id == 0) {
+        const scheme: IColorScheme | undefined = await invoke(
+          "get_current_color_scheme",
+        );
+        if (scheme) {
+          setTheme(scheme);
+        }
+      }
     },
   };
 

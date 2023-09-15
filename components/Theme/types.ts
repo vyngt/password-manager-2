@@ -20,6 +20,7 @@ export type CSSColorSchemeProperties = {
 
 export type IThemeContextProps = {
   color_scheme: IColorScheme;
+  initialize: () => void;
   change_to: (id: number) => void;
   set_color_scheme: (scheme: IColorScheme) => void;
 };

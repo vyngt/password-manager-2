@@ -24,6 +24,10 @@ export const useCurrentTheme = () => {
   const context = useContext(ThemeContext);
 
   useEffect(() => {
+    context.initialize();
+  });
+
+  useEffect(() => {
     const load_theme = async () => {
       const color_scheme: IColorScheme = await invoke(
         "get_current_color_scheme",
