@@ -15,15 +15,13 @@ export const useColorScheme = () => {
 export const useCurrentTheme = () => {
   const context = useContext(ThemeContext);
 
-  const load_theme = async () => {
-    const color_scheme: IColorScheme = await invoke("get_current_color_scheme");
-    context.set_color_scheme(color_scheme);
-  };
-
   useEffect(() => {
-    const load_ui_color = async () => {
-      await load_theme();
+    const load_theme = async () => {
+      const color_scheme: IColorScheme = await invoke(
+        "get_current_color_scheme",
+      );
+      context.set_color_scheme(color_scheme);
     };
-    load_ui_color();
-  }, []);
+    load_theme();
+  }, [context]);
 };

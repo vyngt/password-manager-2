@@ -8,7 +8,7 @@ export default function ColorSchemeSettings() {
       <Typography variant="h6" className="border-b-2 border-pm-secondary pl-1">
         Color Schemes
       </Typography>
-      <div className="h-[500px] w-full pt-4">
+      <div className="h-[400px] w-full pt-4">
         <ColorSchemeManager />
       </div>
     </div>
