@@ -52,7 +52,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     },
     set_color_scheme: (scheme) => {
       apply_root_color_scheme(scheme);
-      setTheme(scheme);
+      // setTheme(scheme);
     },
   };
 
