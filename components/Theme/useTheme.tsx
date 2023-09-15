@@ -12,6 +12,14 @@ export const useColorScheme = () => {
   return { ...context.color_scheme };
 };
 
+export const useColorSchemeManager = () => {
+  const context = useContext(ThemeContext);
+  return {
+    change_to: context.change_to,
+    set_color_scheme: context.set_color_scheme,
+  };
+};
+
 export const useCurrentTheme = () => {
   const context = useContext(ThemeContext);
 

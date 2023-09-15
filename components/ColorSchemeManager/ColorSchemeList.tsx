@@ -3,7 +3,7 @@ import { IColorScheme } from "../Theme/types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Chip, IconButton, Typography } from "@material-tailwind/react";
 import { faPaintbrush } from "@fortawesome/free-solid-svg-icons";
-import { useColorScheme } from "../Theme";
+import { useColorScheme, useColorSchemeManager } from "../Theme";
 
 const ColorSchemeRow = ({
   color_scheme,
@@ -54,6 +54,8 @@ export default function ColorSchemeList({
 }: {
   schemes: Array<IColorScheme>;
 }) {
+  const manager = useColorSchemeManager();
+
   return (
     <div className="pm-color-scheme-table">
       <table>
@@ -62,6 +64,7 @@ export default function ColorSchemeList({
             <ColorSchemeRow key={e.id} color_scheme={e}>
               <IconButton variant="text">
                 <FontAwesomeIcon
+                  onClick={() => manager.change_to(e.id)}
                   className="h-8 w-8"
                   icon={faPaintbrush}
                   style={{ color: e.primary }}

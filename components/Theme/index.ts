@@ -1,4 +1,14 @@
 import { ThemeProvider, ThemeContext } from "./ThemeProvider";
-import { useColorScheme, useCurrentTheme } from "./useTheme";
+import {
+  useColorScheme,
+  useCurrentTheme,
+  useColorSchemeManager,
+} from "./useTheme";
 
-export { ThemeProvider, useColorScheme, ThemeContext, useCurrentTheme };
+export {
+  ThemeContext,
+  ThemeProvider,
+  useColorScheme,
+  useCurrentTheme,
+  useColorSchemeManager,
+};
