@@ -40,7 +40,10 @@ pub fn get_color_scheme(id: i32, conn: tauri::State<AppDBState>) -> Option<Color
 }
 
 #[tauri::command]
-pub fn create_color_scheme(data: CreateColorScheme, conn: tauri::State<AppDBState>) -> bool {
+pub fn create_color_scheme(
+    data: CreateColorScheme,
+    conn: tauri::State<AppDBState>,
+) -> Option<ColorScheme> {
     let mut c = conn.0.lock().unwrap();
     let c = &mut c.db;
 

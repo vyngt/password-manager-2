@@ -4,15 +4,15 @@ use diesel::sqlite::SqliteConnection;
 use crate::db::models::color_scheme::{ColorScheme, CreateColorScheme};
 
 impl ColorScheme {
-    pub fn create(conn: &mut SqliteConnection, data: CreateColorScheme) -> bool {
+    pub fn create(conn: &mut SqliteConnection, data: CreateColorScheme) -> Option<ColorScheme> {
         use crate::db::schema::color_scheme;
 
         match diesel::insert_into(color_scheme::table)
             .values(&data)
-            .execute(conn)
+            .get_result::<ColorScheme>(conn)
         {
-            Ok(_) => true,
-            Err(_) => false,
+            Ok(e) => Some(e),
+            Err(_) => None,
         }
     }
 

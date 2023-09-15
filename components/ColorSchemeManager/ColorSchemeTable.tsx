@@ -4,6 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Chip, IconButton, Typography } from "@material-tailwind/react";
 import { faPaintbrush } from "@fortawesome/free-solid-svg-icons";
 import { useColorScheme, useColorSchemeManager } from "../Theme";
+import { useManager } from "./Context";
+import { useEffect } from "react";
 
 const ColorSchemeRow = ({
   color_scheme,
@@ -13,6 +15,7 @@ const ColorSchemeRow = ({
   children?: React.ReactNode;
 }) => {
   const { id } = useColorScheme();
+  const context = useManager();
 
   return (
     <tr style={{ backgroundColor: color_scheme.background }}>
@@ -43,24 +46,43 @@ const ColorSchemeRow = ({
         </div>
       </td>
       <td>
-        <div className="flex h-full justify-end gap-2">{children}</div>
+        <div className="flex h-full justify-end gap-2">
+          {children}
+          <IconButton
+            variant="text"
+            onClick={() => {
+              if (id == color_scheme.id) {
+                return;
+              }
+              context.remove(color_scheme.id);
+            }}
+            disabled={color_scheme.id == id}
+          >
+            <FontAwesomeIcon
+              className="h-8 w-8"
+              icon={faTrashCan}
+              style={{ color: color_scheme.danger }}
+            />
+          </IconButton>
+        </div>
       </td>
     </tr>
   );
 };
 
-export default function ColorSchemeList({
-  schemes,
-}: {
-  schemes: Array<IColorScheme>;
-}) {
+export default function ColorSchemeTable() {
   const manager = useColorSchemeManager();
+  const context = useManager();
+
+  useEffect(() => {
+    context.reload();
+  }, []);
 
   return (
     <div className="pm-color-scheme-table">
       <table>
         <tbody>
-          {schemes.map((e) => (
+          {context.schemes.map((e) => (
             <ColorSchemeRow key={e.id} color_scheme={e}>
               <IconButton variant="text">
                 <FontAwesomeIcon
@@ -75,13 +97,6 @@ export default function ColorSchemeList({
                   className="h-8 w-8"
                   icon={faPenToSquare}
                   style={{ color: e.foreground }}
-                />
-              </IconButton>
-              <IconButton variant="text">
-                <FontAwesomeIcon
-                  className="h-8 w-8"
-                  icon={faTrashCan}
-                  style={{ color: e.danger }}
                 />
               </IconButton>
             </ColorSchemeRow>

@@ -8,6 +8,10 @@ export interface BaseColorScheme {
   background: string;
   selection: string;
 }
+
+export interface IBaseColorScheme extends BaseColorScheme {
+  name: string;
+}
 export interface IColorScheme extends BaseColorScheme {
   id: number;
   name: string;
