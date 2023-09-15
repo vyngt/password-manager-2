@@ -1,5 +1,9 @@
 "use client";
-import { faCancel, faFloppyDisk } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCancel,
+  faFloppyDisk,
+  faKey,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   Typography,
@@ -89,9 +93,12 @@ export default function MasterPassword() {
 
   return (
     <div className="mb-5 h-full w-full">
-      <Typography variant="h6" className="border-b-2 border-pm-secondary pl-1">
-        Master Password
-      </Typography>
+      <div className="flex gap-2 border-b-2 border-pm-secondary pl-1">
+        <div className="flex flex-col justify-center">
+          <FontAwesomeIcon icon={faKey} />
+        </div>
+        <Typography variant="h6">Master Password</Typography>
+      </div>
       <div className="relative flex w-full gap-3 pl-8 pt-4">
         <Button
           size="sm"
