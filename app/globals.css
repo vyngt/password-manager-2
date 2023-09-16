@@ -51,3 +51,28 @@ body {
   peer-disabled:text-transparent peer-disabled:before:border-transparent 
   peer-disabled:after:border-transparent peer-disabled:peer-placeholder-shown:text-blue-gray-500;
 }
+
+.pm-input-color-container {
+  @apply h-12 w-12 
+  rounded-full border
+  border-pm-primary ring-2 ring-transparent;
+}
+
+.pm-input-color-container:has(input[type="color"]:focus) {
+  @apply ring-pm-primary;
+}
+
+.pm-input-color-container > input[type="color"] {
+  @apply h-full w-full rounded-full;
+  outline: none;
+  border: none;
+  -webkit-appearance: none;
+}
+
+.pm-input-color-container > input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.pm-input-color-container > input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}

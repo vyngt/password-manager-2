@@ -47,7 +47,16 @@ export const ColorSchemeManagerProvider = ({
       new_arr.splice(index, 1);
       setSchemes(new_arr);
     },
-    update: (scheme: IColorScheme) => {},
+    update: async (scheme: IColorScheme) => {
+      const updated = await invoke("update_color_scheme", { data: scheme });
+      if (!updated) {
+        return;
+      }
+      const new_arr = [...schemes];
+      const index = new_arr.findIndex((i) => i.id == scheme.id);
+      new_arr[index] = scheme;
+      setSchemes(new_arr);
+    },
   };
 
   return (

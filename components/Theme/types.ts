@@ -12,10 +12,13 @@ export interface BaseColorScheme {
 export interface IBaseColorScheme extends BaseColorScheme {
   name: string;
 }
-export interface IColorScheme extends BaseColorScheme {
+export interface IColorScheme extends IBaseColorScheme {
   id: number;
-  name: string;
 }
+
+export type IBaseManager<T> = {
+  [P in keyof T]: (value: T[P]) => void;
+};
 
 // not need?...
 export type CSSColorSchemeProperties = {
