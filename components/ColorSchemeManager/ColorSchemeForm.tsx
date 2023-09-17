@@ -147,29 +147,21 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
   );
 }
 
-export const ColorSchemeUpdateForm = () => {
-  const [open, setOpen] = useState(false);
-  const toggle = () => setOpen((cur) => !cur);
-
-  const [data, setData] = useState<IColorScheme>({
-    id: 0,
-    name: "Default",
-    primary: "#000000",
-    secondary: "#000000",
-    success: "#000000",
-    danger: "#000000",
-    warning: "#000000",
-    foreground: "#ffffff",
-    background: "#000000",
-    selection: "#000000",
-  });
-
+export const ColorSchemeUpdateForm = ({
+  data,
+  open,
+  toggle,
+  action,
+}: {
+  data: IColorScheme;
+  open: boolean;
+  toggle: () => void;
+  action: (scheme: IColorScheme) => void;
+}) => {
   return (
     <ColorSchemeForm
       toggle={toggle}
-      action={(data) => {
-        console.log("Updated", data);
-      }}
+      action={action}
       name_action="Update"
       data={data}
       open={open}

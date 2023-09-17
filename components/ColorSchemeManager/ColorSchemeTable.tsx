@@ -5,9 +5,16 @@ import { Chip, IconButton, Typography } from "@material-tailwind/react";
 import { faPaintbrush } from "@fortawesome/free-solid-svg-icons";
 import { useColorScheme, useColorSchemeManager } from "../Theme";
 import { useManager } from "./Context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { ColorSchemeUpdateForm } from "./ColorSchemeForm";
 
-const ColorSchemeRow = ({ color_scheme }: { color_scheme: IColorScheme }) => {
+const ColorSchemeRow = ({
+  color_scheme,
+  update,
+}: {
+  color_scheme: IColorScheme;
+  update: (scheme: IColorScheme) => void;
+}) => {
   const { id } = useColorScheme();
   const context = useManager();
   const manager = useColorSchemeManager();
@@ -52,6 +59,7 @@ const ColorSchemeRow = ({ color_scheme }: { color_scheme: IColorScheme }) => {
           <IconButton variant="text">
             <FontAwesomeIcon
               icon={faPenToSquare}
+              onClick={() => update(color_scheme)}
               style={{ color: color_scheme.foreground }}
             />
           </IconButton>
@@ -78,6 +86,31 @@ const ColorSchemeRow = ({ color_scheme }: { color_scheme: IColorScheme }) => {
 
 export default function ColorSchemeTable() {
   const context = useManager();
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((cur) => !cur);
+
+  const [current, setCurrent] = useState<IColorScheme>({
+    id: 0,
+    name: "Null",
+    primary: "#000000",
+    secondary: "#000000",
+    success: "#000000",
+    danger: "#000000",
+    warning: "#000000",
+    foreground: "#000000",
+    background: "#000000",
+    selection: "#000000",
+  });
+
+  const action = (scheme: IColorScheme) => {
+    toggle();
+    setCurrent(scheme);
+  };
+
+  const performUpdate = (scheme: IColorScheme) => {
+    toggle();
+    context.update(scheme);
+  };
 
   useEffect(() => {
     context.reload();
@@ -88,10 +121,16 @@ export default function ColorSchemeTable() {
       <table>
         <tbody>
           {context.schemes.map((e) => (
-            <ColorSchemeRow key={e.id} color_scheme={e} />
+            <ColorSchemeRow key={e.id} color_scheme={e} update={action} />
           ))}
         </tbody>
       </table>
+      <ColorSchemeUpdateForm
+        data={current}
+        open={open}
+        toggle={toggle}
+        action={performUpdate}
+      />
     </div>
   );
 }
