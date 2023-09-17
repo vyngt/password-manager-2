@@ -1,13 +1,8 @@
 import { Dialog, Button, Typography } from "@material-tailwind/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { useState, useRef } from "react";
-import {
-  IBaseColorScheme,
-  IColorScheme,
-  IBaseManager,
-  BaseColorScheme,
-} from "@/components/Theme/types";
+import { useState, useRef, useEffect } from "react";
+import { IBaseColorScheme, IColorScheme } from "@/components/Theme/types";
 import { useManager } from "./Context";
 
 type ColorSchemeInputRef = {
@@ -76,6 +71,21 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
     const colors = getColorSchemeData();
     action(colors);
   };
+
+  useEffect(() => {
+    console.log("useEffect");
+    if (colorSchemeRef && colorSchemeRef.current) {
+      const loop = Object.keys(colorSchemeRef.current) as Array<
+        keyof IBaseColorScheme
+      >;
+      for (const key of loop) {
+        const element = colorSchemeRef.current[key];
+        if (element) {
+          element.value = data[key];
+        }
+      }
+    }
+  }, [data]);
 
   return (
     <Dialog size="md" open={open} handler={() => {}} className="shadow-none">
@@ -174,14 +184,14 @@ export const ColorSchemeCreateForm = () => {
 
   const data_sample: IBaseColorScheme = {
     name: "New Scheme",
-    primary: "blue",
-    secondary: "gray",
-    success: "green",
-    danger: "red",
-    warning: "yellow",
+    primary: "#800047",
+    secondary: "#808080",
+    success: "#008000",
+    danger: "#ff0000",
+    warning: "#ffff00",
     foreground: "#ffffff",
     background: "#000000",
-    selection: "white",
+    selection: "#ffffff",
   };
 
   const action = (data: IBaseColorScheme) => {
