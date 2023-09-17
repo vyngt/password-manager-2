@@ -8,9 +8,10 @@ import {
   IBaseManager,
   BaseColorScheme,
 } from "@/components/Theme/types";
+import { useManager } from "./Context";
 
-type ColorInputRef = {
-  [P in keyof BaseColorScheme]: HTMLInputElement | null;
+type ColorSchemeInputRef = {
+  [P in keyof IBaseColorScheme]: HTMLInputElement | null;
 };
 
 export default function ColorSchemeForm<T extends IBaseColorScheme>({
@@ -26,7 +27,8 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
   action: (data: T) => void;
   name_action: string;
 }) {
-  const colorRef = useRef<ColorInputRef>({
+  const colorSchemeRef = useRef<ColorSchemeInputRef>({
+    name: null,
     primary: null,
     secondary: null,
     success: null,
@@ -37,8 +39,9 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
     selection: null,
   });
 
-  const get_input_ref = () => {
-    const input: BaseColorScheme = {
+  const getColorSchemeData = () => {
+    const input: IBaseColorScheme = {
+      name: "",
       primary: "",
       secondary: "",
       success: "",
@@ -49,12 +52,12 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
       selection: "",
     };
 
-    if (colorRef && colorRef.current) {
-      const loop = Object.keys(colorRef.current) as Array<
-        keyof BaseColorScheme
+    if (colorSchemeRef && colorSchemeRef.current) {
+      const loop = Object.keys(colorSchemeRef.current) as Array<
+        keyof IBaseColorScheme
       >;
       for (const key of loop) {
-        const element = colorRef.current[key];
+        const element = colorSchemeRef.current[key];
         if (element) {
           input[key] = element.value;
         }
@@ -66,14 +69,12 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
       ...input,
     };
 
-    console.log(data, output);
-
     return output;
   };
 
   const handler_action = () => {
-    console.log("Perform Action", get_input_ref());
-    toggle();
+    const colors = getColorSchemeData();
+    action(colors);
   };
 
   return (
@@ -88,6 +89,7 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
           <div className="w-[49%]">
             <div className="relative h-10 w-full min-w-[200px]">
               <input
+                ref={(element) => (colorSchemeRef.current["name"] = element)}
                 className="pm-input peer text-pm-foreground"
                 placeholder=" "
               />
@@ -107,7 +109,9 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
                       <label className="pm-input-color-container">
                         <input
                           type="color"
-                          ref={(element) => (colorRef.current[key] = element)}
+                          ref={(element) =>
+                            (colorSchemeRef.current[key] = element)
+                          }
                         />
                       </label>
                       <Typography className="capitalize text-pm-primary">
@@ -126,7 +130,7 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
         </div>
         <div className="flex justify-center gap-3">
           <Button onClick={handler_action}>{name_action}</Button>
-          <Button onClick={toggle}>Trigger</Button>
+          <Button onClick={toggle}>Close</Button>
         </div>
       </div>
     </Dialog>
@@ -164,10 +168,11 @@ export const ColorSchemeUpdateForm = () => {
 };
 
 export const ColorSchemeCreateForm = () => {
+  const context = useManager();
   const [open, setOpen] = useState(false);
   const toggle = () => setOpen((cur) => !cur);
 
-  const [data, setData] = useState<IBaseColorScheme>({
+  const data_sample: IBaseColorScheme = {
     name: "New Scheme",
     primary: "blue",
     secondary: "gray",
@@ -177,7 +182,12 @@ export const ColorSchemeCreateForm = () => {
     foreground: "#ffffff",
     background: "#000000",
     selection: "white",
-  });
+  };
+
+  const action = (data: IBaseColorScheme) => {
+    setOpen((cur) => !cur);
+    context.add(data);
+  };
 
   return (
     <>
@@ -190,11 +200,9 @@ export const ColorSchemeCreateForm = () => {
       </Button>
       <ColorSchemeForm
         toggle={toggle}
-        action={(data) => {
-          console.log("Create", data);
-        }}
+        action={action}
         name_action="Create"
-        data={data}
+        data={data_sample}
         open={open}
       />
     </>

@@ -1,11 +1,11 @@
 import { createContext, useState, useContext } from "react";
-import { IColorScheme } from "../Theme/types";
+import { IBaseColorScheme, IColorScheme } from "../Theme/types";
 import { invoke } from "@tauri-apps/api/tauri";
 
 interface IColorSchemeManagerContext {
   schemes: Array<IColorScheme>;
   reload: () => void;
-  add: (scheme: IColorScheme) => void;
+  add: (scheme: IBaseColorScheme) => void;
   remove: (scheme_id: number) => void;
   update: (scheme: IColorScheme) => void;
 }
@@ -34,8 +34,11 @@ export const ColorSchemeManagerProvider = ({
       );
       setSchemes(records);
     },
-    add: async (scheme: IColorScheme) => {
-      setSchemes((cur) => [...cur, scheme]);
+    add: async (scheme: IBaseColorScheme) => {
+      const result: IColorScheme = await invoke("create_color_scheme", {
+        data: scheme,
+      });
+      setSchemes((cur) => [...cur, result]);
     },
     remove: async (scheme_id: number) => {
       let new_arr = [...schemes];
