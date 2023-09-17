@@ -43,7 +43,7 @@ export const VaultRow = ({
         >
           <IconButton
             variant="text"
-            className="text-pm-foreground bg-transparent"
+            className="bg-transparent text-pm-foreground"
             onClick={() => operator.copy(item)}
           >
             <FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
@@ -56,7 +56,7 @@ export const VaultRow = ({
         >
           <IconButton
             variant="text"
-            className="text-pm-foreground bg-transparent"
+            className="bg-transparent text-pm-foreground"
             onClick={() => operator.delete(item)}
           >
             <FontAwesomeIcon icon={faTrashCan} className="h-4 w-4" />
@@ -77,9 +77,9 @@ export default function VaultTable({
   return (
     <table className="mt-4 w-full min-w-max table-auto text-left">
       <thead>
-        <tr>
+        <tr className="border-y-2 border-pm-secondary text-pm-primary">
           {TABLE_HEAD.map((head) => (
-            <th key={head} className=" bg-pm-secondary border-y p-4">
+            <th key={head} className="border-y p-4 uppercase">
               <Typography
                 variant="small"
                 className="flex items-center justify-between gap-2 font-normal leading-none"

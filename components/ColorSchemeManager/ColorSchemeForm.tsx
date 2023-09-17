@@ -73,7 +73,6 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
   };
 
   useEffect(() => {
-    console.log("useEffect");
     if (colorSchemeRef && colorSchemeRef.current) {
       const loop = Object.keys(colorSchemeRef.current) as Array<
         keyof IBaseColorScheme
@@ -134,13 +133,24 @@ export default function ColorSchemeForm<T extends IBaseColorScheme>({
           </div>
           <div className="w-[49%]">
             <div className="h-[200px] w-full">
-              <div>Hello World</div>
+              <Typography variant="lead">Coming soon!</Typography>
             </div>
           </div>
         </div>
         <div className="flex justify-center gap-3">
-          <Button onClick={handler_action}>{name_action}</Button>
-          <Button onClick={toggle}>Close</Button>
+          <Button
+            onClick={handler_action}
+            className="!bg-pm-primary !text-pm-foreground"
+          >
+            {name_action}
+          </Button>
+          <Button
+            variant="outlined"
+            className="!border-pm-primary !text-pm-foreground"
+            onClick={toggle}
+          >
+            Close
+          </Button>
         </div>
       </div>
     </Dialog>

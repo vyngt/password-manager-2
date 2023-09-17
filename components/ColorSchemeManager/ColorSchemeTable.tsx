@@ -22,7 +22,7 @@ const ColorSchemeRow = ({
   return (
     <tr style={{ backgroundColor: color_scheme.background }}>
       <td style={{ color: color_scheme.foreground }}>
-        <div className="flex gap-2">
+        <div className="flex gap-2 pl-2">
           <Typography variant="lead">{color_scheme.name}</Typography>
           {id == color_scheme.id && (
             <Chip
