@@ -18,3 +18,11 @@
 .pm-color-scheme-table > table tr {
   @apply h-[70px] border-b border-pm-secondary transition-colors hover:opacity-70;
 }
+
+.pm-color-scheme-table-row-operator {
+  @apply flex h-full justify-end gap-2;
+}
+
+.pm-color-scheme-table-row-operator > button > span > svg {
+  @apply h-6 w-6;
+}

@@ -7,15 +7,10 @@ import { useColorScheme, useColorSchemeManager } from "../Theme";
 import { useManager } from "./Context";
 import { useEffect } from "react";
 
-const ColorSchemeRow = ({
-  color_scheme,
-  children,
-}: {
-  color_scheme: IColorScheme;
-  children?: React.ReactNode;
-}) => {
+const ColorSchemeRow = ({ color_scheme }: { color_scheme: IColorScheme }) => {
   const { id } = useColorScheme();
   const context = useManager();
+  const manager = useColorSchemeManager();
 
   return (
     <tr style={{ backgroundColor: color_scheme.background }}>
@@ -46,8 +41,20 @@ const ColorSchemeRow = ({
         </div>
       </td>
       <td>
-        <div className="flex h-full justify-end gap-2">
-          {children}
+        <div className="pm-color-scheme-table-row-operator">
+          <IconButton variant="text">
+            <FontAwesomeIcon
+              onClick={() => manager.change_to(color_scheme.id)}
+              icon={faPaintbrush}
+              style={{ color: color_scheme.primary }}
+            />
+          </IconButton>
+          <IconButton variant="text">
+            <FontAwesomeIcon
+              icon={faPenToSquare}
+              style={{ color: color_scheme.foreground }}
+            />
+          </IconButton>
           <IconButton
             variant="text"
             onClick={() => {
@@ -59,7 +66,6 @@ const ColorSchemeRow = ({
             disabled={color_scheme.id == id}
           >
             <FontAwesomeIcon
-              className="h-8 w-8"
               icon={faTrashCan}
               style={{ color: color_scheme.danger }}
             />
@@ -71,7 +77,6 @@ const ColorSchemeRow = ({
 };
 
 export default function ColorSchemeTable() {
-  const manager = useColorSchemeManager();
   const context = useManager();
 
   useEffect(() => {
@@ -83,23 +88,7 @@ export default function ColorSchemeTable() {
       <table>
         <tbody>
           {context.schemes.map((e) => (
-            <ColorSchemeRow key={e.id} color_scheme={e}>
-              <IconButton variant="text">
-                <FontAwesomeIcon
-                  onClick={() => manager.change_to(e.id)}
-                  className="h-8 w-8"
-                  icon={faPaintbrush}
-                  style={{ color: e.primary }}
-                />
-              </IconButton>
-              <IconButton variant="text">
-                <FontAwesomeIcon
-                  className="h-8 w-8"
-                  icon={faPenToSquare}
-                  style={{ color: e.foreground }}
-                />
-              </IconButton>
-            </ColorSchemeRow>
+            <ColorSchemeRow key={e.id} color_scheme={e} />
           ))}
         </tbody>
       </table>
