@@ -86,6 +86,8 @@ const ColorSchemeRow = ({
 
 export default function ColorSchemeTable() {
   const context = useManager();
+  const manager = useColorSchemeManager();
+  const { id } = useColorScheme();
   const [open, setOpen] = useState(false);
   const toggle = () => setOpen((cur) => !cur);
 
@@ -110,6 +112,9 @@ export default function ColorSchemeTable() {
   const performUpdate = (scheme: IColorScheme) => {
     toggle();
     context.update(scheme);
+    if (id == scheme.id) {
+      manager.change_to(scheme.id);
+    }
   };
 
   useEffect(() => {
