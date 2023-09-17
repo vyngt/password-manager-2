@@ -2,7 +2,7 @@
 
 import "./style.css";
 import { Card, Input, Button, Typography } from "@material-tailwind/react";
-import { MouseEvent, useState } from "react";
+import { KeyboardEvent, MouseEvent, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useRouter } from "next/navigation";
 
@@ -33,8 +33,7 @@ export default function Base({ base }: { base: IBase }) {
     }
   };
 
-  const perform_submit = async (e: MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
+  const perform_call_server = async () => {
     if (password.length < 1) {
       return;
     }
@@ -42,6 +41,18 @@ export default function Base({ base }: { base: IBase }) {
     set_loading(true);
     await call_server(password);
     set_loading(false);
+  };
+
+  const handler_keypress = async (ev: KeyboardEvent<HTMLInputElement>) => {
+    if (ev.key == "Enter") {
+      ev.preventDefault();
+      await perform_call_server();
+    }
+  };
+
+  const perform_submit = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    perform_call_server();
   };
 
   return (
@@ -59,6 +70,7 @@ export default function Base({ base }: { base: IBase }) {
             onChange={(e) => {
               set_password(e.target.value);
             }}
+            onKeyDownCapture={handler_keypress}
             crossOrigin={""}
             labelProps={{
               className: "before:content-none after:content-none",
@@ -75,7 +87,7 @@ export default function Base({ base }: { base: IBase }) {
           )}
         </div>
         <Button
-          className="!bg-pm-primary !text-pm-foreground mt-6"
+          className="mt-6 !bg-pm-primary !text-pm-foreground"
           fullWidth
           onClick={perform_submit}
           disabled={loading}
