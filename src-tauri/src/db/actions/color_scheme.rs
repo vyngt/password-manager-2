@@ -31,7 +31,11 @@ impl ColorScheme {
 
     pub fn update(conn: &mut SqliteConnection, data: ColorScheme) -> bool {
         use crate::db::schema::color_scheme;
-        match diesel::update(color_scheme::table).set(data).execute(conn) {
+        match diesel::update(color_scheme::table)
+            .filter(color_scheme::id.eq(data.id))
+            .set(data)
+            .execute(conn)
+        {
             Ok(_) => true,
             Err(_) => false,
         }
