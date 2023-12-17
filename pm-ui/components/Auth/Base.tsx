@@ -1,7 +1,7 @@
 "use client";
 
 import "./style.css";
-import { Card, Input, Button, Typography } from "@material-tailwind/react";
+import { Card, Input, Button, Typography } from "@/components/MaterialTailwind";
 import { KeyboardEvent, MouseEvent, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useRouter } from "next/navigation";
@@ -57,7 +57,7 @@ export default function Base({ base }: { base: IBase }) {
 
   return (
     <Card color="transparent" shadow={false}>
-      <Typography variant="lead" className="!text-pm-foreground">
+      <Typography variant="lead" className="!text-foreground">
         {base.title}
       </Typography>
       <form className="mb-2 mt-8 w-80 max-w-screen-lg sm:w-96">
@@ -87,7 +87,7 @@ export default function Base({ base }: { base: IBase }) {
           )}
         </div>
         <Button
-          className="mt-6 !bg-pm-primary !text-pm-foreground"
+          className="!bg-pm-primary !text-pm-foreground mt-6"
           fullWidth
           onClick={perform_submit}
           disabled={loading}

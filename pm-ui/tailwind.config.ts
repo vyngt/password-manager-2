@@ -1,25 +1,26 @@
+import type { Config } from "tailwindcss";
 const withMT = require("@material-tailwind/react/utils/withMT");
 
-const config = withMT({
+const config: Config = {
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        "pm-primary": "var(--primary)",
-        "pm-secondary": "var(--secondary)",
-        "pm-danger": "var(--danger)",
-        "pm-warning": "var(--warning)",
-        "pm-success": "var(--success)",
-        "pm-background": "var(--background)",
-        "pm-foreground": "var(--foreground)",
-        "pm-selection": "var(--selection)",
+        primary: "rgb(var(--primary) / <alpha-value> )",
+        secondary: "rgb(var(--secondary) / <alpha-value> )",
+        danger: "rgb(var(--danger) / <alpha-value> )",
+        warning: "rgb(var(--warning) / <alpha-value> )",
+        success: "rgb(var(--secondary) / <alpha-value> )",
+        background: "rgb(var(--background) / <alpha-value>)",
+        foreground: "rgb(var(--foreground) / <alpha-value>)",
+        selection: "rgb(var(--selection) / <alpha-value>)",
       },
     },
   },
   plugins: [],
-});
-export default config;
+};
+
+export default withMT(config);

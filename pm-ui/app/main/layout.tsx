@@ -3,11 +3,6 @@
 import { useCurrentTheme } from "@/components/Theme";
 import { Sidebar } from "@/components/Sidebar";
 
-export const metadata = {
-  title: "Main",
-  description: "Main App Window",
-};
-
 export default function MainLayout({
   children,
 }: {

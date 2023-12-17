@@ -7,14 +7,14 @@ import { IColorScheme, IThemeContextProps } from "./types";
 const default_color_scheme: IColorScheme = {
   id: 0,
   name: "Default",
-  primary: "blue",
-  secondary: "gray",
-  success: "green",
-  danger: "red",
-  warning: "yellow",
-  foreground: "#ffffff",
-  background: "#000000",
-  selection: "white",
+  primary: "48 175 13",
+  secondary: "83 198 127",
+  success: "4 214 0",
+  danger: "253 103 23",
+  warning: "187 158 17",
+  foreground: "146 176 50",
+  background: "23 64 31",
+  selection: "34 135 82",
 };
 
 export const ThemeContext = createContext<IThemeContextProps>({
