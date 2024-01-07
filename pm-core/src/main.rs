@@ -3,52 +3,30 @@
 extern crate diesel;
 extern crate diesel_migrations;
 
-mod core;
-mod db;
-mod encrypt;
+// mod core;
+// mod db;
+// mod encrypt;
 
-use crate::core::{auth, cmd, config};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+// use crate::core::{auth, cmd, config};
+// use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+// pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 fn main() {
     dotenv().ok();
-    config::init_config();
+    // config::init_config();
 
-    let mut connection = db::establish_connection();
+    // let mut connection = db::establish_connection();
 
-    connection
-        .run_pending_migrations(MIGRATIONS)
-        .expect("Error migrating");
+    // connection
+    //     .run_pending_migrations(MIGRATIONS)
+    //     .expect("Error migrating");
 
     tauri::Builder::default()
-        .manage(core::state::AppState::new())
-        .manage(core::state::AppDBState::new())
-        .invoke_handler(tauri::generate_handler![
-            cmd::item::create_item,
-            cmd::item::fetch_item,
-            cmd::item::update_item,
-            cmd::item::delete_item,
-            cmd::item::get_item,
-            cmd::item::fetch_all_items,
-            cmd::generator::generate_password,
-            cmd::backup::export,
-            cmd::backup::import,
-            cmd::search::filter_by_name,
-            cmd::settings::change_master_password,
-            cmd::theme::save_theme,
-            cmd::theme::get_current_color_scheme,
-            cmd::theme::get_all_color_schemes,
-            cmd::theme::get_color_scheme,
-            cmd::theme::create_color_scheme,
-            cmd::theme::delete_color_scheme,
-            cmd::theme::update_color_scheme,
-            auth::login,
-            auth::register,
-            auth::is_first_time,
-        ])
+        // .manage(core::state::AppState::new())
+        // .manage(core::state::AppDBState::new())
+        .invoke_handler(tauri::generate_handler![])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
