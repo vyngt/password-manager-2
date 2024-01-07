@@ -4,20 +4,25 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 // mod core;
-// mod db;
+mod config;
+mod db;
 // mod encrypt;
 
 // use crate::core::{auth, cmd, config};
-// use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 
-// pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+pub const CORE_MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/core");
+pub const THEME_MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/theme");
 
 fn main() {
     dotenv().ok();
-    // config::init_config();
+    config::init_config();
 
-    // let mut connection = db::establish_connection();
+    let mut connection = db::establish_theme_connection();
+    connection
+        .run_pending_migrations(THEME_MIGRATIONS)
+        .expect("Error");
 
     // connection
     //     .run_pending_migrations(MIGRATIONS)
