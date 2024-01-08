@@ -4,4 +4,4 @@ CREATE TABLE program (
     `version` CHAR NOT NULL
 );
 INSERT INTO program(id, `version`)
-VALUES (1, "2.0.0");
+VALUES (1, '2.0.0');
