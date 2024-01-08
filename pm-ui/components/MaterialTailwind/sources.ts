@@ -9,4 +9,6 @@ export {
   TabsBody,
   Tab,
   TabPanel,
+  Input,
+  Button,
 } from "@material-tailwind/react";

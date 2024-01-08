@@ -1,6 +1,6 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-  faBook,
+  faShieldHalved,
   faGear,
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
@@ -25,10 +25,10 @@ export const SidebarManager = {
 export const registry: ISidebarItem[] = [
   {
     type: "action",
-    id: "receipt",
-    name: "Receipts",
-    icon: faBook,
-    href: "/",
+    id: "vault",
+    name: "Vault",
+    icon: faShieldHalved,
+    href: "/main/vault",
     sequence: 1,
   },
   {
@@ -36,7 +36,7 @@ export const registry: ISidebarItem[] = [
     id: "theme",
     name: "Theme",
     icon: faWandMagicSparkles,
-    href: "/theme",
+    href: "/main/theme",
     sequence: 3,
   },
   {
@@ -44,7 +44,7 @@ export const registry: ISidebarItem[] = [
     id: "setting",
     name: "Settings",
     icon: faGear,
-    href: "/settings",
+    href: "/main/settings",
     sequence: 11,
   },
 ];
