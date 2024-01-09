@@ -5,7 +5,9 @@ extern crate diesel_migrations;
 
 mod cmd;
 mod config;
+mod crud;
 mod db;
+mod models;
 mod state;
 
 use crate::cmd::auth;
