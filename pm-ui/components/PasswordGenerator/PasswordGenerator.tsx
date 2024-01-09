@@ -31,10 +31,10 @@ export function PasswordGenerator() {
   return (
     <div className="flex flex-col justify-center bg-transparent p-2">
       <div className="mb-8 flex flex-col items-center justify-between gap-8">
-        <Typography variant="h4" className="!text-primary">
+        <Typography variant="h4" className="text-primary">
           Password Generator
         </Typography>
-        <Typography className="mt-1 font-normal !text-foreground">
+        <Typography className="mt-1 font-normal text-foreground">
           Let generate your strong password
         </Typography>
       </div>
@@ -67,7 +67,7 @@ export function PasswordGenerator() {
               label={
                 <Typography
                   variant="small"
-                  className="flex items-center font-normal !text-foreground"
+                  className="flex items-center font-normal text-foreground"
                 >
                   Lowercase
                 </Typography>
@@ -87,7 +87,7 @@ export function PasswordGenerator() {
               label={
                 <Typography
                   variant="small"
-                  className="flex items-center font-normal !text-foreground"
+                  className="flex items-center font-normal text-foreground"
                 >
                   Uppercase
                 </Typography>
@@ -107,7 +107,7 @@ export function PasswordGenerator() {
               label={
                 <Typography
                   variant="small"
-                  className="flex items-center font-normal !text-foreground"
+                  className="flex items-center font-normal text-foreground"
                 >
                   Digits
                 </Typography>
@@ -127,7 +127,7 @@ export function PasswordGenerator() {
               label={
                 <Typography
                   variant="small"
-                  className="flex items-center font-normal !text-foreground"
+                  className="flex items-center font-normal text-foreground"
                 >
                   Special
                 </Typography>
@@ -137,14 +137,14 @@ export function PasswordGenerator() {
           </div>
           <div className="flex w-full justify-between">
             <Button
-              className="mt-6 !bg-primary !text-foreground"
+              className="mt-6 bg-primary text-foreground"
               onClick={perform_generate}
             >
               Generate
             </Button>
             <Button
               variant="outlined"
-              className="mt-6 !border-primary !text-foreground"
+              className="mt-6 border-primary text-foreground"
               onClick={() => {
                 navigator.clipboard.writeText(password);
               }}
@@ -154,10 +154,11 @@ export function PasswordGenerator() {
           </div>
         </form>
       </div>
+      <hr className="w-full border-secondary" />
       {password && (
-        <div className="mt-6 flex flex-col items-center rounded-lg border border-foreground p-2">
+        <div className="mt-6 flex flex-col items-center rounded-lg">
           <div className="overflow-clip">
-            <Typography className="!text-foreground">{password}</Typography>
+            <Typography className="text-secondary">{password}</Typography>
           </div>
         </div>
       )}
