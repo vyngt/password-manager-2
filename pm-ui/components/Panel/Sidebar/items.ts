@@ -3,6 +3,7 @@ import {
   faShieldHalved,
   faGear,
   faWandMagicSparkles,
+  faUnlockKeyhole,
 } from "@fortawesome/free-solid-svg-icons";
 
 export interface ISidebarAction {
@@ -30,6 +31,14 @@ export const registry: ISidebarItem[] = [
     icon: faShieldHalved,
     href: "/main/vault",
     sequence: 1,
+  },
+  {
+    type: "action",
+    id: "password_generator",
+    name: "Password Generator",
+    icon: faUnlockKeyhole,
+    href: "/main/password-generator",
+    sequence: 2,
   },
   {
     type: "action",

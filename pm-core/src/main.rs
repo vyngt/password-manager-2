@@ -10,7 +10,7 @@ mod db;
 mod models;
 mod state;
 
-use crate::cmd::auth;
+use crate::cmd::{auth, password_generator};
 
 use dotenvy::dotenv;
 
@@ -22,7 +22,8 @@ fn main() {
         .manage(state::AppDBConn::new())
         .invoke_handler(tauri::generate_handler![
             auth::perform_auth,
-            auth::rekey_auth
+            auth::rekey_auth,
+            password_generator::generate_password,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -11,4 +11,5 @@ export {
   TabPanel,
   Input,
   Button,
+  Checkbox,
 } from "@material-tailwind/react";

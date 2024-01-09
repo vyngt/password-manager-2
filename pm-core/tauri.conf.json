@@ -59,10 +59,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 480,
+        "height": 600,
         "resizable": true,
         "title": "Password Manager",
-        "width": 1080,
+        "width": 1180,
         "decorations": false
       }
     ]
