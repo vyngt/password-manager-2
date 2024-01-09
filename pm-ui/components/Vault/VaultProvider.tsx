@@ -1,19 +1,13 @@
 "use client";
 
-import { createContext, useReducer } from "react";
-
-interface IVaultContext {}
-interface IVaultDispatchContext {}
-
-export const VaultContext = createContext<IVaultContext>({});
-export const VaultDispatchContext = createContext<IVaultDispatchContext>({});
+import { useReducer } from "react";
+import { VaultContext, VaultDispatchContext, initContext } from "./contexts";
+import reducer from "./reducers";
 
 export const VaultProvider = ({ children }: { children: React.ReactNode }) => {
-  const context: IVaultContext = {};
-  const dispatch: IVaultDispatchContext = {};
-
+  const [state, dispatch] = useReducer(reducer, initContext);
   return (
-    <VaultContext.Provider value={context}>
+    <VaultContext.Provider value={state}>
       <VaultDispatchContext.Provider value={dispatch}>
         {children}
       </VaultDispatchContext.Provider>
