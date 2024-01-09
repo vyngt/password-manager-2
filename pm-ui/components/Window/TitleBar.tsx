@@ -20,7 +20,7 @@ export function WindowTitleBar() {
   return (
     <header
       data-tauri-drag-region
-      className="flex h-10 flex-grow-0 justify-between border-b border-secondary"
+      className="flex h-10 flex-grow-0 justify-between border-b border-secondary bg-primary/20"
     >
       <div className="pointer-events-none flex flex-col justify-center pl-2">
         <div className="flex gap-2">
