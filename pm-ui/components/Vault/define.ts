@@ -17,4 +17,9 @@ interface Item extends ItemBase {
   id: number;
 }
 
-export type { Item, ItemCreate, ItemUpdate };
+interface ItemInDB extends ItemBase {
+  id: number;
+  password: string;
+}
+
+export type { Item, ItemCreate, ItemUpdate, ItemInDB };

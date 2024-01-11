@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { invoke } from "@tauri-apps/api/tauri";
 
 import { useHashParam } from "@/lib/utils";
 import { Input } from "@/components/UI";
@@ -13,7 +14,7 @@ import {
   faFloppyDisk,
 } from "@fortawesome/free-solid-svg-icons";
 
-import { ItemCreate } from "@/components/Vault/define";
+import { ItemCreate, ItemInDB } from "@/components/Vault/define";
 
 const initItem: ItemCreate = {
   password: "",
@@ -68,16 +69,68 @@ function FormHeader({
 export default function VaultItemFormPage() {
   const hashParam = useHashParam();
   const [state, dispatch] = useReducer(reducer, initItem);
+  const [itemId, setItemId] = useState(0);
+
   const router = useRouter();
 
-  const performSave = () => {
-    console.log(state, hashParam.getNumber("id"));
+  const performGetItem = useCallback(
+    async (_id: number) => {
+      const result: ItemInDB = await invoke("get_item", { id: _id });
+      if (result) {
+        const { id, ...rest } = result;
+        dispatch({ type: "load", payload: rest });
+      }
+    },
+    [dispatch],
+  );
+
+  const performAfterCreated = async (item?: ItemInDB) => {
+    if (item) {
+      router.replace(`/main/vault/form#id=${item.id}`);
+      setItemId(item.id);
+    }
   };
 
-  const performDelete = () => {
-    console.log("Deleted", hashParam.getNumber("id"));
-    router.back();
+  const performAfterUpdated = async (item?: ItemInDB) => {
+    console.log("Updated", item);
   };
+
+  const performSave = async () => {
+    const id = hashParam.getNumber("id");
+    if (id === 0) {
+      const result: ItemInDB = await invoke("create_item", { data: state });
+      await performAfterCreated(result);
+    } else if (id > 0) {
+      const input = {
+        ...state,
+        id: id,
+      };
+      const result: ItemInDB = await invoke("update_item", { data: input });
+      await performAfterUpdated(result);
+    }
+  };
+
+  const performDelete = async () => {
+    const id = hashParam.getNumber("id");
+
+    if (id > 0) {
+      const result: boolean = await invoke("delete_item", { id: id });
+      if (result) router.push("/main/vault/");
+    }
+  };
+
+  useEffect(() => {
+    const id = hashParam.getNumber("id");
+    if (id > 0) {
+      setItemId(id);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (itemId > 0) {
+      performGetItem(itemId);
+    }
+  }, [itemId, performGetItem]);
 
   return (
     <div className="flex h-full w-full flex-col gap-3">
@@ -102,7 +155,9 @@ export default function VaultItemFormPage() {
             <IconButton
               onClick={performDelete}
               variant="outlined"
-              className="border-secondary text-secondary focus:ring-secondary/30"
+              className={`border-secondary text-secondary focus:ring-secondary/30 ${
+                itemId ? "" : "hidden"
+              }`}
             >
               <FontAwesomeIcon icon={faTrashCan} />
             </IconButton>
