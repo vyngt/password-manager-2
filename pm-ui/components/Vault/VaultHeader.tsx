@@ -5,9 +5,20 @@ import { VaultPagination } from "./VaultPagination";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowsRotate } from "@fortawesome/free-solid-svg-icons";
 import { VaultFilter } from "./VaultFilter";
+import { useContext } from "react";
+import { VaultDispatchContext } from "./contexts";
+import { invoke } from "@tauri-apps/api/tauri";
+import { Item } from "./define";
 import Link from "next/link";
 
 function VaultHeaderButton() {
+  const dispatch = useContext(VaultDispatchContext);
+
+  const reload = async () => {
+    const data: Array<Item> = await invoke("fetch_items");
+    dispatch({ type: "load", payload: data });
+  };
+
   return (
     <>
       <Link href="/main/vault/form#id=0">
@@ -16,6 +27,7 @@ function VaultHeaderButton() {
         </Button>
       </Link>
       <IconButton
+        onClick={reload}
         variant="outlined"
         className="border-secondary text-secondary focus:ring-secondary/30"
       >

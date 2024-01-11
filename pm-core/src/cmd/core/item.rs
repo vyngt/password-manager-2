@@ -41,3 +41,11 @@ pub fn get_item(id: i32, app_db_conn: tauri::State<AppDBConn>) -> Option<Item> {
 
     Item::get(db, id)
 }
+
+#[tauri::command]
+pub fn get_item_key(id: i32, app_db_conn: tauri::State<AppDBConn>) -> String {
+    let mut conns = app_db_conn.0.lock().unwrap();
+    let db = &mut conns.core_db;
+
+    Item::copy_key(db, id)
+}

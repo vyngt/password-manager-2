@@ -87,4 +87,23 @@ impl Item {
 
         results
     }
+
+    pub fn copy_key(conn: &mut SqliteConnection, _id: i32) -> String {
+        use crate::db::schema::core::item::dsl::*;
+
+        let mut result = item
+            .select(password)
+            .filter(id.eq(_id))
+            .load::<String>(conn)
+            .unwrap_or(vec![]);
+
+        if result.len() == 1 {
+            match result.pop() {
+                Some(e) => e,
+                None => "".into(),
+            }
+        } else {
+            "".into()
+        }
+    }
 }

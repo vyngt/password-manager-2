@@ -92,7 +92,7 @@ export default function VaultItemFormPage() {
   };
 
   const performAfterUpdated = async (item?: ItemInDB) => {
-    console.log("Updated", item);
+    // console.log("Updated", item);
   };
 
   const performSave = async () => {
