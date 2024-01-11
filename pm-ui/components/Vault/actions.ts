@@ -1,5 +1,8 @@
-interface FetchItemsAction {
-  type: "fetch";
+import type { Item } from "./define";
+
+interface LoadItemsAction {
+  type: "load";
+  payload: Array<Item>;
 }
 
-export type IVaultAction = FetchItemsAction;
+export type IVaultAction = LoadItemsAction;

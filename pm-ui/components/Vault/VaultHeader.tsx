@@ -10,7 +10,7 @@ import Link from "next/link";
 function VaultHeaderButton() {
   return (
     <>
-      <Link href="/main/vault/create">
+      <Link href="/main/vault/form#id=0">
         <Button variant="filled" className="bg-primary/70 text-foreground">
           New
         </Button>

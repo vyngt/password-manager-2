@@ -6,6 +6,9 @@ import type { IVaultContext } from "./contexts";
 export default function vaultReducer(
   state: IVaultContext,
   action: IVaultAction,
-) {
-  return state;
+): IVaultContext {
+  switch (action.type) {
+    case "load":
+      return { ...state, items: action.payload };
+  }
 }
