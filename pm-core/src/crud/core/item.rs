@@ -21,6 +21,7 @@ impl ModelCRUD<ItemCreate<'_>> for Item {
         use crate::db::schema::core::item;
 
         match diesel::update(item::table)
+            .filter(item::id.eq(data.id))
             .set(data)
             .get_result::<Self>(conn)
         {

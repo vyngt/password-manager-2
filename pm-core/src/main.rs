@@ -10,7 +10,7 @@ mod db;
 mod models;
 mod state;
 
-use crate::cmd::{auth, password_generator};
+use crate::cmd::{auth, core, password_generator};
 
 use dotenvy::dotenv;
 
@@ -24,6 +24,11 @@ fn main() {
             auth::perform_auth,
             auth::rekey_auth,
             password_generator::generate_password,
+            core::item::fetch_items,
+            core::item::get_item,
+            core::item::create_item,
+            core::item::update_item,
+            core::item::delete_item
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
