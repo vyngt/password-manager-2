@@ -33,6 +33,8 @@ body {
   @apply rounded-md bg-primary;
 }
 
+/* UI Components */
+
 .app--input {
   @apply h-full w-full rounded-[7px] border border-t-transparent bg-transparent px-3 py-2.5 
   font-sans text-sm font-normal outline 

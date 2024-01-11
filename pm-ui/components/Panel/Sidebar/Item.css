@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-.panel-item {
-  @apply text-foreground transition-colors hover:bg-primary/80;
+.panel--item {
+  @apply text-foreground transition-colors hover:bg-primary/30;
 }
 
-.panel-item-selected {
-  @apply pointer-events-none bg-primary text-foreground transition-colors;
+.panel--item-selected {
+  @apply pointer-events-none bg-primary/60 text-foreground transition-colors;
 }

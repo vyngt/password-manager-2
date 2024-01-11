@@ -15,7 +15,7 @@ export const Item = ({ item }: { item: ISidebarAction }) => {
   return (
     <Link
       className={`flex gap-2 p-3 ${
-        is_selected ? "panel-item-selected" : "panel-item"
+        is_selected ? "panel--item-selected" : "panel--item"
       }`}
       href={item.href}
     >
