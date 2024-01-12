@@ -11,6 +11,14 @@ pub fn fetch_items(app_db_conn: tauri::State<AppDBConn>) -> Vec<ItemOut> {
 }
 
 #[tauri::command]
+pub fn query_items(query: &str, app_db_conn: tauri::State<AppDBConn>) -> Vec<ItemOut> {
+    let mut conns = app_db_conn.0.lock().unwrap();
+    let db = &mut conns.core_db;
+
+    Item::filter_by_name(db, query, 100, 0)
+}
+
+#[tauri::command]
 pub fn create_item(data: ItemCreate<'_>, app_db_conn: tauri::State<AppDBConn>) -> Option<Item> {
     let mut conns = app_db_conn.0.lock().unwrap();
     let db = &mut conns.core_db;

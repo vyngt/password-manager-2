@@ -8,11 +8,18 @@ import { VaultContext, VaultDispatchContext } from "./contexts";
 import { IconButton } from "@/components/MaterialTailwind";
 import { Item } from "./define";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { faKey, faBan } from "@fortawesome/free-solid-svg-icons";
 
 const TABLE_HEAD = ["Name", "URL", "Username", ""];
 
 function Row({ item, even }: { item: Item; even?: boolean }) {
+  const dispatch = useContext(VaultDispatchContext);
+
+  const reload = async () => {
+    const data: Array<Item> = await invoke("fetch_items");
+    dispatch({ type: "load", payload: data });
+  };
+
   const router = useRouter();
   const navigate = () => {
     router.push(`/main/vault/form#id=${item.id}`);
@@ -23,9 +30,14 @@ function Row({ item, even }: { item: Item; even?: boolean }) {
     navigator.clipboard.writeText(result);
   };
 
+  const performDeleteItem = async () => {
+    const result: boolean = await invoke("delete_item", { id: item.id });
+    if (result) await reload();
+  };
+
   return (
     <tr
-      className={`w-full cursor-pointer border-b border-b-secondary/60 text-secondary hover:bg-primary/40 ${
+      className={`w-full cursor-pointer border-b border-b-secondary/60 text-secondary transition-colors hover:bg-primary/30 ${
         even ? "bg-primary/10" : ""
       }`}
     >
@@ -57,6 +69,13 @@ function Row({ item, even }: { item: Item; even?: boolean }) {
           className="text-secondary hover:bg-primary/20 active:bg-primary/40"
         >
           <FontAwesomeIcon icon={faKey} />
+        </IconButton>
+        <IconButton
+          onClick={performDeleteItem}
+          variant="text"
+          className="text-danger hover:bg-primary/20 active:bg-primary/40"
+        >
+          <FontAwesomeIcon icon={faBan} />
         </IconButton>
       </td>
     </tr>
