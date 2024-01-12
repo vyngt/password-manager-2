@@ -21,7 +21,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ThemeProvider>
-          <div className="flex h-full flex-col">
+          <div className="app-none-scrollbar flex h-full flex-col">
             <WindowTitleBar />
             {children}
           </div>

@@ -14,7 +14,7 @@ export function Sidebar({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`h-full border-r border-r-secondary bg-secondary/10 text-foreground shadow-xl ${className}`}
+      className={`h-full overflow-x-scroll border-r border-r-secondary bg-secondary/10 text-foreground shadow-xl ${className}`}
       {...rest}
     >
       <List className="min-w-0 gap-0 p-0">

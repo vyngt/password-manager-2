@@ -26,7 +26,7 @@ body {
 }
 
 .app-scrollbar::-webkit-scrollbar {
-  @apply h-3 w-3 rounded-md bg-transparent;
+  @apply h-1 w-1 rounded-md bg-transparent;
 }
 
 .app-scrollbar::-webkit-scrollbar-thumb {

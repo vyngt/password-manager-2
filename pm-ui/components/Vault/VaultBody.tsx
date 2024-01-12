@@ -104,8 +104,8 @@ export function VaultBody() {
   }, [retrieveItems]);
 
   return (
-    <div className="grow">
-      <table className="w-full min-w-max table-auto text-left">
+    <div className="app-scrollbar grow overflow-y-scroll">
+      <table className=" w-full min-w-max table-auto text-left">
         <thead>
           <tr className="border-b border-b-secondary/75 bg-primary/10 text-primary">
             {TABLE_HEAD.map((head) => (
