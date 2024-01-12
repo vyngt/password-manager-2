@@ -1,8 +1,29 @@
-import type { Item } from "./define";
+import type { ResultWithCount, Item } from "./define";
 
 interface LoadItemsAction {
   type: "load";
-  payload: Array<Item>;
+  payload: {
+    data: ResultWithCount<Item>;
+  };
 }
 
-export type IVaultAction = LoadItemsAction;
+interface PerformFilterAction {
+  type: "filter";
+  payload: {
+    data: ResultWithCount<Item>;
+    searchTerm: string;
+  };
+}
+
+interface PerformPaginateAction {
+  type: "paginate";
+  payload: {
+    data: ResultWithCount<Item>;
+    nextPage: number;
+  };
+}
+
+export type IVaultAction =
+  | LoadItemsAction
+  | PerformFilterAction
+  | PerformPaginateAction;

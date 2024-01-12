@@ -1,3 +1,5 @@
+export const LIMIT = 40;
+
 // Model: Item
 interface ItemBase {
   name: string;
@@ -22,4 +24,10 @@ interface ItemInDB extends ItemBase {
   password: string;
 }
 
-export type { Item, ItemCreate, ItemUpdate, ItemInDB };
+// For Pagination
+interface ResultWithCount<T> {
+  result: Array<T>;
+  total: number;
+}
+
+export type { Item, ItemCreate, ItemUpdate, ItemInDB, ResultWithCount };

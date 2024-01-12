@@ -30,7 +30,6 @@ fn main() {
             core::item::update_item,
             core::item::delete_item,
             core::item::get_item_key,
-            core::item::query_items,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

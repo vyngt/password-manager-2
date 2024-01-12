@@ -1,21 +1,24 @@
 use crate::crud::define::ModelCRUD;
 use crate::models::core::item::{Item, ItemCreate, ItemOut};
+use crate::models::WithCount;
 use crate::state::AppDBConn;
 
-#[tauri::command]
-pub fn fetch_items(app_db_conn: tauri::State<AppDBConn>) -> Vec<ItemOut> {
-    let mut conns = app_db_conn.0.lock().unwrap();
-    let db = &mut conns.core_db;
-
-    Item::get_multi(db, 100, 0)
-}
+const LIMIT: i64 = 40;
 
 #[tauri::command]
-pub fn query_items(query: &str, app_db_conn: tauri::State<AppDBConn>) -> Vec<ItemOut> {
+pub fn fetch_items(
+    page: i64,
+    term: &str,
+    app_db_conn: tauri::State<AppDBConn>,
+) -> WithCount<ItemOut> {
     let mut conns = app_db_conn.0.lock().unwrap();
     let db = &mut conns.core_db;
+    let mut _page = page;
+    if _page < 1 {
+        _page = 1;
+    }
 
-    Item::filter_by_name(db, query, 100, 0)
+    Item::get_multi(db, LIMIT, (_page - 1) * LIMIT, term)
 }
 
 #[tauri::command]
@@ -35,7 +38,7 @@ pub fn update_item(data: Item, app_db_conn: tauri::State<AppDBConn>) -> Option<I
 }
 
 #[tauri::command]
-pub fn delete_item(id: i32, app_db_conn: tauri::State<AppDBConn>) -> bool {
+pub fn delete_item(id: i64, app_db_conn: tauri::State<AppDBConn>) -> bool {
     let mut conns = app_db_conn.0.lock().unwrap();
     let db = &mut conns.core_db;
 
@@ -43,7 +46,7 @@ pub fn delete_item(id: i32, app_db_conn: tauri::State<AppDBConn>) -> bool {
 }
 
 #[tauri::command]
-pub fn get_item(id: i32, app_db_conn: tauri::State<AppDBConn>) -> Option<Item> {
+pub fn get_item(id: i64, app_db_conn: tauri::State<AppDBConn>) -> Option<Item> {
     let mut conns = app_db_conn.0.lock().unwrap();
     let db = &mut conns.core_db;
 
@@ -51,7 +54,7 @@ pub fn get_item(id: i32, app_db_conn: tauri::State<AppDBConn>) -> Option<Item> {
 }
 
 #[tauri::command]
-pub fn get_item_key(id: i32, app_db_conn: tauri::State<AppDBConn>) -> String {
+pub fn get_item_key(id: i64, app_db_conn: tauri::State<AppDBConn>) -> String {
     let mut conns = app_db_conn.0.lock().unwrap();
     let db = &mut conns.core_db;
 

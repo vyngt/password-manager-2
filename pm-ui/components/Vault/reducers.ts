@@ -9,6 +9,24 @@ export default function vaultReducer(
 ): IVaultContext {
   switch (action.type) {
     case "load":
-      return { ...state, items: action.payload };
+      return {
+        ...state,
+        items: action.payload.data.result,
+        itemCount: action.payload.data.total,
+        currentPage: 1,
+        lastTerm: "",
+      };
+    case "filter":
+      return {
+        ...state,
+        items: action.payload.data.result,
+        lastTerm: action.payload.searchTerm,
+      };
+    case "paginate":
+      return {
+        ...state,
+        items: action.payload.data.result,
+        currentPage: action.payload.nextPage,
+      };
   }
 }

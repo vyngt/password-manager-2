@@ -2,7 +2,7 @@
 
 diesel::table! {
     item (id) {
-        id -> Integer,
+        id -> BigInt,
         name -> Text,
         url -> Text,
         username -> Text,
@@ -17,7 +17,4 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(
-    item,
-    program,
-);
+diesel::allow_tables_to_appear_in_same_query!(item, program,);

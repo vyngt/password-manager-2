@@ -4,7 +4,7 @@ use diesel::prelude::*;
 #[derive(serde::Serialize, serde::Deserialize, Queryable, Selectable, PartialEq, AsChangeset)]
 #[diesel(table_name = item)]
 pub struct Item {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub url: String,
     pub username: String,
@@ -14,7 +14,7 @@ pub struct Item {
 #[derive(serde::Serialize, Queryable, Selectable, PartialEq)]
 #[diesel(table_name = item)]
 pub struct ItemOut {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub url: String,
     pub username: String,

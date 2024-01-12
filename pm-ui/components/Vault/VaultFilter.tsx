@@ -5,7 +5,7 @@ import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState, useCallback, useContext } from "react";
 import { VaultDispatchContext } from "./contexts";
-import { Item } from "./define";
+import { Item, ResultWithCount } from "./define";
 import { invoke } from "@tauri-apps/api/tauri";
 
 export function VaultFilter() {
@@ -13,12 +13,11 @@ export function VaultFilter() {
   const [query, setQuery] = useState<string | null>(null);
 
   const performQuery = useCallback(async (q: string) => {
-    const param = { method: "fetch_items", args: {} };
-    if (q.length > 0) {
-      (param.method = "query_items"), (param.args = { query: q });
-    }
-    const result = await invoke<Array<Item>>(param.method, param.args);
-    dispatch({ type: "load", payload: result });
+    const data = await invoke<ResultWithCount<Item>>("fetch_items", {
+      page: 1,
+      term: q,
+    });
+    dispatch({ type: "filter", payload: { data, searchTerm: q } });
   }, []);
 
   // Debounce

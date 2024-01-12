@@ -8,15 +8,18 @@ import { VaultFilter } from "./VaultFilter";
 import { useContext } from "react";
 import { VaultDispatchContext } from "./contexts";
 import { invoke } from "@tauri-apps/api/tauri";
-import { Item } from "./define";
+import { Item, ResultWithCount } from "./define";
 import Link from "next/link";
 
 function VaultHeaderButton() {
   const dispatch = useContext(VaultDispatchContext);
 
   const reload = async () => {
-    const data: Array<Item> = await invoke("fetch_items");
-    dispatch({ type: "load", payload: data });
+    const data = await invoke<ResultWithCount<Item>>("fetch_items", {
+      page: 1,
+      term: "",
+    });
+    dispatch({ type: "load", payload: { data } });
   };
 
   return (

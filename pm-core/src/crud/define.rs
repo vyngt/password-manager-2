@@ -7,7 +7,7 @@ where
 {
     fn create(conn: &mut SqliteConnection, data: TCreate) -> Option<Self>;
     fn update(conn: &mut SqliteConnection, data: Self) -> Option<Self>;
-    fn delete(conn: &mut SqliteConnection, _id: i32) -> bool;
-    fn get(conn: &mut SqliteConnection, _id: i32) -> Option<Self>;
+    fn delete(conn: &mut SqliteConnection, _id: i64) -> bool;
+    fn get(conn: &mut SqliteConnection, _id: i64) -> Option<Self>;
     fn all(conn: &mut SqliteConnection) -> Vec<Self>;
 }

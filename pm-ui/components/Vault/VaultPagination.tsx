@@ -7,18 +7,57 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { IconButton, Typography } from "@/components/MaterialTailwind";
 
+import { useContext, useState, useEffect } from "react";
+import { VaultContext, VaultDispatchContext } from "./contexts";
+import { LIMIT, ResultWithCount, Item } from "./define";
+import { invoke } from "@tauri-apps/api/tauri";
+
 export function VaultPagination() {
+  const state = useContext(VaultContext);
+  const dispatch = useContext(VaultDispatchContext);
+
+  const [totalPage, setTotalPage] = useState(1);
+
+  const performGetData = async (page: number) => {
+    const data = await invoke<ResultWithCount<Item>>("fetch_items", {
+      page: page,
+      term: state.lastTerm,
+    });
+
+    dispatch({ type: "paginate", payload: { data, nextPage: page } });
+  };
+
+  const handleNext = async () => {
+    await performGetData(state.currentPage + 1);
+  };
+
+  const handlePrevious = async () => {
+    await performGetData(state.currentPage - 1);
+  };
+
+  useEffect(() => {
+    const base = Math.floor(state.itemCount / LIMIT);
+    const plus = state.itemCount % LIMIT !== 0;
+    setTotalPage(plus ? base + 1 : base);
+  }, [state.items]);
+
   return (
     <div className="flex items-center justify-center gap-2">
-      <Typography variant="lead">1/2</Typography>
+      <Typography variant="lead">
+        {state.currentPage}/{totalPage}
+      </Typography>
       <div className="flex justify-center gap-1">
         <IconButton
+          disabled={state.currentPage === 1}
+          onClick={handlePrevious}
           variant="text"
           className="bg-secondary/20 text-foreground hover:bg-secondary/30 active:bg-secondary/60"
         >
           <FontAwesomeIcon icon={faChevronLeft} />
         </IconButton>
         <IconButton
+          disabled={state.currentPage === totalPage}
+          onClick={handleNext}
           variant="text"
           className="bg-secondary/20 text-foreground hover:bg-secondary/30 active:bg-secondary/60"
         >

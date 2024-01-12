@@ -3,6 +3,7 @@ use diesel::sqlite::SqliteConnection;
 
 use super::super::define::ModelCRUD;
 use crate::models::core::item::{Item, ItemCreate, ItemOut};
+use crate::models::WithCount;
 
 impl ModelCRUD<ItemCreate<'_>> for Item {
     fn create(conn: &mut SqliteConnection, data: ItemCreate<'_>) -> Option<Self> {
@@ -30,7 +31,7 @@ impl ModelCRUD<ItemCreate<'_>> for Item {
         }
     }
 
-    fn delete(conn: &mut SqliteConnection, _id: i32) -> bool {
+    fn delete(conn: &mut SqliteConnection, _id: i64) -> bool {
         use crate::db::schema::core::item::dsl::*;
 
         match diesel::delete(item.filter(id.eq(_id))).execute(conn) {
@@ -39,7 +40,7 @@ impl ModelCRUD<ItemCreate<'_>> for Item {
         }
     }
 
-    fn get(conn: &mut SqliteConnection, _id: i32) -> Option<Self> {
+    fn get(conn: &mut SqliteConnection, _id: i64) -> Option<Self> {
         use crate::db::schema::core::item::dsl::*;
 
         let mut result: Vec<Self> = item.filter(id.eq(_id)).load::<Item>(conn).unwrap_or(vec![]);
@@ -58,37 +59,36 @@ impl ModelCRUD<ItemCreate<'_>> for Item {
 }
 
 impl Item {
-    pub fn get_multi(conn: &mut SqliteConnection, limit: i64, offset: i64) -> Vec<ItemOut> {
-        use crate::db::schema::core::item::dsl::*;
-
-        item.select(ItemOut::as_select())
-            .order(id.asc())
-            .limit(limit)
-            .offset(offset)
-            .load(conn)
-            .unwrap_or(vec![])
-    }
-
-    pub fn filter_by_name(
+    pub fn get_multi(
         conn: &mut SqliteConnection,
-        _query: &str,
         limit: i64,
         offset: i64,
-    ) -> Vec<ItemOut> {
+        term: &str,
+    ) -> WithCount<ItemOut> {
         use crate::db::schema::core::item::dsl::*;
-        let results = item
-            .filter(name.like(&format!("%{}%", _query)))
+
+        let total = match item
+            .count()
+            .filter(name.like(&format!("%{}%", term)))
+            .get_result(conn)
+        {
+            Ok(e) => e,
+            Err(_) => 0,
+        };
+
+        let result = item
             .select(ItemOut::as_select())
+            .filter(name.like(&format!("%{}%", term)))
             .order(id.asc())
             .limit(limit)
             .offset(offset)
             .load(conn)
             .unwrap_or(vec![]);
 
-        results
+        WithCount { result, total }
     }
 
-    pub fn copy_key(conn: &mut SqliteConnection, _id: i32) -> String {
+    pub fn copy_key(conn: &mut SqliteConnection, _id: i64) -> String {
         use crate::db::schema::core::item::dsl::*;
 
         let mut result = item

@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { useContext, useEffect, useCallback } from "react";
 import { VaultContext, VaultDispatchContext } from "./contexts";
 import { IconButton } from "@/components/MaterialTailwind";
-import { Item } from "./define";
+import { Item, ResultWithCount } from "./define";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faKey, faBan } from "@fortawesome/free-solid-svg-icons";
 
@@ -16,8 +16,11 @@ function Row({ item, even }: { item: Item; even?: boolean }) {
   const dispatch = useContext(VaultDispatchContext);
 
   const reload = async () => {
-    const data: Array<Item> = await invoke("fetch_items");
-    dispatch({ type: "load", payload: data });
+    const data: ResultWithCount<Item> = await invoke("fetch_items", {
+      page: 1,
+      term: "",
+    });
+    dispatch({ type: "load", payload: { data } });
   };
 
   const router = useRouter();
@@ -87,13 +90,16 @@ export function VaultBody() {
   const dispatch = useContext(VaultDispatchContext);
 
   const retrieveItems = useCallback(async () => {
-    const data: Array<Item> = await invoke("fetch_items");
+    const data: ResultWithCount<Item> = await invoke("fetch_items", {
+      page: 1,
+      term: "",
+    });
     return data;
   }, []);
 
   useEffect(() => {
     retrieveItems().then((data) => {
-      dispatch({ type: "load", payload: data });
+      dispatch({ type: "load", payload: { data } });
     });
   }, [retrieveItems]);
 
