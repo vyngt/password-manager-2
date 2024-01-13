@@ -124,7 +124,7 @@ export default function VaultItemFormPage() {
     if (id > 0) {
       setItemId(id);
     }
-  }, []);
+  }, [hashParam]);
 
   useEffect(() => {
     if (itemId > 0) {

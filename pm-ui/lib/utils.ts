@@ -19,15 +19,16 @@ export function useHashParam() {
 
   useEffect(() => {
     const sharp = window.location.hash.substring(1);
+    const newState: ParamProxy = {};
     if (sharp.length > 0) {
       for (const kv of sharp.split("&")) {
         if (re.test(kv)) {
           const [key, value] = kv.split("=");
-          state[key] = value;
+          newState[key] = value;
         }
       }
     }
-    setState({ ...state });
+    setState({ ...newState });
   }, []);
 
   return {

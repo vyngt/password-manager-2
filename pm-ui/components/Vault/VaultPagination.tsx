@@ -37,7 +37,7 @@ export function VaultPagination() {
     const base = Math.floor(state.itemCount / LIMIT);
     const plus = state.itemCount % LIMIT !== 0;
     setTotalPage(plus ? base + 1 : base);
-  }, [state.items]);
+  }, [state.items, state.itemCount]);
 
   return (
     <div className="flex items-center justify-center gap-2">

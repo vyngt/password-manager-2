@@ -9,8 +9,10 @@ import "./item.css";
 
 export const Item = ({ item }: { item: ISidebarAction }) => {
   const pathname = usePathname();
-
-  const is_selected = pathname == item.href;
+  const selected = () => {
+    const reg = new RegExp(`^${item.href}.*`);
+    return reg.test(pathname);
+  };
 
   return (
     <Tooltip
@@ -20,7 +22,7 @@ export const Item = ({ item }: { item: ISidebarAction }) => {
     >
       <Link
         className={`w-full p-5 ${
-          is_selected ? "panel--item-selected" : "panel--item"
+          selected() ? "panel--item-selected" : "panel--item"
         }`}
         href={item.href}
       >

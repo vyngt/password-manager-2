@@ -107,7 +107,7 @@ export function VaultBody() {
     retrieveItems().then((data) => {
       dispatch({ type: "load", payload: { data } });
     });
-  }, [retrieveItems]);
+  }, [retrieveItems, dispatch]);
 
   return (
     <div className="app-scrollbar grow overflow-y-scroll">

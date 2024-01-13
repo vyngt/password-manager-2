@@ -21,6 +21,7 @@ export default function vaultReducer(
         ...state,
         items: action.payload.data.result,
         lastTerm: action.payload.searchTerm,
+        itemCount: action.payload.data.total,
       };
     case "paginate":
       return {

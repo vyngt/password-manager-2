@@ -3,7 +3,7 @@
     "beforeBuildCommand": "npm --prefix ./pm-ui run build",
     "beforeDevCommand": "npm --prefix ./pm-ui run dev",
     "devPath": "http://localhost:3000",
-    "distDir": "../out"
+    "distDir": "../pm-ui/out"
   },
   "package": {
     "productName": "Password Manager",
@@ -32,7 +32,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "app.vynt.password_manager",
+      "identifier": "app.vynt.password-manager",
       "longDescription": "",
       "macOS": {
         "entitlements": null,

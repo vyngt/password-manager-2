@@ -12,13 +12,16 @@ export function VaultFilter() {
   const dispatch = useVaultDispatch();
   const [query, setQuery] = useState<string | null>(null);
 
-  const performQuery = useCallback(async (q: string) => {
-    const data = await invoke<ResultWithCount<Item>>("fetch_items", {
-      page: 1,
-      term: q,
-    });
-    dispatch({ type: "filter", payload: { data, searchTerm: q } });
-  }, []);
+  const performQuery = useCallback(
+    async (q: string) => {
+      const data = await invoke<ResultWithCount<Item>>("fetch_items", {
+        page: 1,
+        term: q,
+      });
+      dispatch({ type: "filter", payload: { data, searchTerm: q } });
+    },
+    [dispatch],
+  );
 
   // Debounce
   useEffect(() => {
