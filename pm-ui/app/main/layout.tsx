@@ -7,7 +7,7 @@ export default function MainLayout({
 }) {
   return (
     <div className="root-layout relative flex w-full">
-      <Sidebar className="app-none-scrollbar h-full w-32" />
+      <Sidebar className="app-none-scrollbar h-full w-16" />
       <div className="app-scrollbar flex-1 overflow-y-auto">{children}</div>
     </div>
   );

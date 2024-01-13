@@ -12,4 +12,5 @@ export {
   Input,
   Button,
   Checkbox,
+  Tooltip,
 } from "@material-tailwind/react";

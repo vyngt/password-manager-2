@@ -7,5 +7,5 @@
 }
 
 .panel--item-selected {
-  @apply pointer-events-none bg-primary/60 text-foreground transition-colors;
+  @apply bg-primary/60 text-foreground transition-colors;
 }
