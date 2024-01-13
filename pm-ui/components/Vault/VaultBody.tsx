@@ -3,20 +3,24 @@
 import { useRouter } from "next/navigation";
 import { Typography } from "@/components/MaterialTailwind";
 import { invoke } from "@tauri-apps/api/tauri";
-import { useContext, useEffect, useCallback } from "react";
-import { VaultContext, VaultDispatchContext } from "./contexts";
+import { useEffect, useCallback } from "react";
 import { IconButton } from "@/components/MaterialTailwind";
 import { Item, ResultWithCount } from "./define";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faKey, faBan } from "@fortawesome/free-solid-svg-icons";
 
+import { useVaultDispatch, useVault } from "./hooks";
+
 const TABLE_HEAD = ["Name", "URL", "Username", ""];
 
+/**
+ * Row of table
+ */
 function Row({ item, even }: { item: Item; even?: boolean }) {
-  const dispatch = useContext(VaultDispatchContext);
+  const dispatch = useVaultDispatch();
 
   const reload = async () => {
-    const data: ResultWithCount<Item> = await invoke("fetch_items", {
+    const data = await invoke<ResultWithCount<Item>>("fetch_items", {
       page: 1,
       term: "",
     });
@@ -29,12 +33,12 @@ function Row({ item, even }: { item: Item; even?: boolean }) {
   };
 
   const performCopyKeyToClipboard = async () => {
-    const result: string = await invoke("get_item_key", { id: item.id });
+    const result = await invoke<string>("get_item_key", { id: item.id });
     navigator.clipboard.writeText(result);
   };
 
   const performDeleteItem = async () => {
-    const result: boolean = await invoke("delete_item", { id: item.id });
+    const result = await invoke<boolean>("delete_item", { id: item.id });
     if (result) await reload();
   };
 
@@ -85,12 +89,14 @@ function Row({ item, even }: { item: Item; even?: boolean }) {
   );
 }
 
+/**
+ * Table
+ */
 export function VaultBody() {
-  const state = useContext(VaultContext);
-  const dispatch = useContext(VaultDispatchContext);
+  const { state, dispatch } = useVault();
 
   const retrieveItems = useCallback(async () => {
-    const data: ResultWithCount<Item> = await invoke("fetch_items", {
+    const data = await invoke<ResultWithCount<Item>>("fetch_items", {
       page: 1,
       term: "",
     });

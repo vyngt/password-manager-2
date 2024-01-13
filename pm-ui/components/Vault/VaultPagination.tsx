@@ -7,15 +7,13 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { IconButton, Typography } from "@/components/MaterialTailwind";
 
-import { useContext, useState, useEffect } from "react";
-import { VaultContext, VaultDispatchContext } from "./contexts";
+import { useState, useEffect } from "react";
 import { LIMIT, ResultWithCount, Item } from "./define";
 import { invoke } from "@tauri-apps/api/tauri";
+import { useVault } from "./hooks";
 
 export function VaultPagination() {
-  const state = useContext(VaultContext);
-  const dispatch = useContext(VaultDispatchContext);
-
+  const { state, dispatch } = useVault();
   const [totalPage, setTotalPage] = useState(1);
 
   const performGetData = async (page: number) => {

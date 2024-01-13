@@ -75,7 +75,7 @@ export default function VaultItemFormPage() {
 
   const performGetItem = useCallback(
     async (_id: number) => {
-      const result: ItemInDB = await invoke("get_item", { id: _id });
+      const result = await invoke<ItemInDB>("get_item", { id: _id });
       if (result) {
         const { id, ...rest } = result;
         dispatch({ type: "load", payload: rest });
@@ -98,14 +98,14 @@ export default function VaultItemFormPage() {
   const performSave = async () => {
     const id = hashParam.getNumber("id");
     if (id === 0) {
-      const result: ItemInDB = await invoke("create_item", { data: state });
+      const result = await invoke<ItemInDB>("create_item", { data: state });
       await performAfterCreated(result);
     } else if (id > 0) {
       const input = {
         ...state,
         id: id,
       };
-      const result: ItemInDB = await invoke("update_item", { data: input });
+      const result = await invoke<ItemInDB>("update_item", { data: input });
       await performAfterUpdated(result);
     }
   };
@@ -114,7 +114,7 @@ export default function VaultItemFormPage() {
     const id = hashParam.getNumber("id");
 
     if (id > 0) {
-      const result: boolean = await invoke("delete_item", { id: id });
+      const result = await invoke<boolean>("delete_item", { id: id });
       if (result) router.push("/main/vault/");
     }
   };

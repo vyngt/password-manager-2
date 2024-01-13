@@ -1,18 +1,17 @@
 "use client";
 
+import Link from "next/link";
+import { useVaultDispatch } from "./hooks";
 import { IconButton, Button } from "@/components/MaterialTailwind";
 import { VaultPagination } from "./VaultPagination";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowsRotate } from "@fortawesome/free-solid-svg-icons";
 import { VaultFilter } from "./VaultFilter";
-import { useContext } from "react";
-import { VaultDispatchContext } from "./contexts";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Item, ResultWithCount } from "./define";
-import Link from "next/link";
 
 function VaultHeaderButton() {
-  const dispatch = useContext(VaultDispatchContext);
+  const dispatch = useVaultDispatch();
 
   const reload = async () => {
     const data = await invoke<ResultWithCount<Item>>("fetch_items", {

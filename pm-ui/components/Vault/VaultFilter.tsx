@@ -3,13 +3,13 @@
 import { Input } from "@/components/MaterialTailwind";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useState, useCallback, useContext } from "react";
-import { VaultDispatchContext } from "./contexts";
+import { useEffect, useState, useCallback } from "react";
 import { Item, ResultWithCount } from "./define";
 import { invoke } from "@tauri-apps/api/tauri";
+import { useVaultDispatch } from "./hooks";
 
 export function VaultFilter() {
-  const dispatch = useContext(VaultDispatchContext);
+  const dispatch = useVaultDispatch();
   const [query, setQuery] = useState<string | null>(null);
 
   const performQuery = useCallback(async (q: string) => {
