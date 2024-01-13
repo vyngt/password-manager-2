@@ -4,8 +4,20 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { save, open } from "@tauri-apps/api/dialog";
 import { useState, useEffect } from "react";
 import { Typography, Button } from "@/components/MaterialTailwind";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCircleCheck,
+  faCircleXmark,
+} from "@fortawesome/free-solid-svg-icons";
 
-// function
+function FinishedStatus({ ok }: { ok: boolean }) {
+  return (
+    <FontAwesomeIcon
+      className={`${ok ? "text-success" : "text-danger"}`}
+      icon={ok ? faCircleCheck : faCircleXmark}
+    />
+  );
+}
 
 function Importer() {
   const [loading, setLoading] = useState(false);
@@ -50,13 +62,13 @@ function Importer() {
         Using file like .json to import into your vault
       </Typography>
       <Button
-        className="bg-primary/50 text-foreground"
+        className="flex items-center gap-3 bg-primary/50 text-foreground"
         onClick={performImport}
         loading={loading}
         disabled={ok !== null}
       >
         Backup
-        {ok === null ? "" : ok === false ? "Error" : "Success"}
+        {ok === null ? "" : <FinishedStatus ok={ok} />}
       </Button>
     </>
   );
@@ -85,6 +97,16 @@ function Exporter() {
     }
   };
 
+  useEffect(() => {
+    if (ok !== null) {
+      const t = setTimeout(() => {
+        setOk(null);
+      }, 3000);
+
+      return () => clearTimeout(t);
+    }
+  }, [ok]);
+
   return (
     <>
       <Typography className="text-secondary" variant="lead">
@@ -95,11 +117,13 @@ function Exporter() {
         <i className="text-warning">(Data exported will be plaintext)</i>
       </Typography>
       <Button
-        className="bg-secondary/50 text-foreground"
+        className="flex items-center gap-3 bg-secondary/50 text-foreground "
         onClick={performExport}
         loading={loading}
+        disabled={ok !== null}
       >
         Create
+        {ok === null ? "" : <FinishedStatus ok={ok} />}
       </Button>
     </>
   );

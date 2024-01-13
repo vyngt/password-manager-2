@@ -29,5 +29,5 @@
 }
 
 .panel--item-tooltip-transform::before {
-  @apply -translate-x-4 -translate-y-[6px] rotate-45 scale-y-50;
+  @apply -translate-x-[13px] -translate-y-[6px] rotate-45 scale-y-50;
 }

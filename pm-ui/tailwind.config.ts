@@ -13,7 +13,7 @@ const config: Config = {
         secondary: "rgb(var(--secondary) / <alpha-value> )",
         danger: "rgb(var(--danger) / <alpha-value> )",
         warning: "rgb(var(--warning) / <alpha-value> )",
-        success: "rgb(var(--secondary) / <alpha-value> )",
+        success: "rgb(var(--success) / <alpha-value> )",
         background: "rgb(var(--background) / <alpha-value>)",
         foreground: "rgb(var(--foreground) / <alpha-value>)",
         selection: "rgb(var(--selection) / <alpha-value>)",
