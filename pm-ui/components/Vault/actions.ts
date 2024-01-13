@@ -12,6 +12,7 @@ interface PerformFilterAction {
   payload: {
     data: ResultWithCount<Item>;
     searchTerm: string;
+    page?: number;
   };
 }
 

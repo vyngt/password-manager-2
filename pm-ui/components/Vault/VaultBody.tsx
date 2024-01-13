@@ -17,14 +17,41 @@ const TABLE_HEAD = ["Name", "URL", "Username", ""];
  * Row of table
  */
 function Row({ item, even }: { item: Item; even?: boolean }) {
-  const dispatch = useVaultDispatch();
+  const { state, dispatch } = useVault();
 
   const reload = async () => {
-    const data = await invoke<ResultWithCount<Item>>("fetch_items", {
-      page: 1,
-      term: "",
-    });
-    dispatch({ type: "load", payload: { data } });
+    if (state.items.length === 1) {
+      const curr = state.currentPage;
+      const prevPage = curr === 1 ? 1 : curr - 1;
+      const data = await invoke<ResultWithCount<Item>>("fetch_items", {
+        page: prevPage,
+        term: state.lastTerm,
+      });
+
+      dispatch({
+        type: "filter",
+        payload: {
+          data,
+          searchTerm: state.lastTerm,
+          page: prevPage,
+        },
+      });
+    } else if (state.items.length > 1) {
+      const data = await invoke<ResultWithCount<Item>>("fetch_items", {
+        page: state.currentPage,
+        term: state.lastTerm,
+      });
+      dispatch({
+        type: "filter",
+        payload: { data, searchTerm: state.lastTerm, page: state.currentPage },
+      });
+    } else {
+      const data = await invoke<ResultWithCount<Item>>("fetch_items", {
+        page: 1,
+        term: "",
+      });
+      dispatch({ type: "load", payload: { data } });
+    }
   };
 
   const router = useRouter();
