@@ -4,6 +4,7 @@ import {
   faGear,
   faWandMagicSparkles,
   faUnlockKeyhole,
+  faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 
 export interface ISidebarAction {
@@ -34,11 +35,19 @@ export const registry: ISidebarItem[] = [
   },
   {
     type: "action",
+    id: "backup",
+    name: "Backup",
+    icon: faDownload,
+    href: "/main/backup",
+    sequence: 2,
+  },
+  {
+    type: "action",
     id: "password_generator",
     name: "Password Generator",
     icon: faUnlockKeyhole,
     href: "/main/password-generator",
-    sequence: 2,
+    sequence: 3,
   },
   {
     type: "action",
@@ -46,14 +55,14 @@ export const registry: ISidebarItem[] = [
     name: "Theme",
     icon: faWandMagicSparkles,
     href: "/main/theme",
-    sequence: 3,
+    sequence: 4,
   },
   {
     type: "action",
-    id: "setting",
-    name: "Settings",
+    id: "manage",
+    name: "Manage",
     icon: faGear,
-    href: "/main/settings",
+    href: "/main/manage",
     sequence: 11,
   },
 ];
