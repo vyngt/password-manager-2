@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { IconButton, Typography } from "../MaterialTailwind";
 import { useCallback } from "react";
 import Image from "next/image";
-import favicon from "./favicon.ico";
+import favicon from "@/app/favicon.ico";
 
 export function WindowTitleBar() {
   const getAppWindow = useCallback(async () => {
