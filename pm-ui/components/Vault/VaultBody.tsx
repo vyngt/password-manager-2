@@ -9,7 +9,7 @@ import { Item, ResultWithCount } from "./define";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faKey, faBan } from "@fortawesome/free-solid-svg-icons";
 
-import { useVaultDispatch, useVault } from "./hooks";
+import { useVault } from "./hooks";
 
 const TABLE_HEAD = ["Name", "URL", "Username", ""];
 

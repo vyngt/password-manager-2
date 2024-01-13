@@ -16,8 +16,8 @@ export const Item = ({ item }: { item: ISidebarAction }) => {
 
   return (
     <Tooltip
-      className="border border-secondary bg-background text-foreground"
-      content={item.name}
+      className="panel--item-tooltip-arrow panel--item-tooltip panel--item-tooltip-transform"
+      content={<div className="relative z-50">{item.name}</div>}
       placement="right"
     >
       <Link

@@ -9,3 +9,25 @@
 .panel--item-selected {
   @apply bg-primary/60 text-foreground transition-colors;
 }
+
+.panel--item-tooltip {
+  @apply relative z-10 rounded-md border border-secondary bg-background text-foreground;
+}
+
+.panel--item-tooltip-arrow::before {
+  @apply absolute -z-0 block h-8 w-4 border border-secondary bg-background;
+  content: "";
+}
+
+.panel--item-tooltip-arrow::after {
+  @apply absolute block h-6 w-7 bg-background;
+  content: "";
+}
+
+.panel--item-tooltip-transform::after {
+  transform: translateY(-22px) translateX(-12px);
+}
+
+.panel--item-tooltip-transform::before {
+  @apply -translate-x-4 -translate-y-[6px] rotate-45 scale-y-50;
+}

@@ -5,6 +5,8 @@ import { save, open } from "@tauri-apps/api/dialog";
 import { useState, useEffect } from "react";
 import { Typography, Button } from "@/components/MaterialTailwind";
 
+// function
+
 function Importer() {
   const [loading, setLoading] = useState(false);
   const [ok, setOk] = useState<boolean | null>(null);
@@ -28,6 +30,17 @@ function Importer() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (ok !== null) {
+      const t = setTimeout(() => {
+        setOk(null);
+      }, 3000);
+
+      return () => clearTimeout(t);
+    }
+  }, [ok]);
+
   return (
     <>
       <Typography className="text-secondary" variant="lead">
@@ -40,8 +53,10 @@ function Importer() {
         className="bg-primary/50 text-foreground"
         onClick={performImport}
         loading={loading}
+        disabled={ok !== null}
       >
         Backup
+        {ok === null ? "" : ok === false ? "Error" : "Success"}
       </Button>
     </>
   );
