@@ -1,13 +1,13 @@
-import type { Data, TreeData } from "./models";
+import type { DataModel, TreeData } from "./models";
 
-interface LoadDataAction<T extends Data> {
+interface LoadDataAction<T extends DataModel> {
   type: "load";
   payload: {
     data: TreeData<T>;
   };
 }
 
-interface FilterDataAction<T extends Data> {
+interface FilterDataAction<T extends DataModel> {
   type: "filter";
   payload: {
     data: TreeData<T>;
@@ -16,7 +16,7 @@ interface FilterDataAction<T extends Data> {
   };
 }
 
-interface PaginateDataAction<T extends Data> {
+interface PaginateDataAction<T extends DataModel> {
   type: "paginate";
   payload: {
     data: TreeData<T>;
@@ -24,7 +24,7 @@ interface PaginateDataAction<T extends Data> {
   };
 }
 
-export type TreeAction<T extends Data> =
+export type TreeAction<T extends DataModel> =
   | LoadDataAction<T>
   | FilterDataAction<T>
   | PaginateDataAction<T>;

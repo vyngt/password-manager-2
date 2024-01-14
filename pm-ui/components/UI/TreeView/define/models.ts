@@ -1,8 +1,8 @@
-export interface Data {
+export interface DataModel {
   id: number;
 }
 
-export interface TreeData<T extends Data> {
+export interface TreeData<T extends DataModel> {
   result: Array<T>;
   total: number;
 }

@@ -1,14 +1,14 @@
 "use client";
 
-import type { Data, TreeAction } from "./define";
+import type { DataModel, TreeAction } from "./define";
 import type { TreeState } from "./context";
 
-export type TreeReducer<T extends Data> = (
+export type TreeReducer<T extends DataModel> = (
   state: TreeState<T>,
   action: TreeAction<T>,
 ) => TreeState<T>;
 
-export function createTreeReducer<T extends Data>(): TreeReducer<T> {
+export function createTreeReducer<T extends DataModel>(): TreeReducer<T> {
   const reducer = (
     state: TreeState<T>,
     action: TreeAction<T>,

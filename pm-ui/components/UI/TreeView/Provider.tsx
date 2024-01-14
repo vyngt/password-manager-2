@@ -2,12 +2,12 @@
 
 import { useReducer, useContext } from "react";
 
-import type { Data } from "./define";
+import type { DataModel } from "./define";
 import type { TreeReducer } from "./reducer";
 import type { TreeState, TreeDispatch } from "./context";
 import { createTreeContext } from "./context";
 
-export function createTreeManager<T extends Data>({
+export function createTreeManager<T extends DataModel>({
   initState,
   reducer,
 }: {
