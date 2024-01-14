@@ -56,7 +56,7 @@ function Row({ item, even }: { item: Item; even?: boolean }) {
 
   const router = useRouter();
   const navigate = () => {
-    router.push(`/main/vault/form#id=${item.id}`);
+    router.push(`/main/legacy-vault/form#id=${item.id}`);
   };
 
   const performCopyKeyToClipboard = async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { VaultProvider } from "@/components/Vault";
+import { VaultProvider } from "@/components/_Vault";
 
 export default function MainLayout({
   children,

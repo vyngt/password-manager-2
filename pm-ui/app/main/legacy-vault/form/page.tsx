@@ -14,7 +14,7 @@ import {
   faFloppyDisk,
 } from "@fortawesome/free-solid-svg-icons";
 
-import { ItemCreate, ItemInDB } from "@/components/Vault/define";
+import { ItemCreate, ItemInDB } from "@/components/_Vault/define";
 
 const initItem: ItemCreate = {
   password: "",

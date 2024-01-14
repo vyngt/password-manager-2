@@ -1,5 +1,5 @@
-import { Vault } from "@/components/Vault";
+"use client";
 
-export default function Page() {
-  return <Vault />;
+export default function VaultView() {
+  return <div>Hello World</div>;
 }

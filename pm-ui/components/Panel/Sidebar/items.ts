@@ -5,6 +5,7 @@ import {
   faWandMagicSparkles,
   faUnlockKeyhole,
   faDownload,
+  faVault,
 } from "@fortawesome/free-solid-svg-icons";
 
 export interface ISidebarAction {
@@ -29,7 +30,7 @@ export const registry: ISidebarItem[] = [
     type: "action",
     id: "vault",
     name: "Vault",
-    icon: faShieldHalved,
+    icon: faVault,
     href: "/main/vault",
     sequence: 1,
   },
@@ -64,5 +65,13 @@ export const registry: ISidebarItem[] = [
     icon: faGear,
     href: "/main/manage",
     sequence: 11,
+  },
+  {
+    type: "action",
+    id: "legacy-vault",
+    name: "Legacy Vault",
+    icon: faShieldHalved,
+    href: "/main/legacy-vault",
+    sequence: 12,
   },
 ];
