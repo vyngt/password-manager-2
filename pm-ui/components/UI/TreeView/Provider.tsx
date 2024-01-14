@@ -7,7 +7,7 @@ import type { TreeReducer } from "./reducer";
 import type { TreeState, TreeDispatch } from "./context";
 import { createTreeContext } from "./context";
 
-export function createTreeManager<T extends DataModel>({
+export function createTreeProvider<T extends DataModel>({
   initState,
   reducer,
 }: {

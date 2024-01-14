@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.app--tree--row {
+  @apply w-full cursor-pointer border-b border-b-secondary/60 text-secondary transition-colors hover:bg-primary/30;
+}
+
+.app--tree--row.even {
+  @apply bg-primary/10;
+}
