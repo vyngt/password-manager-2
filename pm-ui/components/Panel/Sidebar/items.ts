@@ -1,7 +1,7 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faGear,
-  faWandMagicSparkles,
+  faPalette,
   faUnlockKeyhole,
   faDownload,
   faVault,
@@ -53,7 +53,7 @@ export const registry: ISidebarItem[] = [
     type: "action",
     id: "color-scheme",
     name: "Color Scheme",
-    icon: faWandMagicSparkles,
+    icon: faPalette,
     href: "/main/color-scheme",
     sequence: 4,
   },

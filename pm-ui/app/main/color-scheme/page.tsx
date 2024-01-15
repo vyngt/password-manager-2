@@ -1,6 +1,10 @@
 "use client";
 
-import { SchemeColumn, useTree } from "@/components/ColorScheme";
+import {
+  SchemeColumn,
+  SelectColorSchemeButton,
+  useTree,
+} from "@/components/ColorScheme";
 import { ColorScheme } from "@/components/ColorScheme/define";
 import { TreeView } from "@/components/UI";
 import {
@@ -99,6 +103,7 @@ export default function ColorSchemeTree() {
               <SchemeColumn data={e} />
             </Column>
             <Column>
+              <SelectColorSchemeButton id={e.id} />
               <DeleteButton
                 id={e.id}
                 refetchId={"fetch_color_schemes"}
