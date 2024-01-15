@@ -11,7 +11,7 @@
 }
 
 .panel--item-tooltip {
-  @apply relative z-10 rounded-md border border-secondary bg-background text-foreground;
+  @apply relative z-10 rounded-md border border-secondary;
 }
 
 .panel--item-tooltip-arrow::before {
