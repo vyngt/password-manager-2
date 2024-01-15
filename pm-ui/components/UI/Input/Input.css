@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.app--ui--input {
+  @apply h-full w-full rounded-[7px] border border-t-transparent bg-transparent px-3 py-2.5 
+    font-sans text-sm font-normal outline 
+    outline-0 transition-all placeholder-shown:border focus:border-2 focus:!border-t-transparent focus:outline-0 disabled:border-0;
+}
+
+.app--ui--label {
+  @apply pointer-events-none 
+    absolute -top-1.5 left-0 flex h-full w-full select-none text-[11px] 
+    font-normal leading-tight
+    transition-all before:pointer-events-none before:mr-1 
+    before:mt-[6.5px] before:box-border 
+    before:block before:h-1.5 before:w-2.5 before:rounded-tl-md before:border-l before:border-t  
+    before:transition-all after:pointer-events-none 
+    after:ml-1 after:mt-[6.5px] 
+    after:box-border after:block after:h-1.5 after:w-2.5 after:flex-grow 
+    after:rounded-tr-md after:border-r after:border-t 
+    after:transition-all 
+    peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75]  
+    peer-placeholder-shown:before:border-transparent 
+    peer-placeholder-shown:after:border-transparent 
+    peer-focus:text-[11px] peer-focus:leading-tight 
+    peer-focus:before:border-l-2 peer-focus:before:border-t-2 
+    peer-focus:after:border-r-2 
+    peer-focus:after:border-t-2 peer-focus:after:border-primary 
+    peer-disabled:text-transparent peer-disabled:before:border-transparent 
+    peer-disabled:after:border-transparent;
+}
+
+.app--ui--input-primary {
+  @apply app--ui--input border-primary/50 text-primary
+    placeholder-shown:border-primary/50 
+    placeholder-shown:border-t-primary/50  
+    focus:border-primary;
+}
+
+.app--ui--label-primary {
+  @apply app--ui--label text-primary/50 before:border-primary/20 
+    after:border-primary/20 
+    peer-placeholder-shown:text-primary/50 
+    peer-focus:text-primary 
+    peer-focus:before:border-primary 
+    peer-focus:after:border-primary
+    peer-disabled:peer-placeholder-shown:text-primary/50;
+}
+
+.app--ui--input-secondary {
+  @apply app--ui--input border-secondary/50 text-secondary
+    placeholder-shown:border-secondary/50 
+    placeholder-shown:border-t-secondary/50  
+    focus:border-secondary;
+}
+
+.app--ui--label-secondary {
+  @apply app--ui--label text-secondary/50 before:border-secondary/20 
+    after:border-secondary/20 
+    peer-placeholder-shown:text-secondary/50 
+    peer-focus:text-secondary 
+    peer-focus:before:border-secondary 
+    peer-focus:after:border-secondary
+    peer-disabled:peer-placeholder-shown:text-secondary/50;
+}

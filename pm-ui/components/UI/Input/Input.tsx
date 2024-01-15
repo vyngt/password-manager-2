@@ -2,6 +2,7 @@
 
 import React from "react";
 import classnames from "classnames";
+import "./Input.css";
 
 type Color = "primary" | "secondary" | "warning" | "danger" | "success";
 
@@ -18,13 +19,16 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       containerProps?.className,
     );
 
-    const inputClasses = classnames(`app--input-${color} peer`, rest.className);
+    const inputClasses = classnames(
+      `app--ui--input-${color} peer`,
+      rest.className,
+    );
 
     return (
       <div {...containerProps} className={containerClasses}>
         <input {...rest} className={inputClasses} placeholder=" " ref={ref} />
         <label
-          className={`before:content[' '] after:content[' '] app--label-${color}`}
+          className={`before:content[' '] after:content[' '] app--ui--label-${color}`}
         >
           {label}
         </label>

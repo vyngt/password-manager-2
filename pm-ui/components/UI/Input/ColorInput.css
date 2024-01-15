@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.app--ui--color-container {
+  @apply h-12 w-12 
+    rounded-full border
+    border-primary ring-2 ring-transparent;
+}
+
+.app--ui--color-container:has(input[type="color"]:focus) {
+  @apply ring-primary;
+}
+
+.app--ui--color-container > input[type="color"] {
+  @apply h-full w-full rounded-full;
+  outline: none;
+  border: none;
+  -webkit-appearance: none;
+}
+
+.app--ui--color-container > input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.app--ui--color-container > input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
