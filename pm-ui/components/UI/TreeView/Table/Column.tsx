@@ -10,7 +10,7 @@ export function FieldColumn({
   onClick?: () => void;
 }) {
   return (
-    <td className="py-2" onClick={onClick}>
+    <td className={`py-2${onClick ? " cursor-pointer" : ""}`} onClick={onClick}>
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
           <Typography variant="small" className="pl-4 font-normal">

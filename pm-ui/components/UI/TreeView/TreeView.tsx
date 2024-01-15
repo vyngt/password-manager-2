@@ -1,14 +1,14 @@
 export function TreeView({
   header,
-  table,
+  children,
 }: {
   header?: React.ReactNode;
-  table: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <div className="flex h-full w-full flex-col">
       {header ? header : ""}
-      {table}
+      {children}
     </div>
   );
 }

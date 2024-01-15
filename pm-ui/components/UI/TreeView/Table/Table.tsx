@@ -15,7 +15,10 @@ export function Table({
         <thead>
           <tr className="border-b border-b-secondary/75 bg-primary/10 text-primary">
             {headers.map((head) => (
-              <th key={head} className="p-4 capitalize">
+              <th
+                key={`vault-h-${head ? head : "-action"}`}
+                className="p-4 capitalize"
+              >
                 <Typography
                   variant="small"
                   className="flex items-center justify-between gap-2 font-bold leading-none"

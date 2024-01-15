@@ -8,12 +8,16 @@ import type { TreeState, TreeDispatch } from "./context";
 import { createTreeContext } from "./context";
 
 export function createTreeProvider<T extends DataModel>({
-  initState,
   reducer,
 }: {
-  initState: TreeState<T>;
   reducer: TreeReducer<T>;
 }) {
+  const initState: TreeState<T> = {
+    items: [],
+    itemCount: 0,
+    currentPage: 0,
+    lastTerm: "",
+  };
   const [TreeContext, TreeDispatchContext] = createTreeContext({ initState });
   const Provider = ({ children }: { children: React.ReactNode }) => {
     const [state, dispatch] = useReducer(reducer, initState);
@@ -42,7 +46,7 @@ export function createTreeProvider<T extends DataModel>({
 
   return {
     Provider: Provider,
-    manager: {
+    hook: {
       useTree,
       useTreeState,
       useTreeDispatch,

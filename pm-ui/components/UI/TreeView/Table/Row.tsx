@@ -2,13 +2,6 @@
 
 import "./styles.css";
 
-export function Row({
-  children,
-  even,
-}: {
-  children: React.ReactNode;
-  even?: boolean;
-}) {
-  const className = even ? "app--tree--row even" : "app--tree--row";
-  return <tr className={className}>{children}</tr>;
+export function Row({ children }: { children: React.ReactNode }) {
+  return <tr className="app--tree--row">{children}</tr>;
 }
