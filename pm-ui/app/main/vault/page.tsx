@@ -21,11 +21,9 @@ import {
 import type { TreeData } from "@/components/UI/TreeView/define";
 import type { Item } from "@/components/Vault/define";
 
-import { IconButton } from "@/components/MaterialTailwind";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBan } from "@fortawesome/free-solid-svg-icons";
 import { invoke } from "@tauri-apps/api/tauri";
 import { CopyKeyButton } from "@/components/Vault/CopyKeyButton";
+import { DeleteButton } from "@/components/Vault/DeleteButton";
 
 export default function VaultView() {
   const [state, dispatch] = useTree();
@@ -104,13 +102,7 @@ export default function VaultView() {
             <FieldColumn data={e.username} onClick={() => browseRecord(e.id)} />
             <Column>
               <CopyKeyButton id={e.id} />
-              <IconButton
-                onClick={() => {}}
-                variant="text"
-                className="text-danger hover:bg-primary/20 active:bg-primary/40"
-              >
-                <FontAwesomeIcon icon={faBan} />
-              </IconButton>
+              <DeleteButton id={e.id} />
             </Column>
           </Row>
         ))}
