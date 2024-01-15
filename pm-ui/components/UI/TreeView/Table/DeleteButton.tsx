@@ -1,17 +1,27 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { IconButton } from "../MaterialTailwind";
+import { IconButton } from "@/components/MaterialTailwind";
 import { faBan } from "@fortawesome/free-solid-svg-icons";
 import { invoke } from "@tauri-apps/api/tauri";
 
-import { useTree } from "./core";
-import { FilterDataAction, TreeData } from "../UI/TreeView/define";
-import { Item } from "./define";
+import type { FilterDataAction, TreeData, DataModel } from "../define";
+import type { TreeState, TreeDispatch } from "../context";
 
-export function DeleteButton({ id }: { id: number }) {
-  const [state, dispatch] = useTree();
-
+// Code horrible, TODO: Reform
+export function DeleteButton<T extends DataModel>({
+  id,
+  refetchId,
+  deleteId,
+  state,
+  dispatch,
+}: {
+  id: number;
+  refetchId: string;
+  deleteId: string;
+  state: TreeState<T>;
+  dispatch: TreeDispatch<T>;
+}) {
   const refetch = async ({
     term = "",
     page = 1,
@@ -19,12 +29,12 @@ export function DeleteButton({ id }: { id: number }) {
     term?: string;
     page?: number;
   }) => {
-    return await invoke<TreeData<Item>>("fetch_items", { page, term });
+    return await invoke<TreeData<T>>(refetchId, { page, term });
   };
 
   const performAfterDelete = async () => {
     if (state.items.length > 0) {
-      const payload: FilterDataAction<Item>["payload"] = {
+      const payload: FilterDataAction<T>["payload"] = {
         data: {
           result: [],
           total: 0,
@@ -60,7 +70,7 @@ export function DeleteButton({ id }: { id: number }) {
   };
 
   const performDeleteItem = async () => {
-    const result = await invoke<boolean>("delete_item", { id });
+    const result = await invoke<boolean>(deleteId, { id });
     if (result) await performAfterDelete();
   };
 

@@ -16,6 +16,7 @@ import {
   Column,
   FieldColumn,
   Row,
+  DeleteButton,
 } from "@/components/UI/TreeView/Table";
 
 import type { TreeData } from "@/components/UI/TreeView/define";
@@ -23,7 +24,6 @@ import type { Item } from "@/components/Vault/define";
 
 import { invoke } from "@tauri-apps/api/tauri";
 import { CopyKeyButton } from "@/components/Vault/CopyKeyButton";
-import { DeleteButton } from "@/components/Vault/DeleteButton";
 
 export default function VaultView() {
   const [state, dispatch] = useTree();
@@ -56,11 +56,7 @@ export default function VaultView() {
   );
 
   const handlePagination = async (page: number) => {
-    const data = await invoke<TreeData<Item>>("fetch_items", {
-      page: page,
-      term: state.lastTerm,
-    });
-
+    const data = await fetchItems({ page, q: state.lastTerm });
     dispatch({ type: "paginate", payload: { data, nextPage: page } });
   };
 
@@ -102,7 +98,13 @@ export default function VaultView() {
             <FieldColumn data={e.username} onClick={() => browseRecord(e.id)} />
             <Column>
               <CopyKeyButton id={e.id} />
-              <DeleteButton id={e.id} />
+              <DeleteButton
+                id={e.id}
+                refetchId="fetch_items"
+                deleteId="delete_item"
+                state={state}
+                dispatch={dispatch}
+              />
             </Column>
           </Row>
         ))}
