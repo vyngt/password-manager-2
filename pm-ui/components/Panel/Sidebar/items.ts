@@ -1,6 +1,5 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-  faShieldHalved,
   faGear,
   faWandMagicSparkles,
   faUnlockKeyhole,
