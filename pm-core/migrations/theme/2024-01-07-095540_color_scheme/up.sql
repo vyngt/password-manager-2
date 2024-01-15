@@ -8,8 +8,7 @@ CREATE TABLE color_scheme (
     danger VARCHAR NOT NULL,
     warning VARCHAR NOT NULL,
     foreground VARCHAR NOT NULL,
-    background VARCHAR NOT NULL,
-    selection VARCHAR NOT NULL
+    background VARCHAR NOT NULL
 );
 ALTER TABLE theme
 ADD color_scheme_id INTEGER REFERENCES color_scheme(id);
@@ -22,8 +21,7 @@ INSERT INTO color_scheme (
         danger,
         warning,
         foreground,
-        background,
-        selection
+        background
     )
 VALUES (
         1,
@@ -34,8 +32,7 @@ VALUES (
         '244 37 99',
         '224 193 36',
         '255 194 194',
-        '97 25 74',
-        '34 96 135'
+        '97 25 74'
     );
 INSERT INTO color_scheme (
         id,
@@ -46,8 +43,7 @@ INSERT INTO color_scheme (
         danger,
         warning,
         foreground,
-        background,
-        selection
+        background
     )
 VALUES (
         2,
@@ -58,8 +54,7 @@ VALUES (
         '244 37 99',
         '132 193 1',
         '255 194 194',
-        '80 2 2',
-        '135 34 34'
+        '80 2 2'
     );
 INSERT INTO color_scheme (
         id,
@@ -70,8 +65,7 @@ INSERT INTO color_scheme (
         danger,
         warning,
         foreground,
-        background,
-        selection
+        background
     )
 VALUES (
         3,
@@ -82,8 +76,7 @@ VALUES (
         '253 103 23',
         '187 158 17',
         '146 176 150',
-        '23 64 31',
-        '34 135 82'
+        '23 64 31'
     );
 INSERT INTO theme (id, color_scheme_id)
 VALUES (1, 1);

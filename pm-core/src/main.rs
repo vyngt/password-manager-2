@@ -10,7 +10,7 @@ mod db;
 mod models;
 mod state;
 
-use crate::cmd::{auth, core, password_generator};
+use crate::cmd::{auth, core, password_generator, theme};
 
 use dotenvy::dotenv;
 
@@ -32,6 +32,11 @@ fn main() {
             core::item::get_item_key,
             core::item::import_vault,
             core::item::export_vault,
+            theme::color_scheme::fetch_color_schemes,
+            theme::color_scheme::get_color_scheme,
+            theme::color_scheme::create_color_scheme,
+            theme::color_scheme::update_color_scheme,
+            theme::color_scheme::delete_color_scheme,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
