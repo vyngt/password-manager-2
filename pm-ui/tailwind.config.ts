@@ -16,7 +16,6 @@ const config: Config = {
         success: "rgb(var(--success) / <alpha-value> )",
         background: "rgb(var(--background) / <alpha-value>)",
         foreground: "rgb(var(--foreground) / <alpha-value>)",
-        selection: "rgb(var(--selection) / <alpha-value>)",
       },
     },
   },

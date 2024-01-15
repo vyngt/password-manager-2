@@ -3,9 +3,11 @@
 import { Typography } from "@/components/MaterialTailwind";
 
 export function Table({
+  name,
   children,
   headers,
 }: {
+  name: string;
   children: React.ReactNode;
   headers: Array<string>;
 }) {
@@ -16,7 +18,7 @@ export function Table({
           <tr className="border-b border-b-secondary/75 bg-primary/10 text-primary">
             {headers.map((head) => (
               <th
-                key={`vault-h-${head ? head : "-action"}`}
+                key={`${name}-h-${head ? head : "-action"}`}
                 className="p-4 capitalize"
               >
                 <Typography

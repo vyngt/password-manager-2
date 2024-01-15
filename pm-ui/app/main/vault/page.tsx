@@ -94,7 +94,7 @@ export default function VaultView() {
         />
       }
     >
-      <Table headers={["Name", "URL", "Username", ""]}>
+      <Table name="vault" headers={["Name", "URL", "Username", ""]}>
         {state.items.map((e) => (
           <Row key={e.id}>
             <FieldColumn data={e.name} onClick={() => browseRecord(e.id)} />

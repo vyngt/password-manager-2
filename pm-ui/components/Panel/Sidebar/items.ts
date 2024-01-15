@@ -51,10 +51,10 @@ export const registry: ISidebarItem[] = [
   },
   {
     type: "action",
-    id: "theme",
-    name: "Theme",
+    id: "color-scheme",
+    name: "Color Scheme",
     icon: faWandMagicSparkles,
-    href: "/main/theme",
+    href: "/main/color-scheme",
     sequence: 4,
   },
   {
