@@ -66,12 +66,4 @@ export const registry: ISidebarItem[] = [
     href: "/main/manage",
     sequence: 11,
   },
-  {
-    type: "action",
-    id: "legacy-vault",
-    name: "Legacy Vault",
-    icon: faShieldHalved,
-    href: "/main/legacy-vault",
-    sequence: 12,
-  },
 ];
