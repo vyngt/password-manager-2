@@ -11,3 +11,18 @@ export function hex2rgb(hex: string) {
 
   return "0 0 0";
 }
+
+export function rgb2hex(rgb: string) {
+  const splitted = rgb.split(" ");
+  if (splitted.length === 3) {
+    let result = "#";
+    for (const c of splitted) {
+      const ch = parseInt(c, 10).toString(16);
+
+      result += ch.length === 1 ? `0${ch}` : ch;
+    }
+    return result;
+  }
+
+  return "#ffffff";
+}

@@ -66,7 +66,6 @@ export default function VaultItemFormPage() {
   const hashParam = useHashParam();
   const [state, dispatch] = useReducer(reducer, initItem);
   const [itemId, setItemId] = useState(0);
-
   const router = useRouter();
 
   const performGetItem = useCallback(

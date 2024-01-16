@@ -8,10 +8,12 @@ interface ColorInputProps extends Omit<React.ComponentProps<"input">, "size"> {
 
 export function ColorInput({ name, ...rest }: ColorInputProps) {
   return (
-    <div className="relative flex flex-col justify-center gap-1">
-      <label className="app--ui--color-container">
-        <input {...rest} type="color" />
-      </label>
+    <div className="relative flex flex-col items-center justify-center gap-1">
+      <div className="flex w-full justify-center">
+        <label className="app--ui--color-container">
+          <input {...rest} type="color" />
+        </label>
+      </div>
       <Typography className="capitalize text-primary">{name}</Typography>
     </div>
   );

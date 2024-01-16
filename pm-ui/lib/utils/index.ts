@@ -1,2 +1,2 @@
 export { useHashParam } from "./urlhashparam";
-export { hex2rgb } from "./hex2rgb";
+export { hex2rgb, rgb2hex } from "./colorconverter";

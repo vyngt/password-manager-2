@@ -8,31 +8,30 @@ interface ParamProxy {
 
 const re = /([a-z]+)=([0-9]+)/;
 
+const proxy: ParamProxy = {};
+const get = (value: string) => proxy[value];
+const getNumber = (value: string) => {
+  const result = parseInt(proxy[value]);
+  return Number.isNaN(result) ? 0 : result;
+};
+
+const ProxyManager = {
+  get,
+  getNumber,
+};
+
 export function useHashParam() {
-  const [state, setState] = useState<ParamProxy>({});
-
-  const get = (value: string) => state[value];
-  const getNumber = (value: string) => {
-    const result = parseInt(state[value]);
-    return Number.isNaN(result) ? 0 : result;
-  };
-
   useEffect(() => {
     const sharp = window.location.hash.substring(1);
-    const newState: ParamProxy = {};
     if (sharp.length > 0) {
       for (const kv of sharp.split("&")) {
         if (re.test(kv)) {
           const [key, value] = kv.split("=");
-          newState[key] = value;
+          proxy[key] = value;
         }
       }
     }
-    setState({ ...newState });
   }, []);
 
-  return {
-    get,
-    getNumber,
-  };
+  return ProxyManager;
 }
