@@ -19,14 +19,14 @@ interface ColorScheme extends FormModel {
 const Wrapper = FormWrapper<ColorScheme>({
   initData: {
     id: 0,
-    name: "Name",
-    primary: "#ffffff",
-    secondary: "#ffffff",
-    warning: "#ffffff",
-    success: "#ffffff",
-    danger: "#ffffff",
-    foreground: "#ffffff",
-    background: "#ffffff",
+    name: "New Template",
+    primary: "244 31 198",
+    secondary: "3 169 244",
+    warning: "224 193 36",
+    success: "30 200 135",
+    danger: "244 37 99",
+    foreground: "255 194 194",
+    background: "97 25 74",
   },
   crud: {
     deleteId: "delete_color_scheme",
