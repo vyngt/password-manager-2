@@ -28,7 +28,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Initialize
   useEffect(() => {
-    console.log("Initializer");
     getCurrentColorScheme().then((id) => {
       dispatch({ type: "color_scheme/set", payload: id });
     });
@@ -36,7 +35,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ChangeColor if change ID
   useEffect(() => {
-    console.log("Applied");
     if (state.colorSchemeId > 0) {
       applyColorScheme(state.colorSchemeId);
     }

@@ -34,7 +34,7 @@ export function SearchFilter({
         type="text"
         placeholder="Search"
         onChange={(ev) => setQuery(ev.target.value)}
-        className="!border-secondary/60 text-foreground focus:!border-secondary"
+        className="!border-secondary/60 text-foreground placeholder:text-foreground/60 focus:!border-secondary"
         labelProps={{
           className: "before:content-none after:content-none",
         }}

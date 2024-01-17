@@ -11,16 +11,16 @@ export default function EnterMasterPassword() {
   const ref = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const call_server = async (password: string) => {
+  const callServer = async (password: string) => {
     try {
       const ok = await invoke("perform_auth", { password: password });
       if (ok) {
         router.replace("/main");
       } else {
-        // TODO: display error
+        // Simply ignore, nothing happen!
       }
     } catch (e) {
-      // TODO: display error
+      // Simply ignore, nothing happen!
     }
   };
 
@@ -43,10 +43,10 @@ export default function EnterMasterPassword() {
       return;
     }
 
-    await call_server(input);
+    await callServer(input);
   };
 
-  const handle_keypress = async (ev: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeypress = async (ev: KeyboardEvent<HTMLInputElement>) => {
     if (ref && ref.current && ev.key == "Enter") {
       ev.preventDefault();
       await performAuth();
@@ -66,8 +66,8 @@ export default function EnterMasterPassword() {
             crossOrigin={""}
             type="password"
             placeholder="Master Password"
-            className="!border-primary/50 text-primary focus:!border-primary"
-            onKeyDownCapture={handle_keypress}
+            className="!border-primary/50 text-primary placeholder:text-primary/60 focus:!border-primary"
+            onKeyDownCapture={handleKeypress}
             labelProps={{
               className: "before:content-none after:content-none",
             }}

@@ -1,5 +1,10 @@
 "use client";
 
+import { invoke } from "@tauri-apps/api/tauri";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
+import { useThemeState } from "@/components/Theme/hooks";
+import { Chip, Typography } from "@/components/MaterialTailwind";
 import {
   SchemeColumn,
   SelectColorSchemeButton,
@@ -21,13 +26,11 @@ import {
   Row,
   Table,
 } from "@/components/UI/TreeView/Table";
-import { TreeData } from "@/components/UI/TreeView/define";
-import { invoke } from "@tauri-apps/api/tauri";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import type { TreeData } from "@/components/UI/TreeView/define";
 
 export default function ColorSchemeTree() {
   const [state, dispatch] = useTree();
+  const theme = useThemeState();
 
   const router = useRouter();
 
@@ -102,15 +105,25 @@ export default function ColorSchemeTree() {
             <Column>
               <SchemeColumn data={e} />
             </Column>
-            <Column>
-              <SelectColorSchemeButton id={e.id} />
-              <DeleteButton
-                id={e.id}
-                refetchId={"fetch_color_schemes"}
-                deleteId={"delete_color_scheme"}
-                state={state}
-                dispatch={dispatch}
-              />
+            <Column className="flex justify-center">
+              {theme.colorSchemeId == e.id ? (
+                <Chip
+                  className="border-success text-success"
+                  variant="outlined"
+                  value="Using"
+                />
+              ) : (
+                <>
+                  <SelectColorSchemeButton id={e.id} />
+                  <DeleteButton
+                    id={e.id}
+                    refetchId={"fetch_color_schemes"}
+                    deleteId={"delete_color_scheme"}
+                    state={state}
+                    dispatch={dispatch}
+                  />
+                </>
+              )}
             </Column>
           </Row>
         ))}

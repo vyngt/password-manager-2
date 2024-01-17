@@ -13,4 +13,5 @@ export {
   Button,
   Checkbox,
   Tooltip,
+  Chip,
 } from "@material-tailwind/react";
