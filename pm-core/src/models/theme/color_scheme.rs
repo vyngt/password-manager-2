@@ -9,8 +9,8 @@ pub struct ColorScheme {
     pub primary: String,
     pub secondary: String,
     pub success: String,
-    pub warning: String,
     pub danger: String,
+    pub warning: String,
     pub foreground: String,
     pub background: String,
 }
@@ -22,8 +22,8 @@ pub struct ColorSchemeCreate<'a> {
     pub primary: &'a str,
     pub secondary: &'a str,
     pub success: &'a str,
-    pub warning: &'a str,
     pub danger: &'a str,
+    pub warning: &'a str,
     pub foreground: &'a str,
     pub background: &'a str,
 }

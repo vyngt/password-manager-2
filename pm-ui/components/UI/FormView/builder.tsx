@@ -53,16 +53,13 @@ export function FormWrapper<T extends FormModel>(config: Configuration<T>) {
       };
 
       const performSave = async () => {
-        const id = hashParam.getNumber("id");
+        const id = state.id;
         if (id === 0) {
-          const result = await invoke<T>(config.crud.createId, { data: state });
+          const { id, ...data } = state;
+          const result = await invoke<T>(config.crud.createId, { data });
           await performAfterCreated(result);
         } else if (id > 0) {
-          const input = {
-            ...state,
-            id: id,
-          };
-          const result = await invoke<T>(config.crud.saveId, { data: input });
+          const result = await invoke<T>(config.crud.saveId, { data: state });
           await performAfterUpdated(result);
         }
       };
@@ -76,7 +73,6 @@ export function FormWrapper<T extends FormModel>(config: Configuration<T>) {
       };
 
       useEffect(() => {
-        console.log("Check");
         const id = hashParam.getNumber("id");
         if (id > 0) {
           dispatch({ type: "set/id", payload: id });
@@ -84,7 +80,6 @@ export function FormWrapper<T extends FormModel>(config: Configuration<T>) {
       }, [hashParam]);
 
       useEffect(() => {
-        console.log("Me may");
         if (state.id > 0) {
           performGetItem(state.id);
         }
