@@ -70,7 +70,7 @@ export function FormWrapper<T extends FormModel>(config: Configuration<T>) {
           const result = await invoke<boolean>(config.crud.deleteId, { id });
           if (result) router.back();
         }
-      }, [state.id]);
+      }, [state.id, router]);
 
       useEffect(() => {
         const id = hashParam.getNumber("id");
