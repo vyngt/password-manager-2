@@ -11,7 +11,7 @@ impl Theme {
 
         let data = Theme {
             id: default_id,
-            color_scheme_id: Some(default_cs_id),
+            color_scheme_id: default_cs_id,
         };
         match diesel::insert_into(theme::table)
             .values(&data)
@@ -34,9 +34,14 @@ impl Theme {
         }
     }
 
-    pub fn get_theme(conn: &mut SqliteConnection) -> Theme {
-        Self::create(conn);
-        Self::get(conn).unwrap()
+    pub fn get_current_color_scheme(conn: &mut SqliteConnection) -> i64 {
+        match Self::get(conn) {
+            Some(e) => e.color_scheme_id,
+            None => {
+                Self::create(conn);
+                Self::get(conn).unwrap().color_scheme_id
+            }
+        }
     }
 
     pub fn update(conn: &mut SqliteConnection, data: Theme) -> bool {

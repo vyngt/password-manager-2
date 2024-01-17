@@ -4,11 +4,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { IconButton } from "../MaterialTailwind";
 import { faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { invoke } from "@tauri-apps/api/tauri";
+import { useThemeDispatch } from "@/components/Theme/hooks";
 
 export function SelectColorSchemeButton({ id }: { id: number }) {
+  const dispatch = useThemeDispatch();
+
   const performSelect = async () => {
-    // const result = await invoke<string>("get_item_key", { id });
-    // navigator.clipboard.writeText(result);
+    const result = await invoke<boolean>("save_theme_cs", { id });
+    if (result) dispatch({ type: "color_scheme/set", payload: id });
   };
 
   return (

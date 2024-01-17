@@ -37,7 +37,9 @@ fn main() {
             theme::color_scheme::create_color_scheme,
             theme::color_scheme::update_color_scheme,
             theme::color_scheme::delete_color_scheme,
-            theme::color_scheme::get_theme_cs,
+            theme::theme::get_theme_cs,
+            theme::theme::get_current_cs,
+            theme::theme::save_theme_cs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

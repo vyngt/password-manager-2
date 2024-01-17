@@ -23,10 +23,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   const getCurrentColorScheme = useCallback(async () => {
     // Fetch on Theme
-    const colorSchemeId = await invoke<number>("get_current_cs");
-    dispatch({ type: "color_scheme/set", payload: colorSchemeId });
-
-    return 1;
+    return await invoke<number>("get_current_cs");
   }, []);
 
   // Initialize

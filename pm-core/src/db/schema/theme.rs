@@ -17,7 +17,7 @@ diesel::table! {
 diesel::table! {
     theme (id) {
         id -> BigInt,
-        color_scheme_id -> Nullable<BigInt>,
+        color_scheme_id -> BigInt,
     }
 }
 

@@ -11,7 +11,7 @@ CREATE TABLE color_scheme (
     background VARCHAR NOT NULL
 );
 ALTER TABLE theme
-ADD color_scheme_id INTEGER REFERENCES color_scheme(id);
+ADD color_scheme_id INTEGER NOT NULL REFERENCES color_scheme(id);
 INSERT INTO color_scheme (
         id,
         `name`,
@@ -27,7 +27,7 @@ VALUES (
         1,
         'Peace',
         '244 31 198',
-        '184 215 136',
+        '3 169 244',
         '30 200 135',
         '244 37 99',
         '224 193 36',
