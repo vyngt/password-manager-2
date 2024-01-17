@@ -1,5 +1,5 @@
 use crate::crud::define::ModelCRUD;
-use crate::models::theme::color_scheme::{ColorScheme, ColorSchemeCreate};
+use crate::models::theme::color_scheme::{ColorScheme, ColorSchemeCreate, ColorSchemeOut};
 use crate::models::WithCount;
 use crate::state::AppDBConn;
 
@@ -57,4 +57,13 @@ pub fn get_color_scheme(id: i64, app_db_conn: tauri::State<AppDBConn>) -> Option
     let db = &mut conns.theme_db;
 
     ColorScheme::get(db, id)
+}
+
+#[tauri::command]
+pub fn get_theme_cs(id: i64, app_db_conn: tauri::State<AppDBConn>) -> Option<ColorSchemeOut> {
+    // Only color related fields
+    let mut conns = app_db_conn.0.lock().unwrap();
+    let db = &mut conns.theme_db;
+
+    ColorScheme::get_color_cs(db, id)
 }

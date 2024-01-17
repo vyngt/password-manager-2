@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
 use super::super::define::ModelCRUD;
-use crate::models::theme::color_scheme::{ColorScheme, ColorSchemeCreate};
+use crate::models::theme::color_scheme::{ColorScheme, ColorSchemeCreate, ColorSchemeOut};
 use crate::models::WithCount;
 
 impl ModelCRUD<ColorSchemeCreate<'_>> for ColorScheme {
@@ -89,5 +89,19 @@ impl ColorScheme {
             .unwrap_or(vec![]);
 
         WithCount { result, total }
+    }
+
+    pub fn get_color_cs(conn: &mut SqliteConnection, _id: i64) -> Option<ColorSchemeOut> {
+        use crate::db::schema::theme::color_scheme::dsl::*;
+
+        match color_scheme
+            .select(ColorSchemeOut::as_select())
+            .filter(id.eq(_id))
+            .limit(1)
+            .get_result::<ColorSchemeOut>(conn)
+        {
+            Ok(e) => Some(e),
+            Err(_) => None,
+        }
     }
 }
