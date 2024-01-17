@@ -1,7 +1,6 @@
 import type { DataModel } from "../UI/TreeView/define";
 
 interface ColorSchemeBase {
-  name: string;
   primary: string;
   secondary: string;
   success: string;
@@ -11,10 +10,9 @@ interface ColorSchemeBase {
   background: string;
 }
 
-interface ColorSchemeForm extends ColorSchemeBase {}
-
 interface ColorScheme extends DataModel, ColorSchemeBase {
   id: number;
+  name: string;
 }
 
-export type { ColorScheme, ColorSchemeForm };
+export type { ColorScheme };
