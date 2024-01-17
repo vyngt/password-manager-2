@@ -1,6 +1,7 @@
 "use client";
 
 import { Typography } from "@/components/MaterialTailwind";
+import classnames from "classnames";
 
 export function FieldColumn({
   data,
@@ -22,6 +23,15 @@ export function FieldColumn({
   );
 }
 
-export function Column({ children }: { children: React.ReactNode }) {
-  return <td className="py-2">{children}</td>;
+interface ColumnProps extends Omit<React.ComponentProps<"td">, "size"> {
+  children: React.ReactNode;
+}
+
+export function Column({ children, className, ...rest }: ColumnProps) {
+  const c = classnames("py-2", className);
+  return (
+    <td {...rest} className={c}>
+      {children}
+    </td>
+  );
 }
