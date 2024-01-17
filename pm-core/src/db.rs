@@ -1,3 +1,4 @@
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use diesel::SqliteConnection;
 use std::{env, path};
@@ -48,12 +49,16 @@ pub fn run_core_migrations(conn: &mut SqliteConnection) -> bool {
 
 pub fn establish_core_connection() -> SqliteConnection {
     let db_url = assemble_db_url(config::CORE_DATA, "./local/core_local.db");
-    SqliteConnection::establish(&db_url).expect(&format!("Error connecting to {}", db_url))
+    let mut conn =
+        SqliteConnection::establish(&db_url).expect(&format!("Error connecting to {}", db_url));
+    conn.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
+    conn
 }
 
 pub fn establish_theme_connection() -> SqliteConnection {
     let db_url = assemble_db_url(config::THEME_DATA, "./local/theme_local.db");
     let mut conn = SqliteConnection::establish(&db_url).expect("Format connection error");
+    conn.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
     conn.run_pending_migrations(THEME_MIGRATIONS)
         .expect("Something terrible happen: Theme Migrations");
     conn

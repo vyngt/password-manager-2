@@ -11,7 +11,7 @@ CREATE TABLE color_scheme (
     background VARCHAR NOT NULL
 );
 ALTER TABLE theme
-ADD color_scheme_id INTEGER NOT NULL REFERENCES color_scheme(id);
+ADD color_scheme_id INTEGER NOT NULL REFERENCES color_scheme(id) ON DELETE RESTRICT;
 INSERT INTO color_scheme (
         id,
         `name`,
