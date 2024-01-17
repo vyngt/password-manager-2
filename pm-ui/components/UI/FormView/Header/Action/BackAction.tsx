@@ -2,10 +2,14 @@
 import { IconButton } from "@/components/MaterialTailwind";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useCallback } from "react";
+import { useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 
-export function BackAction({ href }: { href?: string }) {
+export const BackAction = memo(function BackAction({
+  href,
+}: {
+  href?: string;
+}) {
   const router = useRouter();
 
   const handle = useCallback(() => {
@@ -21,4 +25,4 @@ export function BackAction({ href }: { href?: string }) {
       <FontAwesomeIcon icon={faArrowLeft} />
     </IconButton>
   );
-}
+});

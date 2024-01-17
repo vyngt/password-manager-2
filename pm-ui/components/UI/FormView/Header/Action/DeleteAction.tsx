@@ -3,15 +3,20 @@
 import { IconButton } from "@/components/MaterialTailwind";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { memo } from "react";
 
-export function DeleteAction({ handle }: { handle: () => void }) {
+export const DeleteAction = memo(function DeleteAction({
+  handle,
+}: {
+  handle: () => void;
+}) {
   return (
     <IconButton
       onClick={handle}
       variant="outlined"
-      className="border-secondary text-secondary focus:ring-secondary/30"
+      className="border-danger text-danger focus:ring-danger/30"
     >
       <FontAwesomeIcon icon={faTrashCan} />
     </IconButton>
   );
-}
+});

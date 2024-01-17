@@ -9,7 +9,7 @@ export function SaveAction({ handle }: { handle: () => void }) {
     <IconButton
       onClick={handle}
       variant="outlined"
-      className="border-secondary text-secondary focus:ring-secondary/30"
+      className="border-success text-success focus:ring-success/30"
     >
       <FontAwesomeIcon icon={faFloppyDisk} />
     </IconButton>

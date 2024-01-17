@@ -64,13 +64,13 @@ export function FormWrapper<T extends FormModel>(config: Configuration<T>) {
         }
       };
 
-      const performDelete = async () => {
+      const performDelete = useCallback(async () => {
         if (state.id > 0) {
           const id = state.id;
           const result = await invoke<boolean>(config.crud.deleteId, { id });
           if (result) router.back();
         }
-      };
+      }, [state.id]);
 
       useEffect(() => {
         const id = hashParam.getNumber("id");
@@ -92,7 +92,7 @@ export function FormWrapper<T extends FormModel>(config: Configuration<T>) {
               <>
                 <BackAction />
                 <SaveAction handle={performSave} />
-                <DeleteAction handle={performDelete} />
+                {state.id ? <DeleteAction handle={performDelete} /> : ""}
               </>
             }
           />
