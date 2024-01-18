@@ -3,7 +3,7 @@ import { ColorScheme } from "./define";
 
 export function SchemeColumn({ data }: { data: ColorScheme }) {
   return (
-    <div className="grid w-16 grid-cols-5 gap-1">
+    <div className="flex gap-1">
       {Object.entries(data).map(
         (d) =>
           !(d[0] == "name" || d[0] == "id") && (

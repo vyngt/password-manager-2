@@ -67,7 +67,7 @@ function Importer() {
         loading={loading}
         disabled={ok !== null}
       >
-        Backup
+        Restore
         {ok === null ? "" : <FinishedStatus ok={ok} />}
       </Button>
     </>
@@ -122,7 +122,7 @@ function Exporter() {
         loading={loading}
         disabled={ok !== null}
       >
-        Create
+        Backup
         {ok === null ? "" : <FinishedStatus ok={ok} />}
       </Button>
     </>

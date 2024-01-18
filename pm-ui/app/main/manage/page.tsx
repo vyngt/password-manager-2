@@ -1,5 +1,7 @@
 "use client";
 
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return <div>Re-Constructing...</div>;
+  redirect("/main/manage/profile");
 }

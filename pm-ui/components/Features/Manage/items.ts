@@ -1,10 +1,8 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-  faGear,
   faPalette,
-  faUnlockKeyhole,
+  faUserShield,
   faDownload,
-  faVault,
 } from "@fortawesome/free-solid-svg-icons";
 
 import type { SidebarItem } from "@/components/UI/Sidebar/define";
@@ -17,24 +15,24 @@ interface Item extends SidebarItem {
 
 export const items: Array<Item> = [
   {
-    id: "vault",
-    name: "Vault",
-    icon: faVault,
-    href: "/main/vault",
+    id: "manage/profile",
+    name: "Profile",
+    icon: faUserShield,
+    href: "/main/manage/profile",
     sequence: 1,
   },
   {
-    id: "password_generator",
-    name: "Password Generator",
-    icon: faUnlockKeyhole,
-    href: "/main/password-generator",
-    sequence: 3,
+    id: "manage/backup",
+    name: "Backup",
+    icon: faDownload,
+    href: "/main/manage/backup",
+    sequence: 2,
   },
   {
-    id: "manage",
-    name: "Manage",
-    icon: faGear,
-    href: "/main/manage",
-    sequence: 11,
+    id: "manage/color-scheme",
+    name: "Color Scheme",
+    icon: faPalette,
+    href: "/main/manage/color-scheme",
+    sequence: 3,
   },
 ];

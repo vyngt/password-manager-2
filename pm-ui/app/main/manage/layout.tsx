@@ -1,9 +1,5 @@
-import { PanelLayout } from "@/components/Panel";
+import { ManageLayout } from "@/components/Features/Manage";
 
-export default function ManageLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <PanelLayout className="h-full">{children}</PanelLayout>;
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <ManageLayout className="h-full">{children}</ManageLayout>;
 }

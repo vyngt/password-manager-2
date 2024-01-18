@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { useThemeState } from "@/components/Features/Theme/hooks";
-import { Chip, Typography } from "@/components/MaterialTailwind";
+import { Chip } from "@/components/MaterialTailwind";
 import {
   SchemeColumn,
   SelectColorSchemeButton,
@@ -36,7 +36,7 @@ export default function ColorSchemeTree() {
 
   const browseRecord = useCallback(
     (id: number) => {
-      router.push(`/main/color-scheme/form#id=${id}`);
+      router.push(`/main/manage/color-scheme/form#id=${id}`);
     },
     [router],
   );
@@ -83,7 +83,7 @@ export default function ColorSchemeTree() {
         <Header
           action={
             <>
-              <FormAction href="/main/color-scheme/form#id=0" />
+              <FormAction href="/main/manage/color-scheme/form#id=0" />
               <RefreshAction handle={refresh} />
             </>
           }

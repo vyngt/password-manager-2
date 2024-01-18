@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.manage--item {
+  @apply text-foreground transition-colors hover:bg-primary/20;
+}
+
+.manage--item.selected {
+  @apply bg-primary/40 text-foreground transition-colors;
+}

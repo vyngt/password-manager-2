@@ -7,10 +7,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 export function SidebarWrapper<T extends SidebarItem>(items: Array<T>) {
   const Wrapper = (Child: SidebarChildComponent<T>) => {
     const _Wrapper = ({ className, ...rest }: SidebarProps) => {
-      const classes = classnames(
-        "h-full overflow-x-scroll border-r border-r-secondary bg-secondary/10 text-foreground shadow-xl",
-        className,
-      );
+      const classes = classnames("overflow-x-scroll", className);
       return (
         <div {...rest} className={classes}>
           <List className="min-w-0 gap-0 p-0">

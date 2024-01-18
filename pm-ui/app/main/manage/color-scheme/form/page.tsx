@@ -26,7 +26,7 @@ const Wrapper = FormWrapper<FormColorScheme>({
     getId: "get_color_scheme",
     createId: "create_color_scheme",
   },
-  path: "/main/color-scheme/form",
+  path: "/main/manage/color-scheme/form",
 });
 
 export default Wrapper(({ state, dispatch }) => {
