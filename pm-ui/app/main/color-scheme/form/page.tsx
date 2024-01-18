@@ -2,7 +2,7 @@
 
 import { FormWrapper } from "@/components/UI/FormView";
 import type { FormModel } from "@/components/UI/FormView";
-import type { ColorScheme } from "@/components/ColorScheme/define";
+import type { ColorScheme } from "@/components/Features/ColorScheme/define";
 import { ColorInput, Input } from "@/components/UI/Input";
 import { hex2rgb, rgb2hex } from "@/lib/utils";
 

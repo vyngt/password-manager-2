@@ -1,6 +1,6 @@
 "use client";
 
-import { createTreeProvider, createTreeReducer } from "../UI/TreeView";
+import { createTreeProvider, createTreeReducer } from "../../UI/TreeView";
 import { Item } from "./define";
 
 const reducer = createTreeReducer<Item>();

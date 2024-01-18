@@ -1,7 +1,7 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { IconButton } from "../MaterialTailwind";
+import { IconButton } from "../../MaterialTailwind";
 import { faKey } from "@fortawesome/free-solid-svg-icons";
 import { invoke } from "@tauri-apps/api/tauri";
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { IconButton } from "../MaterialTailwind";
+import { IconButton } from "../../MaterialTailwind";
 import { faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { invoke } from "@tauri-apps/api/tauri";
-import { useThemeDispatch } from "@/components/Theme/hooks";
+import { useThemeDispatch } from "@/components/Features/Theme/hooks";
 
 export function SelectColorSchemeButton({ id }: { id: number }) {
   const dispatch = useThemeDispatch();

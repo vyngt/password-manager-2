@@ -1,6 +1,6 @@
 "use client";
 
-import { createTreeProvider, createTreeReducer } from "../UI/TreeView";
+import { createTreeProvider, createTreeReducer } from "../../UI/TreeView";
 import { ColorScheme } from "./define";
 
 const reducer = createTreeReducer<ColorScheme>();

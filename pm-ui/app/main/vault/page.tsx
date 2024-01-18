@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useTree } from "@/components/Vault";
+import { useTree } from "@/components/Features/Vault";
 import { TreeView } from "@/components/UI/TreeView";
 import {
   Header,
@@ -20,10 +20,10 @@ import {
 } from "@/components/UI/TreeView/Table";
 
 import type { TreeData } from "@/components/UI/TreeView/define";
-import type { Item } from "@/components/Vault/define";
+import type { Item } from "@/components/Features/Vault/define";
 
 import { invoke } from "@tauri-apps/api/tauri";
-import { CopyKeyButton } from "@/components/Vault/CopyKeyButton";
+import { CopyKeyButton } from "@/components/Features/Vault/CopyKeyButton";
 
 export default function VaultView() {
   const [state, dispatch] = useTree();

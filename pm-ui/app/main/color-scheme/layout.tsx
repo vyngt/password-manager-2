@@ -1,6 +1,6 @@
 "use client";
 
-import { Provider } from "@/components/ColorScheme";
+import { Provider } from "@/components/Features/ColorScheme";
 
 export default function ColorSchemeLayout({
   children,

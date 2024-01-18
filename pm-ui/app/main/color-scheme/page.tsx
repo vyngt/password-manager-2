@@ -3,14 +3,14 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
-import { useThemeState } from "@/components/Theme/hooks";
+import { useThemeState } from "@/components/Features/Theme/hooks";
 import { Chip, Typography } from "@/components/MaterialTailwind";
 import {
   SchemeColumn,
   SelectColorSchemeButton,
   useTree,
-} from "@/components/ColorScheme";
-import { ColorScheme } from "@/components/ColorScheme/define";
+} from "@/components/Features/ColorScheme";
+import { ColorScheme } from "@/components/Features/ColorScheme/define";
 import { TreeView } from "@/components/UI";
 import {
   FormAction,

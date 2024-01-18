@@ -2,7 +2,7 @@
 
 import { FormWrapper } from "@/components/UI/FormView";
 import type { FormModel } from "@/components/UI/FormView";
-import type { ItemInDB } from "@/components/Vault/define";
+import type { ItemInDB } from "@/components/Features/Vault/define";
 import { Input } from "@/components/UI/Input";
 
 interface FormItem extends FormModel, ItemInDB {}

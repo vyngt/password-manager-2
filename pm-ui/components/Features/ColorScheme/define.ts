@@ -1,4 +1,4 @@
-import type { DataModel } from "../UI/TreeView/define";
+import type { DataModel } from "../../UI/TreeView/define";
 
 interface ColorSchemeBase {
   primary: string;
