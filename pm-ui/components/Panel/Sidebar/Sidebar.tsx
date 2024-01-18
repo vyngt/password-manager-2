@@ -1,27 +1,38 @@
-import type { ISidebarItem } from "./items";
-import { SidebarManager } from "./items";
-import { Item } from "./Item";
-import { List } from "@/components/MaterialTailwind";
+"use client";
 
-const SidebarItem = ({ item }: { item: ISidebarItem }) => {
-  if (item.type == "action") return <Item item={item} />;
-  else return <></>;
-};
+import Link from "next/link";
+import { items } from "./items";
+import { SidebarWrapper } from "@/components/UI/Sidebar";
+import { usePathname } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Tooltip } from "@/components/MaterialTailwind";
 
-export function Sidebar({
-  className,
-  ...rest
-}: React.HTMLAttributes<HTMLDivElement>) {
+import "./Sidebar.css";
+
+export const Wrapper = SidebarWrapper(items);
+export const Sidebar = Wrapper(({ item }) => {
+  const pathname = usePathname();
+  const selected = () => {
+    const reg = new RegExp(`^${item.href}.*`);
+    return reg.test(pathname);
+  };
+
   return (
-    <div
-      className={`h-full overflow-x-scroll border-r border-r-secondary bg-secondary/10 text-foreground shadow-xl ${className}`}
-      {...rest}
+    <Tooltip
+      className="panel--item-tooltip-arrow panel--item-tooltip panel--item-tooltip-transform bg-background text-foreground"
+      content={<div className="relative z-50">{item.name}</div>}
+      placement="right"
     >
-      <List className="min-w-0 gap-0 p-0">
-        {SidebarManager.all().map((e) => (
-          <SidebarItem key={e.id} item={e} />
-        ))}
-      </List>
-    </div>
+      <Link
+        className={`w-full p-5 ${
+          selected() ? "panel--item-selected" : "panel--item"
+        }`}
+        href={item.href}
+      >
+        <div className="flex justify-center">
+          <FontAwesomeIcon className="h-full w-full grow" icon={item.icon} />
+        </div>
+      </Link>
+    </Tooltip>
   );
-}
+});

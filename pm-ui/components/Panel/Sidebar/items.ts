@@ -7,26 +7,16 @@ import {
   faVault,
 } from "@fortawesome/free-solid-svg-icons";
 
-export interface ISidebarAction {
-  type: "action";
-  id: string;
+import type { SidebarItem } from "@/components/UI/Sidebar/define";
+
+interface Item extends SidebarItem {
   name: string;
   icon: IconDefinition;
   href: string;
-  sequence: number;
 }
 
-export type ISidebarItem = ISidebarAction;
-
-export const SidebarManager = {
-  all: () => {
-    return registry.sort((a, b) => a.sequence - b.sequence);
-  },
-};
-
-export const registry: ISidebarItem[] = [
+export const items: Array<Item> = [
   {
-    type: "action",
     id: "vault",
     name: "Vault",
     icon: faVault,
@@ -34,7 +24,6 @@ export const registry: ISidebarItem[] = [
     sequence: 1,
   },
   {
-    type: "action",
     id: "backup",
     name: "Backup",
     icon: faDownload,
@@ -42,7 +31,6 @@ export const registry: ISidebarItem[] = [
     sequence: 2,
   },
   {
-    type: "action",
     id: "password_generator",
     name: "Password Generator",
     icon: faUnlockKeyhole,
@@ -50,7 +38,6 @@ export const registry: ISidebarItem[] = [
     sequence: 3,
   },
   {
-    type: "action",
     id: "color-scheme",
     name: "Color Scheme",
     icon: faPalette,
@@ -58,7 +45,6 @@ export const registry: ISidebarItem[] = [
     sequence: 4,
   },
   {
-    type: "action",
     id: "manage",
     name: "Manage",
     icon: faGear,
