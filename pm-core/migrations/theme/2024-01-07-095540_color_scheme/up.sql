@@ -48,7 +48,7 @@ INSERT INTO color_scheme (
 VALUES (
         2,
         'Crimson',
-        '0 123 199',
+        '238 27 27',
         '214 136 215',
         '200 30 177',
         '244 37 99',
@@ -77,6 +77,28 @@ VALUES (
         '187 158 17',
         '146 176 150',
         '23 64 31'
+    );
+INSERT INTO color_scheme (
+        id,
+        `name`,
+        `primary`,
+        `secondary`,
+        success,
+        danger,
+        warning,
+        foreground,
+        background
+    )
+VALUES (
+        4,
+        'Halloween',
+        '233 129 32',
+        '110 215 40',
+        '76 142 205',
+        '171 43 81',
+        '169 178 42',
+        '255 255 255',
+        '0 0 0'
     );
 INSERT INTO theme (id, color_scheme_id)
 VALUES (1, 1);

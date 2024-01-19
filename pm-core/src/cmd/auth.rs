@@ -14,7 +14,7 @@ pub fn perform_auth(password: &str, app_db_conn: tauri::State<AppDBConn>) -> boo
 
     let result = run_core_migrations(conn);
     if result {
-        match conn.batch_execute("SELECT * FROM program;") {
+        match conn.batch_execute("SELECT * FROM it_work;") {
             Ok(_) => true,
             Err(_) => false,
         }

@@ -154,10 +154,10 @@ export function PasswordGenerator() {
           </div>
         </form>
       </div>
-      <hr className="w-full border-secondary" />
+      <hr className="w-full border-secondary/40" />
       {password && (
         <div className="mt-6 flex flex-col items-center rounded-lg">
-          <div className="overflow-clip">
+          <div className="app-none-scrollbar flex w-4/5 items-center justify-center overflow-x-scroll text-pretty">
             <Typography className="text-secondary">{password}</Typography>
           </div>
         </div>
