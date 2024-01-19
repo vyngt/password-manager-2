@@ -39,8 +39,8 @@
 }
 
 .app--ui--label-primary {
-  @apply app--ui--label text-primary/50 before:border-primary/20 
-    after:border-primary/20 
+  @apply app--ui--label text-primary/50 before:border-primary/50 
+    after:border-primary/50 
     peer-placeholder-shown:text-primary/50 
     peer-focus:text-primary 
     peer-focus:before:border-primary 
@@ -56,8 +56,8 @@
 }
 
 .app--ui--label-secondary {
-  @apply app--ui--label text-secondary/50 before:border-secondary/20 
-    after:border-secondary/20 
+  @apply app--ui--label text-secondary/50 before:border-secondary/50 
+    after:border-secondary/50 
     peer-placeholder-shown:text-secondary/50 
     peer-focus:text-secondary 
     peer-focus:before:border-secondary 

@@ -14,7 +14,7 @@ export type FormComponent<T extends FormModel> = ({
 
 export function Form({ children }: { children: React.ReactNode }) {
   return (
-    <form className="m-3 flex flex-col gap-4 rounded-md border border-secondary/60 p-5">
+    <form className="m-3 flex flex-col gap-4 rounded-md border border-secondary/40 bg-secondary/5 p-5">
       {children}
     </form>
   );
