@@ -1,13 +1,7 @@
-# My Password Manager
+# My Cool Password Manager
 
-## Previous version (Python, Qt)
+## Illustrations
 
-`https://github.com/vyngt/password-manager`
-
-## About this version
-
-Just rewrite
-
-- Tech:
-  - [Tauri](https://tauri.app/)
-  - [Next.Js](https://nextjs.org/)
+<img src="./illustrations/master_password.jpg" width="700" height="350">
+<img src="./illustrations/vault.jpg" width="700" height="350">
+<img src="./illustrations/vault_form.jpg" width="700" height="350">
