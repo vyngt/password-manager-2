@@ -1,6 +1,12 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    it_work (id) {
+        id -> Integer,
+    }
+}
+
+diesel::table! {
     item (id) {
         id -> BigInt,
         name -> Text,
@@ -10,11 +16,4 @@ diesel::table! {
     }
 }
 
-diesel::table! {
-    program (id) {
-        id -> Integer,
-        version -> Text,
-    }
-}
-
-diesel::allow_tables_to_appear_in_same_query!(item, program,);
+diesel::allow_tables_to_appear_in_same_query!(it_work, item,);
