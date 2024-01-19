@@ -1,6 +1,6 @@
 "use client";
 
-import "./styles.css";
+import "./Row.css";
 
 export function Row({ children }: { children: React.ReactNode }) {
   return <tr className="app--tree--row">{children}</tr>;

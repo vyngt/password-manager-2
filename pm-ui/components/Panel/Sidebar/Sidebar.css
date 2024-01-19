@@ -3,19 +3,19 @@
 @tailwind utilities;
 
 .panel--item {
-  @apply text-foreground transition-colors hover:bg-primary/30;
+  @apply border-l-[3px] border-l-transparent text-foreground/70 transition-colors hover:text-foreground;
 }
 
-.panel--item-selected {
-  @apply bg-primary/60 text-foreground transition-colors;
+.panel--item.selected {
+  @apply border-l-primary/60 text-foreground;
 }
 
 .panel--item-tooltip {
-  @apply relative z-10 rounded-md border border-secondary;
+  @apply relative z-10 rounded-md border border-secondary/20;
 }
 
 .panel--item-tooltip-arrow::before {
-  @apply absolute -z-0 block h-8 w-4 border border-secondary bg-background;
+  @apply absolute -z-0 block h-8 w-4 border border-secondary/20 bg-background;
   content: "";
 }
 
