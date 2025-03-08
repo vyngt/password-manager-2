@@ -4,7 +4,7 @@ import type { FormModel } from "./models";
 import { createFormReducer } from "./reducer";
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { Form } from "./Form";
 import { FormView } from "./FormView";
 import { Header, BackAction, DeleteAction, SaveAction } from "./Header";

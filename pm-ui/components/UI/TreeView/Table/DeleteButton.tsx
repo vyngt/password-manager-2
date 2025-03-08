@@ -3,7 +3,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { IconButton } from "@/components/MaterialTailwind";
 import { faBan } from "@fortawesome/free-solid-svg-icons";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 
 import type { FilterDataAction, TreeData, DataModel } from "../define";
 import type { TreeState, TreeDispatch } from "../context";

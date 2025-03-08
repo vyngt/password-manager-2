@@ -22,7 +22,7 @@ import {
 import type { TreeData } from "@/components/UI/TreeView/define";
 import type { Item } from "@/components/Features/Vault/define";
 
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { CopyKeyButton } from "@/components/Features/Vault/CopyKeyButton";
 
 export default function VaultView() {

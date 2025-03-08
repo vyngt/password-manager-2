@@ -13,13 +13,27 @@ mod state;
 use crate::cmd::{auth, core, password_generator, theme};
 
 use dotenvy::dotenv;
+use tauri::Manager;
 
 fn main() {
     dotenv().ok();
-    config::init_config();
 
     tauri::Builder::default()
-        .manage(state::AppDBConn::new())
+        .setup(|app| {
+            let home_dir = app.path().home_dir().unwrap();
+            config::init_config(app);
+            app.manage(state::AppDBConn::new(&home_dir));
+            Ok(())
+        })
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             auth::perform_auth,
             auth::rekey_auth,

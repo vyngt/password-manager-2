@@ -2,60 +2,51 @@
   "build": {
     "beforeBuildCommand": "npm --prefix ./pm-ui run build",
     "beforeDevCommand": "npm --prefix ./pm-ui run dev",
-    "devPath": "http://localhost:3000",
-    "distDir": "../pm-ui/out"
+    "frontendDist": "../pm-ui/out",
+    "devUrl": "http://localhost:3000"
   },
-  "package": {
-    "productName": "Password Manager",
-    "version": "2.0.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": true,
-      "dialog": {
-        "open": true,
-        "save": true
-      }
+  "bundle": {
+    "active": true,
+    "category": "Utility",
+    "copyright": "VyNT",
+    "targets": "all",
+    "externalBin": [],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
     },
-    "bundle": {
-      "active": true,
-      "category": "Utility",
-      "copyright": "VyNT",
+    "longDescription": "",
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
+    },
+    "resources": [
+      "./sqlite3.dll"
+    ],
+    "shortDescription": "",
+    "linux": {
       "deb": {
         "depends": []
-      },
-      "externalBin": [],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "app.vynt.password-manager",
-      "longDescription": "",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
-      "resources": ["./sqlite3.dll"],
-      "shortDescription": "",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
       }
-    },
-    "security": {
-      "csp": null
-    },
-    "updater": {
-      "active": false
-    },
+    }
+  },
+  "productName": "Password Manager",
+  "mainBinaryName": "Password Manager",
+  "version": "2.0.0",
+  "identifier": "app.vynt.password-manager",
+  "plugins": {},
+  "app": {
     "windows": [
       {
         "fullscreen": false,
@@ -65,6 +56,9 @@
         "width": 1180,
         "decorations": false
       }
-    ]
+    ],
+    "security": {
+      "csp": null
+    }
   }
 }

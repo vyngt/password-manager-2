@@ -1,7 +1,7 @@
 "use client";
 
-import { invoke } from "@tauri-apps/api/tauri";
-import { save, open } from "@tauri-apps/api/dialog";
+import { invoke } from "@tauri-apps/api/core";
+import { save, open } from "@tauri-apps/plugin-dialog";
 import { useState, useEffect } from "react";
 import { Typography, Button } from "@/components/MaterialTailwind";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

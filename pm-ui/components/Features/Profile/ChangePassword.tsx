@@ -1,6 +1,6 @@
 "use client";
 
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { Input } from "@/components/UI";
 import { Button, Typography } from "@/components/MaterialTailwind";
 import { Section } from "./Section";

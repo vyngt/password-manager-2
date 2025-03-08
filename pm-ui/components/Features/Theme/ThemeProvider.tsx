@@ -1,6 +1,6 @@
 "use client";
 
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import type { ColorScheme as _ColorScheme } from "../ColorScheme/define";
 import { useReducer, useEffect, useCallback } from "react";
 

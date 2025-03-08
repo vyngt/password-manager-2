@@ -1,6 +1,6 @@
 "use client";
 
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { useThemeState } from "@/components/Features/Theme/hooks";

@@ -2,7 +2,7 @@
 
 import type { PasswordConfiguration } from "./define";
 import { PGReducer } from "./define";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 
 import { useReducer, useState } from "react";
 
