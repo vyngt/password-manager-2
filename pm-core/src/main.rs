@@ -9,6 +9,7 @@ mod crud;
 mod db;
 mod models;
 mod state;
+mod v_vortex;
 
 use crate::cmd::{auth, core, password_generator, theme};
 
