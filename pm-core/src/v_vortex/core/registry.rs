@@ -11,8 +11,22 @@ pub trait ModelFetcher {
     fn fetch_all(&self, conn: &mut SqliteConnection) -> VortexResult<Vec<Box<dyn Model>>>;
 }
 
+///
+/// This trait is used to fetch models from the database.
+///
+/// The fetcher associated with each model is responsible for fetching all the
+/// models from the database.
+///
+///
+/// The models data structure stores the fetcher and database name for each
+/// model. The key is the table name and the value is a tuple containing the
+/// fetcher and database name.
+///
+/// ```
+/// table_name, (fetcher, database_name)
+/// ```
 pub struct Registry {
-    models: HashMap<&'static str, (Box<dyn ModelFetcher>, &'static str)>, // (fetcher, database_name)
+    models: HashMap<&'static str, (Box<dyn ModelFetcher>, &'static str)>,
 }
 
 struct Fetcher<M> {
@@ -36,5 +50,38 @@ where
             .into_iter()
             .map(|m| Box::new(m) as Box<dyn Model>)
             .collect())
+    }
+}
+
+impl Registry {
+    pub fn new() -> Self {
+        Self {
+            models: HashMap::new(),
+        }
+    }
+
+    pub fn register<M>(&mut self)
+    where
+        M: Model + QueryableByName<Sqlite> + 'static + HasTable,
+        M: diesel::Queryable<<M as HasTable>::Table, Sqlite>,
+        <M as HasTable>::Table: diesel::Table
+            + diesel::query_dsl::RunQueryDsl<SqliteConnection>
+            + diesel::query_dsl::LoadQuery<'static, SqliteConnection, M>
+            + 'static,
+    {
+        let table_name = M::table_name();
+        let db_name = M::database_name();
+        let fetcher = Fetcher::<M> {
+            _phantom: std::marker::PhantomData,
+        };
+        self.models.insert(table_name, (Box::new(fetcher), db_name));
+    }
+
+    pub fn get_fetcher(&self, table_name: &str) -> Option<&Box<dyn ModelFetcher>> {
+        self.models.get(table_name).map(|(fetcher, _)| fetcher)
+    }
+
+    pub fn get_db_name(&self, table_name: &str) -> Option<&'static str> {
+        self.models.get(table_name).map(|(_, db_name)| *db_name)
     }
 }
