@@ -4,7 +4,9 @@ use super::core::registry::Registry;
 use super::utils::errors::{VortexError, VortexResult};
 use diesel::associations::HasTable;
 use diesel::prelude::Queryable;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::sqlite::Sqlite;
+use diesel::SqliteConnection;
 
 use std::collections::HashMap;
 
@@ -50,5 +52,17 @@ impl Vortex {
         let conn = &mut pool.get()?;
         let table = <M as HasTable>::table();
         Ok(table.load::<M>(conn)?)
+    }
+
+    pub fn execute_raw(&self, db_name: &str, query: &str) -> VortexResult<usize> {
+        self.db.execute_raw(db_name, query)
+    }
+
+    //
+    pub fn get_connection(
+        &self,
+        db_name: &str,
+    ) -> VortexResult<PooledConnection<ConnectionManager<SqliteConnection>>> {
+        self.db.get_connection(db_name)
     }
 }
