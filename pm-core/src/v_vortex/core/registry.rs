@@ -1,5 +1,5 @@
-use diesel::associations::HasTable;
 use diesel::prelude::*;
+use diesel::{associations::HasTable, sqlite::Sqlite};
 
 use std::collections::HashMap;
 
@@ -35,6 +35,8 @@ struct Fetcher<M> {
 impl<M> ModelFetcher for Fetcher<M>
 where
     M: VortexModel,
+    M: HasTable,
+    M: Queryable<<M as HasTable>::Table, Sqlite>,
     <M as HasTable>::Table:
         diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
 {
@@ -59,6 +61,8 @@ impl Registry {
     pub fn register<M>(&mut self)
     where
         M: VortexModel,
+        M: HasTable,
+        M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:
             diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
     {

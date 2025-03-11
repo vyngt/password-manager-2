@@ -1,7 +1,16 @@
 use crate::db::schema::theme::color_scheme;
+use crate::v_vortex::core::model::{Model, QueryableModel, SerializeModel, VortexModel};
 use diesel::prelude::*;
 
-#[derive(serde::Serialize, serde::Deserialize, Queryable, Selectable, PartialEq, AsChangeset)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Queryable,
+    QueryableByName,
+    Selectable,
+    PartialEq,
+    AsChangeset,
+)]
 #[diesel(table_name = color_scheme)]
 pub struct ColorScheme {
     pub id: i64,
@@ -14,6 +23,19 @@ pub struct ColorScheme {
     pub foreground: String,
     pub background: String,
 }
+
+impl Model for ColorScheme {
+    fn table_name() -> &'static str {
+        "color_scheme"
+    }
+
+    fn database_name() -> &'static str {
+        "theme"
+    }
+}
+impl SerializeModel for ColorScheme {}
+impl QueryableModel for ColorScheme {}
+impl VortexModel for ColorScheme {}
 
 #[derive(serde::Serialize, Queryable, Selectable, PartialEq)]
 #[diesel(table_name = color_scheme)]

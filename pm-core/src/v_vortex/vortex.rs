@@ -3,6 +3,8 @@ use super::core::model::VortexModel;
 use super::core::registry::Registry;
 use super::utils::errors::{VortexError, VortexResult};
 use diesel::associations::HasTable;
+use diesel::prelude::Queryable;
+use diesel::sqlite::Sqlite;
 
 use std::collections::HashMap;
 
@@ -23,6 +25,8 @@ impl Vortex {
     pub fn register<M>(&mut self)
     where
         M: VortexModel,
+        M: HasTable,
+        M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:
             diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
     {
@@ -32,6 +36,8 @@ impl Vortex {
     pub fn fetch_all<M>(&self) -> VortexResult<Vec<M>>
     where
         M: VortexModel,
+        M: HasTable,
+        M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:
             diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
     {

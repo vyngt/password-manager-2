@@ -23,8 +23,4 @@ pub trait Model: 'static {
 
 pub trait SerializeModel: Model + Serialize + Deserialize<'static> {}
 pub trait QueryableModel: Model + QueryableByName<Sqlite> {}
-
-pub trait VortexModel:
-    Model + QueryableByName<Sqlite> + Queryable<<Self as HasTable>::Table, Sqlite> + HasTable + 'static
-{
-}
+pub trait VortexModel: Model + QueryableByName<Sqlite> + 'static {}

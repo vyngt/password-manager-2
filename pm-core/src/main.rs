@@ -12,6 +12,7 @@ mod state;
 mod v_vortex;
 
 use crate::cmd::{auth, core, password_generator, theme};
+use v_vortex::vortex::Vortex;
 
 use dotenvy::dotenv;
 use tauri::Manager;
