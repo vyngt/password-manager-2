@@ -5,12 +5,10 @@ use diesel::sqlite::Sqlite;
 use std::collections::HashMap;
 
 use super::model::Model;
+use crate::v_vortex::utils::errors::VortexResult;
 
 pub trait ModelFetcher {
-    fn fetch_all(
-        &self,
-        conn: &mut SqliteConnection,
-    ) -> Result<Vec<Box<dyn Model>>, diesel::result::Error>;
+    fn fetch_all(&self, conn: &mut SqliteConnection) -> VortexResult<Vec<Box<dyn Model>>>;
 }
 
 pub struct Registry {
@@ -30,10 +28,7 @@ where
         + diesel::query_dsl::LoadQuery<'static, SqliteConnection, M>
         + 'static,
 {
-    fn fetch_all(
-        &self,
-        conn: &mut SqliteConnection,
-    ) -> Result<Vec<Box<dyn Model>>, diesel::result::Error> {
+    fn fetch_all(&self, conn: &mut SqliteConnection) -> VortexResult<Vec<Box<dyn Model>>> {
         use diesel::RunQueryDsl;
         let table = <M as HasTable>::table();
         let results = table.load::<M>(conn)?;
