@@ -1,5 +1,7 @@
+use diesel::associations::HasTable;
 use diesel::sqlite::Sqlite;
-use diesel::QueryableByName;
+
+use diesel::{Queryable, QueryableByName};
 use serde::{Deserialize, Serialize};
 
 pub trait Model: 'static {
@@ -21,3 +23,8 @@ pub trait Model: 'static {
 
 pub trait SerializeModel: Model + Serialize + Deserialize<'static> {}
 pub trait QueryableModel: Model + QueryableByName<Sqlite> {}
+
+pub trait VortexModel:
+    Model + QueryableByName<Sqlite> + Queryable<<Self as HasTable>::Table, Sqlite> + HasTable + 'static
+{
+}

@@ -1,10 +1,9 @@
 use diesel::associations::HasTable;
 use diesel::prelude::*;
-use diesel::sqlite::Sqlite;
 
 use std::collections::HashMap;
 
-use super::model::Model;
+use super::model::{Model, VortexModel};
 use crate::v_vortex::utils::errors::VortexResult;
 
 pub trait ModelFetcher {
@@ -35,12 +34,9 @@ struct Fetcher<M> {
 
 impl<M> ModelFetcher for Fetcher<M>
 where
-    M: Model + QueryableByName<Sqlite> + 'static + HasTable,
-    M: diesel::Queryable<<M as HasTable>::Table, Sqlite>,
-    <M as HasTable>::Table: diesel::Table
-        + diesel::query_dsl::RunQueryDsl<SqliteConnection>
-        + diesel::query_dsl::LoadQuery<'static, SqliteConnection, M>
-        + 'static,
+    M: VortexModel,
+    <M as HasTable>::Table:
+        diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
 {
     fn fetch_all(&self, conn: &mut SqliteConnection) -> VortexResult<Vec<Box<dyn Model>>> {
         use diesel::RunQueryDsl;
@@ -62,12 +58,9 @@ impl Registry {
 
     pub fn register<M>(&mut self)
     where
-        M: Model + QueryableByName<Sqlite> + 'static + HasTable,
-        M: diesel::Queryable<<M as HasTable>::Table, Sqlite>,
-        <M as HasTable>::Table: diesel::Table
-            + diesel::query_dsl::RunQueryDsl<SqliteConnection>
-            + diesel::query_dsl::LoadQuery<'static, SqliteConnection, M>
-            + 'static,
+        M: VortexModel,
+        <M as HasTable>::Table:
+            diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
     {
         let table_name = M::table_name();
         let db_name = M::database_name();
