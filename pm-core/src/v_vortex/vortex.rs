@@ -1,4 +1,4 @@
-use super::core::database::Database;
+use super::core::database::{ConnectionConfig, Database};
 use super::core::model::VortexModel;
 use super::core::registry::Registry;
 use super::utils::errors::{VortexError, VortexResult};
@@ -17,11 +17,11 @@ pub struct Vortex {
 }
 
 impl Vortex {
-    pub fn new(config: HashMap<String, String>) -> Self {
-        Self {
+    pub fn new(config: HashMap<String, ConnectionConfig>) -> VortexResult<Self> {
+        Ok(Self {
             registry: Registry::new(),
-            db: Database::new(config),
-        }
+            db: Database::new(config)?,
+        })
     }
 
     pub fn register<M>(&mut self)
@@ -64,5 +64,12 @@ impl Vortex {
         db_name: &str,
     ) -> VortexResult<PooledConnection<ConnectionManager<SqliteConnection>>> {
         self.db.get_connection(db_name)
+    }
+
+    pub fn with_connection<F, T>(&self, db_name: &str, f: F) -> VortexResult<T>
+    where
+        F: FnOnce(&mut SqliteConnection) -> VortexResult<T>,
+    {
+        self.db.with_connection(db_name, f)
     }
 }
