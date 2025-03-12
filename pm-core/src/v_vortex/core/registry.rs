@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use super::model::{Model, VortexModel};
 use crate::v_vortex::utils::errors::VortexResult;
 
-pub trait ModelFetcher {
+pub trait ModelFetcher: Send + 'static {
     fn fetch_all(&self, conn: &mut SqliteConnection) -> VortexResult<Vec<Box<dyn Model>>>;
 }
 
@@ -34,7 +34,7 @@ struct Fetcher<M> {
 
 impl<M> ModelFetcher for Fetcher<M>
 where
-    M: VortexModel,
+    M: VortexModel + Send + 'static,
     M: HasTable,
     M: Queryable<<M as HasTable>::Table, Sqlite>,
     <M as HasTable>::Table:
@@ -60,7 +60,7 @@ impl Registry {
 
     pub fn register<M>(&mut self)
     where
-        M: VortexModel,
+        M: VortexModel + Send + 'static,
         M: HasTable,
         M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:

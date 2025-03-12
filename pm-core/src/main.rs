@@ -12,7 +12,6 @@ mod state;
 mod v_vortex;
 
 use crate::cmd::{auth, core, password_generator, theme};
-use v_vortex::vortex::Vortex;
 
 use dotenvy::dotenv;
 use tauri::Manager;
@@ -25,6 +24,9 @@ fn main() {
             let home_dir = app.path().home_dir().unwrap();
             config::init_config(app);
             app.manage(state::AppDBConn::new(&home_dir));
+            app.manage(state::AppVortexState::new(&home_dir));
+            db::run_unencrypt_migrations(app);
+
             Ok(())
         })
         .plugin(tauri_plugin_os::init())

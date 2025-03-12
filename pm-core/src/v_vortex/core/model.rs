@@ -4,7 +4,7 @@ use diesel::sqlite::Sqlite;
 use diesel::{Queryable, QueryableByName};
 use serde::{Deserialize, Serialize};
 
-pub trait Model: 'static {
+pub trait Model: Send + 'static {
     fn table_name() -> &'static str
     where
         Self: Sized;

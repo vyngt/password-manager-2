@@ -26,7 +26,7 @@ impl Vortex {
 
     pub fn register<M>(&mut self)
     where
-        M: VortexModel,
+        M: VortexModel + Send + 'static,
         M: HasTable,
         M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:
@@ -37,7 +37,7 @@ impl Vortex {
 
     pub fn fetch_all<M>(&self) -> VortexResult<Vec<M>>
     where
-        M: VortexModel,
+        M: VortexModel + Send + 'static,
         M: HasTable,
         M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:

@@ -1,8 +1,12 @@
+use super::state::AppVortexState;
+use super::v_vortex::core::database::ConnectionConfig;
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use diesel::SqliteConnection;
+use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
+use tauri::Manager;
 
 pub mod schema;
 
@@ -61,4 +65,40 @@ pub fn establish_theme_connection(home_dir: &PathBuf) -> SqliteConnection {
     conn.run_pending_migrations(THEME_MIGRATIONS)
         .expect("Something terrible happen: Theme Migrations");
     conn
+}
+
+pub fn initialize_db_connections_config(home_dir: &PathBuf) -> HashMap<String, ConnectionConfig> {
+    let mut conn_map = HashMap::new();
+    conn_map.insert(
+        "core".to_string(),
+        ConnectionConfig::Single(assemble_db_url(
+            home_dir,
+            config::CORE_DATA,
+            "./local/core_local.db",
+        )),
+    );
+    conn_map.insert(
+        "theme".to_string(),
+        ConnectionConfig::Single(assemble_db_url(
+            home_dir,
+            config::THEME_DATA,
+            "./local/theme_local.db",
+        )),
+    );
+
+    conn_map
+}
+
+pub fn run_unencrypt_migrations(app: &mut tauri::App) {
+    let state = app.state::<AppVortexState>();
+    let vortex = &state.0.lock().unwrap().vortex;
+    let _ = vortex.with_connection("theme", |conn| {
+        conn.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
+        conn.run_pending_migrations(THEME_MIGRATIONS)
+            .expect("Something terrible happen: Theme Migrations");
+
+        return Ok(());
+    });
+
+    return ();
 }
