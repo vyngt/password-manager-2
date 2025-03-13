@@ -23,8 +23,8 @@ fn main() {
         .setup(|app| {
             let home_dir = app.path().home_dir().unwrap();
             config::init_config(app);
-            app.manage(state::AppDBConn::new(&home_dir));
-            app.manage(state::AppVortexState::new(&home_dir));
+
+            app.manage(state::AppVortex::new(&home_dir));
             db::run_unencrypt_migrations(app);
 
             Ok(())

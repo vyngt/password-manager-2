@@ -1,7 +1,6 @@
-use super::state::AppVortexState;
+use super::state::AppVortex;
 use super::v_vortex::core::database::ConnectionConfig;
 use diesel::connection::SimpleConnection;
-use diesel::prelude::*;
 use diesel::SqliteConnection;
 use std::collections::HashMap;
 use std::env;
@@ -50,23 +49,6 @@ pub fn run_core_migrations(conn: &mut SqliteConnection) -> bool {
     }
 }
 
-pub fn establish_core_connection(home_dir: &PathBuf) -> SqliteConnection {
-    let db_url = assemble_db_url(home_dir, config::CORE_DATA, "./local/core_local.db");
-    let mut conn =
-        SqliteConnection::establish(&db_url).expect(&format!("Error connecting to {}", db_url));
-    conn.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
-    conn
-}
-
-pub fn establish_theme_connection(home_dir: &PathBuf) -> SqliteConnection {
-    let db_url = assemble_db_url(home_dir, config::THEME_DATA, "./local/theme_local.db");
-    let mut conn = SqliteConnection::establish(&db_url).expect("Format connection error");
-    conn.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
-    conn.run_pending_migrations(THEME_MIGRATIONS)
-        .expect("Something terrible happen: Theme Migrations");
-    conn
-}
-
 pub fn initialize_db_connections_config(home_dir: &PathBuf) -> HashMap<String, ConnectionConfig> {
     let mut conn_map = HashMap::new();
     conn_map.insert(
@@ -90,7 +72,7 @@ pub fn initialize_db_connections_config(home_dir: &PathBuf) -> HashMap<String, C
 }
 
 pub fn run_unencrypt_migrations(app: &mut tauri::App) {
-    let state = app.state::<AppVortexState>();
+    let state = app.state::<AppVortex>();
     let vortex = &state.0.lock().unwrap().vortex;
     let _ = vortex.with_connection("theme", |conn| {
         conn.batch_execute("PRAGMA foreign_keys = ON;").unwrap();

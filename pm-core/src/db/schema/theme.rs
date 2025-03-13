@@ -2,7 +2,7 @@
 
 diesel::table! {
     color_scheme (id) {
-        id -> Integer,
+        id -> BigInt,
         name -> Text,
         primary -> Text,
         secondary -> Text,
@@ -16,14 +16,11 @@ diesel::table! {
 
 diesel::table! {
     theme (id) {
-        id -> Integer,
-        color_scheme_id -> Integer,
+        id -> BigInt,
+        color_scheme_id -> BigInt,
     }
 }
 
 diesel::joinable!(theme -> color_scheme (color_scheme_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    color_scheme,
-    theme,
-);
+diesel::allow_tables_to_appear_in_same_query!(color_scheme, theme,);

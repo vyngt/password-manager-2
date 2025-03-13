@@ -1,37 +1,38 @@
 use diesel::connection::SimpleConnection;
 
 use crate::db::run_core_migrations;
-use crate::state::AppDBConn;
+use crate::state::AppVortex;
 
 #[tauri::command]
-pub fn perform_auth(password: &str, app_db_conn: tauri::State<AppDBConn>) -> bool {
-    let mut conns = app_db_conn.0.lock().unwrap();
-    let conns = &mut conns;
+pub fn perform_auth(password: &str, state: tauri::State<AppVortex>) -> bool {
+    let vortex = &state.0.lock().unwrap().vortex;
+    match vortex.with_connection("core", |conn| {
+        conn.batch_execute(&format!("PRAGMA key={password};"))
+            .unwrap();
 
-    let conn = &mut conns.core_db;
-    conn.batch_execute(&format!("PRAGMA key={password};"))
-        .unwrap();
-
-    let result = run_core_migrations(conn);
-    if result {
-        match conn.batch_execute("SELECT * FROM it_work;") {
-            Ok(_) => true,
-            Err(_) => false,
+        let result = run_core_migrations(conn);
+        if result {
+            if let Ok(_) = conn.batch_execute("SELECT * FROM it_work;") {
+                return Ok(true);
+            }
         }
-    } else {
-        false
+        Ok(false)
+    }) {
+        Ok(result) => result,
+        Err(_) => false,
     }
 }
 
 #[tauri::command]
-pub fn rekey_auth(password: &str, app_db_conn: tauri::State<AppDBConn>) -> bool {
-    let mut conns = app_db_conn.0.lock().unwrap();
-    let conns = &mut conns;
-
-    let conn = &mut conns.core_db;
-
-    match conn.batch_execute(&format!("PRAGMA rekey={password};")) {
-        Ok(_) => true,
+pub fn rekey_auth(password: &str, state: tauri::State<AppVortex>) -> bool {
+    let vortex = &state.0.lock().unwrap().vortex;
+    match vortex.with_connection("core", |conn| {
+        if let Ok(_) = conn.batch_execute(&format!("PRAGMA rekey={password};")) {
+            return Ok(true);
+        }
+        Ok(false)
+    }) {
+        Ok(result) => result,
         Err(_) => false,
     }
 }
