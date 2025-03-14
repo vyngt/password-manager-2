@@ -1,10 +1,9 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faGear,
-  faPalette,
   faUnlockKeyhole,
-  faDownload,
   faVault,
+  faFlask,
 } from "@fortawesome/free-solid-svg-icons";
 
 import type { SidebarItem } from "@/components/UI/Sidebar/define";
@@ -36,5 +35,12 @@ export const items: Array<Item> = [
     icon: faGear,
     href: "/main/manage",
     sequence: 11,
+  },
+  {
+    id: "experiment",
+    name: "Experiment",
+    icon: faFlask,
+    href: "/main/experiment",
+    sequence: 12,
   },
 ];
