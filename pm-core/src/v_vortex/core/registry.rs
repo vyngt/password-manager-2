@@ -8,6 +8,12 @@ use crate::v_vortex::utils::errors::VortexResult;
 
 pub trait ModelFetcher: Send + 'static {
     fn fetch_all(&self, conn: &mut SqliteConnection) -> VortexResult<Vec<Box<dyn Model>>>;
+    fn fetch_paginated(
+        &self,
+        conn: &mut SqliteConnection,
+        limit: i64,
+        offset: i64,
+    ) -> VortexResult<Vec<Box<dyn Model>>>;
 }
 
 ///
@@ -39,11 +45,32 @@ where
     M: Queryable<<M as HasTable>::Table, Sqlite>,
     <M as HasTable>::Table:
         diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
+        <M as HasTable>::Table: diesel::query_dsl::QueryDsl,
+        <M as HasTable>::Table: diesel::query_dsl::methods::LimitDsl,
+        <<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output: diesel::query_dsl::methods::OffsetDsl,
+        <<<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output as diesel::query_dsl::methods::OffsetDsl>::Output:
+            diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
 {
     fn fetch_all(&self, conn: &mut SqliteConnection) -> VortexResult<Vec<Box<dyn Model>>> {
         use diesel::RunQueryDsl;
         let table = <M as HasTable>::table();
         let results = table.load::<M>(conn)?;
+        Ok(results
+            .into_iter()
+            .map(|m| Box::new(m) as Box<dyn Model>)
+            .collect())
+    }
+
+    fn fetch_paginated(
+        &self,
+        conn: &mut SqliteConnection,
+        limit: i64,
+        offset: i64,
+    ) -> VortexResult<Vec<Box<dyn Model>>> {
+        use diesel::query_dsl::methods::OffsetDsl;
+
+        let table = <M as HasTable>::table();
+        let results = table.limit(limit).offset(offset).load::<M>(conn)?;
         Ok(results
             .into_iter()
             .map(|m| Box::new(m) as Box<dyn Model>)
@@ -64,6 +91,11 @@ impl Registry {
         M: HasTable,
         M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:
+        diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
+        <M as HasTable>::Table: diesel::query_dsl::QueryDsl,
+        <M as HasTable>::Table: diesel::query_dsl::methods::LimitDsl,
+        <<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output: diesel::query_dsl::methods::OffsetDsl,
+        <<<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output as diesel::query_dsl::methods::OffsetDsl>::Output:
             diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
     {
         let table_name = M::table_name();

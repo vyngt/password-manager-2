@@ -30,6 +30,11 @@ impl Vortex {
         M: HasTable,
         M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:
+        diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
+        <M as HasTable>::Table: diesel::query_dsl::QueryDsl,
+        <M as HasTable>::Table: diesel::query_dsl::methods::LimitDsl,
+        <<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output: diesel::query_dsl::methods::OffsetDsl,
+        <<<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output as diesel::query_dsl::methods::OffsetDsl>::Output:
             diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
     {
         self.registry.register::<M>();
@@ -41,6 +46,11 @@ impl Vortex {
         M: HasTable,
         M: Queryable<<M as HasTable>::Table, Sqlite>,
         <M as HasTable>::Table:
+        diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
+        <M as HasTable>::Table: diesel::query_dsl::QueryDsl,
+        <M as HasTable>::Table: diesel::query_dsl::methods::LimitDsl,
+        <<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output: diesel::query_dsl::methods::OffsetDsl,
+        <<<M as HasTable>::Table as diesel::query_dsl::methods::LimitDsl>::Output as diesel::query_dsl::methods::OffsetDsl>::Output:
             diesel::query_dsl::LoadQuery<'static, diesel::sqlite::SqliteConnection, M>,
     {
         use diesel::RunQueryDsl;
