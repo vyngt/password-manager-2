@@ -1,5 +1,7 @@
 "use client";
 
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
 import {
   faX,
   faWindowMinimize,
@@ -14,7 +16,7 @@ import favicon from "@/app/favicon.ico";
 export function WindowTitleBar() {
   const getAppWindow = useCallback(async () => {
     if (typeof window == "undefined") return;
-    return (await import("@tauri-apps/api/window")).appWindow;
+    return getCurrentWindow();
   }, []);
 
   return (
