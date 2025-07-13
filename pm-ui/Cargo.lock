@@ -520,6 +520,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "icondata_core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c97be924215abd5e630d84e95a47c710138a6559b4c55039f4f33aa897fa859"
+
+[[package]]
 name = "icu_collections"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -748,6 +754,16 @@ dependencies = [
  "serde",
  "syn",
  "walkdir",
+]
+
+[[package]]
+name = "leptos_icons"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2b4b2336bb146d3436c72ed885ac17c96164c54e53e8120137e722bf27d99ab"
+dependencies = [
+ "icondata_core",
+ "leptos",
 ]
 
 [[package]]
@@ -1014,6 +1030,7 @@ name = "pm-ui"
 version = "0.1.0"
 dependencies = [
  "leptos",
+ "leptos_icons",
  "leptos_router",
 ]
 
