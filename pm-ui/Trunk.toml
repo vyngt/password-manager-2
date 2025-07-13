@@ -6,3 +6,6 @@ dist = "dist"
 port = 1420
 open = false
 ws_protocol = "ws"
+
+[tools]
+tailwindcss = "4.1.11"
