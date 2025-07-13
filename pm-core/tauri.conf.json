@@ -1,9 +1,9 @@
 {
   "build": {
-    "beforeBuildCommand": "npm --prefix ./pm-ui run build",
-    "beforeDevCommand": "npm --prefix ./pm-ui run dev",
-    "frontendDist": "../pm-ui/out",
-    "devUrl": "http://localhost:3000"
+    "beforeBuildCommand": "trunk build --config ${CARGO_MANIFEST_DIR}/../pm-ui/Trunk.toml --release",
+    "beforeDevCommand": "trunk serve --config ${CARGO_MANIFEST_DIR}/../pm-ui/Trunk.toml",
+    "frontendDist": "../pm-ui/dist",
+    "devUrl": "http://localhost:1420"
   },
   "bundle": {
     "active": true,
@@ -31,9 +31,7 @@
       "providerShortName": null,
       "signingIdentity": null
     },
-    "resources": [
-      "./sqlite3.dll"
-    ],
+    "resources": ["./sqlite3.dll"],
     "shortDescription": "",
     "linux": {
       "deb": {
@@ -47,6 +45,7 @@
   "identifier": "app.vynt.password-manager",
   "plugins": {},
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "fullscreen": false,
