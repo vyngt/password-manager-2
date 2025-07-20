@@ -15,3 +15,14 @@
   --color-danger: rgb(244 37 99);
   --color-warning: rgb(224 193 36);
 }
+
+@layer components {
+  .btn {
+    border-radius: calc(infinity * 1px);
+    padding-inline: --spacing(5);
+    padding-block: --spacing(2);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: var(--shadow-md);
+    color: var(--color-foreground);
+  }
+}

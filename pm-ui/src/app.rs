@@ -1,3 +1,5 @@
+use crate::components::button::Button;
+use crate::constants::Color;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
@@ -17,9 +19,38 @@ pub fn Home() -> impl IntoView {
     let (value, set_value) = signal(0);
 
     view! {
-        <div class="bg-background">
+        <div class="pm-button:bg-amber-500">
             <p class="text-foreground">Hello world</p>
         </div>
+        <Button
+            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+        >
+            Hello world 1
+        </Button>
+        <Button
+            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            color=Color::Secondary
+        >
+            "Hello world 2"
+        </Button>
+        <Button
+            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            color=Color::Success
+        >
+            "Hello world 3"
+        </Button>
+        <Button
+            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            color=Color::Danger
+        >
+            "Hello world 4"
+        </Button>
+        <Button
+            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            color=Color::Warning
+        >
+            "Hello world 5"
+        </Button>
         <div class="bg-gradient-to-tl from-blue-800 to-blue-500 text-white font-mono flex flex-col min-h-screen">
             <div class="flex flex-row-reverse flex-wrap m-auto">
                 <button
