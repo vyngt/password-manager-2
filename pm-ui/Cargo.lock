@@ -1032,6 +1032,7 @@ dependencies = [
  "leptos",
  "leptos_icons",
  "leptos_router",
+ "web-sys",
 ]
 
 [[package]]

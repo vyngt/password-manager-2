@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@import "./button.css";
+
 @theme {
   /* Color */
   /* App text and background */
@@ -14,15 +16,4 @@
   --color-success: rgb(30 200 135);
   --color-danger: rgb(244 37 99);
   --color-warning: rgb(224 193 36);
-}
-
-@layer components {
-  .btn {
-    border-radius: calc(infinity * 1px);
-    padding-inline: --spacing(5);
-    padding-block: --spacing(2);
-    font-weight: var(--font-weight-semibold);
-    box-shadow: var(--shadow-md);
-    color: var(--color-foreground);
-  }
 }

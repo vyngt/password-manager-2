@@ -1,0 +1,32 @@
+@layer components {
+  /* Button */
+  .btn {
+    padding-inline: --spacing(5);
+    padding-block: --spacing(2);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: var(--shadow-md);
+    color: var(--color-foreground);
+    cursor: pointer;
+
+    &.btn-ripple {
+      position: relative;
+      overflow: hidden;
+    }
+  }
+
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple-animation 600ms linear;
+    background-color: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+  }
+
+  @keyframes ripple-animation {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+}

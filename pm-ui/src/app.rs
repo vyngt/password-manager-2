@@ -1,4 +1,5 @@
 use crate::components::button::Button;
+use crate::components::button::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 use crate::constants::Color;
 use leptos::prelude::*;
 use leptos_router::components::*;
@@ -19,23 +20,34 @@ pub fn Home() -> impl IntoView {
     let (value, set_value) = signal(0);
 
     view! {
-        <div class="pm-button:bg-amber-500">
+        <div class="text-base">
             <p class="text-foreground">Hello world</p>
         </div>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            variant=ButtonVariant::Filled
+            color=Color::Primary
+            effect=ButtonEffect::Ripple
+            size=ButtonSize::Small
         >
             Hello world 1
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Color::Secondary
+            effect=ButtonEffect::Ripple
+            variant=ButtonVariant::Outlined
+            shape=ButtonShape::Sharp
         >
             "Hello world 2"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Color::Success
+            effect=ButtonEffect::Ripple
+            size=ButtonSize::Large
+            shape=ButtonShape::Pill
+
         >
             "Hello world 3"
         </Button>

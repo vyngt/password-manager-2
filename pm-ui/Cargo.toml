@@ -7,3 +7,4 @@ edition = "2024"
 leptos = { version = "0.8.3", features = ["csr"] }
 leptos_icons = "0.6.1"
 leptos_router = "0.8.3"
+web-sys = { version = "0.3.77", features = ["HtmlElement", "Element", "Window", "Document", "DomRect", "MouseEvent"] }
