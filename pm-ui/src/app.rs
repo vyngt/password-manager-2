@@ -1,39 +1,11 @@
 use crate::components::button::Button;
 use crate::components::button::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
-use crate::constants::Color;
+use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use crate::types::color::RgbColor;
-use crate::utils::color::get_css_var_color;
-use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
 use reactive_stores::Store;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Store, Serialize, Deserialize)]
-pub struct ColorStore {
-    primary: RgbColor,
-    secondary: RgbColor,
-    success: RgbColor,
-    danger: RgbColor,
-    warning: RgbColor,
-    background: RgbColor,
-    foreground: RgbColor,
-}
-
-impl ColorStore {
-    pub fn new() -> Self {
-        Self {
-            primary: get_css_var_color(&Color::Primary),
-            secondary: get_css_var_color(&Color::Secondary),
-            success: get_css_var_color(&Color::Success),
-            danger: get_css_var_color(&Color::Danger),
-            warning: get_css_var_color(&Color::Warning),
-            background: get_css_var_color(&Color::Background),
-            foreground: get_css_var_color(&Color::Foreground),
-        }
-    }
-}
 
 #[component]
 pub fn R1() -> impl IntoView {
@@ -61,7 +33,7 @@ pub fn R2() -> impl IntoView {
 #[component]
 pub fn Home() -> impl IntoView {
     let (value, set_value) = signal(0);
-    let color_store = expect_context::<Store<ColorStore>>();
+    let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
 
     view! {
         <input
@@ -70,7 +42,6 @@ pub fn Home() -> impl IntoView {
                 let value = ev.target().value();
                 let color = RgbColor::from_hex(&value);
                 color_store.primary().set(color);
-
             }
             value=move || color_store.primary().get().to_hex()
         />
