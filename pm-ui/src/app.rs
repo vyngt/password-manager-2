@@ -1,11 +1,14 @@
 use crate::components::button::Button;
 use crate::components::button::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
+use crate::components::input::Input;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use crate::types::color::RgbColor;
+use leptos::ev::Targeted;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
 use reactive_stores::Store;
+use web_sys::{Event, HtmlInputElement};
 
 #[component]
 pub fn R1() -> impl IntoView {
@@ -33,6 +36,7 @@ pub fn R2() -> impl IntoView {
 #[component]
 pub fn Home() -> impl IntoView {
     let (value, set_value) = signal(0);
+    let (text, set_text) = signal(String::new());
     let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
 
     view! {
@@ -46,17 +50,17 @@ pub fn Home() -> impl IntoView {
             value=move || color_store.primary().get().to_hex()
         />
 
-        <input
-        type="color"
-        on:input:target=move |ev| {
-            let value = ev.target().value();
-            let color = RgbColor::from_hex(&value);
-            color_store.secondary().set(color);
+        <Input
+            id="primary"
+            placeholder="Primary"
+            input_type="text"
+            on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {
+                let value = ev.target().value();
+                set_text.set(value);
+            })
+        />
 
-        }
-        value=move || color_store.secondary().get().to_hex()
-    />
-
+        <p class="input">{text}</p>
 
         <Button
             variant=ButtonVariant::Filled

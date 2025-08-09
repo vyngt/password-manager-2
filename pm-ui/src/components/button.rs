@@ -64,12 +64,7 @@ pub fn Button(
     };
 
     view! {
-        <button
-            type="button"
-            class=cls
-            on:click=handle_on_click
-            style=handle_style
-        >
+        <button type="button" class=cls on:click=handle_on_click style=handle_style>
             {children()}
         </button>
     }

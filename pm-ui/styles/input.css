@@ -1,0 +1,5 @@
+@layer components {
+  .input {
+    @apply bg-amber-400;
+  }
+}

@@ -6,12 +6,8 @@ pub fn apply_base() -> &'static str {
 
 pub fn apply_variant(variant: ButtonVariant) -> &'static str {
     match variant {
-        ButtonVariant::Filled => {
-            "bg-[var(--background-color)] text-[var(--text-color)] hover:bg-[var(--background-color)]/80 hover:text-[var(--text-color-80)]"
-        }
-        ButtonVariant::Outlined => {
-            "bg-transparent border border-2 border-[var(--background-color)] text-[var(--background-color)] hover:bg-[var(--background-color)] hover:text-[var(--text-color)]"
-        }
+        ButtonVariant::Filled => "btn-filled",
+        ButtonVariant::Outlined => "btn-outlined",
     }
 }
 

@@ -13,6 +13,17 @@
     background-color: var(--background-color);
     color: var(--text-color);
 
+    &.btn-filled {
+      @apply bg-[var(--background-color)] text-[var(--text-color)];
+      @apply hover:bg-[var(--background-color)]/80 hover:text-[var(--text-color-80)];
+    }
+
+    &.btn-outlined {
+      @apply bg-transparent border-2;
+      @apply border-[var(--background-color)] text-[var(--background-color)];
+      @apply hover:bg-[var(--background-color)] hover:text-[var(--text-color)];
+    }
+
     &.btn-ripple {
       position: relative;
       overflow: hidden;
