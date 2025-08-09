@@ -7,12 +7,50 @@ use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
-use web_sys::wasm_bindgen::JsCast;
-use web_sys::{HtmlElement, window};
+use reactive_stores::Store;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Store, Serialize, Deserialize)]
+pub struct ColorStore {
+    primary: RgbColor,
+    secondary: RgbColor,
+    success: RgbColor,
+    danger: RgbColor,
+    warning: RgbColor,
+    background: RgbColor,
+    foreground: RgbColor,
+}
+
+impl ColorStore {
+    pub fn new() -> Self {
+        Self {
+            primary: get_css_var_color(&Color::Primary),
+            secondary: get_css_var_color(&Color::Secondary),
+            success: get_css_var_color(&Color::Success),
+            danger: get_css_var_color(&Color::Danger),
+            warning: get_css_var_color(&Color::Warning),
+            background: get_css_var_color(&Color::Background),
+            foreground: get_css_var_color(&Color::Foreground),
+        }
+    }
+}
 
 #[component]
 pub fn R1() -> impl IntoView {
-    view! { <h1>"R1"</h1> }
+    let color_store = expect_context::<Store<ColorStore>>();
+
+    view! {
+        <div>
+            <Button
+                variant=ButtonVariant::Filled
+                color=Signal::derive(move || color_store.primary().get())
+                effect=ButtonEffect::Ripple
+                size=ButtonSize::Small
+            >
+                "R1 Context"
+            </Button>
+        </div>
+    }
 }
 
 #[component]
@@ -23,6 +61,7 @@ pub fn R2() -> impl IntoView {
 #[component]
 pub fn Home() -> impl IntoView {
     let (value, set_value) = signal(0);
+    let color_store = expect_context::<Store<ColorStore>>();
 
     view! {
         <input
@@ -30,38 +69,35 @@ pub fn Home() -> impl IntoView {
             on:input:target=move |ev| {
                 let value = ev.target().value();
                 let color = RgbColor::from_hex(&value);
-                if let Some(win) = window() {
-                    if let Some(doc) = win.document() {
-                        if let Some(root) = doc.document_element() {
-                            let html: HtmlElement = root.unchecked_into();
-                            let style = html.style();
-                            let _ = style
-                                .set_property(
-                                    "--color-primary",
-                                    format!("rgb({}, {}, {})", color.r, color.g, color.b).as_str(),
-                                );
-                        }
-                    }
-                }
+                color_store.primary().set(color);
+
             }
+            value=move || color_store.primary().get().to_hex()
         />
+
+        <input
+        type="color"
+        on:input:target=move |ev| {
+            let value = ev.target().value();
+            let color = RgbColor::from_hex(&value);
+            color_store.secondary().set(color);
+
+        }
+        value=move || color_store.secondary().get().to_hex()
+    />
+
+
         <Button
-            on:click=Box::new(move |_| {
-                let color = get_css_var_color(&Color::Primary);
-                let text_color = color.calculate_white_black_text_color(None);
-                log!("Color: {:#?}", color);
-                log!("Text color: {:#?}", text_color);
-            })
             variant=ButtonVariant::Filled
-            color=get_css_var_color(&Color::Primary)
+            color=Signal::derive(move || color_store.primary().get())
             effect=ButtonEffect::Ripple
             size=ButtonSize::Small
         >
-            Hello world 1
+            "Hello world 1"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=get_css_var_color(&Color::Secondary)
+            color=Signal::derive(move || color_store.secondary().get())
             effect=ButtonEffect::Ripple
             variant=ButtonVariant::Outlined
             shape=ButtonShape::Sharp
@@ -70,7 +106,7 @@ pub fn Home() -> impl IntoView {
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=get_css_var_color(&Color::Success)
+            color=Signal::derive(move || color_store.success().get())
             effect=ButtonEffect::Ripple
             size=ButtonSize::Large
             shape=ButtonShape::Pill
@@ -80,26 +116,26 @@ pub fn Home() -> impl IntoView {
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=get_css_var_color(&Color::Danger)
+            color=Signal::derive(move || color_store.danger().get())
         >
             "Hello world 4"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=get_css_var_color(&Color::Warning)
+            color=Signal::derive(move || color_store.warning().get())
         >
             "Hello world 5"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=get_css_var_color(&Color::Background)
+            color=Signal::derive(move || color_store.background().get())
             variant=ButtonVariant::Outlined
         >
             "Hello world 6"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=get_css_var_color(&Color::Foreground)
+            color=Signal::derive(move || color_store.foreground().get())
             variant=ButtonVariant::Outlined
         >
             "Hello world 7"
@@ -129,6 +165,9 @@ pub fn Home() -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
+    let color_store = Store::new(ColorStore::new());
+    provide_context(color_store);
+
     view! {
         <Router>
             <nav>

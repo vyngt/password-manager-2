@@ -12,7 +12,7 @@ use self::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 #[component]
 pub fn Button(
     children: Children,
-    #[prop(attrs, default = RgbColor::new(0, 0, 0))] color: RgbColor,
+    #[prop(into)] color: Signal<RgbColor>,
     #[prop(attrs, default = ButtonEffect::None)] effect: ButtonEffect,
     #[prop(attrs, default = ButtonSize::Medium)] size: ButtonSize,
     #[prop(attrs, default = ButtonVariant::Filled)] variant: ButtonVariant,
@@ -40,28 +40,27 @@ pub fn Button(
         ButtonEffect::None => {}
     };
 
-    let text_color = color.calculate_white_black_text_color(None);
-    let blend_color = color.calculate_white_black_text_color(Some(0.8));
-
-    let bg_color_var = format!(
-        "--background-color: rgb({}, {}, {})",
-        color.r, color.g, color.b
-    );
-    let text_color_var = format!(
-        "--text-color: rgb({}, {}, {})",
-        text_color.r, text_color.g, text_color.b
-    );
-    let text_color_80_var = format!(
-        "--text-color-80: rgb({}, {}, {})",
-        blend_color.r, blend_color.g, blend_color.b
-    );
-
     view! {
         <button
             type="button"
             class=cls
             on:click=handle_on_click
-            style=format!("{};{};{};", bg_color_var, text_color_var, text_color_80_var)
+            style=move || {
+                let c = color.get();
+                let text_color = c.calculate_white_black_text_color(None);
+                let blend_color = c.calculate_white_black_text_color(Some(0.8));
+
+                let bg_color_var = format!("--background-color: rgb({}, {}, {})", c.r, c.g, c.b);
+                let text_color_var = format!(
+                    "--text-color: rgb({}, {}, {})",
+                    text_color.r, text_color.g, text_color.b
+                );
+                let text_color_80_var = format!(
+                    "--text-color-80: rgb({}, {}, {})",
+                    blend_color.r, blend_color.g, blend_color.b
+                );
+                format!("{};{};{};", bg_color_var, text_color_var, text_color_80_var)
+            }
         >
             {children()}
         </button>
