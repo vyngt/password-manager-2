@@ -1,13 +1,41 @@
 use leptos::prelude::*;
 use web_sys::wasm_bindgen::JsCast;
 
-pub fn add_ripple(ev: web_sys::MouseEvent) {
+use crate::types::color::RgbColor;
+
+pub struct RippleColor {
+    pub color: RgbColor,
+    pub alpha: f32,
+}
+
+pub fn add_ripple(ev: web_sys::MouseEvent, color: Option<RippleColor>) {
+    let ripple_color = color.unwrap_or(RippleColor {
+        color: RgbColor::new(255, 255, 255),
+        alpha: 0.6,
+    });
+
     let target = event_target::<web_sys::HtmlElement>(&ev);
     let ripple = web_sys::window()
         .unwrap()
         .document()
         .unwrap()
         .create_element("span")
+        .unwrap();
+
+    ripple
+        .dyn_ref::<web_sys::HtmlElement>()
+        .unwrap()
+        .style()
+        .set_property(
+            "--ripple-color",
+            &format!(
+                "rgba({}, {}, {}, {})",
+                ripple_color.color.r,
+                ripple_color.color.g,
+                ripple_color.color.b,
+                ripple_color.alpha
+            ),
+        )
         .unwrap();
 
     let rect = target.get_bounding_client_rect();

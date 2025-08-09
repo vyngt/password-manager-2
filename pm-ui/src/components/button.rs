@@ -5,7 +5,7 @@ pub mod styles;
 use crate::types::color::RgbColor;
 use leptos::prelude::*;
 
-use self::ripple::add_ripple;
+use self::ripple::{RippleColor, add_ripple};
 
 use self::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 
@@ -36,7 +36,13 @@ pub fn Button(
     .join(" ");
 
     let handle_on_click = move |ev: web_sys::MouseEvent| match &effect {
-        ButtonEffect::Ripple => add_ripple(ev),
+        ButtonEffect::Ripple => add_ripple(
+            ev,
+            Some(RippleColor {
+                alpha: 0.2,
+                color: color.get().calculate_white_black_text_color(None),
+            }),
+        ),
         ButtonEffect::None => {}
     };
 
