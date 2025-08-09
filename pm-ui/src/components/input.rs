@@ -4,8 +4,11 @@ pub mod styles;
 use leptos::{ev::Targeted, prelude::*};
 use web_sys::{Event, HtmlInputElement};
 
+use crate::types::color::RgbColor;
+
 #[component]
 pub fn Input(
+    #[prop(into)] color: Signal<RgbColor>,
     #[prop(attrs, default = "text")] input_type: &'static str,
     #[prop(attrs)] id: &'static str,
     #[prop(attrs)] placeholder: &'static str,
@@ -13,8 +16,29 @@ pub fn Input(
 ) -> impl IntoView {
     let handle_on_input = move |ev: Targeted<Event, HtmlInputElement>| on_input_target.run(ev);
 
+    let handle_style = move || {
+        let c = color.get();
+        let color_var = format!("--color: rgb({}, {}, {})", c.r, c.g, c.b);
+        format!("{};", color_var)
+    };
+
     view! {
-        <input id=id placeholder=placeholder on:input:target=handle_on_input type=input_type />
-        <label for=id />
+        <div class="relative">
+            <input
+                style=handle_style
+                class="peer input"
+                id=id
+                placeholder=" "
+                on:input:target=handle_on_input
+                type=input_type
+            />
+            <label
+                style=handle_style
+                class="input--label before:content[' '] after:content:[' ']"
+                for=id
+            >
+                {placeholder}
+            </label>
+        </div>
     }
 }

@@ -1,5 +1,112 @@
 @layer components {
   .input {
-    @apply bg-amber-400;
+    --color: var(--color-background);
+
+    @apply /* Layout & Sizing */
+    w-full h-full
+    
+    /* Background & Appearance */
+    bg-transparent
+    rounded-[7px]
+    
+    /* Typography */
+    text-[var(--color)] font-sans font-normal text-sm
+    
+    /* Spacing */
+    px-3 py-2.5
+    
+    /* Borders - Default State */
+    border-2 border-[var(--color)]/30 border-t-transparent
+    
+    /* Borders - Placeholder Shown State */
+    placeholder-shown:border-2 placeholder-shown:border-[var(--color)]/50 placeholder-shown:border-t-[var(--color)]/50
+    
+    /* Borders - Focus State */
+    focus:border-2 focus:border-[var(--color)] focus:border-t-transparent
+    
+    /* Placeholder */
+    placeholder:opacity-0 focus:placeholder:opacity-100
+    
+    /* Outline */
+    outline-0 focus:outline-0
+    
+    /* Disabled State */
+    disabled:bg-[var(--color)]/50 disabled:border-0 disabled:cursor-not-allowed
+
+    /* Transitions */
+    duration-300 transition-all;
+  }
+
+  .input--label {
+    --color: var(--color-background);
+
+    @apply /* Layout & Positioning */
+    flex w-full h-full absolute left-0 -top-1.5
+
+    /* Interaction */
+    select-none pointer-events-none
+    
+    /* Text Overflow */
+    !overflow-visible truncate
+    
+    /* Typography - Base */
+    font-normal leading-tight text-[11px]
+    
+    /* Typography - Placeholder Shown State */
+    peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-[var(--color)]
+    
+    /* Typography - Focus State */
+    peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-[var(--color)]
+    
+    /* Typography - Disabled State */
+    peer-disabled:text-transparent peer-disabled:peer-placeholder-shown:text-[var(--color)]
+    
+    /* Default Text Color */
+    text-[var(--color)]
+    
+    /* Before Pseudo Element - Layout */
+    before:block before:box-border before:w-2.5 before:h-1.5 before:mt-[6.5px] before:mr-1
+    
+    /* Before Pseudo Element - Interaction */
+    before:pointer-events-none
+    
+    /* Before Pseudo Element - Borders & Radius */
+    before:rounded-tl-md before:border-t before:border-l before:border-[var(--color)]/30
+    
+    /* Before Pseudo Element - Placeholder Shown State */
+    peer-placeholder-shown:before:border-transparent
+    
+    /* Before Pseudo Element - Focus State */
+    peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:!border-[var(--color)]
+    
+    /* Before Pseudo Element - Disabled State */
+    peer-disabled:before:border-transparent
+    
+    /* Before Pseudo Element - Transitions */
+    before:transition-all
+    
+    /* After Pseudo Element - Layout */
+    after:block after:flex-grow after:box-border after:w-2.5 after:h-1.5 after:mt-[6.5px] after:ml-1
+    
+    /* After Pseudo Element - Interaction */
+    after:pointer-events-none
+    
+    /* After Pseudo Element - Borders & Radius */
+    after:rounded-tr-md after:border-t after:border-r after:border-[var(--color)]/30
+    
+    /* After Pseudo Element - Placeholder Shown State */
+    peer-placeholder-shown:after:border-transparent
+    
+    /* After Pseudo Element - Focus State */
+    peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:!border-[var(--color)]
+    
+    /* After Pseudo Element - Disabled State */
+    peer-disabled:after:border-transparent
+    
+    /* After Pseudo Element - Transitions */
+    after:transition-all
+    
+    /* Transitions */
+    duration-300 transition-all;
   }
 }

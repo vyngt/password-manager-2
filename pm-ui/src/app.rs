@@ -50,26 +50,30 @@ pub fn Home() -> impl IntoView {
             value=move || color_store.primary().get().to_hex()
         />
 
-        <Input
-            id="primary"
-            placeholder="Primary"
-            input_type="text"
-            on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {
-                let value = ev.target().value();
-                set_text.set(value);
-            })
-        />
+        <div class="w-[200px] relative">
+            <Input
+                id="primary"
+                placeholder="Primary"
+                color=Signal::derive(move || color_store.primary().get())
+                input_type="text"
+                on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {
+                    let value = ev.target().value();
+                    set_text.set(value);
+                })
+            />
+            <Button
+                variant=ButtonVariant::Filled
+                color=Signal::derive(move || color_store.primary().get())
+                effect=ButtonEffect::Ripple
+                size=ButtonSize::Small
+                class="absolute right-[3px] top-[3px]"
+            >
+                "Hello world 1"
+            </Button>
+        </div>
 
-        <p class="input">{text}</p>
+        <p>"Text: "{text}</p>
 
-        <Button
-            variant=ButtonVariant::Filled
-            color=Signal::derive(move || color_store.primary().get())
-            effect=ButtonEffect::Ripple
-            size=ButtonSize::Small
-        >
-            "Hello world 1"
-        </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.secondary().get())

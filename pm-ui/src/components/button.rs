@@ -30,8 +30,8 @@ pub fn Button(
         size_cls,
         shape_cls,
         variant_cls,
-        class,
         "transition",
+        class,
     ]
     .join(" ");
 
