@@ -2,6 +2,7 @@ mod app;
 mod components;
 mod constants;
 mod features;
+mod types;
 mod utils;
 
 use leptos::prelude::*;

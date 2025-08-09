@@ -1,9 +1,14 @@
 use crate::components::button::Button;
 use crate::components::button::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 use crate::constants::Color;
+use crate::types::color::RgbColor;
+use crate::utils::color::get_css_var_color;
+use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_router::components::*;
 use leptos_router::path;
+use web_sys::wasm_bindgen::JsCast;
+use web_sys::{HtmlElement, window};
 
 #[component]
 pub fn R1() -> impl IntoView {
@@ -20,13 +25,35 @@ pub fn Home() -> impl IntoView {
     let (value, set_value) = signal(0);
 
     view! {
-        <div class="text-base">
-            <p class="text-foreground">Hello world</p>
-        </div>
+        <input
+            type="color"
+            on:input:target=move |ev| {
+                let value = ev.target().value();
+                let color = RgbColor::from_hex(&value);
+                if let Some(win) = window() {
+                    if let Some(doc) = win.document() {
+                        if let Some(root) = doc.document_element() {
+                            let html: HtmlElement = root.unchecked_into();
+                            let style = html.style();
+                            let _ = style
+                                .set_property(
+                                    "--color-primary",
+                                    format!("rgb({}, {}, {})", color.r, color.g, color.b).as_str(),
+                                );
+                        }
+                    }
+                }
+            }
+        />
         <Button
-            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            on:click=Box::new(move |_| {
+                let color = get_css_var_color(&Color::Primary);
+                let text_color = color.calculate_white_black_text_color(None);
+                log!("Color: {:#?}", color);
+                log!("Text color: {:#?}", text_color);
+            })
             variant=ButtonVariant::Filled
-            color=Color::Primary
+            color=get_css_var_color(&Color::Primary)
             effect=ButtonEffect::Ripple
             size=ButtonSize::Small
         >
@@ -34,7 +61,7 @@ pub fn Home() -> impl IntoView {
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Color::Secondary
+            color=get_css_var_color(&Color::Secondary)
             effect=ButtonEffect::Ripple
             variant=ButtonVariant::Outlined
             shape=ButtonShape::Sharp
@@ -43,25 +70,39 @@ pub fn Home() -> impl IntoView {
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Color::Success
+            color=get_css_var_color(&Color::Success)
             effect=ButtonEffect::Ripple
             size=ButtonSize::Large
             shape=ButtonShape::Pill
-
         >
+
             "Hello world 3"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Color::Danger
+            color=get_css_var_color(&Color::Danger)
         >
             "Hello world 4"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Color::Warning
+            color=get_css_var_color(&Color::Warning)
         >
             "Hello world 5"
+        </Button>
+        <Button
+            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            color=get_css_var_color(&Color::Background)
+            variant=ButtonVariant::Outlined
+        >
+            "Hello world 6"
+        </Button>
+        <Button
+            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+            color=get_css_var_color(&Color::Foreground)
+            variant=ButtonVariant::Outlined
+        >
+            "Hello world 7"
         </Button>
         <div class="bg-gradient-to-tl from-blue-800 to-blue-500 text-white font-mono flex flex-col min-h-screen">
             <div class="flex flex-row-reverse flex-wrap m-auto">

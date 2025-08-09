@@ -2,7 +2,7 @@
 
 @import "./button.css";
 
-@theme {
+@theme static {
   /* Color */
   /* App text and background */
   --color-foreground: rgb(255 255 255);

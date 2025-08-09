@@ -1,12 +1,17 @@
 @layer components {
   /* Button */
   .btn {
+    --background-color: var(--color-background);
+    --text-color: var(--color-foreground);
+    --text-color-80: var(--color-foreground);
+
     padding-inline: --spacing(5);
     padding-block: --spacing(2);
     font-weight: var(--font-weight-semibold);
     box-shadow: var(--shadow-md);
-    color: var(--color-foreground);
     cursor: pointer;
+    background-color: var(--background-color);
+    color: var(--text-color);
 
     &.btn-ripple {
       position: relative;

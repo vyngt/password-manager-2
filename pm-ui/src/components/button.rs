@@ -2,7 +2,7 @@ pub mod base;
 pub mod ripple;
 pub mod styles;
 
-use crate::constants::Color;
+use crate::types::color::RgbColor;
 use leptos::prelude::*;
 
 use self::ripple::add_ripple;
@@ -12,7 +12,7 @@ use self::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 #[component]
 pub fn Button(
     children: Children,
-    #[prop(attrs, default = Color::Primary)] color: Color,
+    #[prop(attrs, default = RgbColor::new(0, 0, 0))] color: RgbColor,
     #[prop(attrs, default = ButtonEffect::None)] effect: ButtonEffect,
     #[prop(attrs, default = ButtonSize::Medium)] size: ButtonSize,
     #[prop(attrs, default = ButtonVariant::Filled)] variant: ButtonVariant,
@@ -22,15 +22,16 @@ pub fn Button(
     let base_cls = styles::apply_base();
     let effect_cls = styles::apply_effect(&effect);
     let size_cls = styles::apply_size(size);
-    let variant_cls = styles::apply_variant(variant, color);
     let shape_cls = styles::apply_shape(shape);
+    let variant_cls = styles::apply_variant(variant);
     let cls = vec![
         base_cls,
         effect_cls,
         size_cls,
-        variant_cls,
         shape_cls,
+        variant_cls,
         class,
+        "transition",
     ]
     .join(" ");
 
@@ -39,9 +40,30 @@ pub fn Button(
         ButtonEffect::None => {}
     };
 
+    let text_color = color.calculate_white_black_text_color(None);
+    let blend_color = color.calculate_white_black_text_color(Some(0.8));
+
+    let bg_color_var = format!(
+        "--background-color: rgb({}, {}, {})",
+        color.r, color.g, color.b
+    );
+    let text_color_var = format!(
+        "--text-color: rgb({}, {}, {})",
+        text_color.r, text_color.g, text_color.b
+    );
+    let text_color_80_var = format!(
+        "--text-color-80: rgb({}, {}, {})",
+        blend_color.r, blend_color.g, blend_color.b
+    );
+
     view! {
-        <button type="button" class=cls on:click=handle_on_click>
-           {children()}
+        <button
+            type="button"
+            class=cls
+            on:click=handle_on_click
+            style=format!("{};{};{};", bg_color_var, text_color_var, text_color_80_var)
+        >
+            {children()}
         </button>
     }
 }
