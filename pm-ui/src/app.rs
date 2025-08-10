@@ -59,20 +59,50 @@ pub fn Home() -> impl IntoView {
             value=move || color_store.primary().get().to_hex()
         />
 
-        <IconButton color=Signal::derive(move || color_store.primary().get())>
-            <Icon icon={i::FaPlusSolid}/>
-        </IconButton>
 
-        <IconButton
-            color=Signal::derive(move || color_store.secondary().get())
-            effect=IconButtonEffect::Ripple
-            variant=IconButtonVariant::Outlined
-            shape=IconButtonShape::Pill
-        >
-            <Icon icon={i::FaPlusSolid}/>
-        </IconButton>
+        <div class="bg-violet-100 flex flex-row gap-2">
+            <IconButton
+                color=Signal::derive(move || color_store.primary().get())
+                size=IconButtonSize::Small
+            >
+                <Icon icon={i::FaPlusSolid}/>
+            </IconButton>
+            <IconButton
+                color=Signal::derive(move || color_store.secondary().get())
+                variant=IconButtonVariant::Outlined
+                size=IconButtonSize::Large
+                shape=IconButtonShape::Pill
+                effect=IconButtonEffect::Ripple
+            >
+                <Icon icon={i::FaPlusSolid}/>
+            </IconButton>
+            <IconButton
+                color=Signal::derive(move || color_store.danger().get())
+                variant=IconButtonVariant::Text
+                effect=IconButtonEffect::Ripple
+                shape=IconButtonShape::Sharp
+            >
+                <Icon icon={i::FaWindowMinimizeSolid}/>
+            </IconButton>
+            <IconButton
+                color=Signal::derive(move || color_store.danger().get())
+                variant=IconButtonVariant::Text
+                effect=IconButtonEffect::Ripple
+                shape=IconButtonShape::Sharp
+            >
+                <Icon icon={i::FaWindowMaximizeSolid}/>
+            </IconButton>
+            <IconButton
+                color=Signal::derive(move || color_store.danger().get())
+                variant=IconButtonVariant::Text
+                effect=IconButtonEffect::Ripple
+                shape=IconButtonShape::Sharp
+            >
+                <Icon icon={i::FaXmarkSolid}/>
+            </IconButton>
+        </div>
 
-        <div class="w-[200px] relative">
+        <div class="w-[500px] relative">
             <Input
                 id="primary"
                 placeholder="Primary"

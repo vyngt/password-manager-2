@@ -12,6 +12,7 @@ pub enum Size {
 pub enum Variant {
     Filled,
     Outlined,
+    Text,
 }
 
 pub enum Shape {

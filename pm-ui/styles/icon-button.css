@@ -7,7 +7,6 @@
     padding-inline: --spacing(2);
     padding-block: --spacing(2);
     font-weight: var(--font-weight-semibold);
-    box-shadow: var(--shadow-md);
     cursor: pointer;
     background-color: var(--background-color);
     color: var(--text-color);
@@ -23,6 +22,11 @@
       @apply bg-transparent border-2;
       @apply border-[var(--background-color)] text-[var(--background-color)];
       @apply hover:bg-[var(--background-color)] hover:text-[var(--text-color)];
+    }
+
+    &.btn-text {
+      @apply bg-transparent;
+      @apply hover:bg-[var(--background-color)]/20;
     }
 
     &.btn-ripple {

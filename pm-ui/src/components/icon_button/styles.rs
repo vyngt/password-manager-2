@@ -8,6 +8,7 @@ pub fn apply_variant(variant: Variant) -> &'static str {
     match variant {
         Variant::Filled => "btn-filled",
         Variant::Outlined => "btn-outlined",
+        Variant::Text => "btn-text",
     }
 }
 
