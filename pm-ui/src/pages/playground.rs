@@ -1,3 +1,4 @@
+use crate::api::tauri::get_current_window;
 use crate::components::button::Button;
 use crate::components::button::variants::{
     Effect as ButtonEffect, Shape as ButtonShape, Size as ButtonSize, Variant as ButtonVariant,
@@ -12,7 +13,9 @@ use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use crate::types::color::RgbColor;
 use icondata as i;
 use leptos::ev::Targeted;
+use leptos::logging::log;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use leptos_router::components::*;
 use reactive_stores::Store;
@@ -59,7 +62,8 @@ pub fn Playground() -> impl IntoView {
         />
 
 
-        <div class="bg-violet-100 flex flex-row gap-2">
+        <div class="bg-violet-100 flex flex-row gap-2"
+            data-tauri-drag-region=true>
             <IconButton
                 color=Signal::derive(move || color_store.primary().get())
                 size=IconButtonSize::Small
@@ -80,6 +84,12 @@ pub fn Playground() -> impl IntoView {
                 variant=IconButtonVariant::Text
                 effect=IconButtonEffect::Ripple
                 shape=IconButtonShape::Sharp
+                on:click=move |_ev| {
+                    spawn_local(async move  {
+                        let app_window = get_current_window();
+                        app_window.minimize().await;
+                    });
+                }
             >
                 <Icon icon={i::FaWindowMinimizeSolid}/>
             </IconButton>
@@ -88,6 +98,17 @@ pub fn Playground() -> impl IntoView {
                 variant=IconButtonVariant::Text
                 effect=IconButtonEffect::Ripple
                 shape=IconButtonShape::Sharp
+                on:click=move |_ev| {
+                    spawn_local(async move  {
+                        let app_window = get_current_window();
+                        let is_maximized = app_window.is_maximized().await;
+                        if is_maximized.as_bool().unwrap_or(false) {
+                            app_window.unmaximize().await;
+                        } else {
+                            app_window.maximize().await;
+                        }
+                    });
+                }
             >
                 <Icon icon={i::FaWindowMaximizeSolid}/>
             </IconButton>
@@ -96,6 +117,12 @@ pub fn Playground() -> impl IntoView {
                 variant=IconButtonVariant::Text
                 effect=IconButtonEffect::Ripple
                 shape=IconButtonShape::Sharp
+                on:click=move |_ev| {
+                    spawn_local(async move  {
+                        let app_window = get_current_window();
+                        app_window.close().await;
+                    });
+                }
             >
                 <Icon icon={i::FaXmarkSolid}/>
             </IconButton>
