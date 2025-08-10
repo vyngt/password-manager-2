@@ -1,11 +1,10 @@
 pub mod base;
-pub mod ripple;
 pub mod styles;
 
 use crate::types::color::RgbColor;
-use leptos::prelude::*;
+use leptos::{logging::log, prelude::*};
 
-use self::ripple::{RippleColor, add_ripple};
+use super::ripple::effect::{RippleColor, add_ripple};
 
 use self::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 
@@ -35,14 +34,13 @@ pub fn Button(
     ]
     .join(" ");
 
+    let ripple_color = Memo::new(move |_| RippleColor {
+        alpha: 0.2,
+        color: color.get().calculate_white_black_text_color(None),
+    });
+
     let handle_on_click = move |ev: web_sys::MouseEvent| match &effect {
-        ButtonEffect::Ripple => add_ripple(
-            ev,
-            Some(RippleColor {
-                alpha: 0.2,
-                color: color.get().calculate_white_black_text_color(None),
-            }),
-        ),
+        ButtonEffect::Ripple => add_ripple(ev, Some(ripple_color.get())),
         ButtonEffect::None => {}
     };
 

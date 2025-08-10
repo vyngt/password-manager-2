@@ -3,6 +3,7 @@ use web_sys::wasm_bindgen::JsCast;
 
 use crate::types::color::RgbColor;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct RippleColor {
     pub color: RgbColor,
     pub alpha: f32,
