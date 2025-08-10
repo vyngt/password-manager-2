@@ -6,16 +6,16 @@ use leptos::prelude::*;
 
 use super::ripple::effect::{RippleColor, add_ripple};
 
-use self::variants::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
+use self::variants::{Effect, Shape, Size, Variant};
 
 #[component]
 pub fn Button(
     children: Children,
     #[prop(into)] color: Signal<RgbColor>,
-    #[prop(attrs, default = ButtonEffect::None)] effect: ButtonEffect,
-    #[prop(attrs, default = ButtonSize::Medium)] size: ButtonSize,
-    #[prop(attrs, default = ButtonVariant::Filled)] variant: ButtonVariant,
-    #[prop(attrs, default = ButtonShape::Rounded)] shape: ButtonShape,
+    #[prop(attrs, default = Effect::None)] effect: Effect,
+    #[prop(attrs, default = Size::Medium)] size: Size,
+    #[prop(attrs, default = Variant::Filled)] variant: Variant,
+    #[prop(attrs, default = Shape::Rounded)] shape: Shape,
     #[prop(attrs, default = "")] class: &'static str,
 ) -> impl IntoView {
     let base_cls = styles::apply_base();
@@ -40,8 +40,8 @@ pub fn Button(
     });
 
     let handle_on_click = move |ev: web_sys::MouseEvent| match &effect {
-        ButtonEffect::Ripple => add_ripple(ev, Some(ripple_color.get())),
-        ButtonEffect::None => {}
+        Effect::Ripple => add_ripple(ev, Some(ripple_color.get())),
+        Effect::None => {}
     };
 
     let handle_style = move || {

@@ -1,0 +1,33 @@
+@layer components {
+  .icon-btn {
+    --background-color: var(--color-background);
+    --text-color: var(--color-foreground);
+    --text-color-80: var(--color-foreground);
+
+    padding-inline: --spacing(2);
+    padding-block: --spacing(2);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    background-color: var(--background-color);
+    color: var(--text-color);
+
+    @apply relative p-4;
+
+    &.btn-filled {
+      @apply bg-[var(--background-color)] text-[var(--text-color)];
+      @apply hover:bg-[var(--background-color)]/80 hover:text-[var(--text-color-80)];
+    }
+
+    &.btn-outlined {
+      @apply bg-transparent border-2;
+      @apply border-[var(--background-color)] text-[var(--background-color)];
+      @apply hover:bg-[var(--background-color)] hover:text-[var(--text-color)];
+    }
+
+    &.btn-ripple {
+      position: relative;
+      overflow: hidden;
+    }
+  }
+}

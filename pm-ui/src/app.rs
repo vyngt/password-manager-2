@@ -1,10 +1,19 @@
 use crate::components::button::Button;
-use crate::components::button::variants::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
+use crate::components::button::variants::{
+    Effect as ButtonEffect, Shape as ButtonShape, Size as ButtonSize, Variant as ButtonVariant,
+};
+use crate::components::icon_button::IconButton;
+use crate::components::icon_button::variants::{
+    Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
+    Variant as IconButtonVariant,
+};
 use crate::components::input::Input;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use crate::types::color::RgbColor;
+use icondata as i;
 use leptos::ev::Targeted;
 use leptos::prelude::*;
+use leptos_icons::Icon;
 use leptos_router::components::*;
 use leptos_router::path;
 use reactive_stores::Store;
@@ -49,6 +58,19 @@ pub fn Home() -> impl IntoView {
             }
             value=move || color_store.primary().get().to_hex()
         />
+
+        <IconButton color=Signal::derive(move || color_store.primary().get())>
+            <Icon icon={i::FaPlusSolid}/>
+        </IconButton>
+
+        <IconButton
+            color=Signal::derive(move || color_store.secondary().get())
+            effect=IconButtonEffect::Ripple
+            variant=IconButtonVariant::Outlined
+            shape=IconButtonShape::Pill
+        >
+            <Icon icon={i::FaPlusSolid}/>
+        </IconButton>
 
         <div class="w-[200px] relative">
             <Input

@@ -1,35 +1,35 @@
-use super::variants::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
+use super::variants::{Effect, Shape, Size, Variant};
 
 pub fn apply_base() -> &'static str {
     return "btn";
 }
 
-pub fn apply_variant(variant: ButtonVariant) -> &'static str {
+pub fn apply_variant(variant: Variant) -> &'static str {
     match variant {
-        ButtonVariant::Filled => "btn-filled",
-        ButtonVariant::Outlined => "btn-outlined",
+        Variant::Filled => "btn-filled",
+        Variant::Outlined => "btn-outlined",
     }
 }
 
-pub fn apply_effect(effect: &ButtonEffect) -> &'static str {
+pub fn apply_effect(effect: &Effect) -> &'static str {
     match effect {
-        ButtonEffect::Ripple => "btn-ripple",
-        ButtonEffect::None => "",
+        Effect::Ripple => "btn-ripple",
+        Effect::None => "",
     }
 }
 
-pub fn apply_size(size: ButtonSize) -> &'static str {
+pub fn apply_size(size: Size) -> &'static str {
     match size {
-        ButtonSize::Small => "text-sm",
-        ButtonSize::Medium => "text-base",
-        ButtonSize::Large => "text-lg",
+        Size::Small => "text-sm",
+        Size::Medium => "text-base",
+        Size::Large => "text-lg",
     }
 }
 
-pub fn apply_shape(shape: ButtonShape) -> &'static str {
+pub fn apply_shape(shape: Shape) -> &'static str {
     match shape {
-        ButtonShape::Sharp => "rounded-none",
-        ButtonShape::Rounded => "rounded",
-        ButtonShape::Pill => "rounded-full",
+        Shape::Sharp => "rounded-none",
+        Shape::Rounded => "rounded",
+        Shape::Pill => "rounded-full",
     }
 }
