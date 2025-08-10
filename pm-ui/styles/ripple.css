@@ -1,0 +1,19 @@
+@layer components {
+  .ripple {
+    --ripple-color: rgba(255, 255, 255, 0.6);
+
+    position: absolute;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple-animation 600ms linear;
+    background-color: var(--ripple-color);
+    pointer-events: none;
+  }
+
+  @keyframes ripple-animation {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+}

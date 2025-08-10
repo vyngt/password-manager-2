@@ -53,7 +53,7 @@
     font-normal leading-tight text-[11px]
     
     /* Typography - Placeholder Shown State */
-    peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-[var(--color)]
+    peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-[var(--color)]/40
     
     /* Typography - Focus State */
     peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-[var(--color)]
