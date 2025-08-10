@@ -1,5 +1,5 @@
-pub mod base;
 pub mod styles;
+pub mod variants;
 
 use leptos::{ev::Targeted, prelude::*};
 use web_sys::{Event, HtmlInputElement};

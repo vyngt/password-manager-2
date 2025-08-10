@@ -1,4 +1,4 @@
-use super::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
+use super::variants::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 
 pub fn apply_base() -> &'static str {
     return "btn";

@@ -1,5 +1,5 @@
 use crate::components::button::Button;
-use crate::components::button::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
+use crate::components::button::variants::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 use crate::components::input::Input;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use crate::types::color::RgbColor;

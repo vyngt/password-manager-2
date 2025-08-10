@@ -1,12 +1,12 @@
-pub mod base;
 pub mod styles;
+pub mod variants;
 
 use crate::types::color::RgbColor;
 use leptos::prelude::*;
 
 use super::ripple::effect::{RippleColor, add_ripple};
 
-use self::base::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
+use self::variants::{ButtonEffect, ButtonShape, ButtonSize, ButtonVariant};
 
 #[component]
 pub fn Button(
