@@ -2,7 +2,7 @@ pub mod base;
 pub mod styles;
 
 use crate::types::color::RgbColor;
-use leptos::{logging::log, prelude::*};
+use leptos::prelude::*;
 
 use super::ripple::effect::{RippleColor, add_ripple};
 
