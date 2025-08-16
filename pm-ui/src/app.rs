@@ -1,7 +1,8 @@
-use crate::stores::color::ColorStore;
+use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 
 use leptos::prelude::*;
 
+use crate::pages::page::Page as EntryPage;
 use crate::pages::playground::{PlayGroundLayout, Playground, R1, R2};
 use leptos_router::components::*;
 use leptos_router::path;
@@ -12,15 +13,21 @@ pub fn App() -> impl IntoView {
     let color_store = Store::new(ColorStore::new());
     provide_context(color_store);
 
+    let style_bg = Memo::new(move |_| color_store.background().get().to_hex());
+    let style_fg = Memo::new(move |_| color_store.foreground().get().to_hex());
+
     view! {
         <Router>
-            <main>
+            <main class="h-full"
+                style:background-color=style_bg
+                style:color=style_fg>
                 <Routes fallback=|| view! { <h1>"Not Found"</h1> }>
                     <ParentRoute path=path!("/playground") view=PlayGroundLayout>
                         <Route path=path!("/") view=Playground />
                         <Route path=path!("/r1") view=R1 />
                         <Route path=path!("/r2") view=R2 />
                     </ParentRoute>
+                    <Route path=path!("/") view=EntryPage />
                 </Routes>
             </main>
         </Router>

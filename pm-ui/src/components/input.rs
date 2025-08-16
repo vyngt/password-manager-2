@@ -9,6 +9,7 @@ use crate::types::color::RgbColor;
 #[component]
 pub fn Input(
     #[prop(into)] color: Signal<RgbColor>,
+    #[prop(into, default= None)] value: Option<Signal<String>>,
     #[prop(attrs, default = "text")] input_type: &'static str,
     #[prop(attrs)] id: &'static str,
     #[prop(attrs)] placeholder: &'static str,
@@ -34,20 +35,17 @@ pub fn Input(
     .join(" ");
 
     view! {
-        <div class="relative">
+        <div class="relative w-full">
             <input
                 style=handle_style
                 class=cls
                 id=id
                 placeholder=" "
                 on:input:target=handle_on_input
+                value=move || value.map(|s| s.get()).unwrap_or_default()
                 type=input_type
             />
-            <label
-                style=handle_style
-                class=label_cls
-                for=id
-            >
+            <label style=handle_style class=label_cls for=id>
                 {placeholder}
             </label>
         </div>

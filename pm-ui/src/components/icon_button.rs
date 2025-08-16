@@ -62,16 +62,9 @@ pub fn IconButton(
     };
 
     view! {
-        <button
-            type="button"
-            class=cls
-            on:click=move |ev| handle_on_click(ev)
-            style=handle_style
-        >
+        <button type="button" class=cls on:click=move |ev| handle_on_click(ev) style=handle_style>
             <span class="sr-only">"IconButton"</span>
-            <span
-                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform pointer-events-none"
-            >
+            <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform pointer-events-none">
                 {children()}
             </span>
         </button>

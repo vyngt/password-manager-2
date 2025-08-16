@@ -61,14 +61,12 @@ pub fn Playground() -> impl IntoView {
             value=move || color_store.primary().get().to_hex()
         />
 
-
-        <div class="bg-violet-100 flex flex-row gap-2"
-            data-tauri-drag-region=true>
+        <div class="bg-violet-100 flex flex-row gap-2" data-tauri-drag-region=true>
             <IconButton
                 color=Signal::derive(move || color_store.primary().get())
                 size=IconButtonSize::Small
             >
-                <Icon icon={i::FaPlusSolid}/>
+                <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.secondary().get())
@@ -77,7 +75,7 @@ pub fn Playground() -> impl IntoView {
                 shape=IconButtonShape::Pill
                 effect=IconButtonEffect::Ripple
             >
-                <Icon icon={i::FaPlusSolid}/>
+                <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
@@ -85,13 +83,13 @@ pub fn Playground() -> impl IntoView {
                 effect=IconButtonEffect::Ripple
                 shape=IconButtonShape::Sharp
                 on:click=move |_ev| {
-                    spawn_local(async move  {
+                    spawn_local(async move {
                         let app_window = get_current_window();
                         app_window.minimize().await;
                     });
                 }
             >
-                <Icon icon={i::FaWindowMinimizeSolid}/>
+                <Icon icon=i::FaWindowMinimizeSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
@@ -99,7 +97,7 @@ pub fn Playground() -> impl IntoView {
                 effect=IconButtonEffect::Ripple
                 shape=IconButtonShape::Sharp
                 on:click=move |_ev| {
-                    spawn_local(async move  {
+                    spawn_local(async move {
                         let app_window = get_current_window();
                         let is_maximized = app_window.is_maximized().await;
                         if is_maximized.as_bool().unwrap_or(false) {
@@ -110,7 +108,7 @@ pub fn Playground() -> impl IntoView {
                     });
                 }
             >
-                <Icon icon={i::FaWindowMaximizeSolid}/>
+                <Icon icon=i::FaWindowMaximizeSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
@@ -118,13 +116,13 @@ pub fn Playground() -> impl IntoView {
                 effect=IconButtonEffect::Ripple
                 shape=IconButtonShape::Sharp
                 on:click=move |_ev| {
-                    spawn_local(async move  {
+                    spawn_local(async move {
                         let app_window = get_current_window();
                         app_window.close().await;
                     });
                 }
             >
-                <Icon icon={i::FaXmarkSolid}/>
+                <Icon icon=i::FaXmarkSolid />
             </IconButton>
         </div>
 
