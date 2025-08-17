@@ -61,7 +61,6 @@ pub fn Playground() -> impl IntoView {
             value=move || color_store.primary().get().to_hex()
         />
 
-
         <input
             type="color"
             on:input:target=move |ev| {

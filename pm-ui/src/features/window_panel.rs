@@ -1,4 +1,5 @@
 use crate::api::tauri::get_current_window;
+use crate::components::icon::vorpal::VorpalIcon;
 use crate::components::icon_button::IconButton;
 use crate::components::icon_button::variants::{
     Effect as IconButtonEffect, Shape as IconButtonShape, Variant as IconButtonVariant,
@@ -41,13 +42,21 @@ pub fn WindowPanel() -> impl IntoView {
     view! {
         <header
             data-tauri-drag-region=true
-            class="flex h-10 flex-grow-0 justify-between border-b border-secondary/20 bg-primary/20">
-            <div class="flex flex-col justify-center pl-2 pointer-events-none" style=handle_inner_color>
-                <div class="flex gap-2">
+            class="flex h-12 flex-grow-0 justify-between border-b border-secondary/20 bg-primary/20"
+        >
+            <div
+                class="flex flex-col justify-center pl-2 pointer-events-none"
+                style=handle_inner_color
+            >
+                <div class="flex gap-2 justify-center">
                     <div class="flex flex-col justify-center text-foreground">
-                        <Icon width="24" height="24" icon=i::FaArrowRightSolid />
+                        <div class="h-[30px] w-[30px]">
+                            <VorpalIcon />
+                        </div>
                     </div>
-                    <h5 class="text-foreground">Password Manager</h5>
+                    <div class="flex flex-col justify-center">
+                        <h5 class="text-foreground">Password Manager</h5>
+                    </div>
                 </div>
             </div>
             <div class="flex flex-grow" data-tauri-drag-region=true></div>
@@ -58,6 +67,7 @@ pub fn WindowPanel() -> impl IntoView {
                     effect=IconButtonEffect::Ripple
                     shape=IconButtonShape::Sharp
                     auto_text_color=false
+                    class="w-12"
                     on:click=move |_ev| {
                         spawn_local(async move {
                             let app_window = get_current_window();
@@ -73,6 +83,7 @@ pub fn WindowPanel() -> impl IntoView {
                     effect=IconButtonEffect::Ripple
                     shape=IconButtonShape::Sharp
                     auto_text_color=false
+                    class="w-12"
                     on:click=move |_ev| {
                         spawn_local(async move {
                             let app_window = get_current_window();
@@ -89,8 +100,9 @@ pub fn WindowPanel() -> impl IntoView {
                 >
                     <Show
                         when=move || is_maximized.get()
-                        fallback=move || view! { <Icon icon=i::FaWindowMaximizeSolid /> }>
-                            <Icon icon=i::FaWindowRestoreSolid />
+                        fallback=move || view! { <Icon icon=i::FaWindowMaximizeSolid /> }
+                    >
+                        <Icon icon=i::FaWindowRestoreSolid />
                     </Show>
                 </IconButton>
                 <IconButton
@@ -99,6 +111,7 @@ pub fn WindowPanel() -> impl IntoView {
                     effect=IconButtonEffect::Ripple
                     shape=IconButtonShape::Sharp
                     auto_text_color=false
+                    class="w-12"
                     on:click=move |_ev| {
                         spawn_local(async move {
                             let app_window = get_current_window();

@@ -16,7 +16,8 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Router>
-            <main class="h-full flex flex-col bg-background text-foreground"
+            <main
+                class="h-full flex flex-col bg-background text-foreground"
                 style=move || {
                     let primary_color = color_store.primary().get().to_rgb_string();
                     let secondary_color = color_store.secondary().get().to_rgb_string();

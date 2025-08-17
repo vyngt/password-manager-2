@@ -1,6 +1,7 @@
 pub mod button;
 pub mod checkbox;
 pub mod chip;
+pub mod icon;
 pub mod icon_button;
 pub mod input;
 pub mod modal;
