@@ -24,6 +24,10 @@ impl RgbColor {
         format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
     }
 
+    pub fn to_rgb_string(&self) -> String {
+        format!("rgb({} {} {})", self.r, self.g, self.b)
+    }
+
     pub fn calculate_white_black_text_color(&self, alpha: Option<f32>) -> RgbColor {
         // WCAG 2.1 relative luminance and contrast ratio
         fn srgb_to_linear(c: f32) -> f32 {

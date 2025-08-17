@@ -61,6 +61,17 @@ pub fn Playground() -> impl IntoView {
             value=move || color_store.primary().get().to_hex()
         />
 
+
+        <input
+            type="color"
+            on:input:target=move |ev| {
+                let value = ev.target().value();
+                let color = RgbColor::from_hex(&value);
+                color_store.background().set(color);
+            }
+            value=move || color_store.background().get().to_hex()
+        />
+
         <div class="bg-violet-100 flex flex-row gap-2" data-tauri-drag-region=true>
             <IconButton
                 color=Signal::derive(move || color_store.primary().get())
