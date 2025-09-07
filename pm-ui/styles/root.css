@@ -6,6 +6,8 @@
 @import "./icon-button.css";
 @import "./input.css";
 
+@import "./toast.css";
+
 @theme static {
   /* Color */
   /* App text and background */

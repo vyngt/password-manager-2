@@ -2,6 +2,7 @@ use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 
 use leptos::prelude::*;
 
+use crate::components::toast::provider::ToastProvider;
 use crate::features::window_panel::WindowPanel;
 use crate::pages::page::Page as EntryPage;
 use crate::pages::playground::{PlayGroundLayout, Playground, R1, R2};
@@ -38,15 +39,17 @@ pub fn App() -> impl IntoView {
                     colors.join(";")
                 }
             >
-                <WindowPanel />
-                <Routes fallback=|| view! { <h1>"Not Found"</h1> }>
-                    <ParentRoute path=path!("/playground") view=PlayGroundLayout>
-                        <Route path=path!("/") view=Playground />
-                        <Route path=path!("/r1") view=R1 />
-                        <Route path=path!("/r2") view=R2 />
-                    </ParentRoute>
-                    <Route path=path!("/") view=EntryPage />
-                </Routes>
+                <ToastProvider>
+                    <WindowPanel />
+                    <Routes fallback=|| view! { <h1>"Not Found"</h1> }>
+                        <ParentRoute path=path!("/playground") view=PlayGroundLayout>
+                            <Route path=path!("/") view=Playground />
+                            <Route path=path!("/r1") view=R1 />
+                            <Route path=path!("/r2") view=R2 />
+                        </ParentRoute>
+                        <Route path=path!("/") view=EntryPage />
+                    </Routes>
+                </ToastProvider>
             </main>
         </Router>
     }

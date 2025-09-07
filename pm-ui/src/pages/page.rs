@@ -4,6 +4,8 @@ use crate::components::icon_button::variants::{
     Variant as IconButtonVariant,
 };
 use crate::components::input::Input;
+use crate::components::toast::provider::use_toast;
+use crate::components::toast::types::ToastInput;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use icondata as i;
 use leptos::ev::Targeted;
@@ -16,6 +18,7 @@ use web_sys::{Event, HtmlInputElement};
 #[component]
 pub fn Page() -> impl IntoView {
     let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
+    let toast = use_toast();
 
     let (pw, set_pw) = signal(String::new());
 
@@ -36,6 +39,7 @@ pub fn Page() -> impl IntoView {
                         on:keydown:capture=move |ev| {
                             if ev.key() == "Enter" {
                                 log!("{}", pw.get());
+                                toast.show(ToastInput::new("Hello", None, None, color_store.secondary().get()));
                             }
                         }
                     />
