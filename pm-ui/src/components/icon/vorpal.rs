@@ -17,13 +17,7 @@ pub fn VorpalIcon() -> impl IntoView {
                 stroke="currentColor"
                 stroke-width="10"
             />
-            <circle
-                cx="99.5"
-                cy="100.5"
-                r="77.5"
-                stroke="currentColor"
-                stroke-width="10"
-            />
+            <circle cx="99.5" cy="100.5" r="77.5" stroke="currentColor" stroke-width="10" />
             <path d="M49.5 181L155.5 130.5L182 50" stroke="currentColor" stroke-width="10" />
             <path d="M63 13.3032L144.295 117.501" stroke="currentColor" stroke-width="10" />
             <path

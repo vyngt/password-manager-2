@@ -1,5 +1,5 @@
 use crate::api::tauri::get_current_window;
-use crate::components::icon::vorpal::VorpalIcon;
+use crate::components::icon::pm::PmIcon;
 use crate::components::icon_button::IconButton;
 use crate::components::icon_button::variants::{
     Effect as IconButtonEffect, Shape as IconButtonShape, Variant as IconButtonVariant,
@@ -51,7 +51,7 @@ pub fn WindowPanel() -> impl IntoView {
                 <div class="flex gap-2 justify-center">
                     <div class="flex flex-col justify-center text-foreground">
                         <div class="h-[30px] w-[30px]">
-                            <VorpalIcon />
+                            <PmIcon />
                         </div>
                     </div>
                     <div class="flex flex-col justify-center">
