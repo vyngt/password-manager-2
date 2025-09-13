@@ -9,6 +9,17 @@ default-run = "app"
 edition = "2021"
 rust-version = "1.89"
 
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "pm"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "migrate_vault_db"
+path = "src/v2/bin/migrate_vault_db.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
