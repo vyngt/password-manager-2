@@ -42,12 +42,23 @@ tauri-plugin-clipboard-manager = "2.3.0"
 tauri-plugin-http = "2"
 tauri-plugin-os = "2"
 thiserror = "2.0.16"
-sea-orm = { version = "1.1.16", features = ["sqlx-sqlite", "runtime-tokio", "macros", "sqlite-use-returning-for-3_35"] }
 anyhow = "1.0.99"
 validator = { version = "0.20.0", features = ["derive"] }
 async-trait = "0.1.89"
 uuid = { version = "1.18.1", features = ["v4"] }
-sea-orm-migration = { version = "1.1.16", features = ["runtime-tokio", "sqlx-sqlite", "sqlite-use-returning-for-3_35", "with-chrono", "with-time", "with-uuid"] }
+tokio = "1.47.1"
+libsqlite3-sys = { version = "0.30.1", features = ["bundled-sqlcipher", "bundled-sqlcipher-vendored-openssl"] }
+
+[dependencies.sea-orm]
+version = "1.1.16"
+features = ["sqlx-sqlite", "runtime-tokio", "macros", "sqlite-use-returning-for-3_35"]
+default-features = false
+
+[dependencies.sea-orm-migration]
+version = "1.1.16"
+features = ["runtime-tokio", "sqlx-sqlite", "sqlite-use-returning-for-3_35", "with-chrono", "with-time", "with-uuid"]
+default-features = false
+
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

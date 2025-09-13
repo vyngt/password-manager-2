@@ -31,7 +31,7 @@
       "providerShortName": null,
       "signingIdentity": null
     },
-    "resources": ["./sqlite3.dll"],
+    "resources": [],
     "shortDescription": "",
     "linux": {
       "deb": {
