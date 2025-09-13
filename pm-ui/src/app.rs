@@ -2,13 +2,13 @@ use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 
 use leptos::prelude::*;
 
-use crate::components::toast::provider::ToastProvider;
 use crate::features::window_panel::WindowPanel;
 use crate::pages::page::Page as EntryPage;
 use crate::pages::playground::{PlayGroundLayout, Playground, R1, R2};
 use leptos_router::components::*;
 use leptos_router::path;
 use reactive_stores::Store;
+use ui::components::toast::provider::ToastProvider;
 
 #[component]
 pub fn App() -> impl IntoView {

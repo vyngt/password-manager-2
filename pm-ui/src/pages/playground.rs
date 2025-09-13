@@ -1,16 +1,5 @@
 use crate::api::tauri::get_current_window;
-use crate::components::button::Button;
-use crate::components::button::variants::{
-    Effect as ButtonEffect, Shape as ButtonShape, Size as ButtonSize, Variant as ButtonVariant,
-};
-use crate::components::icon_button::IconButton;
-use crate::components::icon_button::variants::{
-    Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
-    Variant as IconButtonVariant,
-};
-use crate::components::input::Input;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
-use crate::types::color::RgbColor;
 use icondata as i;
 use leptos::ev::Targeted;
 use leptos::logging::log;
@@ -19,6 +8,17 @@ use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use leptos_router::components::*;
 use reactive_stores::Store;
+use ui::components::button::Button;
+use ui::components::button::variants::{
+    Effect as ButtonEffect, Shape as ButtonShape, Size as ButtonSize, Variant as ButtonVariant,
+};
+use ui::components::icon_button::IconButton;
+use ui::components::icon_button::variants::{
+    Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
+    Variant as IconButtonVariant,
+};
+use ui::components::input::Input;
+use ui::primitives::color::RgbColor;
 use web_sys::{Event, HtmlInputElement};
 
 #[component]

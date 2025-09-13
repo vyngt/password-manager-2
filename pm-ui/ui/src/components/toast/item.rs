@@ -3,7 +3,7 @@ use crate::{
         IconButton,
         variants::{Effect, Shape, Variant},
     },
-    types::color::RgbColor,
+    primitives::color::RgbColor,
 };
 
 use super::types::{Toast, ToastState};

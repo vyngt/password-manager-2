@@ -1,7 +1,7 @@
 pub mod styles;
 pub mod variants;
 
-use crate::types::color::RgbColor;
+use crate::primitives::color::RgbColor;
 use leptos::prelude::*;
 
 use super::ripple::effect::{RippleColor, add_ripple};
@@ -9,14 +9,13 @@ use super::ripple::effect::{RippleColor, add_ripple};
 use self::variants::{Effect, Shape, Size, Variant};
 
 #[component]
-pub fn IconButton(
+pub fn Button(
     children: Children,
     #[prop(into)] color: Signal<RgbColor>,
     #[prop(attrs, default = Effect::None)] effect: Effect,
     #[prop(attrs, default = Size::Medium)] size: Size,
     #[prop(attrs, default = Variant::Filled)] variant: Variant,
     #[prop(attrs, default = Shape::Rounded)] shape: Shape,
-    #[prop(attrs, default = true)] auto_text_color: bool,
     #[prop(attrs, default = "")] class: &'static str,
 ) -> impl IntoView {
     let base_cls = styles::apply_base();
@@ -47,24 +46,24 @@ pub fn IconButton(
 
     let handle_style = move || {
         let c = color.get();
-        let bg_color_var = format!("--background-color: {}", c.to_rgb_string());
-        if auto_text_color {
-            let text_color = c.calculate_white_black_text_color(None);
-            let blend_color = c.calculate_white_black_text_color(Some(0.8));
-            let text_color_var = format!("--text-color: {}", text_color.to_rgb_string());
-            let text_color_80_var = format!("--text-color-80: {}", blend_color.to_rgb_string());
-            format!("{};{};{};", bg_color_var, text_color_var, text_color_80_var)
-        } else {
-            format!("{};", bg_color_var)
-        }
+        let text_color = c.calculate_white_black_text_color(None);
+        let blend_color = c.calculate_white_black_text_color(Some(0.8));
+
+        let bg_color_var = format!("--background-color: rgb({}, {}, {})", c.r, c.g, c.b);
+        let text_color_var = format!(
+            "--text-color: rgb({}, {}, {})",
+            text_color.r, text_color.g, text_color.b
+        );
+        let text_color_80_var = format!(
+            "--text-color-80: rgb({}, {}, {})",
+            blend_color.r, blend_color.g, blend_color.b
+        );
+        format!("{};{};{};", bg_color_var, text_color_var, text_color_80_var)
     };
 
     view! {
-        <button type="button" class=cls on:click=move |ev| handle_on_click(ev) style=handle_style>
-            <span class="sr-only">"IconButton"</span>
-            <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform pointer-events-none">
-                {children()}
-            </span>
+        <button type="button" class=cls on:click=handle_on_click style=handle_style>
+            {children()}
         </button>
     }
 }

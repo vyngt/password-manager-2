@@ -1,8 +1,8 @@
 use crate::constants::Color;
-use crate::types::color::RgbColor;
 use crate::utils::color::get_css_var_color;
 use reactive_stores::Store;
 use serde::{Deserialize, Serialize};
+use ui::primitives::color::RgbColor;
 
 #[derive(Debug, Store, Serialize, Deserialize)]
 pub struct ColorStore {

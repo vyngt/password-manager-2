@@ -1,7 +1,7 @@
 use leptos::prelude::RwSignal;
 use uuid::Uuid;
 
-use crate::types::color::RgbColor;
+use crate::primitives::color::RgbColor;
 
 #[derive(Clone, Debug)]
 pub struct Toast {

@@ -1,11 +1,9 @@
 mod api;
 mod app;
-mod components;
 mod constants;
 mod features;
 mod pages;
 mod stores;
-mod types;
 mod utils;
 
 use leptos::prelude::*;

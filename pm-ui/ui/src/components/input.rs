@@ -4,7 +4,7 @@ pub mod variants;
 use leptos::{ev::Targeted, prelude::*};
 use web_sys::{Event, HtmlInputElement};
 
-use crate::types::color::RgbColor;
+use crate::primitives::color::RgbColor;
 
 #[component]
 pub fn Input(

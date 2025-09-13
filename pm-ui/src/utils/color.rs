@@ -1,5 +1,6 @@
 use crate::constants::Color;
-use crate::types::color::RgbColor;
+
+use ui::primitives::color::RgbColor;
 
 pub fn get_css_var_color(color: &Color) -> RgbColor {
     fn parse_rgb_value(value: &str) -> Option<RgbColor> {

@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use wasm_bindgen::closure::Closure;
 use web_sys::wasm_bindgen::JsCast;
 
-use crate::types::color::RgbColor;
+use crate::primitives::color::RgbColor;
 
 static RIPPLE_COUNTER: AtomicU64 = AtomicU64::new(0);
 

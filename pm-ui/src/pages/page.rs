@@ -1,11 +1,3 @@
-use crate::components::icon_button::IconButton;
-use crate::components::icon_button::variants::{
-    Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
-    Variant as IconButtonVariant,
-};
-use crate::components::input::Input;
-use crate::components::toast::provider::use_toast;
-use crate::components::toast::types::ToastInput;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use icondata as i;
 use leptos::ev::Targeted;
@@ -13,6 +5,14 @@ use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use reactive_stores::Store;
+use ui::components::icon_button::IconButton;
+use ui::components::icon_button::variants::{
+    Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
+    Variant as IconButtonVariant,
+};
+use ui::components::input::Input;
+use ui::components::toast::provider::use_toast;
+use ui::components::toast::types::ToastInput;
 use web_sys::{Event, HtmlInputElement};
 
 #[component]

@@ -1,15 +1,15 @@
 use crate::api::tauri::get_current_window;
-use crate::components::icon::pm::PmIcon;
-use crate::components::icon_button::IconButton;
-use crate::components::icon_button::variants::{
-    Effect as IconButtonEffect, Shape as IconButtonShape, Variant as IconButtonVariant,
-};
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use reactive_stores::Store;
+use ui::components::icon::pm::PmIcon;
+use ui::components::icon_button::IconButton;
+use ui::components::icon_button::variants::{
+    Effect as IconButtonEffect, Shape as IconButtonShape, Variant as IconButtonVariant,
+};
 
 #[component]
 pub fn WindowPanel() -> impl IntoView {
