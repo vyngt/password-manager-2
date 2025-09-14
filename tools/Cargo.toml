@@ -3,10 +3,19 @@ name = "tools"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "migrate_vault"
+path = "src/bin/migrate_vault.rs"
+
+[[bin]]
+name = "migrate_theme"
+path = "src/bin/migrate_theme.rs"
+
 [dependencies]
 tokio = { version = "1.47.1", features = ["tokio-macros"] }
 backend = { path = "../backend" }
 dotenvy = "0.15.7"
+sea-orm-cli = "1.1.16"
 
 [dependencies.sea-orm]
 version = "1.1.16"

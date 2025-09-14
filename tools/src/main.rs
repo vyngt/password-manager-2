@@ -7,6 +7,7 @@ use dotenvy::dotenv;
 use sea_orm_migration::MigratorTrait;
 use std::env;
 use std::sync::Arc;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let con = Arc::new(init_connection().await);

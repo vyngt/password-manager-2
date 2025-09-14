@@ -2,13 +2,13 @@
 pub struct ColorSchema {
     pub id: String,
     pub name: String,
-    pub primary: String,
-    pub secondary: String,
-    pub success: String,
-    pub danger: String,
-    pub warning: String,
-    pub foreground: String,
-    pub background: String,
+    pub color_primary: String,
+    pub color_secondary: String,
+    pub color_success: String,
+    pub color_danger: String,
+    pub color_warning: String,
+    pub color_foreground: String,
+    pub color_background: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
