@@ -1,6 +1,4 @@
-use backend_lib::v2::business::usecases::vault_record::create_vault_record::{
-    CreateVaultRecordInput, CreateVaultRecordUseCase,
-};
+use backend_lib::v2::business::usecases::{CreateVaultRecordInput, CreateVaultRecordUseCase};
 use backend_lib::v2::infra::data::sqlite::datasource::connection::DataSourceConnection;
 use backend_lib::v2::infra::data::sqlite::datasource::migration::VaultMigrator;
 use backend_lib::v2::infra::data::sqlite::repositories::vault_record::VaultRecordRepositoryImpl;

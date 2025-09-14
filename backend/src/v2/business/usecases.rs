@@ -1,1 +1,5 @@
-pub mod vault_record;
+pub mod utilities;
+pub mod vault;
+
+pub use utilities::*;
+pub use vault::*;

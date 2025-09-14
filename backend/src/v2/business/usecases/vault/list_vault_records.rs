@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use crate::v2::business::domain::entities::vault_record::VaultRecord;
-use crate::v2::business::domain::repositories::vault_record::{
-    ListInput as VaultRecordListInput, VaultRecordRepository,
-};
+use crate::v2::business::domain::repositories::{ListVaultRecordsOptions, VaultRecordRepository};
 use crate::v2::shared::base::BaseUseCase;
 use crate::v2::shared::pager::{PaginationInput, PaginationOutput};
 
@@ -29,7 +27,7 @@ impl BaseUseCase<ListVaultRecordInput, PaginationOutput<VaultRecord>> for ListVa
         input: ListVaultRecordInput,
     ) -> anyhow::Result<PaginationOutput<VaultRecord>> {
         self.vault_record_repository
-            .list(VaultRecordListInput {
+            .list(ListVaultRecordsOptions {
                 pagination: input.pagination,
             })
             .await

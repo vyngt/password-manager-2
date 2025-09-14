@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::v2::business::domain::repositories::vault_record::ListInput;
+use crate::v2::business::domain::repositories::ListVaultRecordsOptions;
 use crate::v2::business::domain::{
     entities::vault_record::{VaultRecord, VaultRecordUpdate},
     repositories::vault_record::VaultRecordRepository,
@@ -12,8 +12,8 @@ use crate::v2::infra::data::sqlite::{
 };
 
 use crate::v2::shared::pager::PaginationOutput;
-use sea_orm::entity::prelude::*;
 use sea_orm::QueryFilter;
+use sea_orm::entity::prelude::*;
 
 pub struct VaultRecordRepositoryImpl {
     connection: Arc<DataSourceConnection>,
@@ -27,7 +27,10 @@ impl VaultRecordRepositoryImpl {
 
 #[async_trait::async_trait]
 impl VaultRecordRepository for VaultRecordRepositoryImpl {
-    async fn list(&self, input: ListInput) -> anyhow::Result<PaginationOutput<VaultRecord>> {
+    async fn list(
+        &self,
+        input: ListVaultRecordsOptions,
+    ) -> anyhow::Result<PaginationOutput<VaultRecord>> {
         todo!()
     }
     async fn get(&self, id: String) -> anyhow::Result<VaultRecord> {

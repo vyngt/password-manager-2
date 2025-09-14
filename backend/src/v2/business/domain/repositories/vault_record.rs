@@ -4,13 +4,16 @@ use super::super::entities::vault_record::{VaultRecord, VaultRecordUpdate};
 use anyhow;
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct ListInput {
+pub struct ListVaultRecordsOptions {
     pub pagination: PaginationInput,
 }
 
 #[async_trait::async_trait]
 pub trait VaultRecordRepository: Send + Sync {
-    async fn list(&self, input: ListInput) -> anyhow::Result<PaginationOutput<VaultRecord>>;
+    async fn list(
+        &self,
+        input: ListVaultRecordsOptions,
+    ) -> anyhow::Result<PaginationOutput<VaultRecord>>;
     async fn get(&self, id: String) -> anyhow::Result<VaultRecord>;
     async fn create(&self, vault_record: VaultRecord) -> anyhow::Result<VaultRecord>;
     async fn update(
