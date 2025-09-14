@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@source "../../ui";
+
+@import "../../ui/src/styles/index.css";
+
+@theme static {
+  /* Color */
+  /* App text and background */
+  --color-foreground: rgb(255 255 255);
+  --color-background: rgb(0 0 0);
+
+  /* Button, headers, and sub color */
+  --color-primary: rgb(244 31 198);
+  --color-secondary: rgb(3 169 244);
+
+  /* Status */
+  --color-success: rgb(30 200 135);
+  --color-danger: rgb(244 37 99);
+  --color-warning: rgb(224 193 36);
+}

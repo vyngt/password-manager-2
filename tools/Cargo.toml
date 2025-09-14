@@ -1,0 +1,19 @@
+[package]
+name = "tools"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.47.1", features = ["tokio-macros"] }
+backend = { path = "../backend" }
+dotenvy = "0.15.7"
+
+[dependencies.sea-orm]
+version = "1.1.16"
+features = ["sqlx-sqlite", "runtime-tokio", "macros", "sqlite-use-returning-for-3_35"]
+default-features = false
+
+[dependencies.sea-orm-migration]
+version = "1.1.16"
+features = ["runtime-tokio", "sqlx-sqlite", "sqlite-use-returning-for-3_35", "with-chrono", "with-time", "with-uuid"]
+default-features = false
