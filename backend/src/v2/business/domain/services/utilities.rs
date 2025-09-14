@@ -8,5 +8,5 @@ pub struct GeneratePasswordOptions {
 
 #[async_trait::async_trait]
 pub trait UtilitiesService: Send + Sync {
-    async fn generate_password(&self, otp: GeneratePasswordOptions) -> String;
+    async fn generate_password(&self, opt: GeneratePasswordOptions) -> String;
 }
