@@ -11,6 +11,10 @@ path = "src/bin/migrate_vault.rs"
 name = "migrate_theme"
 path = "src/bin/migrate_theme.rs"
 
+[[bin]]
+name = "encrypt"
+path = "src/bin/encrypt.rs"
+
 [dependencies]
 tokio = { version = "1.47.1", features = ["tokio-macros"] }
 backend = { path = "../backend" }
