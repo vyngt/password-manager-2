@@ -24,7 +24,7 @@
 - Auto fill browser?
 - I18n
 
-# Work
+# Work (Backend)
 
 - Unlock/change master key (/)
 - CRUD (Item -> Vault Record) (/)
@@ -36,6 +36,12 @@
 - Error handling
 - Migrate tauri command
 - i18n
+- Folder + Tagging (for Vault Record)
+- New form for Vault Record
+  - Login
+  - SSH Key Pair
+  - Environment...
+  - Cert/...
 - Testing
   - Auto test
   - Manually test
