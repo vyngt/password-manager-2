@@ -4,6 +4,7 @@ use crate::business::domain::services::VaultService;
 use crate::errors::AppResult;
 use crate::shared::base::BaseUseCase;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct UnlockVaultInput {
     pub key: String,
 }

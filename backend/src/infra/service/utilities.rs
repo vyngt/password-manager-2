@@ -6,6 +6,12 @@ use crate::business::domain::services::{GeneratePasswordOptions, UtilitiesServic
 
 pub struct UtilitiesServiceImpl;
 
+impl UtilitiesServiceImpl {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 #[async_trait]
 impl UtilitiesService for UtilitiesServiceImpl {
     async fn generate_password(&self, opt: GeneratePasswordOptions) -> String {

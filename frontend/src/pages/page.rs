@@ -1,10 +1,14 @@
+use crate::api::tauri;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use icondata as i;
 use leptos::ev::Targeted;
 use leptos::logging::log;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use reactive_stores::Store;
+use serde_json::json;
+use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
 use ui::components::icon_button::variants::{
     Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
@@ -22,6 +26,18 @@ pub fn Page() -> impl IntoView {
 
     let (pw, set_pw) = signal(String::new());
 
+    let handle_submit = |value: String| {
+        spawn_local(async move {
+            let res = tauri::invoke(
+                "unlock_vault",
+                to_js_value(&json!({"request": {"key": value}})).unwrap(),
+            )
+            .await;
+
+            log!("{:?}", res);
+        });
+    };
+
     return view! {
         <div class="flex h-full w-full flex-col justify-center">
             <div class="flex w-full justify-center">
@@ -38,8 +54,8 @@ pub fn Page() -> impl IntoView {
                         })
                         on:keydown:capture=move |ev| {
                             if ev.key() == "Enter" {
-                                log!("{}", pw.get());
                                 toast.show(ToastInput::new("Hello", None, None, color_store.secondary().get()));
+                                handle_submit(pw.get());
                             }
                         }
                     />
@@ -50,7 +66,7 @@ pub fn Page() -> impl IntoView {
                         shape=IconButtonShape::Rounded
                         effect=IconButtonEffect::Ripple
                         class="absolute right-[3px] top-[5px]"
-                        on:click=move |_| log!("{}", pw.get())
+                        on:click=move |_| handle_submit(pw.get())
                     >
                         <Icon icon=i::FaArrowRightSolid />
                     </IconButton>

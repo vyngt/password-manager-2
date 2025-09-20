@@ -1,17 +1,25 @@
 pub mod commands;
 pub mod config;
+pub mod interface;
 pub mod store;
 
-use dotenvy::dotenv;
+use tokio::sync::Mutex;
+
+use store::registry::Registry;
+use store::state::AppState;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    dotenv().ok();
-
     tauri::Builder::default()
         .setup(|app| {
             let settings = config::settings::Settings::from_env(app);
             settings.init_home_dir();
+
+            let registry =
+                tauri::async_runtime::block_on(async { Registry::from_settings(&settings).await });
+            app.manage(Mutex::new(AppState { registry, settings }));
+
             Ok(())
         })
         .plugin(tauri_plugin_os::init())
@@ -23,7 +31,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![commands::vault::unlock_vault])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
