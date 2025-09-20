@@ -1,4 +1,11 @@
+use anyhow::Result;
 use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum DataOperation {
+    #[error("Save Error")]
+    SaveError,
+}
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -12,6 +19,10 @@ pub enum AppError {
     FileNotFoundError,
     #[error("Unknown Error: {0}")]
     UnknownError(String),
+    #[error("Database Error")]
+    DatabaseError(#[from] sea_orm::error::DbErr),
+    #[error("Data Operation Error")]
+    DataOperationError(#[from] DataOperation),
 }
 
-pub type AppResult<T> = std::result::Result<T, AppError>;
+pub type AppResult<T> = Result<T, AppError>;

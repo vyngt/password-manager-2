@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::v2::business::domain::services::VaultService;
+use crate::v2::errors::AppResult;
 use crate::v2::shared::base::BaseUseCase;
 
 pub struct UnlockVaultInput {
@@ -18,7 +19,7 @@ impl UnlockVaultUseCase {
 }
 
 impl BaseUseCase<UnlockVaultInput, bool> for UnlockVaultUseCase {
-    async fn execute(&self, input: UnlockVaultInput) -> anyhow::Result<bool> {
+    async fn execute(&self, input: UnlockVaultInput) -> AppResult<bool> {
         let unlocked = self.vault_service.unlock(&input.key).await;
 
         Ok(unlocked)

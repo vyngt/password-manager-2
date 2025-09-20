@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::v2::business::domain::entities::vault_record::VaultRecord;
 use crate::v2::business::domain::repositories::vault_record::VaultRecordRepository;
+use crate::v2::errors::AppResult;
 use crate::v2::shared::base::BaseUseCase;
 
 pub struct GetVaultRecordInput {
@@ -21,7 +22,7 @@ impl GetVaultRecordUseCase {
 }
 
 impl BaseUseCase<GetVaultRecordInput, VaultRecord> for GetVaultRecordUseCase {
-    async fn execute(&self, input: GetVaultRecordInput) -> anyhow::Result<VaultRecord> {
+    async fn execute(&self, input: GetVaultRecordInput) -> AppResult<VaultRecord> {
         self.vault_record_repository.get(input.id).await
     }
 }

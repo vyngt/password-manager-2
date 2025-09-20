@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::v2::business::domain::services::{GeneratePasswordOptions, UtilitiesService};
+use crate::v2::errors::AppResult;
 use crate::v2::shared::base::BaseUseCase;
 
 pub struct GeneratePasswordInput {
@@ -22,7 +23,7 @@ impl GeneratePasswordUseCase {
 }
 
 impl BaseUseCase<GeneratePasswordInput, String> for GeneratePasswordUseCase {
-    async fn execute(&self, input: GeneratePasswordInput) -> anyhow::Result<String> {
+    async fn execute(&self, input: GeneratePasswordInput) -> AppResult<String> {
         let password = self
             .utilities_service
             .generate_password(GeneratePasswordOptions {

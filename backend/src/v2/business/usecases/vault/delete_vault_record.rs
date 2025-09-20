@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::v2::business::domain::entities::vault_record::VaultRecord;
 use crate::v2::business::domain::repositories::vault_record::VaultRecordRepository;
+use crate::v2::errors::AppResult;
 use crate::v2::shared::base::BaseUseCase;
 
 pub struct DeleteVaultRecordInput {
@@ -21,7 +22,7 @@ impl DeleteVaultRecordUseCase {
 }
 
 impl BaseUseCase<DeleteVaultRecordInput, VaultRecord> for DeleteVaultRecordUseCase {
-    async fn execute(&self, input: DeleteVaultRecordInput) -> anyhow::Result<VaultRecord> {
+    async fn execute(&self, input: DeleteVaultRecordInput) -> AppResult<VaultRecord> {
         self.vault_record_repository.delete(input.id).await
     }
 }

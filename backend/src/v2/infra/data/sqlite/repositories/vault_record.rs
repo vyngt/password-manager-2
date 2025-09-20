@@ -5,6 +5,7 @@ use crate::v2::business::domain::{
     entities::vault_record::{VaultRecord, VaultRecordUpdate},
     repositories::vault_record::VaultRecordRepository,
 };
+use crate::v2::errors::{AppError, AppResult, DataOperation};
 use crate::v2::infra::data::sqlite::{
     datasource::connection::DataSourceConnection,
     entities::vault::{prelude::*, vault},
@@ -30,13 +31,14 @@ impl VaultRecordRepository for VaultRecordRepositoryImpl {
     async fn list(
         &self,
         input: ListVaultRecordsOptions,
-    ) -> anyhow::Result<PaginationOutput<VaultRecord>> {
+    ) -> AppResult<PaginationOutput<VaultRecord>> {
         todo!()
     }
-    async fn get(&self, id: String) -> anyhow::Result<VaultRecord> {
+    async fn get(&self, id: String) -> AppResult<VaultRecord> {
         todo!()
     }
-    async fn create(&self, vault_record: VaultRecord) -> anyhow::Result<VaultRecord> {
+
+    async fn create(&self, vault_record: VaultRecord) -> AppResult<VaultRecord> {
         use crate::v2::infra::data::sqlite::entities::vault::prelude::*;
         let db = self.connection.conn();
 
@@ -46,20 +48,16 @@ impl VaultRecordRepository for VaultRecordRepositoryImpl {
         let record = Vault::find_by_id(res.last_insert_id)
             .one(db)
             .await?
-            .unwrap();
+            .ok_or(DataOperation::SaveError)?;
 
         let domain = VaultMapper::to_domain(record);
 
         Ok(domain)
     }
-    async fn update(
-        &self,
-        id: String,
-        vault_record: VaultRecordUpdate,
-    ) -> anyhow::Result<VaultRecord> {
+    async fn update(&self, id: String, vault_record: VaultRecordUpdate) -> AppResult<VaultRecord> {
         todo!()
     }
-    async fn delete(&self, id: String) -> anyhow::Result<VaultRecord> {
+    async fn delete(&self, id: String) -> AppResult<VaultRecord> {
         todo!()
     }
 }

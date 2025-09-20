@@ -1,7 +1,7 @@
 use crate::v2::shared::pager::{PaginationInput, PaginationOutput};
 
 use super::super::entities::vault_record::{VaultRecord, VaultRecordUpdate};
-use anyhow;
+use crate::v2::errors::AppResult;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ListVaultRecordsOptions {
@@ -13,13 +13,9 @@ pub trait VaultRecordRepository: Send + Sync {
     async fn list(
         &self,
         input: ListVaultRecordsOptions,
-    ) -> anyhow::Result<PaginationOutput<VaultRecord>>;
-    async fn get(&self, id: String) -> anyhow::Result<VaultRecord>;
-    async fn create(&self, vault_record: VaultRecord) -> anyhow::Result<VaultRecord>;
-    async fn update(
-        &self,
-        id: String,
-        vault_record: VaultRecordUpdate,
-    ) -> anyhow::Result<VaultRecord>;
-    async fn delete(&self, id: String) -> anyhow::Result<VaultRecord>;
+    ) -> AppResult<PaginationOutput<VaultRecord>>;
+    async fn get(&self, id: String) -> AppResult<VaultRecord>;
+    async fn create(&self, vault_record: VaultRecord) -> AppResult<VaultRecord>;
+    async fn update(&self, id: String, vault_record: VaultRecordUpdate) -> AppResult<VaultRecord>;
+    async fn delete(&self, id: String) -> AppResult<VaultRecord>;
 }
