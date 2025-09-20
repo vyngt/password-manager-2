@@ -48,6 +48,7 @@ libsqlite3-sys = { version = "0.30.1", features = ["bundled-sqlcipher", "bundled
 chrono = { version = "0.4.42", features = ["serde"] }
 argon2 = "0.5.3"
 aes-gcm = "0.10.3"
+codegen = { path = "../codegen"}
 
 [dependencies.sea-orm]
 version = "1.1.16"

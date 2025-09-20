@@ -14,7 +14,7 @@ impl VaultMapper {
         VaultItem {
             id: data.id,
             title: data.title,
-            kind: VaultItemKind::try_from(data.kind).unwrap(),
+            kind: VaultItemKind::try_from(data.kind.as_str()).unwrap(),
             data: serde_json::from_str(&data.data).unwrap(),
             created_at: Some(data.created_at.to_rfc3339()),
             updated_at: Some(data.updated_at.to_rfc3339()),
