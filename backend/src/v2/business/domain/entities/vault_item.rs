@@ -1,32 +1,11 @@
 use uuid::Uuid;
 
-use crate::v2::errors::{AppError, BusinessError};
 use codegen::StringEnum;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, StringEnum)]
 pub enum VaultItemKind {
     Credential,
 }
-
-// TODO: Write proc macro impl enum string
-
-// impl TryFrom<String> for VaultItemKind {
-//     type Error = AppError;
-//     fn try_from(value: String) -> Result<Self, Self::Error> {
-//         match value.as_str() {
-//             "Credential" => Ok(VaultItemKind::Credential),
-//             _ => Err(AppError::BusinessError(BusinessError::InputError)),
-//         }
-//     }
-// }
-
-// impl ToString for VaultItemKind {
-//     fn to_string(&self) -> String {
-//         match self {
-//             VaultItemKind::Credential => "Credential".to_string(),
-//         }
-//     }
-// }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct VaultItemDataCredential {
