@@ -1,15 +1,8 @@
-pub mod cmd;
+pub mod commands;
 pub mod config;
-pub mod crud;
-pub mod db;
-pub mod models;
-pub mod state;
-pub mod v_vortex;
-
-use cmd::{auth, core, password_generator, theme};
+pub mod store;
 
 use dotenvy::dotenv;
-use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,12 +10,8 @@ pub fn run() {
 
     tauri::Builder::default()
         .setup(|app| {
-            let home_dir = app.path().home_dir().unwrap();
-            config::init_config(app);
-
-            app.manage(state::AppVortex::new(&home_dir));
-            db::run_unencrypt_migrations(app);
-
+            let settings = config::settings::Settings::from_env(app);
+            settings.init_home_dir();
             Ok(())
         })
         .plugin(tauri_plugin_os::init())
@@ -34,27 +23,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![
-            auth::perform_auth,
-            auth::rekey_auth,
-            password_generator::generate_password,
-            core::item::fetch_items,
-            core::item::get_item,
-            core::item::create_item,
-            core::item::update_item,
-            core::item::delete_item,
-            core::item::get_item_key,
-            core::item::import_vault,
-            core::item::export_vault,
-            theme::color_scheme::fetch_color_schemes,
-            theme::color_scheme::get_color_scheme,
-            theme::color_scheme::create_color_scheme,
-            theme::color_scheme::update_color_scheme,
-            theme::color_scheme::delete_color_scheme,
-            theme::theme::get_theme_cs,
-            theme::theme::get_current_cs,
-            theme::theme::save_theme_cs,
-        ])
+        .invoke_handler(tauri::generate_handler![])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
