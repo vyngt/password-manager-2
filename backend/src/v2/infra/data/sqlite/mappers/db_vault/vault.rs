@@ -1,7 +1,8 @@
-use crate::v2::business::domain::entities::vault_record::VaultRecord;
+use crate::v2::business::domain::entities::vault_record::{VaultRecord, VaultRecordUpdate};
 use crate::v2::infra::data::sqlite::entities::vault::vault;
 use chrono::{DateTime, Utc};
 use sea_orm::ActiveValue::Set;
+use uuid::Uuid;
 
 pub struct VaultMapper;
 
@@ -34,6 +35,18 @@ impl VaultMapper {
                 })
                 .unwrap_or(Utc::now())),
             updated_at: Set(Utc::now()),
+        }
+    }
+
+    pub fn to_update(id: Uuid, data: VaultRecordUpdate) -> vault::ActiveModel {
+        vault::ActiveModel {
+            id: Set(id),
+            name: Set(data.name),
+            url: Set(data.url),
+            login: Set(data.login),
+            key_pass: Set(data.key_pass),
+            updated_at: Set(Utc::now()),
+            ..Default::default()
         }
     }
 }

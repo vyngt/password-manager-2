@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 use crate::v2::business::domain::entities::vault_record::VaultRecord;
 use crate::v2::business::domain::repositories::vault_record::VaultRecordRepository;
 use crate::v2::errors::AppResult;
@@ -23,6 +25,7 @@ impl DeleteVaultRecordUseCase {
 
 impl BaseUseCase<DeleteVaultRecordInput, VaultRecord> for DeleteVaultRecordUseCase {
     async fn execute(&self, input: DeleteVaultRecordInput) -> AppResult<VaultRecord> {
-        self.vault_record_repository.delete(input.id).await
+        let id = Uuid::parse_str(&input.id)?;
+        self.vault_record_repository.delete(id).await
     }
 }

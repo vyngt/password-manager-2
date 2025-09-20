@@ -14,8 +14,12 @@ pub trait VaultRecordRepository: Send + Sync {
         &self,
         input: ListVaultRecordsOptions,
     ) -> AppResult<PaginationOutput<VaultRecord>>;
-    async fn get(&self, id: String) -> AppResult<VaultRecord>;
+    async fn get(&self, id: uuid::Uuid) -> AppResult<VaultRecord>;
     async fn create(&self, vault_record: VaultRecord) -> AppResult<VaultRecord>;
-    async fn update(&self, id: String, vault_record: VaultRecordUpdate) -> AppResult<VaultRecord>;
-    async fn delete(&self, id: String) -> AppResult<VaultRecord>;
+    async fn update(
+        &self,
+        id: uuid::Uuid,
+        vault_record: VaultRecordUpdate,
+    ) -> AppResult<VaultRecord>;
+    async fn delete(&self, id: uuid::Uuid) -> AppResult<VaultRecord>;
 }

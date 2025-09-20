@@ -4,7 +4,7 @@ use crate::v2::business::domain::entities::vault_record::{VaultRecord, VaultReco
 use crate::v2::business::domain::repositories::vault_record::VaultRecordRepository;
 use crate::v2::errors::AppResult;
 use crate::v2::shared::base::BaseUseCase;
-
+use uuid::Uuid;
 pub struct UpdateVaultRecordInput {
     id: String,
 
@@ -28,9 +28,10 @@ impl UpdateVaultRecordUseCase {
 
 impl BaseUseCase<UpdateVaultRecordInput, VaultRecord> for UpdateVaultRecordUseCase {
     async fn execute(&self, input: UpdateVaultRecordInput) -> AppResult<VaultRecord> {
+        let id = Uuid::parse_str(&input.id)?;
         self.vault_record_repository
             .update(
-                input.id,
+                id,
                 VaultRecordUpdate {
                     name: input.name,
                     url: input.url,

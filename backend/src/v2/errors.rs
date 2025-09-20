@@ -5,10 +5,16 @@ use thiserror::Error;
 pub enum DataOperation {
     #[error("Save Error")]
     SaveError,
+    #[error("Not found error")]
+    NotFoundError,
+    #[error("Delete error")]
+    DeleteError,
 }
 
 #[derive(Error, Debug)]
 pub enum AppError {
+    #[error("UUID Error")]
+    UuidError(#[from] uuid::Error),
     #[error("Cipher Error: {0}")]
     EncryptionCipherError(String),
     #[error("Decrypt Error")]
