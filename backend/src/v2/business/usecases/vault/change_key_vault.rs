@@ -4,8 +4,9 @@ use crate::v2::business::domain::services::VaultService;
 use crate::v2::errors::AppResult;
 use crate::v2::shared::base::BaseUseCase;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ChangeKeyVaultInput {
-    key: String,
+    pub key: String,
 }
 
 pub struct ChangeKeyVaultUseCase {

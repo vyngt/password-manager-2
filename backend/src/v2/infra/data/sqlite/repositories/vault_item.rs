@@ -1,13 +1,13 @@
-use crate::v2::business::domain::repositories::ListVaultRecordsOptions;
+use crate::v2::business::domain::repositories::ListVaultItemsOptions;
 use crate::v2::business::domain::{
-    entities::vault_record::{VaultRecord, VaultRecordUpdate},
-    repositories::vault_record::VaultRecordRepository,
+    entities::vault_item::{VaultItem as VaultItemDomain, VaultItemUpdate},
+    repositories::vault_item::VaultItemRepository,
 };
 use crate::v2::errors::{AppResult, DataOperation};
 use crate::v2::infra::data::sqlite::{
     datasource::connection::DataSourceConnection,
-    entities::vault::{prelude::*, vault},
-    mappers::db_vault::vault::VaultMapper,
+    entities::vault::{prelude::*, vault_item},
+    mappers::db_vault::vault_item::VaultMapper,
 };
 use std::sync::Arc;
 use uuid::Uuid;
@@ -16,36 +16,36 @@ use crate::v2::shared::pager::{PaginationMetadata, PaginationOutput};
 use sea_orm::QuerySelect;
 use sea_orm::entity::prelude::*;
 
-pub struct VaultRecordRepositoryImpl {
+pub struct VaultItemRepositoryImpl {
     connection: Arc<DataSourceConnection>,
 }
 
-impl VaultRecordRepositoryImpl {
+impl VaultItemRepositoryImpl {
     pub fn new(connection: Arc<DataSourceConnection>) -> Self {
         Self { connection }
     }
 }
 
 #[async_trait::async_trait]
-impl VaultRecordRepository for VaultRecordRepositoryImpl {
+impl VaultItemRepository for VaultItemRepositoryImpl {
     async fn list(
         &self,
-        input: ListVaultRecordsOptions,
-    ) -> AppResult<PaginationOutput<VaultRecord>> {
+        input: ListVaultItemsOptions,
+    ) -> AppResult<PaginationOutput<VaultItemDomain>> {
         use crate::v2::infra::data::sqlite::entities::vault::prelude::*;
 
         let db = self.connection.conn();
 
-        let total_count = Vault::find().count(db).await?;
+        let total_count = VaultItem::find().count(db).await?;
 
-        let records = Vault::find()
+        let records = VaultItem::find()
             .limit(input.pagination.limit)
             .offset(input.pagination.offset)
             .all(db)
             .await?
             .iter()
             .map(|v| VaultMapper::to_domain(v.clone()))
-            .collect::<Vec<VaultRecord>>();
+            .collect::<Vec<VaultItemDomain>>();
 
         Ok(PaginationOutput {
             data: records,
@@ -57,10 +57,10 @@ impl VaultRecordRepository for VaultRecordRepositoryImpl {
         })
     }
 
-    async fn get(&self, id: Uuid) -> AppResult<VaultRecord> {
+    async fn get(&self, id: Uuid) -> AppResult<VaultItemDomain> {
         let db = self.connection.conn();
 
-        let record = Vault::find_by_id(id)
+        let record = VaultItem::find_by_id(id)
             .one(db)
             .await?
             .ok_or(DataOperation::NotFoundError)?;
@@ -69,13 +69,13 @@ impl VaultRecordRepository for VaultRecordRepositoryImpl {
         Ok(domain)
     }
 
-    async fn create(&self, vault_record: VaultRecord) -> AppResult<VaultRecord> {
+    async fn create(&self, vault_record: VaultItemDomain) -> AppResult<VaultItemDomain> {
         use crate::v2::infra::data::sqlite::entities::vault::prelude::*;
         let db = self.connection.conn();
 
         let persistence = VaultMapper::to_persistence(vault_record);
-        let res = Vault::insert(persistence).exec(db).await?;
-        let record = Vault::find_by_id(res.last_insert_id)
+        let res = VaultItem::insert(persistence).exec(db).await?;
+        let record = VaultItem::find_by_id(res.last_insert_id)
             .one(db)
             .await?
             .ok_or(DataOperation::SaveError)?;
@@ -84,19 +84,20 @@ impl VaultRecordRepository for VaultRecordRepositoryImpl {
 
         Ok(domain)
     }
-    async fn update(&self, id: Uuid, vault_record: VaultRecordUpdate) -> AppResult<VaultRecord> {
+    async fn update(&self, id: Uuid, vault_record: VaultItemUpdate) -> AppResult<VaultItemDomain> {
         let db = self.connection.conn();
         let persistence = VaultMapper::to_update(id, vault_record);
-        let res = Vault::update(persistence).exec(db).await?;
+        let res = VaultItem::update(persistence).exec(db).await?;
         let domain = VaultMapper::to_domain(res);
 
         Ok(domain)
     }
-    async fn delete(&self, id: Uuid) -> AppResult<VaultRecord> {
+    async fn delete(&self, id: Uuid) -> AppResult<VaultItemDomain> {
         use sea_orm::Set;
 
         let db = self.connection.conn();
-        let record = Vault::delete(vault::ActiveModel {
+
+        let record = VaultItem::delete(vault_item::ActiveModel {
             id: Set(id),
             ..Default::default()
         })

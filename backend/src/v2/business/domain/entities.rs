@@ -1,3 +1,3 @@
-pub mod category;
+pub mod folder;
 pub mod theme;
-pub mod vault_record;
+pub mod vault_item;

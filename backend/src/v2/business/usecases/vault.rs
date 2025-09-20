@@ -1,15 +1,15 @@
 mod change_key_vault;
-mod create_vault_record;
-mod delete_vault_record;
-mod get_vault_record;
-mod list_vault_records;
+mod create_vault_item;
+mod delete_vault_item;
+mod get_vault_item;
+mod list_vault_items;
 mod unlock_vault;
-mod update_vault_record;
+mod update_vault_item;
 
 pub use change_key_vault::*;
-pub use create_vault_record::*;
-pub use delete_vault_record::*;
-pub use get_vault_record::*;
-pub use list_vault_records::*;
+pub use create_vault_item::*;
+pub use delete_vault_item::*;
+pub use get_vault_item::*;
+pub use list_vault_items::*;
 pub use unlock_vault::*;
-pub use update_vault_record::*;
+pub use update_vault_item::*;

@@ -1,3 +1,3 @@
-pub mod vault_record;
+pub mod vault_item;
 
-pub use vault_record::*;
+pub use vault_item::*;

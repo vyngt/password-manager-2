@@ -14,21 +14,25 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Vault::Table)
+                    .table(VaultItem::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Vault::Id).uuid().not_null().primary_key())
-                    .col(ColumnDef::new(Vault::Name).string().not_null())
-                    .col(ColumnDef::new(Vault::Url).string().not_null())
-                    .col(ColumnDef::new(Vault::Login).string().not_null())
-                    .col(ColumnDef::new(Vault::KeyPass).string().not_null())
                     .col(
-                        ColumnDef::new(Vault::CreatedAt)
+                        ColumnDef::new(VaultItem::Id)
+                            .uuid()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(VaultItem::Title).string().not_null())
+                    .col(ColumnDef::new(VaultItem::Kind).string().not_null())
+                    .col(ColumnDef::new(VaultItem::Data).string().not_null())
+                    .col(
+                        ColumnDef::new(VaultItem::CreatedAt)
                             .timestamp()
                             .default(Expr::current_timestamp())
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(Vault::UpdatedAt)
+                        ColumnDef::new(VaultItem::UpdatedAt)
                             .timestamp()
                             .default(Expr::current_timestamp())
                             .not_null(),
@@ -40,19 +44,18 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Vault::Table).to_owned())
+            .drop_table(Table::drop().table(VaultItem::Table).to_owned())
             .await
     }
 }
 
 #[derive(Iden)]
-pub enum Vault {
+pub enum VaultItem {
     Table,
     Id,
-    Name,
-    Url,
-    Login,
-    KeyPass,
+    Title,
+    Kind,
+    Data,
     CreatedAt,
     UpdatedAt,
 }

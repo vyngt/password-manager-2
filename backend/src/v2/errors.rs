@@ -2,6 +2,12 @@ use anyhow::Result;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+pub enum BusinessError {
+    #[error("Invalid Input")]
+    InputError,
+}
+
+#[derive(Error, Debug)]
 pub enum DataOperation {
     #[error("Save Error")]
     SaveError,
@@ -29,6 +35,8 @@ pub enum AppError {
     DatabaseError(#[from] sea_orm::error::DbErr),
     #[error("Data Operation Error")]
     DataOperationError(#[from] DataOperation),
+    #[error("Business Error")]
+    BusinessError(#[from] BusinessError),
 }
 
 pub type AppResult<T> = Result<T, AppError>;

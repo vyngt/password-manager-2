@@ -3,4 +3,4 @@
 pub mod prelude;
 
 pub mod pre_setup;
-pub mod vault;
+pub mod vault_item;

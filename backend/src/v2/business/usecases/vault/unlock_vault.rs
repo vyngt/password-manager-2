@@ -5,7 +5,7 @@ use crate::v2::errors::AppResult;
 use crate::v2::shared::base::BaseUseCase;
 
 pub struct UnlockVaultInput {
-    key: String,
+    pub key: String,
 }
 
 pub struct UnlockVaultUseCase {
