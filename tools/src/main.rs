@@ -1,14 +1,14 @@
-use backend_lib::v2::business::domain::entities::vault_item::{
+use backend::business::domain::entities::vault_item::{
     VaultItemData, VaultItemDataCredential, VaultItemKind,
 };
-use backend_lib::v2::business::usecases::{
+use backend::business::usecases::{
     CreateVaultItemInput, CreateVaultItemUseCase, GetVaultItemInput, GetVaultItemUseCase,
     UpdateVaultItemInput, UpdateVaultItemUseCase,
 };
-use backend_lib::v2::infra::data::sqlite::datasource::connection::DataSourceConnection;
-use backend_lib::v2::infra::data::sqlite::datasource::migration::VaultMigrator;
-use backend_lib::v2::infra::data::sqlite::repositories::vault_item::VaultItemRepositoryImpl;
-use backend_lib::v2::shared::base::BaseUseCase;
+use backend::infra::data::sqlite::datasource::connection::DataSourceConnection;
+use backend::infra::data::sqlite::datasource::migration::VaultMigrator;
+use backend::infra::data::sqlite::repositories::vault_item::VaultItemRepositoryImpl;
+use backend::shared::base::BaseUseCase;
 use dotenvy::dotenv;
 use sea_orm_migration::MigratorTrait;
 use std::env;

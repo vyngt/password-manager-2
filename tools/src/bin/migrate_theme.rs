@@ -1,5 +1,5 @@
-use backend_lib::v2::infra::data::sqlite::datasource::connection::DataSourceConnection;
-use backend_lib::v2::infra::data::sqlite::datasource::migration::ThemeMigrator;
+use backend::infra::data::sqlite::datasource::connection::DataSourceConnection;
+use backend::infra::data::sqlite::datasource::migration::ThemeMigrator;
 
 use sea_orm_cli::{DateTimeCrate, run_generate_command};
 use sea_orm_migration::MigratorTrait;

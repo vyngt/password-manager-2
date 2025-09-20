@@ -165,6 +165,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
+name = "app"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "backend",
+ "chrono",
+ "diesel",
+ "diesel_migrations",
+ "dotenvy",
+ "rand 0.9.2",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-http",
+ "tauri-plugin-notification",
+ "tauri-plugin-os",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "thiserror 2.0.16",
+ "tokio",
+ "uuid",
+ "validator",
+]
+
+[[package]]
 name = "arboard"
 version = "3.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -557,7 +588,7 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "backend"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -565,8 +596,6 @@ dependencies = [
  "async-trait",
  "chrono",
  "codegen",
- "diesel",
- "diesel_migrations",
  "dotenvy",
  "libsqlite3-sys",
  "rand 0.9.2",
@@ -574,17 +603,6 @@ dependencies = [
  "sea-orm-migration",
  "serde",
  "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-http",
- "tauri-plugin-notification",
- "tauri-plugin-os",
- "tauri-plugin-process",
- "tauri-plugin-shell",
  "thiserror 2.0.16",
  "tokio",
  "uuid",

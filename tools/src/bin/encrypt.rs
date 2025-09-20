@@ -1,6 +1,6 @@
-use backend_lib::v2::business::domain::services::VaultService;
-use backend_lib::v2::infra::data::sqlite::datasource::connection::DataSourceConnection;
-use backend_lib::v2::infra::service::vault::VaultServiceImpl;
+use backend::business::domain::services::VaultService;
+use backend::infra::data::sqlite::datasource::connection::DataSourceConnection;
+use backend::infra::service::vault::VaultServiceImpl;
 
 use std::path::PathBuf;
 use std::sync::Arc;
