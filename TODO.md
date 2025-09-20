@@ -23,3 +23,19 @@
 - Single Instance
 - Auto fill browser?
 - I18n
+
+# Work
+
+- Unlock/change master key (/)
+- CRUD (Item -> Vault Record) (/)
+- Generate Password (/)
+- Theme Manager
+- Import/Export
+- Drop diesel
+- App State manager
+- Error handling
+- Migrate tauri command
+- i18n
+- Testing
+  - Auto test
+  - Manually test
