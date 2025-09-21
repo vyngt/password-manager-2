@@ -12,11 +12,11 @@
 - Unlock/change master key (/)
 - CRUD (Item -> Vault Record) (/)
 - Generate Password (/)
-- Theme Manager
-- Import/Export
-- Drop diesel
-- App State manager
-- Error handling
+- Theme Manager (/)
+- Import/Export vault
+- Drop diesel (/)
+- App State manager (/)
+- Error handling (\/)
 - Migrate tauri command
 - i18n
 - Folder + Tagging (for Vault Record)

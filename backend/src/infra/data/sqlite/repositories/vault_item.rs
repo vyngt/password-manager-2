@@ -109,4 +109,24 @@ impl VaultItemRepository for VaultItemRepositoryImpl {
 
         Ok(domain)
     }
+
+    async fn all(&self) -> AppResult<Vec<VaultItemDomain>> {
+        let db = self.connection.conn();
+        let records = VaultItem::find().all(db).await?;
+        let domain = records
+            .iter()
+            .map(|v| VaultMapper::to_domain(v.clone()))
+            .collect::<Vec<VaultItemDomain>>();
+        Ok(domain)
+    }
+
+    async fn create_many(&self, items: Vec<VaultItemDomain>) -> AppResult<usize> {
+        let db = self.connection.conn();
+        let persistence = items
+            .iter()
+            .map(|v| VaultMapper::to_persistence(v.clone()))
+            .collect::<Vec<vault_item::ActiveModel>>();
+        let _ = VaultItem::insert_many(persistence).exec(db).await?;
+        Ok(items.len())
+    }
 }

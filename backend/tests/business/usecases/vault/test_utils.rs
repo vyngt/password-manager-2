@@ -127,6 +127,26 @@ impl VaultItemRepository for MockVaultItemRepository {
             Ok(mock_item)
         }
     }
+
+    async fn all(&self) -> AppResult<Vec<VaultItem>> {
+        if self.should_fail {
+            return Err(backend::errors::AppError::UnknownError(
+                "Mock error".to_string(),
+            ));
+        }
+
+        Ok(self.vault_items.clone())
+    }
+
+    async fn create_many(&self, items: Vec<VaultItem>) -> AppResult<usize> {
+        if self.should_fail {
+            return Err(backend::errors::AppError::UnknownError(
+                "Mock error".to_string(),
+            ));
+        }
+
+        Ok(items.len())
+    }
 }
 
 pub fn create_test_vault_item() -> VaultItem {
