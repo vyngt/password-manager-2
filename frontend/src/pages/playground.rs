@@ -2,7 +2,6 @@ use crate::api::tauri::get_current_window;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use icondata as i;
 use leptos::ev::Targeted;
-use leptos::logging::log;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
