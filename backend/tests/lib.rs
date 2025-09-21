@@ -5,6 +5,7 @@ pub mod business {
             pub mod delete_color_scheme;
             pub mod get_color_scheme;
             pub mod get_current_theme;
+            pub mod list_color_schemes;
             pub mod test_utils;
             pub mod update_color_scheme;
             pub mod update_theme;

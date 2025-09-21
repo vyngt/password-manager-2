@@ -42,9 +42,74 @@ impl MockThemeRepository {
 impl ThemeRepository for MockThemeRepository {
     async fn list_color_schemes(
         &self,
-        _input: backend::business::domain::repositories::ListColorSchemesOptions,
+        input: backend::business::domain::repositories::ListColorSchemesOptions,
     ) -> AppResult<backend::shared::pager::PaginationOutput<ColorScheme>> {
-        todo!()
+        if self.should_fail {
+            return Err(backend::errors::AppError::UnknownError(
+                "Mock error".to_string(),
+            ));
+        }
+
+        // Create a mock list of color schemes
+        let mut color_schemes = vec![
+            ColorScheme {
+                id: Uuid::new_v4(),
+                name: "Default Theme".to_string(),
+                color_primary: "#3B82F6".to_string(),
+                color_secondary: "#6B7280".to_string(),
+                color_success: "#10B981".to_string(),
+                color_danger: "#EF4444".to_string(),
+                color_warning: "#F59E0B".to_string(),
+                color_foreground: "#1F2937".to_string(),
+                color_background: "#FFFFFF".to_string(),
+            },
+            ColorScheme {
+                id: Uuid::new_v4(),
+                name: "Dark Theme".to_string(),
+                color_primary: "#60A5FA".to_string(),
+                color_secondary: "#9CA3AF".to_string(),
+                color_success: "#34D399".to_string(),
+                color_danger: "#F87171".to_string(),
+                color_warning: "#FBBF24".to_string(),
+                color_foreground: "#F9FAFB".to_string(),
+                color_background: "#111827".to_string(),
+            },
+            ColorScheme {
+                id: Uuid::new_v4(),
+                name: "Ocean Theme".to_string(),
+                color_primary: "#0EA5E9".to_string(),
+                color_secondary: "#64748B".to_string(),
+                color_success: "#22C55E".to_string(),
+                color_danger: "#F97316".to_string(),
+                color_warning: "#EAB308".to_string(),
+                color_foreground: "#0F172A".to_string(),
+                color_background: "#F0F9FF".to_string(),
+            },
+        ];
+
+        // Apply pagination
+        let total_count = color_schemes.len() as u64;
+        let start = input.pagination.offset as usize;
+        let end = (input.pagination.offset + input.pagination.limit) as usize;
+
+        let paginated_data = if start >= color_schemes.len() {
+            vec![]
+        } else {
+            color_schemes
+                .drain(start..end.min(color_schemes.len()))
+                .collect()
+        };
+
+        let metadata = backend::shared::pager::PaginationMetadata::calculate_pagination(
+            input.pagination.limit,
+            input.pagination.offset,
+            total_count,
+        );
+
+        Ok(backend::shared::pager::PaginationOutput {
+            data: paginated_data,
+            metadata,
+        })
     }
 
     async fn get_color_scheme(&self, _id: Uuid) -> AppResult<ColorScheme> {
