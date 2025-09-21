@@ -26,3 +26,23 @@ pub mod business {
         }
     }
 }
+
+pub mod infra {
+    pub mod data {
+        pub mod sqlite {
+            pub mod mappers {
+                pub mod db_theme {
+                    pub mod color_scheme;
+                    pub mod theme;
+                }
+                pub mod db_vault {
+                    pub mod vault_item;
+                }
+            }
+            pub mod repositories {
+                pub mod theme;
+                pub mod vault_item;
+            }
+        }
+    }
+}
