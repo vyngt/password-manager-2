@@ -13,7 +13,7 @@
 - CRUD (Item -> Vault Record) (/)
 - Generate Password (/)
 - Theme Manager (/)
-- Import/Export vault
+- Import/Export vault (/)
 - Drop diesel (/)
 - App State manager (/)
 - Error handling (\/)

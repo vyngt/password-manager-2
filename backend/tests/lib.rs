@@ -20,7 +20,9 @@ pub mod business {
             pub mod change_key_vault;
             pub mod create_vault_item;
             pub mod delete_vault_item;
+            pub mod export_vault_items;
             pub mod get_vault_item;
+            pub mod import_vault_items;
             pub mod list_vault_items;
             pub mod test_utils;
             pub mod unlock_vault;
