@@ -7,23 +7,6 @@
 - Toast (/)
 - Modal
 
-# Features:
-
-- Upgrade encryption (even the most powerful computer cannot solve this):
-
-  - Master Password
-  - Salt
-  - DEK (Data Encryption Key) (Save Encrypted DEK)
-  - KEK (Key Encryption Key)
-  - KDF (Key Derivation Function)
-    => Master Password + KDF + Salt => KEK
-    => KEK => Decrypt DEK => KEK (RAM Only) => DB
-
-- Category
-- Single Instance
-- Auto fill browser?
-- I18n
-
 # Work (Backend)
 
 - Unlock/change master key (/)
@@ -45,3 +28,17 @@
 - Testing
   - Auto test
   - Manually test
+
+# Work (Frontend)
+
+- Unlock page (/)
+- Vault Items Page (CRUD)
+  - List
+  - Form
+- Change Key
+- Export/Import Vault Item
+- Theme Manager
+- I18n
+- Utilities Feat
+  - Password generator
+- Folder/Tagging feat
