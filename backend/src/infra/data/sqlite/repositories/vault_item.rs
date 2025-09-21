@@ -7,7 +7,7 @@ use crate::errors::{AppResult, DataOperation};
 use crate::infra::data::sqlite::{
     datasource::connection::DataSourceConnection,
     entities::vault::{prelude::*, vault_item},
-    mappers::db_vault::vault_item::VaultMapper,
+    mappers::db_vault::VaultMapper,
 };
 use std::sync::Arc;
 use uuid::Uuid;
