@@ -12,7 +12,9 @@ pub mod business {
         }
         pub mod utilities {
             pub mod generate_password;
+            pub mod read_from_file;
             pub mod test_utils;
+            pub mod write_to_file;
         }
         pub mod vault {
             pub mod change_key_vault;

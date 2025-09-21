@@ -1,10 +1,13 @@
 use async_trait::async_trait;
 use backend::business::domain::services::{GeneratePasswordOptions, UtilitiesService};
+use backend::errors::AppResult;
+use std::path::PathBuf;
 
 // Mock implementation of UtilitiesService for testing
 pub struct MockUtilitiesService {
     pub should_fail: bool,
     pub generated_password: Option<String>,
+    pub file_content: Option<String>,
 }
 
 impl MockUtilitiesService {
@@ -12,11 +15,17 @@ impl MockUtilitiesService {
         Self {
             should_fail: false,
             generated_password: None,
+            file_content: None,
         }
     }
 
     pub fn with_password(mut self, password: String) -> Self {
         self.generated_password = Some(password);
+        self
+    }
+
+    pub fn with_file_content(mut self, content: String) -> Self {
+        self.file_content = Some(content);
         self
     }
 
@@ -36,5 +45,38 @@ impl UtilitiesService for MockUtilitiesService {
         self.generated_password
             .clone()
             .unwrap_or_else(|| "MockPassword123!".to_string())
+    }
+
+    async fn write_to_file(&self, path: PathBuf, _content: String) -> AppResult<()> {
+        if self.should_fail {
+            return Err(backend::errors::AppError::FileWriteError(
+                "Mock write error".to_string(),
+            ));
+        }
+
+        // Simulate directory check - if path contains "nonexistent", return DirectoryNotFoundError
+        if path.to_string_lossy().contains("nonexistent") {
+            return Err(backend::errors::AppError::DirectoryNotFoundError);
+        }
+
+        Ok(())
+    }
+
+    async fn read_from_file(&self, path: PathBuf) -> AppResult<String> {
+        if self.should_fail {
+            return Err(backend::errors::AppError::FileReadError(
+                "Mock read error".to_string(),
+            ));
+        }
+
+        // Simulate file not found - if path contains "nonexistent", return FileNotFoundError
+        if path.to_string_lossy().contains("nonexistent") {
+            return Err(backend::errors::AppError::FileNotFoundError);
+        }
+
+        Ok(self
+            .file_content
+            .clone()
+            .unwrap_or_else(|| "Mock file content".to_string()))
     }
 }

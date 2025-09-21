@@ -29,6 +29,12 @@ pub enum AppError {
     EncryptionEncryptError,
     #[error("File Not Found")]
     FileNotFoundError,
+    #[error("File Write Error: {0}")]
+    FileWriteError(String),
+    #[error("File Read Error: {0}")]
+    FileReadError(String),
+    #[error("Directory Not Found")]
+    DirectoryNotFoundError,
     #[error("Unknown Error: {0}")]
     UnknownError(String),
     #[error("Database Error")]
