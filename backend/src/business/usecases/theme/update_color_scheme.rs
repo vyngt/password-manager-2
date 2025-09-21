@@ -5,7 +5,7 @@ use crate::shared::base::BaseUseCase;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct UpdateColorSchemeInput {
     pub id: String,
     pub name: String,

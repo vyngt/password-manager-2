@@ -1,5 +1,5 @@
 use uuid::Uuid;
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct ColorScheme {
     pub id: Uuid,
     pub name: String,
@@ -12,7 +12,7 @@ pub struct ColorScheme {
     pub color_background: String,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct UpdateColorScheme {
     pub name: String,
     pub color_primary: String,
@@ -24,7 +24,7 @@ pub struct UpdateColorScheme {
     pub color_background: String,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct Theme {
     pub id: Uuid,
 
@@ -32,7 +32,7 @@ pub struct Theme {
     pub color_scheme: ColorScheme,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct UpdateTheme {
     pub color_scheme_id: Uuid,
 }
