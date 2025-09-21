@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use codegen::StringEnum;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, StringEnum)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, StringEnum)]
 pub enum VaultItemKind {
     Credential,
 }
@@ -20,7 +20,7 @@ pub enum VaultItemData {
     Credential(VaultItemDataCredential),
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct VaultItem {
     pub id: Uuid,
     pub title: String,
@@ -44,7 +44,7 @@ impl VaultItem {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct UpdateVaultItem {
     pub title: String,
     pub kind: VaultItemKind,

@@ -8,7 +8,7 @@ use crate::errors::AppResult;
 use crate::shared::base::BaseUseCase;
 use uuid::Uuid;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct UpdateVaultItemInput {
     pub id: String,
     pub title: String,

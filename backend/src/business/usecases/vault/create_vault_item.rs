@@ -5,7 +5,7 @@ use crate::business::domain::repositories::VaultItemRepository;
 use crate::errors::AppResult;
 use crate::shared::base::BaseUseCase;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct CreateVaultItemInput {
     pub title: String,
     pub kind: VaultItemKind,

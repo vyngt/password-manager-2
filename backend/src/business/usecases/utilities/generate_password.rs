@@ -5,11 +5,11 @@ use crate::errors::AppResult;
 use crate::shared::base::BaseUseCase;
 
 pub struct GeneratePasswordInput {
-    len: i32,
-    upper: bool,
-    lower: bool,
-    digits: bool,
-    special: bool,
+    pub len: i32,
+    pub upper: bool,
+    pub lower: bool,
+    pub digits: bool,
+    pub special: bool,
 }
 
 pub struct GeneratePasswordUseCase {
