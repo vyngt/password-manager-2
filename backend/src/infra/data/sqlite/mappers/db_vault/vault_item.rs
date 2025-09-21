@@ -1,6 +1,4 @@
-use crate::business::domain::entities::vault_item::{
-    VaultItem, VaultItemKind, VaultItemUpdate,
-};
+use crate::business::domain::entities::vault_item::{UpdateVaultItem, VaultItem, VaultItemKind};
 use crate::infra::data::sqlite::entities::vault::vault_item;
 use chrono::{DateTime, Utc};
 use sea_orm::ActiveValue::Set;
@@ -39,7 +37,7 @@ impl VaultMapper {
         }
     }
 
-    pub fn to_update(id: Uuid, data: VaultItemUpdate) -> vault_item::ActiveModel {
+    pub fn to_update(id: Uuid, data: UpdateVaultItem) -> vault_item::ActiveModel {
         vault_item::ActiveModel {
             id: Set(id),
             title: Set(data.title),

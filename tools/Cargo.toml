@@ -16,7 +16,7 @@ name = "encrypt"
 path = "src/bin/encrypt.rs"
 
 [dependencies]
-tokio = { version = "1.47.1", features = ["tokio-macros"] }
+tokio = { version = "1.47.1", features = ["full", "tokio-macros"] }
 backend = { path = "../backend" }
 dotenvy = "0.15.7"
 sea-orm-cli = "1.1.16"

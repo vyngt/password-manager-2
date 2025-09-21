@@ -1,4 +1,5 @@
-use super::entities::ThemeManager;
+use super::entities::Theme;
+use crate::constants::THEME_ID;
 use sea_orm::Statement;
 use sea_orm_migration::prelude::*;
 use uuid::uuid;
@@ -17,17 +18,17 @@ impl MigrationTrait for Migration {
         let db = manager.get_connection();
         let alter_stmt = Statement::from_sql_and_values(
             manager.get_database_backend(),
-            r#"ALTER TABLE theme_manager ADD color_scheme_id uuid_text REFERENCES color_scheme(id) ON DELETE RESTRICT;"#,
+            r#"ALTER TABLE theme ADD color_scheme_id uuid_text REFERENCES color_scheme(id) ON DELETE RESTRICT;"#,
             [],
         );
         db.execute(alter_stmt).await?;
 
         let stmt = Statement::from_sql_and_values(
             manager.get_database_backend(),
-            r#"UPDATE `theme_manager` SET `color_scheme_id` = ? WHERE `id` = ?"#,
+            r#"UPDATE `theme` SET `color_scheme_id` = ? WHERE `id` = ?"#,
             [
                 uuid!("14368642-5c48-4aa6-8a5c-fe7346e4cd1e").into(),
-                1.into(),
+                uuid!(THEME_ID).into(),
             ],
         );
         db.execute(stmt).await?;
@@ -39,8 +40,8 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                    .table(ThemeManager::Table)
-                    .drop_column(ThemeManager::ColorSchemeId)
+                    .table(Theme::Table)
+                    .drop_column(Theme::ColorSchemeId)
                     .to_owned(),
             )
             .await?;

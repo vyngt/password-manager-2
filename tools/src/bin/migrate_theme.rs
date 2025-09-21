@@ -6,7 +6,7 @@ use sea_orm_migration::MigratorTrait;
 
 use std::sync::Arc;
 
-const ENTITY_OUTPUT_PATH: &str = "../backend/src/v2/infra/data/sqlite/entities/theme";
+const ENTITY_OUTPUT_PATH: &str = "../backend/src/infra/data/sqlite/entities/theme";
 const DB_PATH: &str = "local/theme.db";
 
 #[tokio::main]

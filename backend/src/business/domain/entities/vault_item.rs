@@ -45,7 +45,7 @@ impl VaultItem {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct VaultItemUpdate {
+pub struct UpdateVaultItem {
     pub title: String,
     pub kind: VaultItemKind,
     pub data: VaultItemData,

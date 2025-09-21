@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::business::domain::entities::vault_item::{
-    VaultItem, VaultItemData, VaultItemKind, VaultItemUpdate,
+    UpdateVaultItem, VaultItem, VaultItemData, VaultItemKind,
 };
-use crate::business::domain::repositories::vault_item::VaultItemRepository;
+use crate::business::domain::repositories::VaultItemRepository;
 use crate::errors::AppResult;
 use crate::shared::base::BaseUseCase;
 use uuid::Uuid;
@@ -32,7 +32,7 @@ impl BaseUseCase<UpdateVaultItemInput, VaultItem> for UpdateVaultItemUseCase {
         self.vault_item_repo
             .update(
                 id,
-                VaultItemUpdate {
+                UpdateVaultItem {
                     title: input.title,
                     kind: input.kind,
                     data: input.data,

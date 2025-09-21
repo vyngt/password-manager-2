@@ -6,7 +6,7 @@ use sea_orm_migration::MigratorTrait;
 
 use std::sync::Arc;
 
-const ENTITY_OUTPUT_PATH: &str = "../backend/src/v2/infra/data/sqlite/entities/vault";
+const ENTITY_OUTPUT_PATH: &str = "../backend/src/infra/data/sqlite/entities/vault";
 const DB_PATH: &str = "local/vault_unencrypt.db";
 
 #[tokio::main]

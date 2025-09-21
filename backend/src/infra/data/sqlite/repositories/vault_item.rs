@@ -1,7 +1,7 @@
 use crate::business::domain::repositories::ListVaultItemsOptions;
 use crate::business::domain::{
-    entities::vault_item::{VaultItem as VaultItemDomain, VaultItemUpdate},
-    repositories::vault_item::VaultItemRepository,
+    entities::vault_item::{UpdateVaultItem, VaultItem as VaultItemDomain},
+    repositories::VaultItemRepository,
 };
 use crate::errors::{AppResult, DataOperation};
 use crate::infra::data::sqlite::{
@@ -84,7 +84,7 @@ impl VaultItemRepository for VaultItemRepositoryImpl {
 
         Ok(domain)
     }
-    async fn update(&self, id: Uuid, vault_record: VaultItemUpdate) -> AppResult<VaultItemDomain> {
+    async fn update(&self, id: Uuid, vault_record: UpdateVaultItem) -> AppResult<VaultItemDomain> {
         let db = self.connection.conn();
         let persistence = VaultMapper::to_update(id, vault_record);
         let res = VaultItem::update(persistence).exec(db).await?;

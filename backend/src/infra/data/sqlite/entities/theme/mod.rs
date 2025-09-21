@@ -3,4 +3,4 @@
 pub mod prelude;
 
 pub mod color_scheme;
-pub mod theme_manager;
+pub mod theme;
