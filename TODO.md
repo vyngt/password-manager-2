@@ -9,6 +9,8 @@
 
 # Work (Backend)
 
+## Base
+
 - Unlock/change master key (/)
 - CRUD (Item -> Vault Record) (/)
 - Generate Password (/)
@@ -17,7 +19,10 @@
 - Drop diesel (/)
 - App State manager (/)
 - Error handling (\/)
-- Migrate tauri command
+- Migrate tauri command (/)
+
+## New
+
 - i18n
 - Folder + Tagging (for Vault Record)
 - New form for Vault Record
@@ -26,7 +31,7 @@
   - Environment...
   - Cert/...
 - Testing
-  - Auto test
+  - Auto test (/)
   - Manually test
 
 # Work (Frontend)

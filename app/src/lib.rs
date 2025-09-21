@@ -32,7 +32,30 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![commands::vault::unlock_vault])
+        .invoke_handler(tauri::generate_handler![
+            // Vault commands
+            commands::vault::unlock_vault,
+            commands::vault::change_key_vault,
+            commands::vault::create_vault_item,
+            commands::vault::get_vault_item,
+            commands::vault::update_vault_item,
+            commands::vault::delete_vault_item,
+            commands::vault::list_vault_items,
+            commands::vault::export_vault_items,
+            commands::vault::import_vault_items,
+            // Theme commands
+            commands::theme::get_current_theme,
+            commands::theme::create_color_scheme,
+            commands::theme::get_color_scheme,
+            commands::theme::update_color_scheme,
+            commands::theme::delete_color_scheme,
+            commands::theme::list_color_schemes,
+            commands::theme::update_theme,
+            // Utilities commands
+            commands::utilities::generate_password,
+            commands::utilities::read_from_file,
+            commands::utilities::write_to_file
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

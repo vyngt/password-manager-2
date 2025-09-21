@@ -4,6 +4,7 @@ use crate::business::domain::services::{GeneratePasswordOptions, UtilitiesServic
 use crate::errors::AppResult;
 use crate::shared::base::BaseUseCase;
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct GeneratePasswordInput {
     pub len: i32,
     pub upper: bool,
