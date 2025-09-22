@@ -5,7 +5,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use reactive_stores::Store;
-use ui::components::icon::pm::PmIcon;
+use ui::components::icon::VEdgeIcon;
 use ui::components::icon_button::IconButton;
 use ui::components::icon_button::variants::{
     Effect as IconButtonEffect, Shape as IconButtonShape, Variant as IconButtonVariant,
@@ -51,11 +51,11 @@ pub fn WindowPanel() -> impl IntoView {
                 <div class="flex gap-2 justify-center">
                     <div class="flex flex-col justify-center text-foreground">
                         <div class="h-[30px] w-[30px]">
-                            <PmIcon />
+                            <VEdgeIcon />
                         </div>
                     </div>
                     <div class="flex flex-col justify-center">
-                        <h5 class="text-foreground">Password Manager</h5>
+                        <h5 class="text-foreground">"VEdge"</h5>
                     </div>
                 </div>
             </div>

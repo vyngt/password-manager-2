@@ -56,9 +56,11 @@ pub fn ToastProvider(children: Children) -> impl IntoView {
             aria-live="polite"
             aria-atomic="true"
         >
-            <For each=move || state.toasts.get()
-                 key=|t| t.id
-                 children=move |t| view! { <ToastRoot toast=t/> }/>
+            <For
+                each=move || state.toasts.get()
+                key=|t| t.id
+                children=move |t| view! { <ToastRoot toast=t /> }
+            />
         </div>
     }
 }

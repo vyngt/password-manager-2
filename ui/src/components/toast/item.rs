@@ -23,16 +23,15 @@ pub fn ToastRoot(toast: Toast) -> impl IntoView {
     };
 
     view! {
-        <div
-            class=cls
-            style=handle_style
-        >
+        <div class=cls style=handle_style>
             <div class="toast-inner">
                 <div class="flex-1">
                     <ToastTitle>{toast.title.clone()}</ToastTitle>
-                    {toast.description.map(|d| view!{ <ToastDescription>{d.clone()}</ToastDescription> })}
+                    {toast
+                        .description
+                        .map(|d| view! { <ToastDescription>{d.clone()}</ToastDescription> })}
                 </div>
-                <ToastClose id=toast.id color=toast.color/>
+                <ToastClose id=toast.id color=toast.color />
             </div>
         </div>
     }
@@ -52,16 +51,16 @@ pub fn ToastDescription(children: Children) -> impl IntoView {
 pub fn ToastClose(id: uuid::Uuid, color: RgbColor) -> impl IntoView {
     let state = expect_context::<ToastState>();
     view! {
-    <IconButton
-        color=color
-        variant=Variant::Text
-        effect=Effect::None
-        shape=Shape::Pill
-        auto_text_color=false
-        class="text-[var(--toast-color)]"
-        on:click=move |_| state.dismiss(id)
-    >
-        <Icon icon=i::FaXmarkSolid />
-    </IconButton>
+        <IconButton
+            color=color
+            variant=Variant::Text
+            effect=Effect::None
+            shape=Shape::Pill
+            auto_text_color=false
+            class="text-[var(--toast-color)]"
+            on:click=move |_| state.dismiss(id)
+        >
+            <Icon icon=i::FaXmarkSolid />
+        </IconButton>
     }
 }
