@@ -1,21 +1,24 @@
-use super::variants::{Effect, Shape, Size, Variant};
+use crate::primitives::tokens::{Effect, Shape, Size, Variant};
 
 pub fn apply_base() -> &'static str {
-    return "icon-btn";
+    return "btn";
 }
 
 pub fn apply_variant(variant: Variant) -> &'static str {
     match variant {
         Variant::Filled => "btn-filled",
         Variant::Outlined => "btn-outlined",
-        Variant::Text => "btn-text",
+        _ => "",
     }
 }
 
-pub fn apply_effect(effect: &Effect) -> &'static str {
-    match effect {
-        Effect::Ripple => "btn-ripple",
-        Effect::None => "",
+pub fn apply_effect(effect: Option<Effect>) -> &'static str {
+    if let Some(eff) = effect {
+        match eff {
+            Effect::Ripple => "btn-ripple",
+        }
+    } else {
+        ""
     }
 }
 

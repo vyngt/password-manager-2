@@ -1,6 +1,6 @@
+#[derive(Clone, Copy)]
 pub enum Effect {
     Ripple,
-    None,
 }
 
 pub enum Size {

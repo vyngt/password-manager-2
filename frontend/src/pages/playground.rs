@@ -8,16 +8,10 @@ use leptos_icons::Icon;
 use leptos_router::components::*;
 use reactive_stores::Store;
 use ui::components::button::Button;
-use ui::components::button::variants::{
-    Effect as ButtonEffect, Shape as ButtonShape, Size as ButtonSize, Variant as ButtonVariant,
-};
 use ui::components::icon_button::IconButton;
-use ui::components::icon_button::variants::{
-    Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
-    Variant as IconButtonVariant,
-};
 use ui::components::input::Input;
 use ui::primitives::color::RgbColor;
+use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
 use web_sys::{Event, HtmlInputElement};
 
 #[component]
@@ -27,10 +21,10 @@ pub fn R1() -> impl IntoView {
     view! {
         <div>
             <Button
-                variant=ButtonVariant::Filled
+                variant=Variant::Filled
                 color=Signal::derive(move || color_store.primary().get())
                 effect=ButtonEffect::Ripple
-                size=ButtonSize::Small
+                size=Size::Small
             >
                 "R1 Context"
             </Button>
@@ -73,24 +67,24 @@ pub fn Playground() -> impl IntoView {
         <div class="bg-violet-100 flex flex-row gap-2" data-tauri-drag-region=true>
             <IconButton
                 color=Signal::derive(move || color_store.primary().get())
-                size=IconButtonSize::Small
+                size=Size::Small
             >
                 <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.secondary().get())
-                variant=IconButtonVariant::Outlined
-                size=IconButtonSize::Large
-                shape=IconButtonShape::Pill
-                effect=IconButtonEffect::Ripple
+                variant=Variant::Outlined
+                size=Size::Large
+                shape=Shape::Pill
+                effect=ButtonEffect::Ripple
             >
                 <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
-                variant=IconButtonVariant::Text
-                effect=IconButtonEffect::Ripple
-                shape=IconButtonShape::Sharp
+                variant=Variant::Text
+                effect=ButtonEffect::Ripple
+                shape=Shape::Sharp
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -102,9 +96,9 @@ pub fn Playground() -> impl IntoView {
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
-                variant=IconButtonVariant::Text
-                effect=IconButtonEffect::Ripple
-                shape=IconButtonShape::Sharp
+                variant=Variant::Text
+                effect=ButtonEffect::Ripple
+                shape=Shape::Sharp
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -121,9 +115,9 @@ pub fn Playground() -> impl IntoView {
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
-                variant=IconButtonVariant::Text
-                effect=IconButtonEffect::Ripple
-                shape=IconButtonShape::Sharp
+                variant=Variant::Text
+                effect=ButtonEffect::Ripple
+                shape=Shape::Sharp
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -147,10 +141,10 @@ pub fn Playground() -> impl IntoView {
                 })
             />
             <Button
-                variant=ButtonVariant::Filled
+                variant=Variant::Filled
                 color=Signal::derive(move || color_store.primary().get())
                 effect=ButtonEffect::Ripple
-                size=ButtonSize::Small
+                size=Size::Small
                 class="absolute right-[3px] top-[3px]"
             >
                 "Hello world 1"
@@ -163,8 +157,8 @@ pub fn Playground() -> impl IntoView {
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.secondary().get())
             effect=ButtonEffect::Ripple
-            variant=ButtonVariant::Outlined
-            shape=ButtonShape::Sharp
+            variant=Variant::Outlined
+            shape=Shape::Sharp
         >
             "Hello world 2"
         </Button>
@@ -172,8 +166,8 @@ pub fn Playground() -> impl IntoView {
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.success().get())
             effect=ButtonEffect::Ripple
-            size=ButtonSize::Large
-            shape=ButtonShape::Pill
+            size=Size::Large
+            shape=Shape::Pill
         >
 
             "Hello world 3"
@@ -193,14 +187,14 @@ pub fn Playground() -> impl IntoView {
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.background().get())
-            variant=ButtonVariant::Outlined
+            variant=Variant::Outlined
         >
             "Hello world 6"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.foreground().get())
-            variant=ButtonVariant::Outlined
+            variant=Variant::Outlined
         >
             "Hello world 7"
         </Button>

@@ -10,10 +10,8 @@ use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
-use ui::components::icon_button::variants::{
-    Effect as IconButtonEffect, Shape as IconButtonShape, Size as IconButtonSize,
-    Variant as IconButtonVariant,
-};
+use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
+
 use ui::components::input::Input;
 use ui::components::toast::provider::use_toast;
 use ui::components::toast::types::ToastInput;
@@ -61,10 +59,10 @@ pub fn Page() -> impl IntoView {
                     />
                     <IconButton
                         color=Signal::derive(move || color_store.primary().get())
-                        variant=IconButtonVariant::Filled
-                        size=IconButtonSize::Medium
-                        shape=IconButtonShape::Rounded
-                        effect=IconButtonEffect::Ripple
+                        variant=Variant::Filled
+                        size=Size::Medium
+                        shape=Shape::Rounded
+                        effect=ButtonEffect::Ripple
                         class="absolute right-[3px] top-[5px]"
                         on:click=move |_| handle_submit(pw.get())
                     >

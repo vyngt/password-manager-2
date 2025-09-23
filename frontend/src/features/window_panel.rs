@@ -7,9 +7,7 @@ use leptos_icons::Icon;
 use reactive_stores::Store;
 use ui::components::icon::VEdgeIcon;
 use ui::components::icon_button::IconButton;
-use ui::components::icon_button::variants::{
-    Effect as IconButtonEffect, Shape as IconButtonShape, Variant as IconButtonVariant,
-};
+use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Variant};
 
 #[component]
 pub fn WindowPanel() -> impl IntoView {
@@ -63,9 +61,9 @@ pub fn WindowPanel() -> impl IntoView {
             <div class="flex h-full" style=handle_inner_color>
                 <IconButton
                     color=Signal::derive(move || color_store.primary().get())
-                    variant=IconButtonVariant::Text
-                    effect=IconButtonEffect::Ripple
-                    shape=IconButtonShape::Sharp
+                    variant=Variant::Text
+                    effect=ButtonEffect::Ripple
+                    shape=Shape::Sharp
                     auto_text_color=false
                     class="w-12"
                     on:click=move |_ev| {
@@ -79,9 +77,9 @@ pub fn WindowPanel() -> impl IntoView {
                 </IconButton>
                 <IconButton
                     color=Signal::derive(move || color_store.primary().get())
-                    variant=IconButtonVariant::Text
-                    effect=IconButtonEffect::Ripple
-                    shape=IconButtonShape::Sharp
+                    variant=Variant::Text
+                    effect=ButtonEffect::Ripple
+                    shape=Shape::Sharp
                     auto_text_color=false
                     class="w-12"
                     on:click=move |_ev| {
@@ -107,9 +105,9 @@ pub fn WindowPanel() -> impl IntoView {
                 </IconButton>
                 <IconButton
                     color=Signal::derive(move || color_store.danger().get())
-                    variant=IconButtonVariant::Text
-                    effect=IconButtonEffect::Ripple
-                    shape=IconButtonShape::Sharp
+                    variant=Variant::Text
+                    effect=ButtonEffect::Ripple
+                    shape=Shape::Sharp
                     auto_text_color=false
                     class="w-12"
                     on:click=move |_ev| {

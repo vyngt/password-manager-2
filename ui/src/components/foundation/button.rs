@@ -1,25 +1,22 @@
-pub mod styles;
-pub mod variants;
+mod styles;
 
+use crate::components::ripple::effect::{RippleColor, add_ripple};
 use crate::primitives::color::RgbColor;
+use crate::primitives::tokens::{Effect, Shape, Size, Variant};
 use leptos::prelude::*;
-
-use super::ripple::effect::{RippleColor, add_ripple};
-
-use self::variants::{Effect, Shape, Size, Variant};
 
 #[component]
 pub fn Button(
     children: Children,
     #[prop(into)] color: Signal<RgbColor>,
-    #[prop(attrs, default = Effect::None)] effect: Effect,
+    #[prop(attrs, optional, default = None)] effect: Option<Effect>,
     #[prop(attrs, default = Size::Medium)] size: Size,
     #[prop(attrs, default = Variant::Filled)] variant: Variant,
     #[prop(attrs, default = Shape::Rounded)] shape: Shape,
     #[prop(attrs, default = "")] class: &'static str,
 ) -> impl IntoView {
     let base_cls = styles::apply_base();
-    let effect_cls = styles::apply_effect(&effect);
+    let effect_cls = styles::apply_effect(effect.clone());
     let size_cls = styles::apply_size(size);
     let shape_cls = styles::apply_shape(shape);
     let variant_cls = styles::apply_variant(variant);
@@ -39,9 +36,12 @@ pub fn Button(
         color: color.get().calculate_white_black_text_color(None),
     });
 
-    let handle_on_click = move |ev: web_sys::MouseEvent| match &effect {
-        Effect::Ripple => add_ripple(ev, Some(ripple_color.get())),
-        Effect::None => {}
+    let handle_on_click = move |ev: web_sys::MouseEvent| {
+        if let Some(eff) = effect {
+            match eff {
+                Effect::Ripple => add_ripple(ev, Some(ripple_color.get())),
+            }
+        }
     };
 
     let handle_style = move || {

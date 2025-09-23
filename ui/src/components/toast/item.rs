@@ -1,9 +1,7 @@
 use crate::{
-    components::icon_button::{
-        IconButton,
-        variants::{Effect, Shape, Variant},
-    },
+    components::foundation::icon_button::IconButton,
     primitives::color::RgbColor,
+    primitives::tokens::{Shape, Variant},
 };
 
 use super::types::{Toast, ToastState};
@@ -54,7 +52,6 @@ pub fn ToastClose(id: uuid::Uuid, color: RgbColor) -> impl IntoView {
         <IconButton
             color=color
             variant=Variant::Text
-            effect=Effect::None
             shape=Shape::Pill
             auto_text_color=false
             class="text-[var(--toast-color)]"
