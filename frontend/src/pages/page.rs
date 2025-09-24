@@ -12,7 +12,7 @@ use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
 use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
 
-use ui::components::input::Input;
+use ui::components::Input;
 use ui::components::toast::provider::use_toast;
 use ui::components::toast::types::ToastInput;
 use web_sys::{Event, HtmlInputElement};

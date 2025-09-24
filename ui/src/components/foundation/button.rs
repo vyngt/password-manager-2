@@ -1,6 +1,6 @@
 mod styles;
 
-use crate::components::ripple::effect::{RippleColor, add_ripple};
+use crate::components::utilities::ripple::effect::{RippleColor, add_ripple};
 use crate::primitives::color::RgbColor;
 use crate::primitives::tokens::{Effect, Shape, Size, Variant};
 use leptos::prelude::*;

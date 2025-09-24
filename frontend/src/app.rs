@@ -8,7 +8,7 @@ use crate::pages::playground::{PlayGroundLayout, Playground, R1, R2};
 use leptos_router::components::*;
 use leptos_router::path;
 use reactive_stores::Store;
-use ui::components::toast::provider::ToastProvider;
+use ui::components::feedback::toast::provider::ToastProvider;
 
 #[component]
 pub fn App() -> impl IntoView {
