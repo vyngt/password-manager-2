@@ -10,6 +10,7 @@ use reactive_stores::Store;
 use ui::components::button::Button;
 use ui::components::icon_button::IconButton;
 use ui::components::input::Input;
+use ui::components::{Tooltip, TooltipPosition};
 use ui::primitives::color::RgbColor;
 use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
 use web_sys::{Event, HtmlInputElement};
@@ -65,10 +66,7 @@ pub fn Playground() -> impl IntoView {
         />
 
         <div class="bg-violet-100 flex flex-row gap-2" data-tauri-drag-region=true>
-            <IconButton
-                color=Signal::derive(move || color_store.primary().get())
-                size=Size::Small
-            >
+            <IconButton color=Signal::derive(move || color_store.primary().get()) size=Size::Small>
                 <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
@@ -153,6 +151,12 @@ pub fn Playground() -> impl IntoView {
 
         <p>"Text: "{text}</p>
 
+        <div class="relative z-0
+    h-40 p-4 text-white
+    bg-black
+    before:content-[''] before:absolute before:inset-0
+    before:bg-purple-500 before:opacity-30 before:-z-10 before:pointer-events-none">Hello</div>
+
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.secondary().get())
@@ -169,35 +173,89 @@ pub fn Playground() -> impl IntoView {
             size=Size::Large
             shape=Shape::Pill
         >
-
             "Hello world 3"
         </Button>
-        <Button
-            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Signal::derive(move || color_store.danger().get())
-        >
-            "Hello world 4"
-        </Button>
-        <Button
-            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Signal::derive(move || color_store.warning().get())
-        >
-            "Hello world 5"
-        </Button>
-        <Button
-            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Signal::derive(move || color_store.background().get())
-            variant=Variant::Outlined
-        >
-            "Hello world 6"
-        </Button>
-        <Button
-            on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Signal::derive(move || color_store.foreground().get())
-            variant=Variant::Outlined
-        >
-            "Hello world 7"
-        </Button>
+
+        <Tooltip
+            position=TooltipPosition::Bottom
+            class="bg-amber-600 text-white whitespace-nowrap"
+            arrow=true
+            content=move || view! { <div class="p-2">Hello world</div> }
+            trigger=move || {
+                view! {
+                    <Button
+                        on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+                        color=Signal::derive(move || color_store.danger().get())
+                        effect=ButtonEffect::Ripple
+                        variant=Variant::Outlined
+                        shape=Shape::Sharp
+                    >
+                        "Hello world 4"
+                    </Button>
+                }
+            }
+        />
+
+        <Tooltip
+            position=TooltipPosition::Top
+            class="bg-amber-600 text-white"
+            arrow=true
+            content=move || view! { <div class="p-2">Hello world</div> }
+            trigger=move || {
+                view! {
+                    <Button
+                        on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+                        color=Signal::derive(move || color_store.danger().get())
+                        effect=ButtonEffect::Ripple
+                        variant=Variant::Outlined
+                        shape=Shape::Sharp
+                    >
+                        "Hello world 4"
+                    </Button>
+                }
+            }
+        />
+
+        <Tooltip
+            position=TooltipPosition::Left
+            class="bg-amber-600 text-white"
+            arrow=true
+            content=move || view! { <div class="p-2">Hello world</div> }
+            trigger=move || {
+                view! {
+                    <Button
+                        on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+                        color=Signal::derive(move || color_store.danger().get())
+                        effect=ButtonEffect::Ripple
+                        variant=Variant::Outlined
+                        shape=Shape::Sharp
+                    >
+                        "Hello world 4"
+                    </Button>
+                }
+            }
+        />
+
+        <Tooltip
+            position=TooltipPosition::Right
+            class="bg-amber-600 text-white"
+            arrow=true
+            content=move || view! { <div class="p-2">Hello world</div> }
+            trigger=move || {
+                view! {
+                    <Button
+                        on:click=Box::new(move |_| set_value.update(|value| *value += 1))
+                        color=Signal::derive(move || color_store.danger().get())
+                        effect=ButtonEffect::Ripple
+                        variant=Variant::Outlined
+                        shape=Shape::Sharp
+                    >
+                        "Hello world 4"
+                    </Button>
+                }
+            }
+        />
+
         <div class="bg-gradient-to-tl from-blue-800 to-blue-500 text-white font-mono flex flex-col min-h-screen">
             <div class="flex flex-row-reverse flex-wrap m-auto">
                 <button

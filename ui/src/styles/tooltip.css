@@ -1,0 +1,33 @@
+@layer components {
+  .tooltip-wrapper {
+    @apply absolute z-50;
+
+    &[data-pos="top"] .tooltip-arrow {
+      @apply top-full left-1/2 -translate-x-1/2 -mt-[4px];
+    }
+
+    &[data-pos="bottom"] .tooltip-arrow {
+      @apply bottom-full left-1/2 -translate-x-1/2 -mb-[4px];
+    }
+
+    &[data-pos="left"] .tooltip-arrow {
+      @apply left-full top-1/2 -translate-y-1/2 -ml-[4px];
+    }
+
+    &[data-pos="right"] .tooltip-arrow {
+      @apply right-full top-1/2 -translate-y-1/2 -mr-[4px];
+    }
+  }
+
+  .tooltip {
+    --tooltip-color: var(--color-background);
+
+    @apply z-60 relative px-2 py-1 rounded bg-gray-800 text-white border border-gray-600 shadow;
+  }
+
+  .tooltip-arrow {
+    --tooltip-color: var(--color-background);
+
+    @apply z-55 absolute w-2 h-2 rotate-45 bg-gray-800 border border-gray-600;
+  }
+}
