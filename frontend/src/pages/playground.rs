@@ -5,7 +5,7 @@ use leptos::ev::Targeted;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
-use leptos_router::components::*;
+use leptos_router::{MatchNestedRoutes, components::*, path};
 use reactive_stores::Store;
 use ui::components::button::Button;
 use ui::components::icon_button::IconButton;
@@ -16,7 +16,7 @@ use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
 use web_sys::{Event, HtmlInputElement};
 
 #[component]
-pub fn R1() -> impl IntoView {
+fn R1() -> impl IntoView {
     let color_store = expect_context::<Store<ColorStore>>();
 
     view! {
@@ -34,12 +34,12 @@ pub fn R1() -> impl IntoView {
 }
 
 #[component]
-pub fn R2() -> impl IntoView {
+fn R2() -> impl IntoView {
     view! { <h1>"R2"</h1> }
 }
 
 #[component]
-pub fn Playground() -> impl IntoView {
+fn Playground() -> impl IntoView {
     let (value, set_value) = signal(0);
     let (text, set_text) = signal(String::new());
     let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
@@ -152,10 +152,10 @@ pub fn Playground() -> impl IntoView {
         <p>"Text: "{text}</p>
 
         <div class="relative z-0
-    h-40 p-4 text-white
-    bg-black
-    before:content-[''] before:absolute before:inset-0
-    before:bg-purple-500 before:opacity-30 before:-z-10 before:pointer-events-none">Hello</div>
+        h-40 p-4 text-white
+        bg-black
+        before:content-[''] before:absolute before:inset-0
+        before:bg-purple-500 before:opacity-30 before:-z-10 before:pointer-events-none">Hello</div>
 
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
@@ -280,10 +280,10 @@ pub fn Playground() -> impl IntoView {
 }
 
 #[component]
-pub fn PlayGroundLayout() -> impl IntoView {
+fn PlayGroundLayout() -> impl IntoView {
     view! {
         <div>
-            <nav class="bg-gray-100 p-4">
+            <nav class="p-4">
                 <A href="/playground">"Playground"</A>
                 <A href="/playground/r1">"R1"</A>
                 <A href="/playground/r2">"R2"</A>
@@ -292,4 +292,16 @@ pub fn PlayGroundLayout() -> impl IntoView {
             <Outlet />
         </div>
     }
+}
+
+#[component(transparent)]
+pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
+    view! {
+        <ParentRoute path=path!("/playground") view=PlayGroundLayout>
+            <Route path=path!("/") view=Playground />
+            <Route path=path!("/r1") view=R1 />
+            <Route path=path!("/r2") view=R2 />
+        </ParentRoute>
+    }
+    .into_inner()
 }
