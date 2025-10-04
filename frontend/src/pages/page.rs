@@ -1,17 +1,16 @@
 use crate::api::tauri;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
-use icondata as i;
 use leptos::ev::Targeted;
 use leptos::logging::log;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use leptos_icons::Icon;
 use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
 use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
 
+use ui::components::DecryptIcon;
 use ui::components::Input;
 use ui::components::toast::provider::use_toast;
 use ui::components::toast::types::ToastInput;
@@ -39,11 +38,12 @@ pub fn Page() -> impl IntoView {
     return view! {
         <div class="flex h-full w-full flex-col justify-center">
             <div class="flex w-full justify-center">
-                <div class="relative flex w-full max-w-[24rem]">
+                <div class="relative flex w-full max-w-[36rem]">
                     <Input
                         id="master-password"
                         placeholder="Master Password"
-                        class="pr-[40px]"
+                        class="pr-[50px] h-[60px]"
+                        label_class="text-[18px] peer-focus:text-[11px] peer-[&:not(:placeholder-shown):not(:focus)]:text-[11px]"
                         color=Signal::derive(move || color_store.primary().get())
                         input_type="password"
                         value=Signal::derive(move || pw.get())
@@ -63,10 +63,10 @@ pub fn Page() -> impl IntoView {
                         size=Size::Medium
                         shape=Shape::Rounded
                         effect=ButtonEffect::Ripple
-                        class="absolute right-[3px] top-[5px]"
+                        class="absolute right-[5px] top-[6px] p-6"
                         on:click=move |_| handle_submit(pw.get())
                     >
-                        <Icon icon=i::FaArrowRightSolid />
+                        <DecryptIcon />
                     </IconButton>
                 </div>
             </div>
