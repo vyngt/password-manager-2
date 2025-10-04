@@ -17,7 +17,7 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Router>
-            <main
+            <div
                 class="h-full flex flex-col bg-background text-foreground"
                 style=move || {
                     let primary_color = color_store.primary().get().to_rgb_string();
@@ -41,16 +41,18 @@ pub fn App() -> impl IntoView {
             >
                 <ToastProvider>
                     <WindowPanel />
-                    <Routes fallback=|| view! { <h1>"Not Found"</h1> }>
-                        <ParentRoute path=path!("/playground") view=PlayGroundLayout>
-                            <Route path=path!("/") view=Playground />
-                            <Route path=path!("/r1") view=R1 />
-                            <Route path=path!("/r2") view=R2 />
-                        </ParentRoute>
-                        <Route path=path!("/") view=EntryPage />
-                    </Routes>
+                    <main class="h-[calc(100%-48px)] overflow-y-auto">
+                        <Routes fallback=|| view! { <h1>"Not Found"</h1> }>
+                            <ParentRoute path=path!("/playground") view=PlayGroundLayout>
+                                <Route path=path!("/") view=Playground />
+                                <Route path=path!("/r1") view=R1 />
+                                <Route path=path!("/r2") view=R2 />
+                            </ParentRoute>
+                            <Route path=path!("/") view=EntryPage />
+                        </Routes>
+                    </main>
                 </ToastProvider>
-            </main>
+            </div>
         </Router>
     }
 }

@@ -40,7 +40,7 @@ pub fn WindowPanel() -> impl IntoView {
     view! {
         <header
             data-tauri-drag-region=true
-            class="flex h-12 flex-grow-0 justify-between border-b border-secondary/20 bg-primary/20"
+            class="flex h-[48px] flex-grow-0 justify-between border-b border-secondary/20 bg-primary/20"
         >
             <div
                 class="flex flex-col justify-center pl-2 pointer-events-none"

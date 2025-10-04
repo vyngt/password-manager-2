@@ -1,9 +1,9 @@
 use crate::api::tauri;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use leptos::ev::Targeted;
-use leptos::logging::log;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos_router::hooks::use_navigate;
 use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::to_value as to_js_value;
@@ -12,18 +12,17 @@ use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
 
 use ui::components::DecryptIcon;
 use ui::components::Input;
-use ui::components::toast::provider::use_toast;
-use ui::components::toast::types::ToastInput;
+
 use web_sys::{Event, HtmlInputElement};
 
 #[component]
 pub fn Page() -> impl IntoView {
     let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
-    let toast = use_toast();
 
     let (pw, set_pw) = signal(String::new());
 
     let handle_submit = |value: String| {
+        let nav = use_navigate();
         spawn_local(async move {
             let res = tauri::invoke(
                 "unlock_vault",
@@ -31,7 +30,14 @@ pub fn Page() -> impl IntoView {
             )
             .await;
 
-            log!("{:?}", res);
+            match res.as_bool() {
+                Some(res) => {
+                    if res {
+                        nav("/playground", Default::default());
+                    }
+                }
+                None => {}
+            }
         });
     };
 
@@ -52,7 +58,6 @@ pub fn Page() -> impl IntoView {
                         })
                         on:keydown:capture=move |ev| {
                             if ev.key() == "Enter" {
-                                toast.show(ToastInput::new("Hello", None, None, color_store.secondary().get()));
                                 handle_submit(pw.get());
                             }
                         }
