@@ -5,7 +5,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use reactive_stores::Store;
-use ui::components::icon::VEdgeIcon;
+use ui::components::icon::VEdge;
 use ui::components::icon_button::IconButton;
 use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Variant};
 
@@ -48,8 +48,8 @@ pub fn WindowPanel() -> impl IntoView {
             >
                 <div class="flex gap-2 justify-center">
                     <div class="flex flex-col justify-center text-foreground">
-                        <div class="h-[30px] w-[30px]">
-                            <VEdgeIcon />
+                        <div class="text-[30px]">
+                            <Icon icon={VEdge}/>
                         </div>
                     </div>
                     <div class="flex flex-col justify-center">

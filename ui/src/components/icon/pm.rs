@@ -1,10 +1,18 @@
-use leptos::prelude::*;
-
-#[component]
-pub fn PmIcon() -> impl IntoView {
-    view! {
-        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="328.00 339.00 348.00 350.00">
-            <path
+#[allow(non_upper_case_globals)]
+#[doc(hidden)]
+pub static Pm: &icondata_core::IconData = &icondata_core::IconData {
+    style: None,
+    x: None,
+    y: None,
+    width: None,
+    height: None,
+    view_box: Some("328.00 339.00 348.00 350.00"),
+    stroke_linecap: None,
+    stroke_linejoin: None,
+    stroke_width: None,
+    stroke: None,
+    fill: None,
+    data: r###"<path
                 fill="currentColor"
                 d="
                 M 568.65 354.61
@@ -261,6 +269,5 @@ pub fn PmIcon() -> impl IntoView {
                 rx="1.94"
             />
             <rect fill="currentColor" x="463.39" y="595.44" width="84.76" height="3.92" rx="1.45" />
-        </svg>
-    }
-}
+"###,
+};

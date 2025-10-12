@@ -10,8 +10,9 @@ use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
 use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
 
-use ui::components::DecryptIcon;
+use leptos_icons::Icon;
 use ui::components::Input;
+use ui::components::icon::Decrypt;
 
 use web_sys::{Event, HtmlInputElement};
 
@@ -68,10 +69,10 @@ pub fn Page() -> impl IntoView {
                         size=Size::Medium
                         shape=Shape::Rounded
                         effect=ButtonEffect::Ripple
-                        class="absolute right-[5px] top-[6px] p-6"
+                        class="absolute right-[5px] top-[6px] p-6 [&_svg]:text-[30px]"
                         on:click=move |_| handle_submit(pw.get())
                     >
-                        <DecryptIcon />
+                        <Icon icon=Decrypt />
                     </IconButton>
                 </div>
             </div>

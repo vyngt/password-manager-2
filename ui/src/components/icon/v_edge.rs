@@ -1,11 +1,18 @@
-use leptos::prelude::*;
-
-#[component]
-pub fn VEdgeIcon() -> impl IntoView {
-    view! {
-        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="150 150 700 720">
-            <path
-                fill="currentColor"
+#[allow(non_upper_case_globals)]
+#[doc(hidden)]
+pub static VEdge: &icondata_core::IconData = &icondata_core::IconData {
+    style: None,
+    x: None,
+    y: None,
+    width: None,
+    height: None,
+    view_box: Some("150 150 700 720"),
+    stroke_linecap: None,
+    stroke_linejoin: None,
+    stroke_width: None,
+    stroke: None,
+    fill: None,
+    data: r###"<path
                 d="
                 M 390.90 648.16
                 Q 391.02 647.89 394.18 645.17
@@ -288,8 +295,5 @@ pub fn VEdgeIcon() -> impl IntoView {
                 Q 283.55 828.36 280.67 830.65
                 Q 273.72 836.19 263.59 844.33
                 Q 261.22 846.24 258.12 848.13
-                Z"
-            />
-        </svg>
-    }
-}
+                Z" />"###,
+};

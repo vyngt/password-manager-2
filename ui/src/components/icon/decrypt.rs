@@ -1,23 +1,18 @@
-use leptos::prelude::*;
-
-#[component]
-pub fn DecryptIcon() -> impl IntoView {
-    view! {
-        <svg
-            version="1.1"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            x="0px"
-            y="0px"
-            width="100%"
-            height="100%"
-            viewBox="0 0 32 32"
-            style="fill: currentColor"
-            xml:space="preserve"
-            preserveAspectRatio="none"
-            viewbox="0 0 32 32"
-        >
-            <path
+#[allow(non_upper_case_globals)]
+#[doc(hidden)]
+pub static Decrypt: &icondata_core::IconData = &icondata_core::IconData {
+    style: None,
+    x: Some("0px"),
+    y: Some("0px"),
+    width: None,
+    height: None,
+    view_box: Some("0 0 32 32"),
+    stroke_linecap: None,
+    stroke_linejoin: None,
+    stroke_width: None,
+    stroke: None,
+    fill: None,
+    data: r###"<path
                 d="M21.329,17.959l0.707,0.707l-2.188,2.188c-0.195,0.195-0.512,0.195-0.707,0l-1.646-1.646l-1.646,1.646
                 C15.755,20.947,15.628,21,15.495,21s-0.26-0.053-0.354-0.146l-1.209-1.305C12.327,21.408,10.764,22,8.573,22
                 c-3.584,0-6.5-2.916-6.5-6.5S4.989,9,8.573,9c2.699,0,5.017,1.653,5.999,4h-1.106c-0.912-1.778-2.761-3-4.893-3
@@ -25,9 +20,5 @@ pub fn DecryptIcon() -> impl IntoView {
                 c0.155-0.025,0.315,0.028,0.428,0.141l1.309,1.405l1.646-1.646c0.195-0.195,0.512-0.195,0.707,0l1.646,1.646L21.329,17.959z
                 M31.188,15.5l-5.11,5.11l-0.706-0.705L29.276,16H10.95c-0.232,1.142-1.24,2-2.45,2C7.119,18,6,16.881,6,15.5S7.119,13,8.5,13
                 c1.209,0,2.218,0.859,2.45,2h18.327l-3.905-3.905l0.706-0.705L31.188,15.5z M10,15.5c0-0.828-0.671-1.5-1.5-1.5S7,14.672,7,15.5
-                S7.671,17,8.5,17S10,16.328,10,15.5z"
-                style="fill: currentColor"
-            ></path>
-        </svg>
-    }
-}
+                S7.671,17,8.5,17S10,16.328,10,15.5z" />"###,
+};

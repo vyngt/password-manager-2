@@ -1,5 +1,5 @@
 use crate::pages::{
-    not_found::NotFoundPage, page::Page as EntryPage, playground::PlayGroundRoutes,
+    not_found::NotFoundPage, page::Page as EntryPage, playground::PlayGroundRoutes, v::VRoutes,
 };
 use leptos::prelude::*;
 use leptos_router::components::*;
@@ -11,6 +11,9 @@ pub fn AppRoutes() -> impl IntoView {
         <Router>
             <Routes fallback=|| view! { <NotFoundPage /> }>
                 <Route path=path!("/") view=EntryPage />
+                <VRoutes />
+
+                // ....
                 <PlayGroundRoutes />
             </Routes>
         </Router>
