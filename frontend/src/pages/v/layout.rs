@@ -69,7 +69,7 @@ fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
 #[component]
 fn Sidebar() -> impl IntoView {
     view! {
-        <div class="w-[60px] pt-2 flex flex-col gap-1 bg-primary/10 border-r border-r-secondary/15">
+        <div class="w-[60px] flex flex-col gap-1 bg-primary/10 border-r border-r-secondary/15">
             <For
                 each=move || SIDEBAR_ITEMS.into_iter().enumerate()
                 key=|(_, record)| record.path
