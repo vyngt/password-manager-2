@@ -37,7 +37,7 @@ pub fn App() -> impl IntoView {
         >
             <ToastProvider>
                 <WindowPanel />
-                <main class="h-[calc(100%-48px)] overflow-y-auto">
+                <main class="h-[calc(100%-48px)] overflow-y-auto app-scrollbar">
                     <AppRoutes />
                 </main>
             </ToastProvider>
