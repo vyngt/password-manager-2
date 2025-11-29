@@ -8,7 +8,9 @@ use leptos::prelude::*;
 #[component]
 pub fn Button(
     children: Children,
-    #[prop(into)] color: Signal<RgbColor>,
+    #[prop(into, optional, default = Signal::derive(|| RgbColor::new(0, 0, 0)))] color: Signal<
+        RgbColor,
+    >,
     #[prop(attrs, optional, default = None)] effect: Option<Effect>,
     #[prop(attrs, default = Size::Medium)] size: Size,
     #[prop(attrs, default = Variant::Filled)] variant: Variant,

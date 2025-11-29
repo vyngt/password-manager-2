@@ -6,6 +6,7 @@
 - Form
 - Toast (/)
 - Modal
+- Table/Data rendering
 
 # Work (Backend)
 

@@ -7,6 +7,7 @@ pub mod layout;
 pub mod navigation;
 pub mod utilities;
 
+pub use data_display::*;
 pub use feedback::*;
 pub use form::*;
 pub use foundation::*;

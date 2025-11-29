@@ -34,7 +34,7 @@ pub fn Page() -> impl IntoView {
             match res.as_bool() {
                 Some(res) => {
                     if res {
-                        nav("/playground", Default::default());
+                        nav("/v", Default::default());
                     }
                 }
                 None => {}

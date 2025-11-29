@@ -54,11 +54,12 @@ fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
                     class="bg-background text-white whitespace-nowrap"
                     arrow=true
                     content=move || view! { <div class="p-1">{item.name}</div> }
-                    trigger=move || view! {
-                        <div class=item_class
-                        >
-                            <Icon icon={item.icon} height="100%" width="100%" />
-                        </div>
+                    trigger=move || {
+                        view! {
+                            <div class=item_class>
+                                <Icon icon=item.icon height="100%" width="100%" />
+                            </div>
+                        }
                     }
                 />
             </div>
@@ -74,9 +75,7 @@ fn Sidebar() -> impl IntoView {
                 each=move || SIDEBAR_ITEMS.into_iter().enumerate()
                 key=|(_, record)| record.path
                 children=move |(_, record)| {
-                    view! {
-                        <SidebarItemRow item={record} />
-                    }
+                    view! { <SidebarItemRow item=record /> }
                 }
             />
         </div>
@@ -88,8 +87,8 @@ pub fn VLayout() -> impl IntoView {
     view! {
         <div class="flex flex-row h-full">
             <Sidebar />
-            <div>
-                <Outlet/>
+            <div class="h-full w-full">
+                <Outlet />
             </div>
         </div>
     }
