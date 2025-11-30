@@ -28,6 +28,27 @@ pub fn VPage() -> impl IntoView {
                             <Button variant={Variant::Text}>"Delete"</Button>
                         </TableCell>
                     </TableRow>
+                    <TableRow>
+                        <TableCell class="font-patrick-hand">"Cooked cooked"</TableCell>
+                        <TableCell>
+                            <Button variant={Variant::Text}>"Edit"</Button>
+                            <Button variant={Variant::Text}>"Delete"</Button>
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell class="font-playwrite-de-grund">"Cooked cooked"</TableCell>
+                        <TableCell>
+                            <Button variant={Variant::Text}>"Edit"</Button>
+                            <Button variant={Variant::Text}>"Delete"</Button>
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell class="font-edu-qld-hand">"Cooked cooked"</TableCell>
+                        <TableCell>
+                            <Button variant={Variant::Text}>"Edit"</Button>
+                            <Button variant={Variant::Text}>"Delete"</Button>
+                        </TableCell>
+                    </TableRow>
                 </TableBody>
             </Table>
 

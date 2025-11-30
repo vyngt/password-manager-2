@@ -1,0 +1,6 @@
+@font-face {
+    font-family: "Playwrite Deutschland Grundschrift";
+    src: url("fonts/playwrite-de-grund/PlaywriteDEGrund-VariableFont_wght.woff2")
+        format("woff2");
+    font-weight: 100 900;
+}
