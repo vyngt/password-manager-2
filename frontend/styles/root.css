@@ -4,9 +4,10 @@
 
 @import "../../ui/src/styles/index.css";
 @import "./common.css";
+@import "./fonts/index.css";
 
 @theme static {
-    /* Color */
+    /* == Color == */
     /* App text and background */
     --color-foreground: rgb(255 255 255);
     --color-background: rgb(0 0 0);
@@ -19,4 +20,8 @@
     --color-success: rgb(30 200 135);
     --color-danger: rgb(244 37 99);
     --color-warning: rgb(224 193 36);
+
+    /* == Fonts == */
+    --font-jetbrains-mono: "JetBrains Mono";
+    --font-yomogi: "Yomogi";
 }

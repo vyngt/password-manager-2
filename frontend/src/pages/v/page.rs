@@ -11,21 +11,18 @@ pub fn VPage() -> impl IntoView {
             <Table>
                 <TableHeader>
                     <TableColumn>Username</TableColumn>
-                    <TableColumn>Password</TableColumn>
                     <TableColumn>Action</TableColumn>
                 </TableHeader>
                 <TableBody>
                     <TableRow>
-                        <TableCell>user1</TableCell>
-                        <TableCell>password1</TableCell>
+                        <TableCell class="font-jetbrains-mono">"Hello world"</TableCell>
                         <TableCell>
                             <Button variant={Variant::Text}>"Edit"</Button>
                             <Button variant={Variant::Text}>"Delete"</Button>
                         </TableCell>
                     </TableRow>
                     <TableRow>
-                        <TableCell>user2</TableCell>
-                        <TableCell>password2</TableCell>
+                        <TableCell class="font-yomogi">"Cooked cooked"</TableCell>
                         <TableCell>
                             <Button variant={Variant::Text}>"Edit"</Button>
                             <Button variant={Variant::Text}>"Delete"</Button>
