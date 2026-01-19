@@ -94,9 +94,13 @@ color: impl Into<Color>  // Accepts: hex, CSS names, tokens, Signals
 <Button>                                    // Uses theme.colors.primary
 ```
 
-**Implementation**:
+**Example**:
 ```rust
-// ui/src/primitives/color/mod.rs
+// Modern Rust 2021+ module structure:
+// ui/src/primitives/color.rs      <- Module declaration with ColorValue, Color
+// ui/src/primitives/color/rgb.rs  <- RgbColor implementation
+
+// ui/src/primitives/color.rs
 pub enum ColorValue {
     Rgb(RgbColor),
     Hex(String),
@@ -148,14 +152,14 @@ pub fn Component(
 #### Task 1.1: Enhanced Color System (3 days) 🎨
 
 **Files to Create**:
-- `ui/src/primitives/color/mod.rs` - Restructure module
-- `ui/src/primitives/color/rgb.rs` - Move existing RgbColor (from primitives/color.rs)
+- `ui/src/primitives/color.rs` - Module declaration (replaces existing)
+- `ui/src/primitives/color/rgb.rs` - RgbColor (move existing code here)
 - `ui/src/primitives/color/parser.rs` - CSS color parsing
 - `ui/src/primitives/color/convert.rs` - Conversion traits
 
 **Implementation**:
 ```rust
-// ui/src/primitives/color/mod.rs
+// ui/src/primitives/color.rs
 pub mod rgb;
 pub mod parser;
 pub mod convert;
@@ -276,12 +280,12 @@ pub fn Input(
 #### Task 1.3: ThemeProvider Foundation (4 days) 🎨
 
 **Files to Create**:
-- `ui/src/providers/mod.rs`
-- `ui/src/providers/theme/mod.rs`
+- `ui/src/providers.rs` - Module declaration
+- `ui/src/providers/theme.rs` - Theme module declaration
 - `ui/src/providers/theme/provider.rs`
 - `ui/src/providers/theme/context.rs`
 - `ui/src/providers/theme/tokens.rs`
-- `ui/src/hooks/mod.rs`
+- `ui/src/hooks.rs` - Module declaration
 - `ui/src/hooks/use_theme.rs`
 
 **Design Token System**:
@@ -432,7 +436,7 @@ pub fn App() -> impl IntoView {
 #### Task 2.1: Layout Components (3 days) 📐
 
 **Files to Create**:
-- `ui/src/components/layout/mod.rs`
+- `ui/src/components/layout.rs` - Module declaration
 - `ui/src/components/layout/container.rs`
 - `ui/src/components/layout/stack.rs`
 - `ui/src/components/layout/grid.rs`
@@ -664,7 +668,7 @@ pub fn Portal(
 #### Task 4.2: Modal Component (3 days) 🪟
 
 **Files to Create**:
-- `ui/src/components/feedback/modal/mod.rs`
+- `ui/src/components/feedback/modal.rs` - Module declaration
 - `ui/src/components/feedback/modal/modal.rs`
 - `ui/src/components/feedback/modal/backdrop.rs`
 - `ui/src/styles/modal.css`
@@ -791,7 +795,7 @@ pub fn use_form<T: Default + Clone>() -> FormState<T>;
 #### Task 6.1: Validation Rules (2 days) ✅
 
 **Files**:
-- `ui/src/validation/mod.rs`
+- `ui/src/validation.rs` - Module declaration
 - `ui/src/validation/rules.rs`
 - `ui/src/validation/validator.rs`
 
@@ -842,7 +846,7 @@ let email_field = use_field(
 #### Task 7.1: Tabs Component (2 days) 📑
 
 **Files**:
-- `ui/src/components/navigation/tabs/mod.rs`
+- `ui/src/components/navigation/tabs.rs` - Module declaration
 - `ui/src/components/navigation/tabs/tabs.rs`
 - `ui/src/styles/tabs.css`
 
@@ -874,7 +878,7 @@ let email_field = use_field(
 #### Task 7.3: Menu/Dropdown (3 days) 📋
 
 **Files**:
-- `ui/src/components/navigation/menu/mod.rs`
+- `ui/src/components/navigation/menu.rs` - Module declaration
 - `ui/src/components/navigation/menu/menu.rs`
 
 **Features**:
@@ -893,7 +897,10 @@ let email_field = use_field(
 
 #### Task 8.1: Card Component (2 days) 🃏
 
-**File**: `ui/src/components/data_display/card/mod.rs`
+**Files**:
+- `ui/src/components/data_display/card.rs` - Module declaration
+- `ui/src/components/data_display/card/card.rs`
+- `ui/src/styles/card.css`
 
 **Subcomponents**: CardHeader, CardBody, CardFooter
 
@@ -902,8 +909,8 @@ let email_field = use_field(
 #### Task 8.2: List Component (2 days) 📝
 
 **Files**:
-- `ui/src/components/data_display/list/mod.rs`
-- `ui/src/components/data_display/list_item.rs`
+- `ui/src/components/data_display/list.rs` - Module declaration
+- `ui/src/components/data_display/list/list_item.rs`
 
 **For**: Vault items in list view
 
@@ -1176,14 +1183,16 @@ fn test_button_click() {
 ## Critical Files to Implement
 
 ### Week 1 Priority Files (Must complete)
-1. `ui/src/primitives/color/mod.rs` - Flexible color API
-2. `ui/src/providers/theme/tokens.rs` - Design token system
-3. `ui/src/providers/theme/provider.rs` - ThemeProvider
-4. `ui/src/hooks/use_theme.rs` - Theme hook
-5. `ui/src/components/form/input.rs` - Two-way binding update
+1. `ui/src/primitives/color.rs` - Flexible color API (module declaration)
+2. `ui/src/primitives/color/rgb.rs` - RgbColor implementation
+3. `ui/src/providers/theme/tokens.rs` - Design token system
+4. `ui/src/providers/theme/provider.rs` - ThemeProvider
+5. `ui/src/hooks/use_theme.rs` - Theme hook
+6. `ui/src/components/form/input.rs` - Two-way binding update
 
 ### Week 4 Critical File (Unblocks CRUD)
-6. `ui/src/components/feedback/modal/modal.rs` - Modal component
+7. `ui/src/components/feedback/modal.rs` - Modal module
+8. `ui/src/components/feedback/modal/modal.rs` - Modal component
 
 ---
 

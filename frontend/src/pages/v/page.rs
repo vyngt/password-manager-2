@@ -9,9 +9,11 @@ pub fn VPage() -> impl IntoView {
     view! {
         <div class="h-full">
             <Table>
-                <TableHeader>
-                    <TableColumn>Username</TableColumn>
-                    <TableColumn>Action</TableColumn>
+                <TableHeader class="bg-secondary/20">
+                    <TableRow>
+                        <TableColumn class="p-2 hover:bg-secondary/30 transition-colors">Username</TableColumn>
+                        <TableColumn class="p-2 hover:bg-secondary/30 transition-colors">Action</TableColumn>
+                    </TableRow>
                 </TableHeader>
                 <TableBody>
                     <TableRow>

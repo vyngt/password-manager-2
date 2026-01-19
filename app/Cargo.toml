@@ -7,7 +7,7 @@ license = ""
 repository = "https://github.com/vyngt/password-manager-2"
 default-run = "app"
 edition = "2024"
-rust-version = "1.89"
+rust-version = "1.92"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

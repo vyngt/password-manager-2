@@ -5,5 +5,5 @@ pub fn TableColumn(
     children: Children,
     #[prop(attrs, default = "")] class: &'static str,
 ) -> impl IntoView {
-    view! { <th class=class>{children()}</th> }
+    view! { <th role="column-header" class=class>{children()}</th> }
 }
