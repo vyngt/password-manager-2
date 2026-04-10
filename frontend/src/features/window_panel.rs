@@ -1,4 +1,5 @@
 use crate::api::tauri::get_current_window;
+use crate::i18n::*;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use icondata as i;
 use leptos::prelude::*;
@@ -11,6 +12,7 @@ use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Variant};
 
 #[component]
 pub fn WindowPanel() -> impl IntoView {
+    let i18n = use_i18n();
     let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
 
     let (is_maximized, set_is_maximized) = signal(false);
@@ -40,7 +42,7 @@ pub fn WindowPanel() -> impl IntoView {
     view! {
         <header
             data-tauri-drag-region=true
-            class="flex h-[48px] flex-grow-0 justify-between border-b border-secondary/20 bg-primary/20"
+            class="flex h-[48px] grow-0 justify-between border-b border-secondary/20 bg-primary/20"
         >
             <div
                 class="flex flex-col justify-center pl-2 pointer-events-none"
@@ -57,7 +59,21 @@ pub fn WindowPanel() -> impl IntoView {
                     </div>
                 </div>
             </div>
-            <div class="flex flex-grow" data-tauri-drag-region=true></div>
+            <div class="flex grow" data-tauri-drag-region=true></div>
+            <div class="flex h-full items-center" style=handle_inner_color>
+                <button
+                    class="px-2 text-xs font-semibold text-foreground/60 hover:text-foreground cursor-pointer uppercase tracking-wide"
+                    on:click=move |_| {
+                        let new_locale = match i18n.get_locale() {
+                            Locale::en => Locale::vi,
+                            Locale::vi => Locale::en,
+                        };
+                        i18n.set_locale(new_locale);
+                    }
+                >
+                    {move || i18n.get_locale().as_str()}
+                </button>
+            </div>
             <div class="flex h-full" style=handle_inner_color>
                 <IconButton
                     color=Signal::derive(move || color_store.primary().get())

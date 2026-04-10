@@ -7,6 +7,8 @@ mod routes;
 mod stores;
 mod utils;
 
+include!("i18n/mod.rs");
+
 use app::App;
 use leptos::prelude::*;
 

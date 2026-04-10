@@ -130,7 +130,7 @@ fn Playground() -> impl IntoView {
         <div class="w-[500px] relative">
             <Input
                 id="primary"
-                placeholder="Primary"
+                placeholder=Signal::derive(|| "Primary".to_string())
                 color=Signal::derive(move || color_store.primary().get())
                 input_type="text"
                 on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {

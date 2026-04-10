@@ -1,4 +1,5 @@
 use crate::api::tauri;
+use crate::i18n::*;
 use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use leptos::ev::Targeted;
 use leptos::prelude::*;
@@ -18,6 +19,7 @@ use web_sys::{Event, HtmlInputElement};
 
 #[component]
 pub fn Page() -> impl IntoView {
+    let i18n = use_i18n();
     let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
 
     let (pw, set_pw) = signal(String::new());
@@ -48,7 +50,7 @@ pub fn Page() -> impl IntoView {
                 <div class="relative flex w-full max-w-[36rem]">
                     <Input
                         id="master-password"
-                        placeholder="Master Password"
+                        placeholder=Signal::derive(move || t_string!(i18n, unlock.master_password).to_string())
                         class="pr-[50px] h-[60px]"
                         label_class="text-[18px] peer-focus:text-[11px] peer-[&:not(:placeholder-shown):not(:focus)]:text-[11px]"
                         color=Signal::derive(move || color_store.primary().get())

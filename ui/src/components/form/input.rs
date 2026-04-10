@@ -12,7 +12,7 @@ pub fn Input(
     #[prop(into, default= None)] value: Option<Signal<String>>,
     #[prop(attrs, default = "text")] input_type: &'static str,
     #[prop(attrs)] id: &'static str,
-    #[prop(attrs)] placeholder: &'static str,
+    #[prop(into)] placeholder: Signal<String>,
     #[prop(attrs, default = "")] class: &'static str,
     #[prop(attrs, default = "")] label_class: &'static str,
 
@@ -46,7 +46,7 @@ pub fn Input(
                 type=input_type
             />
             <label style=handle_style class=label_cls for=id>
-                {placeholder}
+                {move || placeholder.get()}
             </label>
         </div>
     }
