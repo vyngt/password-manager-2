@@ -1,10 +1,16 @@
 use leptos::prelude::*;
 use ui::components::badge::Badge;
+use ui::components::button::Button;
+use ui::components::icon_button::IconButton;
 use ui::components::separator::Separator;
 use ui::components::spinner::Spinner;
+use ui::components::Tooltip;
 use ui::primitives::tokens::{
-    BadgeAppearance, BadgeShape, BadgeSize, BadgeVariant, Orientation, Size,
+    BadgeAppearance, BadgeShape, BadgeSize, BadgeVariant, Orientation, Placement, Size, Variant,
 };
+
+use icondata as i;
+use leptos_icons::Icon;
 
 #[component]
 pub fn AtomsPage() -> impl IntoView {
@@ -113,6 +119,56 @@ pub fn AtomsPage() -> impl IntoView {
                     <span class="text-danger"><Spinner /></span>
                     <span class="text-success"><Spinner /></span>
                     <span class="text-warning"><Spinner /></span>
+                </div>
+            </Section>
+
+            <h1 class="text-xl font-semibold text-text-primary pt-4">"Tooltip"</h1>
+
+            // Placements
+            <Section title="Placements">
+                <div class="flex flex-wrap items-center gap-4 py-8 justify-center">
+                    <Tooltip content="Appears above" placement=Placement::Top>
+                        <Button variant=Variant::Secondary>"Top"</Button>
+                    </Tooltip>
+                    <Tooltip content="Appears below" placement=Placement::Bottom>
+                        <Button variant=Variant::Secondary>"Bottom"</Button>
+                    </Tooltip>
+                    <Tooltip content="Appears left" placement=Placement::Left>
+                        <Button variant=Variant::Secondary>"Left"</Button>
+                    </Tooltip>
+                    <Tooltip content="Appears right" placement=Placement::Right>
+                        <Button variant=Variant::Secondary>"Right"</Button>
+                    </Tooltip>
+                </div>
+            </Section>
+
+            // With arrow
+            <Section title="With Arrow">
+                <div class="flex flex-wrap items-center gap-4 py-8 justify-center">
+                    <Tooltip content="Lock vault" arrow=true>
+                        <IconButton aria_label="Lock" variant=Variant::Primary>
+                            <Icon icon=i::FaStarSolid />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip content="Settings" arrow=true placement=Placement::Bottom>
+                        <IconButton aria_label="Settings" variant=Variant::Secondary>
+                            <Icon icon=i::FaGearSolid />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip content="Delete item" arrow=true placement=Placement::Right>
+                        <IconButton aria_label="Delete" variant=Variant::Danger>
+                            <Icon icon=i::FaTrashSolid />
+                        </IconButton>
+                    </Tooltip>
+                </div>
+            </Section>
+
+            // Instant (delay=0)
+            <Section title="Instant (delay=0)">
+                <div class="flex items-center gap-4 py-4">
+                    <Tooltip content="No delay" delay=0>
+                        <Button variant=Variant::Primary>"Hover me"</Button>
+                    </Tooltip>
                 </div>
             </Section>
         </div>

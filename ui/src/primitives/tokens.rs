@@ -237,3 +237,24 @@ impl Orientation {
         }
     }
 }
+
+/// Floating element placement — preferred side relative to trigger.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum Placement {
+    #[default]
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
+impl Placement {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Placement::Top => "top",
+            Placement::Bottom => "bottom",
+            Placement::Left => "left",
+            Placement::Right => "right",
+        }
+    }
+}

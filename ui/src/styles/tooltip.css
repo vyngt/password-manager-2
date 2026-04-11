@@ -1,33 +1,154 @@
 @layer components {
-  .tooltip-wrapper {
-    @apply absolute z-50;
-
-    &[data-pos="top"] .tooltip-arrow {
-      @apply top-full left-1/2 -translate-x-1/2 -mt-[4px];
+    /* ============================================================
+     Tooltip — floating contextual label
+     ============================================================ */
+    .tooltip-panel {
+        position: fixed;
+        z-index: 50;
+        max-width: 200px;
+        padding: 6px 10px;
+        background: var(--color-surface-4);
+        border: 0.5px solid var(--color-border-strong);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-md);
+        font-family: var(--font-sans);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-normal);
+        color: var(--color-text-primary);
+        pointer-events: none;
+        white-space: normal;
+        word-break: break-word;
+        opacity: 0;
     }
 
-    &[data-pos="bottom"] .tooltip-arrow {
-      @apply bottom-full left-1/2 -translate-x-1/2 -mb-[4px];
+    /* Transform origin per placement */
+    .tooltip-panel[data-placement="top"] {
+        transform-origin: bottom center;
+    }
+    .tooltip-panel[data-placement="bottom"] {
+        transform-origin: top center;
+    }
+    .tooltip-panel[data-placement="left"] {
+        transform-origin: center right;
+    }
+    .tooltip-panel[data-placement="right"] {
+        transform-origin: center left;
     }
 
-    &[data-pos="left"] .tooltip-arrow {
-      @apply left-full top-1/2 -translate-y-1/2 -ml-[4px];
+    /* ---- Enter animations (direction-aware) ---- */
+    @keyframes tooltip-enter-top {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+    @keyframes tooltip-enter-bottom {
+        from {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+    @keyframes tooltip-enter-left {
+        from {
+            opacity: 0;
+            transform: translateX(4px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+    @keyframes tooltip-enter-right {
+        from {
+            opacity: 0;
+            transform: translateX(-4px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+    @keyframes tooltip-exit {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
     }
 
-    &[data-pos="right"] .tooltip-arrow {
-      @apply right-full top-1/2 -translate-y-1/2 -mr-[4px];
+    /* ---- Open state ---- */
+    .tooltip-panel[data-state="open"][data-placement="top"] {
+        animation: tooltip-enter-top var(--duration-fast) var(--ease-out) forwards;
     }
-  }
+    .tooltip-panel[data-state="open"][data-placement="bottom"] {
+        animation: tooltip-enter-bottom var(--duration-fast) var(--ease-out) forwards;
+    }
+    .tooltip-panel[data-state="open"][data-placement="left"] {
+        animation: tooltip-enter-left var(--duration-fast) var(--ease-out) forwards;
+    }
+    .tooltip-panel[data-state="open"][data-placement="right"] {
+        animation: tooltip-enter-right var(--duration-fast) var(--ease-out) forwards;
+    }
 
-  .tooltip {
-    --tooltip-color: var(--color-background);
+    /* ---- Closed state ---- */
+    .tooltip-panel[data-state="closed"] {
+        animation: tooltip-exit 100ms var(--ease-in) forwards;
+    }
 
-    @apply z-60 relative px-2 py-1 rounded bg-gray-800 text-white border border-gray-600 shadow;
-  }
+    /* ---- Arrow ---- */
+    .tooltip-arrow {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: var(--color-surface-4);
+        border: 0.5px solid var(--color-border-strong);
+        transform: rotate(45deg);
+    }
 
-  .tooltip-arrow {
-    --tooltip-color: var(--color-background);
+    /* Arrow positioning + border masking */
+    [data-placement="top"] .tooltip-arrow {
+        bottom: -3px;
+        left: 50%;
+        margin-left: -3px;
+        border-top: none;
+        border-left: none;
+    }
+    [data-placement="bottom"] .tooltip-arrow {
+        top: -3px;
+        left: 50%;
+        margin-left: -3px;
+        border-bottom: none;
+        border-right: none;
+    }
+    [data-placement="left"] .tooltip-arrow {
+        right: -3px;
+        top: 50%;
+        margin-top: -3px;
+        border-bottom: none;
+        border-left: none;
+    }
+    [data-placement="right"] .tooltip-arrow {
+        left: -3px;
+        top: 50%;
+        margin-top: -3px;
+        border-top: none;
+        border-right: none;
+    }
 
-    @apply z-55 absolute w-2 h-2 rotate-45 bg-gray-800 border border-gray-600;
-  }
+    /* ---- Reduced motion ---- */
+    @media (prefers-reduced-motion: reduce) {
+        .tooltip-panel {
+            animation-duration: 0.01ms !important;
+        }
+    }
 }

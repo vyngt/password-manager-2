@@ -2,8 +2,9 @@ use icondata::Icon as IconData;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use leptos_router::components::{A, Outlet};
+use ui::components::Tooltip;
 use ui::components::icon as ui_icon;
-use ui::components::{Tooltip, TooltipPosition};
+use ui::primitives::tokens::Placement;
 
 struct SidebarRouteItem {
     name: &'static str,
@@ -30,14 +31,6 @@ fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
 
     let is_active = move || location.pathname.get().starts_with(item.path);
 
-    let wrapper_class = move || {
-        if is_active() {
-            "w-full h-full [&>div]:h-full [&>div]:w-full flex flex-col border-x-3 border-r-transparent border-l-primary"
-        } else {
-            "w-full h-full [&>div]:h-full [&>div]:w-full flex flex-col border-x-3 border-transparent"
-        }
-    };
-
     let item_class = move || {
         if is_active() {
             "p-2 text-white"
@@ -48,21 +41,15 @@ fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
 
     view! {
         <A href=item.path>
-            <div class=wrapper_class>
-                <Tooltip
-                    position=TooltipPosition::Right
-                    class="bg-background text-white whitespace-nowrap"
-                    arrow=true
-                    content=move || view! { <div class="p-1">{item.name}</div> }
-                    trigger=move || {
-                        view! {
-                            <div class=item_class>
-                                <Icon icon=item.icon height="100%" width="100%" />
-                            </div>
-                        }
-                    }
-                />
-            </div>
+            <Tooltip
+                placement=Placement::Right
+                arrow=true
+                content=item.name
+            >
+                <div class=item_class>
+                    <Icon icon=item.icon height="100%" width="100%" />
+                </div>
+            </Tooltip>
         </A>
     }
 }

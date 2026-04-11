@@ -1,71 +1,203 @@
+use crate::primitives::tokens::Placement;
 use leptos::prelude::*;
-
-#[derive(Clone, Copy)]
-pub enum TooltipPosition {
-    Top,
-    Bottom,
-    Left,
-    Right,
-}
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+use uuid::Uuid;
 
 #[component]
-pub fn Tooltip<F1, IV1, F2, IV2>(
-    #[prop(optional)] position: Option<TooltipPosition>,
-
+pub fn Tooltip(
+    children: Children,
+    #[prop(into)] content: Signal<String>,
+    #[prop(optional)] placement: Placement,
+    #[prop(optional, default = 500)] delay: u32,
+    #[prop(optional)] disabled: bool,
     #[prop(optional)] arrow: bool,
-
     #[prop(optional, default = "")] class: &'static str,
+) -> impl IntoView {
+    if disabled {
+        return children().into_any();
+    }
 
-    trigger: F1,
+    // content is Signal<String> — reactive, works with i18n
+    let trigger_ref: NodeRef<leptos::html::Span> = NodeRef::new();
+    let tooltip_id: String = format!("tooltip-{}", Uuid::new_v4());
 
-    content: F2,
-) -> impl IntoView
-where
-    F1: Fn() -> IV1 + Sync + Send + 'static,
-    IV1: IntoView + 'static,
-    F2: Fn() -> IV2 + Sync + Send + 'static,
-    IV2: IntoView + 'static,
-{
-    let (hovered, set_hovered) = signal(false);
-    let pos = position.unwrap_or(TooltipPosition::Top);
+    let mounted = RwSignal::new(false);
+    let data_state = RwSignal::new(Option::<&'static str>::None);
+    let style = RwSignal::new(String::new());
 
-    // wrapper position (so với trigger)
-    let wrapper_pos = match pos {
-        TooltipPosition::Top => "bottom-full left-1/2 -translate-x-1/2 mb-2",
-        TooltipPosition::Bottom => "top-full left-1/2 -translate-x-1/2 mt-2",
-        TooltipPosition::Left => "right-full top-1/2 -translate-y-1/2 mr-2",
-        TooltipPosition::Right => "left-full top-1/2 -translate-y-1/2 ml-2",
+    // Arc<AtomicU32> — safe to access from set_timeout (outside reactive owner)
+    let show_ver = Arc::new(AtomicU32::new(0));
+    let hide_ver = Arc::new(AtomicU32::new(0));
+
+    // Calculate tooltip position from trigger bounding rect
+    let update_position = move || {
+        if let Some(el) = trigger_ref.get() {
+            let rect = el.get_bounding_client_rect();
+            let (x, y, tx, ty) = match placement {
+                Placement::Top => (
+                    rect.left() + rect.width() / 2.0,
+                    rect.top() - 8.0,
+                    "-50%",
+                    "-100%",
+                ),
+                Placement::Bottom => (
+                    rect.left() + rect.width() / 2.0,
+                    rect.bottom() + 8.0,
+                    "-50%",
+                    "0",
+                ),
+                Placement::Left => (
+                    rect.left() - 8.0,
+                    rect.top() + rect.height() / 2.0,
+                    "-100%",
+                    "-50%",
+                ),
+                Placement::Right => (
+                    rect.right() + 8.0,
+                    rect.top() + rect.height() / 2.0,
+                    "0",
+                    "-50%",
+                ),
+            };
+            style.set(format!("left:{x}px;top:{y}px;translate:{tx} {ty};"));
+        }
     };
 
-    let pos_str = match pos {
-        TooltipPosition::Top => "top",
-        TooltipPosition::Bottom => "bottom",
-        TooltipPosition::Left => "left",
-        TooltipPosition::Right => "right",
+    // Show: position → mount → animate on next tick
+    let sv = show_ver.clone();
+    let hv = hide_ver.clone();
+    let do_show = move || {
+        hv.fetch_add(1, Ordering::Relaxed);
+        update_position();
+        data_state.set(None);
+        mounted.set(true);
+        let ver = sv.load(Ordering::Relaxed);
+        let sv2 = sv.clone();
+        set_timeout(
+            move || {
+                if sv2.load(Ordering::Relaxed) == ver {
+                    data_state.set(Some("open"));
+                }
+            },
+            Duration::ZERO,
+        );
     };
 
-    let wrapper_cls = vec!["tooltip-wrapper", wrapper_pos].join(" ");
-    let content_cls = vec!["tooltip", class].join(" ");
-    let arrow_cls = vec!["tooltip-arrow"].join(" ");
+    // Hide: exit animation → unmount after 150ms
+    let sv = show_ver.clone();
+    let hv = hide_ver.clone();
+    let do_hide = move || {
+        sv.fetch_add(1, Ordering::Relaxed);
+        data_state.set(Some("closed"));
+        let ver = hv.load(Ordering::Relaxed);
+        let hv2 = hv.clone();
+        set_timeout(
+            move || {
+                if hv2.load(Ordering::Relaxed) == ver {
+                    mounted.set(false);
+                    data_state.set(None);
+                }
+            },
+            Duration::from_millis(150),
+        );
+    };
+
+    // Hover: show after configurable delay
+    let sv = show_ver.clone();
+    let hv = hide_ver.clone();
+    let do_show_c = do_show.clone();
+    let on_mouseenter = move |_| {
+        let ver = sv.fetch_add(1, Ordering::Relaxed) + 1;
+        hv.fetch_add(1, Ordering::Relaxed);
+        if delay == 0 {
+            do_show_c();
+        } else {
+            let sv2 = sv.clone();
+            let ds = do_show_c.clone();
+            set_timeout(
+                move || {
+                    if sv2.load(Ordering::Relaxed) == ver {
+                        ds();
+                    }
+                },
+                Duration::from_millis(delay as u64),
+            );
+        }
+    };
+
+    // Mouse leave: 100ms grace period before hiding
+    let sv = show_ver.clone();
+    let hv = hide_ver.clone();
+    let do_hide_c = do_hide.clone();
+    let on_mouseleave = move |_| {
+        sv.fetch_add(1, Ordering::Relaxed);
+        let ver = hv.fetch_add(1, Ordering::Relaxed) + 1;
+        let hv2 = hv.clone();
+        let dh = do_hide_c.clone();
+        set_timeout(
+            move || {
+                if hv2.load(Ordering::Relaxed) == ver {
+                    dh();
+                }
+            },
+            Duration::from_millis(100),
+        );
+    };
+
+    // Focus: immediate show (0ms delay for keyboard)
+    let sv = show_ver.clone();
+    let hv = hide_ver.clone();
+    let do_show_c2 = do_show.clone();
+    let on_focusin = move |_| {
+        sv.fetch_add(1, Ordering::Relaxed);
+        hv.fetch_add(1, Ordering::Relaxed);
+        do_show_c2();
+    };
+
+    // Blur: immediate hide with exit animation
+    let sv = show_ver;
+    let hv = hide_ver;
+    let on_focusout = move |_| {
+        sv.fetch_add(1, Ordering::Relaxed);
+        hv.fetch_add(1, Ordering::Relaxed);
+        do_hide();
+    };
+
+    let panel_cls = format!("tooltip-panel {class}");
+    let placement_str = placement.as_str();
+    let id_for_panel = tooltip_id.clone();
+    let id_for_aria = tooltip_id;
 
     view! {
-        <div
-            class="relative inline-block"
-            on:mouseenter=move |_| set_hovered.set(true)
-            on:mouseleave=move |_| set_hovered.set(false)
-            on:focus=move |_| set_hovered.set(true)
-            on:blur=move |_| set_hovered.set(false)
+        <span
+            node_ref=trigger_ref
+            style:display="inline-flex"
+            on:mouseenter=on_mouseenter
+            on:mouseleave=on_mouseleave
+            on:focusin=on_focusin
+            on:focusout=on_focusout
+            aria-describedby=move || {
+                if mounted.get() { Some(id_for_aria.clone()) } else { None }
+            }
         >
-            {trigger().into_view()}
+            {children()}
+        </span>
 
-            <Show when=move || hovered.get()>
-                <div class=wrapper_cls.clone() data-pos=pos_str>
-                    <div class=content_cls.clone()>{content().into_view()}</div>
-
-                    {arrow.then(|| view! { <div class=arrow_cls.clone()></div> })}
-                </div>
-            </Show>
-
-        </div>
+        <Show when=move || mounted.get()>
+            <div
+                id=id_for_panel.clone()
+                class=panel_cls.clone()
+                style=move || style.get()
+                role="tooltip"
+                data-state=move || data_state.get()
+                data-placement=placement_str
+            >
+                {move || content.get()}
+                {arrow.then(|| view! { <div class="tooltip-arrow"></div> })}
+            </div>
+        </Show>
     }
+    .into_any()
 }

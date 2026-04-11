@@ -6,6 +6,7 @@ use leptos_router::hooks::use_navigate;
 use serde_json::json;
 use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
+use ui::components::Tooltip;
 use ui::primitives::tokens::{Size, Variant};
 
 use leptos_icons::Icon;
@@ -55,15 +56,17 @@ pub fn Page() -> impl IntoView {
                         on_input=Callback::new(move |v: String| set_pw.set(v))
                         class="flex-1 rounded-r-none border-r-0"
                     />
-                    <IconButton
-                        aria_label="Unlock"
-                        variant=Variant::Primary
-                        size=Size::Lg
-                        class="rounded-l-none"
-                        on:click=move |_| handle_submit(pw.get())
-                    >
-                        <Icon icon=Decrypt />
-                    </IconButton>
+                    <Tooltip content="Unlock vault">
+                        <IconButton
+                            aria_label="Unlock"
+                            variant=Variant::Primary
+                            size=Size::Lg
+                            class="rounded-l-none"
+                            on:click=move |_| handle_submit(pw.get())
+                        >
+                            <Icon icon=Decrypt />
+                        </IconButton>
+                    </Tooltip>
                 </div>
             </div>
         </div>

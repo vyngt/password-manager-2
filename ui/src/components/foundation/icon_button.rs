@@ -8,7 +8,6 @@ pub fn IconButton(
     #[prop(optional, default = Variant::Ghost)] variant: Variant,
     #[prop(optional)] size: Size,
     #[prop(optional)] shape: Shape,
-    #[prop(optional, default = "")] tooltip: &'static str,
     #[prop(optional)] disabled: bool,
     #[prop(optional)] loading: bool,
     #[prop(optional, default = "button")] button_type: &'static str,
@@ -26,12 +25,6 @@ pub fn IconButton(
     ]
     .join(" ");
 
-    let title_attr = if !tooltip.is_empty() {
-        tooltip.to_string()
-    } else {
-        aria_label.clone()
-    };
-
     let aria_busy_attr = if loading { Some("true") } else { None };
 
     view! {
@@ -41,7 +34,6 @@ pub fn IconButton(
             disabled=is_disabled
             aria-label=aria_label
             aria-busy=aria_busy_attr
-            title=title_attr
         >
             {if loading {
                 view! { <span class="icon-btn__spinner"></span> }.into_any()
