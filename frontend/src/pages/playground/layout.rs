@@ -23,6 +23,10 @@ const TABS: &[PlaygroundTab] = &[
         name: "Atoms",
         path: "/playground/atoms",
     },
+    PlaygroundTab {
+        name: "ColorPicker",
+        path: "/playground/color-picker",
+    },
 ];
 
 #[component]

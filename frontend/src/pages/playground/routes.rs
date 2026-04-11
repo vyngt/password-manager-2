@@ -1,5 +1,6 @@
 use super::atoms::AtomsPage;
 use super::buttons::ButtonsPage;
+use super::color_picker::ColorPickerPage;
 use super::forms::FormsPage;
 use super::layout::PlaygroundLayout;
 use super::theme::ThemePage;
@@ -14,6 +15,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/buttons") view=ButtonsPage />
             <Route path=path!("/forms") view=FormsPage />
             <Route path=path!("/atoms") view=AtomsPage />
+            <Route path=path!("/color-picker") view=ColorPickerPage />
         </ParentRoute>
     }
     .into_inner()

@@ -1,0 +1,518 @@
+@layer components {
+    /* ============================================================
+       ColorPicker — Trigger (swatch-input mode)
+       ============================================================ */
+    .color-picker-trigger {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: var(--height-md);
+        padding: 0 12px;
+        background: var(--color-surface-1);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: border-color var(--duration-fast) var(--ease-out);
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        font-family: var(--font-sans);
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
+        color: var(--color-text-primary);
+        user-select: none;
+        width: 100%;
+    }
+
+    .color-picker-trigger--sm {
+        height: var(--height-sm);
+        padding: 0 10px;
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+    }
+
+    .color-picker-trigger:hover:not(.color-picker-trigger--disabled) {
+        border-color: var(--color-border-strong);
+    }
+
+    .color-picker-trigger--open {
+        border-color: var(--color-primary);
+        outline-color: var(--color-focus-ring);
+    }
+
+    .color-picker-trigger--disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .color-picker-trigger__swatch {
+        flex-shrink: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        transition: background-color var(--duration-fast) var(--ease-out);
+    }
+
+    .color-picker-trigger__text {
+        flex: 1;
+        min-width: 0;
+        font-family: var(--font-mono);
+        color: var(--color-text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .color-picker-trigger__chevron {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+        color: var(--color-text-tertiary);
+        transition: color var(--duration-fast) var(--ease-out);
+    }
+
+    .color-picker-trigger__chevron svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* ============================================================
+       Trigger — swatch-only mode
+       ============================================================ */
+    .color-picker-trigger-only {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        background: none;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: border-color var(--duration-fast) var(--ease-out);
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+    }
+
+    .color-picker-trigger-only--sm {
+        width: 28px;
+        height: 28px;
+    }
+
+    .color-picker-trigger-only:hover:not(.color-picker-trigger-only--disabled) {
+        border-color: var(--color-border-strong);
+    }
+
+    .color-picker-trigger-only--open {
+        border-color: var(--color-primary);
+        outline-color: var(--color-focus-ring);
+    }
+
+    .color-picker-trigger-only--disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .color-picker-trigger-only__swatch {
+        width: calc(100% - 6px);
+        height: calc(100% - 6px);
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        transition: background-color var(--duration-fast) var(--ease-out);
+    }
+
+    /* ============================================================
+       Panel — Level 3 elevation, fixed-position dropdown
+       ============================================================ */
+    .color-picker-panel {
+        position: fixed;
+        z-index: 50;
+        width: 240px;
+        padding: 12px;
+        background: var(--color-surface-4);
+        border: 0.5px solid var(--color-border-strong);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        opacity: 0;
+    }
+
+    @keyframes cp-panel-enter {
+        from {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes cp-panel-exit {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
+    }
+
+    .color-picker-panel[data-state="open"] {
+        animation: cp-panel-enter var(--duration-fast) var(--ease-out) forwards;
+    }
+
+    .color-picker-panel[data-state="closed"] {
+        animation: cp-panel-exit 100ms var(--ease-in) forwards;
+    }
+
+    /* ============================================================
+       Gradient area — 2D saturation/brightness picker
+       ============================================================ */
+    .cp-gradient {
+        width: 100%;
+        height: 136px;
+        border-radius: var(--radius-sm);
+        position: relative;
+        cursor: crosshair;
+        overflow: hidden;
+        background:
+            linear-gradient(to bottom, transparent, #000),
+            linear-gradient(to right, #fff, hsl(var(--cp-hue), 100%, 50%));
+        touch-action: none; /* prevent scroll during drag */
+    }
+
+    .cp-gradient:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: -2px;
+    }
+
+    .cp-gradient__thumb {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+    }
+
+    /* ============================================================
+       Sliders — shared base for hue and alpha
+       ============================================================ */
+    .cp-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 10px;
+        border-radius: var(--radius-full);
+        outline: none;
+        cursor: pointer;
+        background: transparent;
+        touch-action: none;
+    }
+
+    .cp-slider:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 2px;
+    }
+
+    /* Webkit thumb */
+    .cp-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        border: none;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.15);
+        cursor: grab;
+        margin-top: -3px; /* center on 10px track */
+    }
+    .cp-slider:active::-webkit-slider-thumb {
+        cursor: grabbing;
+    }
+
+    /* Moz thumb */
+    .cp-slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        border: none;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.15);
+        cursor: grab;
+    }
+    .cp-slider:active::-moz-range-thumb {
+        cursor: grabbing;
+    }
+
+    /* Hue slider track — rainbow */
+    .cp-hue-slider::-webkit-slider-runnable-track {
+        height: 10px;
+        border-radius: var(--radius-full);
+        background: linear-gradient(
+            to right,
+            hsl(0, 100%, 50%),
+            hsl(60, 100%, 50%),
+            hsl(120, 100%, 50%),
+            hsl(180, 100%, 50%),
+            hsl(240, 100%, 50%),
+            hsl(300, 100%, 50%),
+            hsl(360, 100%, 50%)
+        );
+    }
+    .cp-hue-slider::-moz-range-track {
+        height: 10px;
+        border-radius: var(--radius-full);
+        background: linear-gradient(
+            to right,
+            hsl(0, 100%, 50%),
+            hsl(60, 100%, 50%),
+            hsl(120, 100%, 50%),
+            hsl(180, 100%, 50%),
+            hsl(240, 100%, 50%),
+            hsl(300, 100%, 50%),
+            hsl(360, 100%, 50%)
+        );
+    }
+
+    /* Alpha slider track — current color over checkerboard */
+    .cp-alpha-slider::-webkit-slider-runnable-track {
+        height: 10px;
+        border-radius: var(--radius-full);
+        background:
+            linear-gradient(to right, transparent, var(--cp-solid-color, #000)),
+            repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px;
+    }
+    .cp-alpha-slider::-moz-range-track {
+        height: 10px;
+        border-radius: var(--radius-full);
+        background:
+            linear-gradient(to right, transparent, var(--cp-solid-color, #000)),
+            repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px;
+    }
+
+    /* ============================================================
+       Format row — eyedropper + format switcher + inputs
+       ============================================================ */
+    .cp-format-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .cp-format-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* Eyedropper button */
+    .cp-eyedropper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: color var(--duration-fast) var(--ease-out),
+                    background-color var(--duration-fast) var(--ease-out);
+    }
+
+    .cp-eyedropper:hover {
+        color: var(--color-text-primary);
+        background: var(--color-surface-3);
+    }
+
+    .cp-eyedropper:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 1px;
+    }
+
+    .cp-eyedropper svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Format switcher */
+    .cp-format-switcher {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        gap: 0;
+        background: var(--color-surface-2);
+        border-radius: var(--radius-sm);
+        padding: 2px;
+    }
+
+    .cp-format-btn {
+        flex: 1;
+        height: 22px;
+        padding: 0 6px;
+        border: none;
+        background: transparent;
+        font-family: var(--font-sans);
+        font-size: 10px;
+        font-weight: var(--font-weight-medium);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: background-color var(--duration-fast) var(--ease-out),
+                    color var(--duration-fast) var(--ease-out);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .cp-format-btn:hover:not(.cp-format-btn--active) {
+        color: var(--color-text-primary);
+    }
+
+    .cp-format-btn--active {
+        background: var(--color-surface-1);
+        color: var(--color-text-primary);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .cp-format-btn:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: -1px;
+    }
+
+    /* Color inputs */
+    .cp-input-group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .cp-input-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .cp-input {
+        width: 100%;
+        height: 24px;
+        padding: 0 4px;
+        background: var(--color-surface-2);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        color: var(--color-text-primary);
+        text-align: center;
+        min-width: 0;
+        outline: none;
+        transition: border-color var(--duration-fast) var(--ease-out);
+    }
+
+    .cp-input:focus {
+        border-color: var(--color-primary);
+    }
+
+    .cp-input--error {
+        border-color: var(--color-danger);
+    }
+
+    .cp-input--error:focus {
+        border-color: var(--color-danger);
+    }
+
+    .cp-input-label {
+        font-family: var(--font-sans);
+        font-size: 9px;
+        font-weight: var(--font-weight-medium);
+        color: var(--color-text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        user-select: none;
+    }
+
+    /* Hex input takes full width */
+    .cp-input--hex {
+        text-align: left;
+        padding: 0 6px;
+    }
+
+    /* ============================================================
+       Divider
+       ============================================================ */
+    .cp-divider {
+        width: 100%;
+        height: 1px;
+        background: var(--color-border);
+        margin: 0;
+    }
+
+    /* ============================================================
+       Swatches — preset color grid
+       ============================================================ */
+    .cp-swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-height: 48px; /* ~2 rows of 20px swatches + gap */
+        overflow-y: auto;
+    }
+
+    .cp-swatch {
+        width: 20px;
+        height: 20px;
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        padding: 0;
+        flex-shrink: 0;
+        transition: transform var(--duration-fast) var(--ease-out);
+    }
+
+    .cp-swatch:hover {
+        transform: scale(1.15);
+    }
+
+    .cp-swatch:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 1px;
+    }
+
+    .cp-swatch--active {
+        box-shadow: 0 0 0 2px var(--color-surface-4), 0 0 0 3px var(--color-primary);
+    }
+
+    /* ============================================================
+       Checkerboard utility — shows through transparent areas
+       ============================================================ */
+    .cp-checkerboard {
+        background-image: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%);
+        background-size: 8px 8px;
+    }
+
+    /* ============================================================
+       Reduced motion
+       ============================================================ */
+    @media (prefers-reduced-motion: reduce) {
+        .color-picker-panel {
+            animation-duration: 0.01ms !important;
+        }
+        .cp-swatch {
+            transition-duration: 0.01ms !important;
+        }
+    }
+}

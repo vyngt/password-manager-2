@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use ui::components::button::Button;
+use ui::components::form::color_picker::ColorPicker;
 use ui::components::icon_button::IconButton;
 use ui::primitives::tokens::{Size, Variant};
 use ui::theme::{Severity, ThemeConfig, ThemeState, ThemeValidation, validate_theme_config};
@@ -18,19 +19,13 @@ fn ColorField(
     on_change: Callback<String>,
 ) -> impl IntoView {
     view! {
-        <div class="flex items-center gap-3">
-            <input
-                type="color"
-                class="w-10 h-10 rounded cursor-pointer border border-border bg-transparent"
-                prop:value=move || value.get()
-                on:input:target=move |ev| {
-                    on_change.run(ev.target().value().to_uppercase());
-                }
+        <div class="space-y-1">
+            <span class="text-xs text-text-tertiary">{label}</span>
+            <ColorPicker
+                value=value
+                on_change_end=on_change
+                size=Size::Sm
             />
-            <div class="flex flex-col">
-                <span class="text-xs text-text-tertiary">{label}</span>
-                <span class="text-sm font-mono text-text-primary">{value}</span>
-            </div>
         </div>
     }
 }

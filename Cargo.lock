@@ -8808,6 +8808,7 @@ version = "0.1.0"
 dependencies = [
  "icondata",
  "icondata_core",
+ "js-sys",
  "leptos",
  "leptos_icons",
  "leptos_router",

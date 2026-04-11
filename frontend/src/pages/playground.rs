@@ -1,5 +1,6 @@
 mod atoms;
 mod buttons;
+mod color_picker;
 mod forms;
 mod layout;
 mod routes;

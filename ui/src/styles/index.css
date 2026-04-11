@@ -9,5 +9,6 @@
 @import "./input.css";
 @import "./label.css";
 
+@import "./color-picker.css";
 @import "./toast.css";
 @import "./tooltip.css";

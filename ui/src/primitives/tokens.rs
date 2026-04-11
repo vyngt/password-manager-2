@@ -77,6 +77,20 @@ impl Size {
             Size::Lg => "input-root--lg",
         }
     }
+
+    pub fn color_picker_trigger_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "color-picker-trigger--sm",
+            Size::Md | Size::Lg => "",
+        }
+    }
+
+    pub fn color_picker_trigger_only_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "color-picker-trigger-only--sm",
+            Size::Md | Size::Lg => "",
+        }
+    }
 }
 
 /// Field status — communicates validation state visually.
