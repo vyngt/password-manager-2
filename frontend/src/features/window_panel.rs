@@ -6,7 +6,7 @@ use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use ui::components::icon::VEdge;
 use ui::components::icon_button::IconButton;
-use ui::primitives::tokens::Variant;
+use ui::primitives::tokens::{Shape, Size, Variant};
 use ui::theme::{ThemeState, compute_primary_foreground};
 
 #[component]
@@ -19,8 +19,7 @@ pub fn WindowPanel() -> impl IntoView {
     let tokens_signal = theme.tokens();
     let handle_inner_color = move || {
         let tokens = tokens_signal.get();
-        let fg = compute_primary_foreground(&tokens.color_background)
-            .unwrap_or("#FAFAFA");
+        let fg = compute_primary_foreground(&tokens.color_background).unwrap_or("#FAFAFA");
         format!("color: {fg};")
     };
 
@@ -40,7 +39,7 @@ pub fn WindowPanel() -> impl IntoView {
     view! {
         <header
             data-tauri-drag-region=true
-            class="flex h-[48px] grow-0 justify-between border-b border-border bg-primary/20"
+            class="flex grow-0 justify-between border-b border-border bg-primary/20"
         >
             <div
                 class="flex flex-col justify-center pl-2 pointer-events-none"
@@ -75,7 +74,8 @@ pub fn WindowPanel() -> impl IntoView {
             <div class="flex h-full" style=handle_inner_color>
                 <IconButton
                     aria_label="Minimize window"
-                    class="w-12"
+                    size=Size::Lg
+                    shape=Shape::Square
                     on:click=move |_ev| {
                         spawn_local(async move {
                             let app_window = get_current_window();
@@ -87,7 +87,8 @@ pub fn WindowPanel() -> impl IntoView {
                 </IconButton>
                 <IconButton
                     aria_label="Maximize window"
-                    class="w-12"
+                    size=Size::Lg
+                    shape=Shape::Square
                     on:click=move |_ev| {
                         spawn_local(async move {
                             let app_window = get_current_window();
@@ -112,7 +113,8 @@ pub fn WindowPanel() -> impl IntoView {
                 <IconButton
                     aria_label="Close window"
                     variant=Variant::Danger
-                    class="w-12"
+                    size=Size::Lg
+                    shape=Shape::Square
                     on:click=move |_ev| {
                         spawn_local(async move {
                             let app_window = get_current_window();
