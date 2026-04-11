@@ -303,7 +303,9 @@ mod tests {
 
     #[test]
     fn hex_roundtrip() {
-        let colors = ["#000000", "#FFFFFF", "#2563EB", "#FF0000", "#00FF00", "#0000FF"];
+        let colors = [
+            "#000000", "#FFFFFF", "#2563EB", "#FF0000", "#00FF00", "#0000FF",
+        ];
         for hex in colors {
             let hsv = HsvColor::from_hex(hex).unwrap();
             let out = hsv.to_hex(false);

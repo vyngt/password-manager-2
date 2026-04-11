@@ -78,6 +78,21 @@ impl Size {
         }
     }
 
+    pub fn segmented_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "segmented--sm",
+            Size::Md | Size::Lg => "segmented--md",
+        }
+    }
+
+    pub fn select_trigger_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "select-trigger--sm",
+            Size::Md => "",
+            Size::Lg => "select-trigger--lg",
+        }
+    }
+
     pub fn color_picker_trigger_class(&self) -> &'static str {
         match self {
             Size::Sm => "color-picker-trigger--sm",
@@ -121,6 +136,15 @@ impl Status {
             Status::Error => "input-root--error",
             Status::Success => "input-root--success",
             Status::Warning => "input-root--warning",
+        }
+    }
+
+    pub fn select_trigger_class(&self) -> &'static str {
+        match self {
+            Status::Default => "",
+            Status::Error => "select-trigger--error",
+            Status::Success => "select-trigger--success",
+            Status::Warning => "select-trigger--warning",
         }
     }
 }
@@ -235,6 +259,30 @@ impl BadgeAppearance {
     }
 }
 
+/// Binary-size control — Checkbox and Toggle only have two sizes.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum CheckboxSize {
+    Sm,
+    #[default]
+    Md,
+}
+
+impl CheckboxSize {
+    pub fn checkbox_class(&self) -> &'static str {
+        match self {
+            CheckboxSize::Sm => "checkbox--sm",
+            CheckboxSize::Md => "checkbox--md",
+        }
+    }
+
+    pub fn toggle_class(&self) -> &'static str {
+        match self {
+            CheckboxSize::Sm => "toggle--sm",
+            CheckboxSize::Md => "toggle--md",
+        }
+    }
+}
+
 /// Separator orientation.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Orientation {
@@ -248,6 +296,13 @@ impl Orientation {
         match self {
             Orientation::Horizontal => "separator--horizontal",
             Orientation::Vertical => "separator--vertical",
+        }
+    }
+
+    pub fn radio_group_class(&self) -> &'static str {
+        match self {
+            Orientation::Horizontal => "radio-group--horizontal",
+            Orientation::Vertical => "radio-group--vertical",
         }
     }
 }

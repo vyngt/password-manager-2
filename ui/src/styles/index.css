@@ -9,6 +9,12 @@
 @import "./input.css";
 @import "./label.css";
 
+@import "./checkbox.css";
+@import "./toggle.css";
+@import "./radio-group.css";
+@import "./segmented-control.css";
+@import "./select.css";
+
 @import "./color-picker.css";
 @import "./toast.css";
 @import "./tooltip.css";

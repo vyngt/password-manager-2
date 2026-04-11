@@ -1,0 +1,119 @@
+@layer components {
+  /* ============================================================
+     RadioGroup — root container
+     ============================================================ */
+  .radio-group {
+    display: flex;
+  }
+
+  .radio-group--vertical {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .radio-group--horizontal {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .radio-group--disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     RadioItem — individual option
+     ============================================================ */
+  .radio-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  /* ---- Hidden native input ---- */
+  .radio-item__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  /* ---- Visual circle ---- */
+  .radio-item__circle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-full);
+    border: 1.5px solid var(--color-border-strong);
+    flex-shrink: 0;
+    transition: border-color var(--duration-fast) var(--ease-out);
+  }
+
+  /* Inner dot via pseudo-element */
+  .radio-item__circle::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    transform: scale(0);
+    transition: transform var(--duration-fast) var(--ease-spring);
+  }
+
+  /* ---- Checked ---- */
+  .radio-item__input:checked + .radio-item__circle {
+    border-color: var(--color-primary);
+  }
+
+  .radio-item__input:checked + .radio-item__circle::after {
+    transform: scale(1);
+  }
+
+  /* ---- Hover ---- */
+  .radio-item:hover:not(.radio-item--disabled) .radio-item__circle {
+    border-color: var(--color-primary);
+  }
+
+  .radio-item:hover:not(.radio-item--disabled) .radio-item__input:checked + .radio-item__circle {
+    border-color: var(--color-primary-hover);
+  }
+
+  .radio-item:hover:not(.radio-item--disabled) .radio-item__input:checked + .radio-item__circle::after {
+    background: var(--color-primary-hover);
+  }
+
+  /* ---- Focus ---- */
+  .radio-item__input:focus-visible + .radio-item__circle {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* ---- Label text ---- */
+  .radio-item__label {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
+    user-select: none;
+  }
+
+  /* ---- Disabled (per-item) ---- */
+  .radio-item--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .radio-item__circle,
+    .radio-item__circle::after {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

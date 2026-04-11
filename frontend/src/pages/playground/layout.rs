@@ -20,6 +20,10 @@ const TABS: &[PlaygroundTab] = &[
         path: "/playground/forms",
     },
     PlaygroundTab {
+        name: "Controls",
+        path: "/playground/controls",
+    },
+    PlaygroundTab {
         name: "Atoms",
         path: "/playground/atoms",
     },
