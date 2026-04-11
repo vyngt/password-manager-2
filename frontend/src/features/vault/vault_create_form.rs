@@ -1,16 +1,16 @@
 use super::types::VaultItem;
 use crate::api::tauri;
 use crate::i18n::*;
-use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use leptos::ev::Targeted;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::{from_value, to_value as to_js_value};
 use ui::components::Button;
 use ui::components::Input;
+use ui::primitives::color::RgbColor;
 use ui::primitives::tokens::{Size, Variant};
+use ui::theme::ThemeState;
 use web_sys::{Event, HtmlInputElement};
 
 #[component]
@@ -19,7 +19,11 @@ pub fn VaultCreateForm(
     on_created: Callback<VaultItem>,
 ) -> impl IntoView {
     let i18n = use_i18n();
-    let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
+    let theme = expect_context::<ThemeState>();
+
+    let primary_color = Signal::derive(move || {
+        RgbColor::from_hex(&theme.tokens().get().color_primary)
+    });
 
     let form_title = RwSignal::new(String::new());
     let form_identifier = RwSignal::new(String::new());
@@ -93,15 +97,15 @@ pub fn VaultCreateForm(
     };
 
     view! {
-        <div class="border border-secondary/20 rounded-lg p-4 bg-primary/5">
-            <h3 class="text-sm font-semibold mb-3 text-foreground/80">
+        <div class="border border-border rounded-lg p-4 bg-primary-muted">
+            <h3 class="text-sm font-semibold mb-3 text-text-secondary">
                 {move || t!(i18n, vault.create_title)}
             </h3>
             <div class="grid grid-cols-2 gap-3">
                 <Input
                     id="vault-form-title"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_title).to_string())
-                    color=Signal::derive(move || color_store.primary().get())
+                    color=primary_color
                     input_type="text"
                     value=Signal::derive(move || form_title.get())
                     class="h-[40px]"
@@ -113,7 +117,7 @@ pub fn VaultCreateForm(
                 <Input
                     id="vault-form-identifier"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_identifier).to_string())
-                    color=Signal::derive(move || color_store.primary().get())
+                    color=primary_color
                     input_type="text"
                     value=Signal::derive(move || form_identifier.get())
                     class="h-[40px]"
@@ -125,7 +129,7 @@ pub fn VaultCreateForm(
                 <Input
                     id="vault-form-password"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_password).to_string())
-                    color=Signal::derive(move || color_store.primary().get())
+                    color=primary_color
                     input_type="password"
                     value=Signal::derive(move || form_password.get())
                     class="h-[40px]"
@@ -137,7 +141,7 @@ pub fn VaultCreateForm(
                 <Input
                     id="vault-form-url"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_url).to_string())
-                    color=Signal::derive(move || color_store.primary().get())
+                    color=primary_color
                     input_type="text"
                     value=Signal::derive(move || form_url.get())
                     class="h-[40px]"

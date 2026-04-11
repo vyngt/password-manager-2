@@ -1,9 +1,1 @@
-pub enum Color {
-    Background,
-    Foreground,
-    Primary,
-    Secondary,
-    Success,
-    Danger,
-    Warning,
-}
+// Intentionally empty — color constants migrated to ui::theme::types.

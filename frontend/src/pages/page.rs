@@ -1,15 +1,15 @@
 use crate::api::tauri;
 use crate::i18n::*;
-use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use leptos::ev::Targeted;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
-use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
+use ui::primitives::color::RgbColor;
 use ui::primitives::tokens::Variant;
+use ui::theme::ThemeState;
 
 use leptos_icons::Icon;
 use ui::components::Input;
@@ -20,7 +20,11 @@ use web_sys::{Event, HtmlInputElement};
 #[component]
 pub fn Page() -> impl IntoView {
     let i18n = use_i18n();
-    let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
+    let theme = expect_context::<ThemeState>();
+
+    let primary_color = Signal::derive(move || {
+        RgbColor::from_hex(&theme.tokens().get().color_primary)
+    });
 
     let (pw, set_pw) = signal(String::new());
 
@@ -53,7 +57,7 @@ pub fn Page() -> impl IntoView {
                         placeholder=Signal::derive(move || t_string!(i18n, unlock.master_password).to_string())
                         class="pr-[50px] h-[60px]"
                         label_class="text-[18px] peer-focus:text-[11px] peer-[&:not(:placeholder-shown):not(:focus)]:text-[11px]"
-                        color=Signal::derive(move || color_store.primary().get())
+                        color=primary_color
                         input_type="password"
                         value=Signal::derive(move || pw.get())
                         on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {

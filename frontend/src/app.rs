@@ -1,42 +1,47 @@
 use crate::i18n::*;
-use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 
 use leptos::prelude::*;
 
 use crate::features::window_panel::WindowPanel;
 use crate::routes::AppRoutes;
-use reactive_stores::Store;
 use ui::components::feedback::toast::provider::ToastProvider;
+use ui::theme::{ThemeConfig, ThemeState, derive_tokens, inject_css_vars};
+
+/// Default light theme configuration.
+fn default_theme_config() -> ThemeConfig {
+    ThemeConfig {
+        background: "#FFFFFF".into(),
+        foreground: "#111827".into(),
+        primary: "#2563EB".into(),
+        danger: None,
+        warning: None,
+        success: None,
+    }
+}
 
 #[component]
 pub fn App() -> impl IntoView {
-    let color_store = Store::new(ColorStore::new());
-    provide_context(color_store);
+    let config = default_theme_config();
+    let tokens = derive_tokens(&config).expect("default theme must be valid");
+
+    // Inject CSS vars on startup
+    inject_css_vars(&tokens);
+
+    let theme = ThemeState::new(
+        tokens,
+        |_config| {
+            // TODO: wire to Tauri invoke("save_theme", ...) when backend is ready
+        },
+        || {
+            // TODO: wire to Tauri invoke("apply_active_theme") when backend is ready
+        },
+    );
+
+    provide_context(theme);
 
     view! {
         <I18nContextProvider>
-            <div
-                class="h-full flex flex-col bg-background text-foreground"
-                style=move || {
-                    let primary_color = color_store.primary().get().to_rgb_string();
-                    let secondary_color = color_store.secondary().get().to_rgb_string();
-                    let success_color = color_store.success().get().to_rgb_string();
-                    let danger_color = color_store.danger().get().to_rgb_string();
-                    let warning_color = color_store.warning().get().to_rgb_string();
-                    let bg_color = color_store.background().get().to_rgb_string();
-                    let fg_color = color_store.foreground().get().to_rgb_string();
-                    let colors = vec![
-                        format!("--color-primary: {}", primary_color),
-                        format!("--color-secondary: {}", secondary_color),
-                        format!("--color-success: {}", success_color),
-                        format!("--color-danger: {}", danger_color),
-                        format!("--color-warning: {}", warning_color),
-                        format!("--color-background: {}", bg_color),
-                        format!("--color-foreground: {}", fg_color),
-                    ];
-                    colors.join(";")
-                }
-            >
+            <div class="h-full flex flex-col bg-background text-text-primary">
                 <ToastProvider>
                     <WindowPanel />
                     <main class="h-[calc(100%-48px)] overflow-y-auto app-scrollbar">

@@ -57,11 +57,14 @@
 }
 
 /* ============================================================
-   Semantic layer — @theme inline
-   All values are light-preset fallbacks. Rust overrides at runtime.
+   Semantic layer — @theme
+   All values are light-preset fallbacks exposed as CSS custom
+   properties. Utilities reference var() so inject_css_vars()
+   updates propagate at runtime. Do NOT use @theme inline here —
+   inline bakes values into utilities, breaking runtime theming.
    ============================================================ */
 
-@theme inline {
+@theme {
 
   /* ---- Surfaces ---- */
   --color-background: #ffffff;

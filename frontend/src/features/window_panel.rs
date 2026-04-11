@@ -1,29 +1,27 @@
 use crate::api::tauri::get_current_window;
 use crate::i18n::*;
-use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
-use reactive_stores::Store;
 use ui::components::icon::VEdge;
 use ui::components::icon_button::IconButton;
 use ui::primitives::tokens::Variant;
+use ui::theme::{ThemeState, compute_primary_foreground};
 
 #[component]
 pub fn WindowPanel() -> impl IntoView {
     let i18n = use_i18n();
-    let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
+    let theme = expect_context::<ThemeState>();
 
     let (is_maximized, set_is_maximized) = signal(false);
 
+    let tokens_signal = theme.tokens();
     let handle_inner_color = move || {
-        let text_color = color_store
-            .background()
-            .get()
-            .calculate_white_black_text_color(None);
-
-        format!("--color-foreground: {};", text_color.to_rgb_string())
+        let tokens = tokens_signal.get();
+        let fg = compute_primary_foreground(&tokens.color_background)
+            .unwrap_or("#FAFAFA");
+        format!("color: {fg};")
     };
 
     let maximized_state = LocalResource::new(async move || {
@@ -42,27 +40,27 @@ pub fn WindowPanel() -> impl IntoView {
     view! {
         <header
             data-tauri-drag-region=true
-            class="flex h-[48px] grow-0 justify-between border-b border-secondary/20 bg-primary/20"
+            class="flex h-[48px] grow-0 justify-between border-b border-border bg-primary/20"
         >
             <div
                 class="flex flex-col justify-center pl-2 pointer-events-none"
                 style=handle_inner_color
             >
                 <div class="flex gap-2 justify-center">
-                    <div class="flex flex-col justify-center text-foreground">
+                    <div class="flex flex-col justify-center">
                         <div class="text-[30px]">
                             <Icon icon=VEdge />
                         </div>
                     </div>
                     <div class="flex flex-col justify-center">
-                        <h5 class="text-foreground">"VEdge"</h5>
+                        <h5>"VEdge"</h5>
                     </div>
                 </div>
             </div>
             <div class="flex grow" data-tauri-drag-region=true></div>
             <div class="flex h-full items-center" style=handle_inner_color>
                 <button
-                    class="px-2 text-xs font-semibold text-foreground/60 hover:text-foreground cursor-pointer uppercase tracking-wide"
+                    class="px-2 text-xs font-semibold opacity-60 hover:opacity-100 cursor-pointer uppercase tracking-wide"
                     on:click=move |_| {
                         let new_locale = match i18n.get_locale() {
                             Locale::en => Locale::vi,
@@ -125,7 +123,6 @@ pub fn WindowPanel() -> impl IntoView {
                     <Icon icon=i::FaXmarkSolid />
                 </IconButton>
             </div>
-
         </header>
     }
 }
