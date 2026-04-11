@@ -168,7 +168,7 @@ Types use abstract notation. `Slot` = framework's renderable content. `EventHand
 ### Spacing tokens consumed
 
 ```jsx
-Border radius:   6px
+Border radius:   --radius-sm (4px) / --radius (6px) / --radius-full (9999px)   (square / rounded / pill)
 Padding X:       10px / 16px / 20px  (sm / md / lg)
 Icon gap:        8px   (--space-2)
 ```
@@ -207,6 +207,11 @@ This shows one implementation using plain CSS / BEM. Any styling approach that r
 .btn--sm { height: 28px; padding: 0 10px; font-size: var(--text-xs); }
 .btn--md { height: 36px; padding: 0 16px; font-size: var(--text-sm); }
 .btn--lg { height: 44px; padding: 0 20px; font-size: var(--text-base); }
+
+/* Shape */
+.btn--square  { border-radius: var(--radius-sm); }   /* 4px */
+.btn--rounded { border-radius: var(--radius); }      /* 6px — default */
+.btn--pill    { border-radius: var(--radius-full); } /* 9999px */
 
 .btn--primary   { background: var(--color-primary);  color: var(--color-primary-foreground); }
 .btn--secondary { background: var(--color-surface-1); color: var(--color-text-primary); border-color: var(--color-border); }

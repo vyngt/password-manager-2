@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_router::{MatchNestedRoutes, components::*, path};
 use ui::components::button::Button;
 use ui::components::icon_button::IconButton;
-use ui::primitives::tokens::{Size, Variant};
+use ui::primitives::tokens::{Shape, Size, Variant};
 use ui::theme::{ThemeConfig, ThemeState, ThemeValidation, Severity, validate_theme_config};
 
 use icondata as i;
@@ -152,6 +152,31 @@ fn ComponentShowcase() -> impl IntoView {
                     <Button variant=Variant::Primary size=Size::Sm>"Small"</Button>
                     <Button variant=Variant::Primary size=Size::Md>"Medium"</Button>
                     <Button variant=Variant::Primary size=Size::Lg>"Large"</Button>
+                </div>
+            </div>
+
+            // Shapes
+            <div>
+                <p class="text-xs text-text-tertiary mb-2">"Shapes"</p>
+                <div class="flex flex-wrap gap-2">
+                    <Button variant=Variant::Primary shape=Shape::Square>"Square"</Button>
+                    <Button variant=Variant::Primary shape=Shape::RoundedSm>"Rounded SM"</Button>
+                    <Button variant=Variant::Primary shape=Shape::Rounded>"Rounded"</Button>
+                    <Button variant=Variant::Primary shape=Shape::Pill>"Pill"</Button>
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <IconButton aria_label="Square" variant=Variant::Primary shape=Shape::Square>
+                        <Icon icon=i::FaStarSolid />
+                    </IconButton>
+                    <IconButton aria_label="Rounded SM" variant=Variant::Primary shape=Shape::RoundedSm>
+                        <Icon icon=i::FaStarSolid />
+                    </IconButton>
+                    <IconButton aria_label="Rounded" variant=Variant::Primary shape=Shape::Rounded>
+                        <Icon icon=i::FaStarSolid />
+                    </IconButton>
+                    <IconButton aria_label="Pill" variant=Variant::Primary shape=Shape::Pill>
+                        <Icon icon=i::FaStarSolid />
+                    </IconButton>
                 </div>
             </div>
 

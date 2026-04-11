@@ -1,4 +1,4 @@
-use crate::primitives::tokens::{Size, Variant};
+use crate::primitives::tokens::{Shape, Size, Variant};
 use leptos::prelude::*;
 
 #[component]
@@ -7,6 +7,7 @@ pub fn IconButton(
     #[prop(into)] aria_label: String,
     #[prop(optional, default = Variant::Ghost)] variant: Variant,
     #[prop(optional)] size: Size,
+    #[prop(optional)] shape: Shape,
     #[prop(optional, default = "")] tooltip: &'static str,
     #[prop(optional)] disabled: bool,
     #[prop(optional)] loading: bool,
@@ -19,12 +20,12 @@ pub fn IconButton(
         "icon-btn",
         variant.icon_btn_class(),
         size.icon_btn_class(),
-        if loading { "icon-btn-loading" } else { "" },
+        shape.icon_btn_class(),
+        if loading { "icon-btn--loading" } else { "" },
         class,
     ]
     .join(" ");
 
-    // title: tooltip text if provided, otherwise fall back to aria_label
     let title_attr = if !tooltip.is_empty() {
         tooltip.to_string()
     } else {
@@ -43,7 +44,7 @@ pub fn IconButton(
             title=title_attr
         >
             {if loading {
-                view! { <span class="btn-spinner"></span> }.into_any()
+                view! { <span class="icon-btn__spinner"></span> }.into_any()
             } else {
                 children().into_any()
             }}

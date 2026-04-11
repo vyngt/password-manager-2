@@ -175,7 +175,9 @@ Token mapping is identical to Button. IconButton uses the same semantic tokens �
 --ease-out         cubic-bezier(0.16, 1, 0.3, 1)
 
 // Shape
---radius           6px     border-radius
+--radius-sm        4px     border-radius at shape=square
+--radius           6px     border-radius at shape=rounded (default)
+--radius-full      9999px  border-radius at shape=pill
 
 // Sizing
 --height-sm        28px    width and height at sm
@@ -212,6 +214,11 @@ Token mapping is identical to Button. IconButton uses the same semantic tokens �
 .icon-btn--sm { width: var(--height-sm); height: var(--height-sm); } /* 28×28 */
 .icon-btn--md { width: var(--height-md); height: var(--height-md); } /* 36×36 */
 .icon-btn--lg { width: var(--height-lg); height: var(--height-lg); } /* 44×44 */
+
+/* Shape — does not affect square geometry */
+.icon-btn--square  { border-radius: var(--radius-sm); }   /* 4px */
+.icon-btn--rounded { border-radius: var(--radius); }      /* 6px — default */
+.icon-btn--pill    { border-radius: var(--radius-full); } /* 9999px — circle */
 
 /* Icon sizing — set on direct SVG child */
 .icon-btn--sm > svg { width: 14px; height: 14px; }
@@ -389,6 +396,8 @@ Do not attempt to replicate IconButton behavior using `Button` with an icon and 
 
 - [ ]  All five variants render with correct token values in light and dark mode
 - [ ]  Component is always square: width = height at every size
+- [ ]  All three shapes render correctly — square (4px), rounded (6px), pill (9999px)
+- [ ]  Shape does not affect dimensions — width still equals height at all shapes
 - [ ]  Icon is centered via flexbox — not positioned with explicit padding
 - [ ]  Icon sizes: 14px at sm, 16px at md, 20px at lg
 - [ ]  Hover transitions complete in 150ms ease-out

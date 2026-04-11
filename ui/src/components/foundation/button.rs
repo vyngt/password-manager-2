@@ -1,4 +1,4 @@
-use crate::primitives::tokens::{Size, Variant};
+use crate::primitives::tokens::{Shape, Size, Variant};
 use leptos::prelude::*;
 
 #[component]
@@ -6,6 +6,7 @@ pub fn Button(
     children: Children,
     #[prop(optional)] variant: Variant,
     #[prop(optional)] size: Size,
+    #[prop(optional)] shape: Shape,
     #[prop(optional)] disabled: bool,
     #[prop(optional)] loading: bool,
     #[prop(optional, default = "button")] button_type: &'static str,
@@ -19,8 +20,9 @@ pub fn Button(
         "btn",
         variant.btn_class(),
         size.btn_class(),
-        if full_width { "btn-full-width" } else { "" },
-        if loading { "btn-loading" } else { "" },
+        shape.btn_class(),
+        if full_width { "btn--full" } else { "" },
+        if loading { "btn--loading" } else { "" },
         class,
     ]
     .join(" ");
@@ -40,7 +42,7 @@ pub fn Button(
             aria-busy=aria_busy_attr
             aria-label=aria_label_attr
         >
-            {loading.then(|| view! { <span class="btn-spinner"></span> })}
+            {loading.then(|| view! { <span class="btn__spinner"></span> })}
             {children()}
         </button>
     }

@@ -13,21 +13,21 @@ pub enum Variant {
 impl Variant {
     pub fn btn_class(&self) -> &'static str {
         match self {
-            Variant::Primary => "btn-primary",
-            Variant::Secondary => "btn-secondary",
-            Variant::Ghost => "btn-ghost",
-            Variant::Danger => "btn-danger",
-            Variant::Warning => "btn-warning",
+            Variant::Primary => "btn--primary",
+            Variant::Secondary => "btn--secondary",
+            Variant::Ghost => "btn--ghost",
+            Variant::Danger => "btn--danger",
+            Variant::Warning => "btn--warning",
         }
     }
 
     pub fn icon_btn_class(&self) -> &'static str {
         match self {
-            Variant::Primary => "icon-btn-primary",
-            Variant::Secondary => "icon-btn-secondary",
-            Variant::Ghost => "icon-btn-ghost",
-            Variant::Danger => "icon-btn-danger",
-            Variant::Warning => "icon-btn-warning",
+            Variant::Primary => "icon-btn--primary",
+            Variant::Secondary => "icon-btn--secondary",
+            Variant::Ghost => "icon-btn--ghost",
+            Variant::Danger => "icon-btn--danger",
+            Variant::Warning => "icon-btn--warning",
         }
     }
 }
@@ -48,17 +48,51 @@ pub enum Size {
 impl Size {
     pub fn btn_class(&self) -> &'static str {
         match self {
-            Size::Sm => "btn-sm",
-            Size::Md => "btn-md",
-            Size::Lg => "btn-lg",
+            Size::Sm => "btn--sm",
+            Size::Md => "btn--md",
+            Size::Lg => "btn--lg",
         }
     }
 
     pub fn icon_btn_class(&self) -> &'static str {
         match self {
-            Size::Sm => "icon-btn-sm",
-            Size::Md => "icon-btn-md",
-            Size::Lg => "icon-btn-lg",
+            Size::Sm => "icon-btn--sm",
+            Size::Md => "icon-btn--md",
+            Size::Lg => "icon-btn--lg",
+        }
+    }
+}
+
+/// Border-radius shape.
+///   square     = --radius-none (0px)
+///   rounded-sm = --radius-sm   (4px)
+///   rounded    = --radius      (6px) — default
+///   pill       = --radius-full (9999px)
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum Shape {
+    Square,
+    RoundedSm,
+    #[default]
+    Rounded,
+    Pill,
+}
+
+impl Shape {
+    pub fn btn_class(&self) -> &'static str {
+        match self {
+            Shape::Square => "btn--square",
+            Shape::RoundedSm => "btn--rounded-sm",
+            Shape::Rounded => "btn--rounded",
+            Shape::Pill => "btn--pill",
+        }
+    }
+
+    pub fn icon_btn_class(&self) -> &'static str {
+        match self {
+            Shape::Square => "icon-btn--square",
+            Shape::RoundedSm => "icon-btn--rounded-sm",
+            Shape::Rounded => "icon-btn--rounded",
+            Shape::Pill => "icon-btn--pill",
         }
     }
 }

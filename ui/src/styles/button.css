@@ -6,129 +6,92 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
-    border-radius: var(--radius);
+    gap: 8px; /* --space-2 */
+    border-radius: var(--radius); /* 6px default, overridden by shape */
+    border: 0.5px solid transparent;
     font-family: var(--font-sans);
     font-weight: var(--font-weight-semibold);
-    cursor: pointer;
-    border: 1px solid transparent;
-    user-select: none;
     white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
     transition:
       background-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out);
+      filter           var(--duration-fast) var(--ease-out),
+      border-color     var(--duration-fast) var(--ease-out),
+      color            var(--duration-fast) var(--ease-out),
+      transform        var(--duration-micro) var(--ease-out),
+      box-shadow       var(--duration-fast) var(--ease-out);
   }
 
-  /* Focus — instant, never hidden */
+  /* ---- Sizes ---- */
+  .btn--sm { height: 28px; padding: 0 10px; font-size: var(--text-xs); }
+  .btn--md { height: 36px; padding: 0 16px; font-size: var(--text-sm); }
+  .btn--lg { height: 44px; padding: 0 20px; font-size: var(--text-base); }
+
+  /* ---- Shape ---- */
+  .btn--square     { border-radius: var(--radius-none); }  /* 0px */
+  .btn--rounded-sm { border-radius: var(--radius-sm); }    /* 4px */
+  .btn--rounded    { border-radius: var(--radius); }       /* 6px — default */
+  .btn--pill       { border-radius: var(--radius-full); }  /* 9999px */
+
+  /* ---- Variants ---- */
+  .btn--primary   { background: var(--color-primary);   color: var(--color-primary-foreground); }
+  .btn--secondary { background: var(--color-surface-1); color: var(--color-text-primary); border-color: var(--color-border); }
+  .btn--ghost     { background: transparent;            color: var(--color-text-secondary); }
+  .btn--danger    { background: var(--color-danger);    color: var(--color-danger-foreground); }
+  .btn--warning   { background: var(--color-warning);   color: var(--color-warning-foreground); }
+
+  /* ---- Hover ---- */
+  .btn--primary:hover:not(:disabled)   { background: var(--color-primary-hover); }
+  .btn--secondary:hover:not(:disabled) { background: var(--color-surface-2); }
+  .btn--ghost:hover:not(:disabled)     { background: var(--color-surface-2); color: var(--color-text-primary); }
+  .btn--danger:hover:not(:disabled)    { background: var(--color-danger-hover); }
+  .btn--warning:hover:not(:disabled)   { background: var(--color-warning-hover); }
+
+  /* ---- Focus ---- */
   .btn:focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
   }
 
-  /* Active — micro press */
-  .btn:active:not(:disabled) {
+  /* ---- Active ---- */
+  .btn:active:not(:disabled):not(.btn--loading) {
     transform: scale(0.97);
-    transition: transform var(--duration-micro) var(--ease-out);
   }
 
-  /* Disabled */
+  /* ---- Disabled ---- */
   .btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
     pointer-events: none;
   }
 
-  /* Loading */
-  .btn.btn-loading {
+  /* ---- Loading ---- */
+  .btn--loading {
     opacity: 0.7;
     pointer-events: none;
   }
 
-  /* ============================================================
-     Sizes
-     ============================================================ */
-  .btn-sm {
-    height: var(--height-sm);
-    font-size: var(--text-xs);
-    padding-inline: 10px;
-  }
-  .btn-md {
-    height: var(--height-md);
-    font-size: var(--text-sm);
-    padding-inline: 16px;
-  }
-  .btn-lg {
-    height: var(--height-lg);
-    font-size: var(--text-base);
-    padding-inline: 20px;
-  }
+  /* ---- Spinner ---- */
+  @keyframes btn-spin { to { transform: rotate(360deg); } }
 
-  /* ============================================================
-     Variants — semantic token mapping
-     ============================================================ */
-  .btn-primary {
-    background-color: var(--color-primary);
-    color: var(--color-primary-foreground);
-  }
-  .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-primary-hover);
-  }
-
-  .btn-secondary {
-    background-color: var(--color-surface-1);
-    color: var(--color-text-primary);
-    border-color: var(--color-border);
-  }
-  .btn-secondary:hover:not(:disabled) {
-    background-color: var(--color-surface-2);
-  }
-
-  .btn-ghost {
-    background-color: transparent;
-    color: var(--color-text-secondary);
-  }
-  .btn-ghost:hover:not(:disabled) {
-    background-color: var(--color-surface-2);
-    color: var(--color-text-primary);
-  }
-
-  .btn-danger {
-    background-color: var(--color-danger);
-    color: var(--color-danger-foreground);
-  }
-  .btn-danger:hover:not(:disabled) {
-    background-color: var(--color-danger-hover);
-  }
-
-  .btn-warning {
-    background-color: var(--color-warning);
-    color: var(--color-warning-foreground);
-  }
-  .btn-warning:hover:not(:disabled) {
-    background-color: var(--color-warning-hover);
-  }
-
-  /* ============================================================
-     Modifiers
-     ============================================================ */
-  .btn-full-width {
-    width: 100%;
-  }
-
-  /* ============================================================
-     Spinner (loading state)
-     ============================================================ */
-  @keyframes btn-spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .btn-spinner {
-    width: 1em;
-    height: 1em;
+  .btn__spinner {
+    width: 13px; height: 13px;
     border: 2px solid currentColor;
-    border-right-color: transparent;
+    border-top-color: transparent;
     border-radius: 50%;
     animation: btn-spin 700ms linear infinite;
+    flex-shrink: 0;
+  }
+  .btn--lg .btn__spinner { width: 16px; height: 16px; }
+
+  /* ---- Full width ---- */
+  .btn--full { width: 100%; }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition-duration: 0.01ms !important; }
+    .btn__spinner { animation-duration: 0.01ms !important; }
   }
 }
