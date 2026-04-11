@@ -1,112 +1,200 @@
 @layer components {
-  .input {
-    --color: var(--color-background);
-
-    @apply /* Layout & Sizing */
-    w-full h-full
-    
-    /* Background & Appearance */
-    bg-transparent
-    rounded-[7px]
-    
-    /* Typography */
-    text-[var(--color)] font-sans font-normal text-sm
-    
-    /* Spacing */
-    px-3 py-2.5
-    
-    /* Borders - Default State */
-    border-2 border-[var(--color)]/30 border-t-transparent
-    
-    /* Borders - Placeholder Shown State */
-    placeholder-shown:border-2 placeholder-shown:border-[var(--color)]/50 placeholder-shown:border-t-[var(--color)]/50
-    
-    /* Borders - Focus State */
-    focus:border-2 focus:border-[var(--color)] focus:border-t-transparent
-    
-    /* Placeholder */
-    placeholder:opacity-0 focus:placeholder:opacity-100
-    
-    /* Outline */
-    outline-0 focus:outline-0
-    
-    /* Disabled State */
-    disabled:bg-[var(--color)]/50 disabled:border-0 disabled:cursor-not-allowed
-
-    /* Transitions */
-    duration-300 transition-all;
+  /* ============================================================
+     Input — root wrapper (owns border, background, visual states)
+     ============================================================ */
+  .input-root {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* --space-2 */
+    height: var(--height-md); /* 36px */
+    padding: 0 12px; /* --space-3 */
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius); /* 6px */
+    cursor: text;
+    transition: border-color var(--duration-fast) var(--ease-out);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
   }
 
-  .input--label {
-    --color: var(--color-background);
+  /* ---- Sizes ---- */
+  .input-root--sm { height: var(--height-sm); padding: 0 10px; }
+  .input-root--lg { height: var(--height-lg); padding: 0 16px; }
 
-    @apply /* Layout & Positioning */
-    flex w-full h-full absolute left-0 -top-1.5
+  /* ---- Hover ---- */
+  .input-root:hover:not(.input-root--disabled):not(.input-root--readonly) {
+    border-color: var(--color-border-strong);
+  }
 
-    /* Interaction */
-    select-none pointer-events-none
-    
-    /* Text Overflow */
-    !overflow-visible truncate
-    
-    /* Typography - Base */
-    font-normal leading-tight text-[11px]
-    
-    /* Typography - Placeholder Shown State */
-    peer-placeholder-shown:text-sm peer-placeholder-shown:leading-[3.75] peer-placeholder-shown:text-[var(--color)]/40
-    
-    /* Typography - Focus State */
-    peer-focus:text-[11px] peer-focus:leading-tight peer-focus:text-[var(--color)]
-    
-    /* Typography - Disabled State */
-    peer-disabled:text-transparent peer-disabled:peer-placeholder-shown:text-[var(--color)]
-    
-    /* Default Text Color */
-    text-[var(--color)]
-    
-    /* Before Pseudo Element - Layout */
-    before:block before:box-border before:w-2.5 before:h-1.5 before:mt-[6.5px] before:mr-1
-    
-    /* Before Pseudo Element - Interaction */
-    before:pointer-events-none
-    
-    /* Before Pseudo Element - Borders & Radius */
-    before:rounded-tl-md before:border-t before:border-l before:border-[var(--color)]/30
-    
-    /* Before Pseudo Element - Placeholder Shown State */
-    peer-placeholder-shown:before:border-transparent
-    
-    /* Before Pseudo Element - Focus State */
-    peer-focus:before:border-t-2 peer-focus:before:border-l-2 peer-focus:before:!border-[var(--color)]
-    
-    /* Before Pseudo Element - Disabled State */
-    peer-disabled:before:border-transparent
-    
-    /* Before Pseudo Element - Transitions */
-    before:transition-all
-    
-    /* After Pseudo Element - Layout */
-    after:block after:flex-grow after:box-border after:w-2.5 after:h-1.5 after:mt-[6.5px] after:ml-1
-    
-    /* After Pseudo Element - Interaction */
-    after:pointer-events-none
-    
-    /* After Pseudo Element - Borders & Radius */
-    after:rounded-tr-md after:border-t after:border-r after:border-[var(--color)]/30
-    
-    /* After Pseudo Element - Placeholder Shown State */
-    peer-placeholder-shown:after:border-transparent
-    
-    /* After Pseudo Element - Focus State */
-    peer-focus:after:border-t-2 peer-focus:after:border-r-2 peer-focus:after:!border-[var(--color)]
-    
-    /* After Pseudo Element - Disabled State */
-    peer-disabled:after:border-transparent
-    
-    /* After Pseudo Element - Transitions */
-    after:transition-all
-    
-    /* Transitions */
-    duration-300 transition-all;
+  /* ---- Focus-within ---- */
+  .input-root:focus-within:not(.input-root--disabled) {
+    border-color: var(--color-primary);
+    outline-color: var(--color-focus-ring);
+    /* outline appears at 0ms (instant); border-color transitions via parent rule */
+  }
+
+  /* ---- Status overrides (border color) ---- */
+  .input-root--error   { border-color: var(--color-danger);  transition-duration: var(--duration-instant); }
+  .input-root--success { border-color: var(--color-success); }
+  .input-root--warning { border-color: var(--color-warning); }
+
+  /* Error stays red even on focus */
+  .input-root--error:focus-within { border-color: var(--color-danger); }
+
+  /* ---- Disabled ---- */
+  .input-root--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ---- Read-only ---- */
+  .input-root--readonly {
+    background: var(--color-surface-2);
+    cursor: default;
+  }
+
+  /* ---- Loading ---- */
+  .input-root--loading .input-native {
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     Native <input> element
+     ============================================================ */
+  .input-native {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm); /* 14px — md default */
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
+    caret-color: var(--color-primary);
+  }
+
+  .input-native::placeholder { color: var(--color-text-tertiary); }
+
+  /* Font size per input size */
+  .input-root--sm .input-native { font-size: var(--text-xs); }
+  .input-root--lg .input-native { font-size: var(--text-base); }
+
+  /* ============================================================
+     Affix — prefix / suffix text
+     ============================================================ */
+  .input-affix {
+    flex-shrink: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-tertiary);
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .input-root--sm .input-affix { font-size: var(--text-xs); }
+  .input-root--lg .input-affix { font-size: var(--text-base); }
+
+  /* ============================================================
+     Icon wrapper — leading / trailing
+     ============================================================ */
+  .input-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: var(--color-text-tertiary);
+  }
+
+  .input-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .input-root--sm .input-icon { width: 14px; height: 14px; }
+
+  /* ============================================================
+     Status icon in trailing area
+     ============================================================ */
+  .input-status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+  }
+
+  .input-status-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .input-root--error .input-status-icon   { color: var(--color-danger-text); }
+  .input-root--success .input-status-icon { color: var(--color-success-text); }
+  .input-root--warning .input-status-icon { color: var(--color-warning-text); }
+
+  /* ============================================================
+     Trailing button — clear / reveal toggle
+     ============================================================ */
+  .input-trailing-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  .input-trailing-btn:hover { color: var(--color-text-primary); }
+
+  .input-trailing-btn:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
+  }
+
+  .input-trailing-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* ============================================================
+     Spinner — loading state
+     ============================================================ */
+  @keyframes input-spin { to { transform: rotate(360deg); } }
+
+  .input-spinner {
+    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid var(--color-border-strong);
+    border-top-color: var(--color-text-secondary);
+    border-radius: 50%;
+    animation: input-spin 700ms linear infinite;
+  }
+
+  .input-root--lg .input-spinner { width: 15px; height: 15px; }
+
+  /* ============================================================
+     Reduced motion
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    .input-root { transition-duration: 0.01ms !important; }
+    .input-spinner { animation-duration: 0.01ms !important; }
   }
 }

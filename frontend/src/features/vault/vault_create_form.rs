@@ -1,17 +1,13 @@
 use super::types::VaultItem;
 use crate::api::tauri;
 use crate::i18n::*;
-use leptos::ev::Targeted;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use serde_json::json;
 use serde_wasm_bindgen::{from_value, to_value as to_js_value};
 use ui::components::Button;
 use ui::components::Input;
-use ui::primitives::color::RgbColor;
 use ui::primitives::tokens::{Size, Variant};
-use ui::theme::ThemeState;
-use web_sys::{Event, HtmlInputElement};
 
 #[component]
 pub fn VaultCreateForm(
@@ -19,11 +15,6 @@ pub fn VaultCreateForm(
     on_created: Callback<VaultItem>,
 ) -> impl IntoView {
     let i18n = use_i18n();
-    let theme = expect_context::<ThemeState>();
-
-    let primary_color = Signal::derive(move || {
-        RgbColor::from_hex(&theme.tokens().get().color_primary)
-    });
 
     let form_title = RwSignal::new(String::new());
     let form_identifier = RwSignal::new(String::new());
@@ -105,50 +96,27 @@ pub fn VaultCreateForm(
                 <Input
                     id="vault-form-title"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_title).to_string())
-                    color=primary_color
-                    input_type="text"
                     value=Signal::derive(move || form_title.get())
-                    class="h-[40px]"
-                    label_class="text-[13px] peer-focus:text-[10px] peer-[&:not(:placeholder-shown):not(:focus)]:text-[10px]"
-                    on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {
-                        form_title.set(ev.target().value());
-                    })
+                    on_input=Callback::new(move |v: String| form_title.set(v))
                 />
                 <Input
                     id="vault-form-identifier"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_identifier).to_string())
-                    color=primary_color
-                    input_type="text"
                     value=Signal::derive(move || form_identifier.get())
-                    class="h-[40px]"
-                    label_class="text-[13px] peer-focus:text-[10px] peer-[&:not(:placeholder-shown):not(:focus)]:text-[10px]"
-                    on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {
-                        form_identifier.set(ev.target().value());
-                    })
+                    on_input=Callback::new(move |v: String| form_identifier.set(v))
                 />
                 <Input
                     id="vault-form-password"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_password).to_string())
-                    color=primary_color
                     input_type="password"
                     value=Signal::derive(move || form_password.get())
-                    class="h-[40px]"
-                    label_class="text-[13px] peer-focus:text-[10px] peer-[&:not(:placeholder-shown):not(:focus)]:text-[10px]"
-                    on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {
-                        form_password.set(ev.target().value());
-                    })
+                    on_input=Callback::new(move |v: String| form_password.set(v))
                 />
                 <Input
                     id="vault-form-url"
                     placeholder=Signal::derive(move || t_string!(i18n, vault.form_url).to_string())
-                    color=primary_color
-                    input_type="text"
                     value=Signal::derive(move || form_url.get())
-                    class="h-[40px]"
-                    label_class="text-[13px] peer-focus:text-[10px] peer-[&:not(:placeholder-shown):not(:focus)]:text-[10px]"
-                    on_input_target=Callback::new(move |ev: Targeted<Event, HtmlInputElement>| {
-                        form_url.set(ev.target().value());
-                    })
+                    on_input=Callback::new(move |v: String| form_url.set(v))
                 />
             </div>
             <div class="flex gap-2 justify-end mt-3">

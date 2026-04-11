@@ -61,6 +61,46 @@ impl Size {
             Size::Lg => "icon-btn--lg",
         }
     }
+
+    pub fn input_root_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "input-root--sm",
+            Size::Md => "",
+            Size::Lg => "input-root--lg",
+        }
+    }
+}
+
+/// Field status — communicates validation state visually.
+/// Used by form components (Label, Input, HelperText) to mirror
+/// the associated control's validation result.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum Status {
+    #[default]
+    Default,
+    Error,
+    Success,
+    Warning,
+}
+
+impl Status {
+    pub fn label_class(&self) -> &'static str {
+        match self {
+            Status::Default => "",
+            Status::Error => "label--error",
+            Status::Success => "label--success",
+            Status::Warning => "label--warning",
+        }
+    }
+
+    pub fn input_root_class(&self) -> &'static str {
+        match self {
+            Status::Default => "",
+            Status::Error => "input-root--error",
+            Status::Success => "input-root--success",
+            Status::Warning => "input-root--warning",
+        }
+    }
 }
 
 /// Border-radius shape.
