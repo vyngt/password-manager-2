@@ -4,7 +4,7 @@ use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use leptos::prelude::*;
 use reactive_stores::Store;
 use ui::components::icon_button::IconButton;
-use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
+use ui::primitives::tokens::{Size, Variant};
 
 use icondata as i;
 use leptos_icons::Icon;
@@ -70,10 +70,8 @@ fn VaultTableRow(item: VaultItem, on_delete: Callback<String>) -> impl IntoView 
             <td class="p-3">
                 <IconButton
                     color=Signal::derive(move || color_store.danger().get())
-                    variant=Variant::Text
-                    size=Size::Small
-                    shape=Shape::Rounded
-                    effect=ButtonEffect::Ripple
+                    variant=Variant::Ghost
+                    size=Size::Sm
                     class="p-1"
                     on:click=move |_| on_delete.run(item_id.clone())
                 >

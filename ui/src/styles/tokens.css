@@ -1,0 +1,192 @@
+/*
+ * tokens.css — Master Design Token File
+ *
+ * Architecture: Themes are DB records, not CSS modes. CSS holds neutral
+ * fallback values (~50ms before Rust injects). Rust reads the active
+ * ThemeConfig at startup and injects all --color-* variables on :root.
+ * Tailwind utilities reference var(--color-*) so they pick up whatever
+ * Rust injects — no [data-theme] selector, no CSS-level switching.
+ *
+ * Why @theme inline: Without inline, Tailwind inlines static values into
+ * utilities — .bg-primary { background: #2563EB } — ignoring Rust injection.
+ * With inline, utilities reference the CSS variable —
+ * .bg-primary { background: var(--color-primary) } — so Rust-injected
+ * values propagate everywhere.
+ */
+
+/* ============================================================
+   Primitive layer — raw values, never referenced in components
+   ============================================================ */
+
+:root {
+  /* Zinc scale */
+  --zinc-50:  #FAFAFA;
+  --zinc-100: #F4F4F5;
+  --zinc-200: #E4E4E7;
+  --zinc-300: #D4D4D8;
+  --zinc-400: #A1A1AA;
+  --zinc-500: #71717A;
+  --zinc-600: #52525B;
+  --zinc-700: #3F3F46;
+  --zinc-800: #27272A;
+  --zinc-900: #18181B;
+  --zinc-950: #09090B;
+
+  /* Blue scale */
+  --blue-50:  #EFF6FF;
+  --blue-100: #DBEAFE;
+  --blue-400: #60A5FA;
+  --blue-500: #3B82F6;
+  --blue-600: #2563EB;
+  --blue-700: #1D4ED8;
+
+  /* Red scale */
+  --red-50:   #FEF2F2;
+  --red-600:  #DC2626;
+  --red-700:  #B91C1C;
+
+  /* Amber scale */
+  --amber-50:  #FFFBEB;
+  --amber-600: #D97706;
+  --amber-700: #B45309;
+
+  /* Green scale */
+  --green-50:  #F0FDF4;
+  --green-600: #16A34A;
+  --green-700: #15803D;
+}
+
+/* ============================================================
+   Semantic layer — @theme inline
+   All values are light-preset fallbacks. Rust overrides at runtime.
+   ============================================================ */
+
+@theme inline {
+
+  /* ---- Surfaces ---- */
+  --color-background: #ffffff;
+  --color-surface-1:  #F9FAFB;
+  --color-surface-2:  #F3F4F6;
+  --color-surface-3:  #E5E7EB;
+  --color-surface-4:  #D1D5DB;
+
+  /* ---- Primary accent ---- */
+  --color-primary:            #2563EB;
+  --color-primary-hover:      #1D4ED8;
+  --color-primary-muted:      #EFF6FF;
+  --color-primary-foreground:  #ffffff;
+  --color-primary-text:       #2563EB;
+
+  /* ---- Danger ---- */
+  --color-danger:             #DC2626;
+  --color-danger-hover:       #B91C1C;
+  --color-danger-muted:       #FEF2F2;
+  --color-danger-foreground:   #ffffff;
+  --color-danger-text:        #DC2626;
+
+  /* ---- Warning ---- */
+  --color-warning:            #D97706;
+  --color-warning-hover:      #B45309;
+  --color-warning-muted:      #FFFBEB;
+  --color-warning-foreground:  #ffffff;
+  --color-warning-text:       #D97706;
+
+  /* ---- Success ---- */
+  --color-success:            #16A34A;
+  --color-success-hover:      #15803D;
+  --color-success-muted:      #F0FDF4;
+  --color-success-foreground:  #ffffff;
+  --color-success-text:       #16A34A;
+
+  /* ---- Text hierarchy ---- */
+  --color-text-primary:   #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-tertiary:  #9CA3AF;
+
+  /* ---- Borders ---- */
+  --color-border:        #E5E7EB;
+  --color-border-strong: #D1D5DB;
+
+  /* ---- Focus ---- */
+  --color-focus-ring: #2563EB;
+
+  /* ---- Typography ---- */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  /* Font sizes + line-heights (Tailwind v4 paired tokens) */
+  --text-xs:              12px;
+  --text-xs--line-height: 16px;
+  --text-sm:              14px;
+  --text-sm--line-height: 20px;
+  --text-base:              16px;
+  --text-base--line-height: 24px;
+  --text-lg:              18px;
+  --text-lg--line-height: 28px;
+  --text-xl:              20px;
+  --text-xl--line-height: 28px;
+  --text-2xl:              24px;
+  --text-2xl--line-height: 32px;
+
+  /* Font weights */
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.025em;
+  --tracking-normal:  0em;
+  --tracking-wide:    0.06em;
+
+  /* ---- Motion ---- */
+  --duration-instant:  0ms;
+  --duration-micro:   80ms;
+  --duration-fast:   150ms;
+  --duration-base:   200ms;
+  --duration-slow:   300ms;
+
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- Component sizing ---- */
+  --height-sm:       28px;
+  --height-md:       36px;
+  --height-lg:       44px;
+  --height-entry:    48px;
+  --height-entry-lg: 56px;
+  --sidebar-width:   220px;
+
+  --radius-sm:  4px;
+  --radius:     6px;
+  --radius-lg:  8px;
+  --radius-xl: 12px;
+
+  /* ---- Shadows (light preset — Rust overrides for dark) ---- */
+  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-lg:    0 8px 32px rgba(0, 0, 0, 0.16);
+  --shadow-scrim: rgba(0, 0, 0, 0.50);
+}
+
+/* ============================================================
+   Spacing scale — plain :root (not in @theme)
+   Use Tailwind's default spacing utilities for markup (they align
+   with the 4px grid). Use --space-* tokens in plain CSS only.
+   ============================================================ */
+
+:root {
+  --space-0_5:  2px;
+  --space-1:    4px;
+  --space-1_5:  6px;
+  --space-2:    8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+}

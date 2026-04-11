@@ -1,39 +1,23 @@
-use crate::primitives::tokens::{Effect, Shape, Size, Variant};
+use crate::primitives::tokens::{Size, Variant};
 
 pub fn apply_base() -> &'static str {
-    return "btn";
+    "btn"
 }
 
 pub fn apply_variant(variant: Variant) -> &'static str {
     match variant {
-        Variant::Filled => "btn-filled",
-        Variant::Outlined => "btn-outlined",
-        _ => "",
-    }
-}
-
-pub fn apply_effect(effect: Option<Effect>) -> &'static str {
-    if let Some(eff) = effect {
-        match eff {
-            Effect::Ripple => "btn-ripple",
-        }
-    } else {
-        ""
+        Variant::Primary => "btn-filled",
+        Variant::Secondary => "btn-outlined",
+        Variant::Ghost => "",
+        Variant::Danger => "",
+        Variant::Warning => "",
     }
 }
 
 pub fn apply_size(size: Size) -> &'static str {
     match size {
-        Size::Small => "text-sm",
-        Size::Medium => "text-base",
-        Size::Large => "text-lg",
-    }
-}
-
-pub fn apply_shape(shape: Shape) -> &'static str {
-    match shape {
-        Shape::Sharp => "rounded-none",
-        Shape::Rounded => "rounded",
-        Shape::Pill => "rounded-full",
+        Size::Sm => "text-sm",
+        Size::Md => "text-base",
+        Size::Lg => "text-lg",
     }
 }

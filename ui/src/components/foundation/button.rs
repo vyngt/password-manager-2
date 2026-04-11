@@ -1,8 +1,7 @@
 mod styles;
 
-use crate::components::utilities::ripple::effect::{RippleColor, add_ripple};
 use crate::primitives::color::RgbColor;
-use crate::primitives::tokens::{Effect, Shape, Size, Variant};
+use crate::primitives::tokens::{Size, Variant};
 use leptos::prelude::*;
 
 #[component]
@@ -11,40 +10,14 @@ pub fn Button(
     #[prop(into, optional, default = Signal::derive(|| RgbColor::new(0, 0, 0)))] color: Signal<
         RgbColor,
     >,
-    #[prop(attrs, optional, default = None)] effect: Option<Effect>,
-    #[prop(attrs, default = Size::Medium)] size: Size,
-    #[prop(attrs, default = Variant::Filled)] variant: Variant,
-    #[prop(attrs, default = Shape::Rounded)] shape: Shape,
+    #[prop(attrs, default = Size::Md)] size: Size,
+    #[prop(attrs, default = Variant::Secondary)] variant: Variant,
     #[prop(attrs, default = "")] class: &'static str,
 ) -> impl IntoView {
     let base_cls = styles::apply_base();
-    let effect_cls = styles::apply_effect(effect.clone());
     let size_cls = styles::apply_size(size);
-    let shape_cls = styles::apply_shape(shape);
     let variant_cls = styles::apply_variant(variant);
-    let cls = vec![
-        base_cls,
-        effect_cls,
-        size_cls,
-        shape_cls,
-        variant_cls,
-        "transition",
-        class,
-    ]
-    .join(" ");
-
-    let ripple_color = Memo::new(move |_| RippleColor {
-        alpha: 0.2,
-        color: color.get().calculate_white_black_text_color(None),
-    });
-
-    let handle_on_click = move |ev: web_sys::MouseEvent| {
-        if let Some(eff) = effect {
-            match eff {
-                Effect::Ripple => add_ripple(ev, Some(ripple_color.get())),
-            }
-        }
-    };
+    let cls = vec![base_cls, size_cls, variant_cls, "transition", class].join(" ");
 
     let handle_style = move || {
         let c = color.get();
@@ -64,7 +37,7 @@ pub fn Button(
     };
 
     view! {
-        <button type="button" class=cls on:click=handle_on_click style=handle_style>
+        <button type="button" class=cls style=handle_style>
             {children()}
         </button>
     }

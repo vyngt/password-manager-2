@@ -11,7 +11,7 @@ use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::{from_value, to_value as to_js_value};
 use ui::components::Button;
-use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
+use ui::primitives::tokens::{Size, Variant};
 
 fn load_items(items: RwSignal<Vec<VaultItem>>, loading: RwSignal<bool>) {
     loading.set(true);
@@ -117,10 +117,8 @@ pub fn VaultPage() -> impl IntoView {
                 <VaultSearch search_query=search_query />
                 <Button
                     color=Signal::derive(move || color_store.primary().get())
-                    variant=Variant::Filled
-                    size=Size::Small
-                    shape=Shape::Rounded
-                    effect=ButtonEffect::Ripple
+                    variant=Variant::Primary
+                    size=Size::Sm
                     class="whitespace-nowrap"
                     on:click=move |_| show_create_form.update(|v| *v = !*v)
                 >

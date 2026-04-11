@@ -10,7 +10,7 @@ use serde_json::json;
 use serde_wasm_bindgen::{from_value, to_value as to_js_value};
 use ui::components::Button;
 use ui::components::Input;
-use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
+use ui::primitives::tokens::{Size, Variant};
 use web_sys::{Event, HtmlInputElement};
 
 #[component]
@@ -150,19 +150,16 @@ pub fn VaultCreateForm(
             <div class="flex gap-2 justify-end mt-3">
                 <Button
                     color=Signal::derive(move || color_store.secondary().get())
-                    variant=Variant::Text
-                    size=Size::Small
-                    shape=Shape::Rounded
+                    variant=Variant::Ghost
+                    size=Size::Sm
                     on:click=handle_cancel
                 >
                     {move || t!(i18n, vault.cancel)}
                 </Button>
                 <Button
                     color=Signal::derive(move || color_store.primary().get())
-                    variant=Variant::Filled
-                    size=Size::Small
-                    shape=Shape::Rounded
-                    effect=ButtonEffect::Ripple
+                    variant=Variant::Primary
+                    size=Size::Sm
                     on:click=handle_save
                 >
                     {move || t!(i18n, vault.save)}

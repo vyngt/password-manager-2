@@ -9,7 +9,7 @@ use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::to_value as to_js_value;
 use ui::components::icon_button::IconButton;
-use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
+use ui::primitives::tokens::{Size, Variant};
 
 use leptos_icons::Icon;
 use ui::components::Input;
@@ -67,10 +67,8 @@ pub fn Page() -> impl IntoView {
                     />
                     <IconButton
                         color=Signal::derive(move || color_store.primary().get())
-                        variant=Variant::Filled
-                        size=Size::Medium
-                        shape=Shape::Rounded
-                        effect=ButtonEffect::Ripple
+                        variant=Variant::Primary
+                        size=Size::Md
                         class="absolute right-[5px] top-[6px] p-6 [&_svg]:text-[30px]"
                         on:click=move |_| handle_submit(pw.get())
                     >

@@ -1,6 +1,5 @@
 @import "tailwindcss";
-
-@import "./ripple.css";
+@import "./tokens.css";
 
 @import "./button.css";
 @import "./icon-button.css";

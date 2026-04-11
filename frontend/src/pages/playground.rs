@@ -12,7 +12,7 @@ use ui::components::icon_button::IconButton;
 use ui::components::input::Input;
 use ui::components::{Tooltip, TooltipPosition};
 use ui::primitives::color::RgbColor;
-use ui::primitives::tokens::{Effect as ButtonEffect, Shape, Size, Variant};
+use ui::primitives::tokens::{Size, Variant};
 use web_sys::{Event, HtmlInputElement};
 
 #[component]
@@ -22,10 +22,9 @@ fn R1() -> impl IntoView {
     view! {
         <div>
             <Button
-                variant=Variant::Filled
+                variant=Variant::Primary
                 color=Signal::derive(move || color_store.primary().get())
-                effect=ButtonEffect::Ripple
-                size=Size::Small
+                size=Size::Sm
             >
                 "R1 Context"
             </Button>
@@ -66,23 +65,19 @@ fn Playground() -> impl IntoView {
         />
 
         <div class="bg-violet-100 flex flex-row gap-2" data-tauri-drag-region=true>
-            <IconButton color=Signal::derive(move || color_store.primary().get()) size=Size::Small>
+            <IconButton color=Signal::derive(move || color_store.primary().get()) size=Size::Sm>
                 <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.secondary().get())
-                variant=Variant::Outlined
-                size=Size::Large
-                shape=Shape::Pill
-                effect=ButtonEffect::Ripple
+                variant=Variant::Secondary
+                size=Size::Lg
             >
                 <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
-                variant=Variant::Text
-                effect=ButtonEffect::Ripple
-                shape=Shape::Sharp
+                variant=Variant::Ghost
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -94,9 +89,7 @@ fn Playground() -> impl IntoView {
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
-                variant=Variant::Text
-                effect=ButtonEffect::Ripple
-                shape=Shape::Sharp
+                variant=Variant::Ghost
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -113,9 +106,7 @@ fn Playground() -> impl IntoView {
             </IconButton>
             <IconButton
                 color=Signal::derive(move || color_store.danger().get())
-                variant=Variant::Text
-                effect=ButtonEffect::Ripple
-                shape=Shape::Sharp
+                variant=Variant::Ghost
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -139,10 +130,9 @@ fn Playground() -> impl IntoView {
                 })
             />
             <Button
-                variant=Variant::Filled
+                variant=Variant::Primary
                 color=Signal::derive(move || color_store.primary().get())
-                effect=ButtonEffect::Ripple
-                size=Size::Small
+                size=Size::Sm
                 class="absolute right-[3px] top-[3px]"
             >
                 "Hello world 1"
@@ -160,18 +150,14 @@ fn Playground() -> impl IntoView {
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.secondary().get())
-            effect=ButtonEffect::Ripple
-            variant=Variant::Outlined
-            shape=Shape::Sharp
+            variant=Variant::Secondary
         >
             "Hello world 2"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
             color=Signal::derive(move || color_store.success().get())
-            effect=ButtonEffect::Ripple
-            size=Size::Large
-            shape=Shape::Pill
+            size=Size::Lg
         >
             "Hello world 3"
         </Button>
@@ -186,9 +172,7 @@ fn Playground() -> impl IntoView {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
                         color=Signal::derive(move || color_store.danger().get())
-                        effect=ButtonEffect::Ripple
-                        variant=Variant::Outlined
-                        shape=Shape::Sharp
+                        variant=Variant::Danger
                     >
                         "Hello world 4"
                     </Button>
@@ -206,9 +190,7 @@ fn Playground() -> impl IntoView {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
                         color=Signal::derive(move || color_store.danger().get())
-                        effect=ButtonEffect::Ripple
-                        variant=Variant::Outlined
-                        shape=Shape::Sharp
+                        variant=Variant::Danger
                     >
                         "Hello world 4"
                     </Button>
@@ -226,9 +208,7 @@ fn Playground() -> impl IntoView {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
                         color=Signal::derive(move || color_store.danger().get())
-                        effect=ButtonEffect::Ripple
-                        variant=Variant::Outlined
-                        shape=Shape::Sharp
+                        variant=Variant::Danger
                     >
                         "Hello world 4"
                     </Button>
@@ -246,9 +226,7 @@ fn Playground() -> impl IntoView {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
                         color=Signal::derive(move || color_store.danger().get())
-                        effect=ButtonEffect::Ripple
-                        variant=Variant::Outlined
-                        shape=Shape::Sharp
+                        variant=Variant::Danger
                     >
                         "Hello world 4"
                     </Button>
