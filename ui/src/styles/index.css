@@ -3,6 +3,9 @@
 
 @import "./button.css";
 @import "./icon-button.css";
+@import "./badge.css";
+@import "./separator.css";
+@import "./spinner.css";
 @import "./input.css";
 @import "./label.css";
 

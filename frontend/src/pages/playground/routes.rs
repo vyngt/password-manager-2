@@ -1,3 +1,4 @@
+use super::atoms::AtomsPage;
 use super::buttons::ButtonsPage;
 use super::forms::FormsPage;
 use super::layout::PlaygroundLayout;
@@ -12,6 +13,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/") view=ThemePage />
             <Route path=path!("/buttons") view=ButtonsPage />
             <Route path=path!("/forms") view=FormsPage />
+            <Route path=path!("/atoms") view=AtomsPage />
         </ParentRoute>
     }
     .into_inner()

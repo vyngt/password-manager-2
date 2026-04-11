@@ -62,6 +62,14 @@ impl Size {
         }
     }
 
+    pub fn spinner_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "spinner--sm",
+            Size::Md => "spinner--md",
+            Size::Lg => "spinner--lg",
+        }
+    }
+
     pub fn input_root_class(&self) -> &'static str {
         match self {
             Size::Sm => "input-root--sm",
@@ -133,6 +141,99 @@ impl Shape {
             Shape::RoundedSm => "icon-btn--rounded-sm",
             Shape::Rounded => "icon-btn--rounded",
             Shape::Pill => "icon-btn--pill",
+        }
+    }
+}
+
+/// Badge color variant — semantic, independent of interactive Variant.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum BadgeVariant {
+    #[default]
+    Default,
+    Info,
+    Success,
+    Warning,
+    Danger,
+}
+
+impl BadgeVariant {
+    pub fn badge_class(&self) -> &'static str {
+        match self {
+            BadgeVariant::Default => "badge--default",
+            BadgeVariant::Info => "badge--info",
+            BadgeVariant::Success => "badge--success",
+            BadgeVariant::Warning => "badge--warning",
+            BadgeVariant::Danger => "badge--danger",
+        }
+    }
+}
+
+/// Badge physical scale — only two sizes (no lg).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum BadgeSize {
+    Sm,
+    #[default]
+    Md,
+}
+
+impl BadgeSize {
+    pub fn badge_class(&self) -> &'static str {
+        match self {
+            BadgeSize::Sm => "badge--sm",
+            BadgeSize::Md => "badge--md",
+        }
+    }
+}
+
+/// Badge shape — pill (default), square, or dot (indicator only).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum BadgeShape {
+    #[default]
+    Pill,
+    Square,
+    Dot,
+}
+
+impl BadgeShape {
+    pub fn badge_class(&self) -> &'static str {
+        match self {
+            BadgeShape::Pill => "badge--pill",
+            BadgeShape::Square => "badge--square",
+            BadgeShape::Dot => "badge--dot",
+        }
+    }
+}
+
+/// Badge appearance — solid (muted bg) or outline (transparent + border).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum BadgeAppearance {
+    #[default]
+    Solid,
+    Outline,
+}
+
+impl BadgeAppearance {
+    pub fn badge_class(&self) -> &'static str {
+        match self {
+            BadgeAppearance::Solid => "badge--solid",
+            BadgeAppearance::Outline => "badge--outline",
+        }
+    }
+}
+
+/// Separator orientation.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum Orientation {
+    #[default]
+    Horizontal,
+    Vertical,
+}
+
+impl Orientation {
+    pub fn separator_class(&self) -> &'static str {
+        match self {
+            Orientation::Horizontal => "separator--horizontal",
+            Orientation::Vertical => "separator--vertical",
         }
     }
 }

@@ -175,9 +175,10 @@ Token mapping is identical to Button. IconButton uses the same semantic tokens �
 --ease-out         cubic-bezier(0.16, 1, 0.3, 1)
 
 // Shape
---radius-sm        4px     border-radius at shape=square
+--radius-none      0px     border-radius at shape=square
+--radius-sm        4px     border-radius at shape=rounded-sm
 --radius           6px     border-radius at shape=rounded (default)
---radius-full      9999px  border-radius at shape=pill
+--radius-full      9999px  border-radius at shape=pill (= circle)
 
 // Sizing
 --height-sm        28px    width and height at sm
@@ -216,9 +217,10 @@ Token mapping is identical to Button. IconButton uses the same semantic tokens �
 .icon-btn--lg { width: var(--height-lg); height: var(--height-lg); } /* 44×44 */
 
 /* Shape — does not affect square geometry */
-.icon-btn--square  { border-radius: var(--radius-sm); }   /* 4px */
-.icon-btn--rounded { border-radius: var(--radius); }      /* 6px — default */
-.icon-btn--pill    { border-radius: var(--radius-full); } /* 9999px — circle */
+.icon-btn--square     { border-radius: var(--radius-none); }  /* 0px */
+.icon-btn--rounded-sm { border-radius: var(--radius-sm); }    /* 4px */
+.icon-btn--rounded    { border-radius: var(--radius); }       /* 6px — default */
+.icon-btn--pill       { border-radius: var(--radius-full); }  /* 9999px — circle */
 
 /* Icon sizing — set on direct SVG child */
 .icon-btn--sm > svg { width: 14px; height: 14px; }
