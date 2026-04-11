@@ -41,7 +41,11 @@ pub fn Page() -> impl IntoView {
     return view! {
         <div class="flex h-full w-full flex-col justify-center">
             <div class="flex w-full justify-center">
-                <div class="relative flex w-full max-w-[36rem]">
+                <div class="flex w-full max-w-[36rem]" on:keydown=move |ev| {
+                    if ev.key() == "Enter" {
+                        handle_submit(pw.get());
+                    }
+                }>
                     <Input
                         id="master-password"
                         placeholder=Signal::derive(move || t_string!(i18n, unlock.master_password).to_string())
@@ -49,16 +53,13 @@ pub fn Page() -> impl IntoView {
                         input_type="password"
                         value=Signal::derive(move || pw.get())
                         on_input=Callback::new(move |v: String| set_pw.set(v))
-                        on:keydown:capture=move |ev| {
-                            if ev.key() == "Enter" {
-                                handle_submit(pw.get());
-                            }
-                        }
+                        class="flex-1 rounded-r-none border-r-0"
                     />
                     <IconButton
                         aria_label="Unlock"
                         variant=Variant::Primary
-                        class="absolute right-[5px] top-[6px] p-6 [&_svg]:text-[30px]"
+                        size=Size::Lg
+                        class="rounded-l-none"
                         on:click=move |_| handle_submit(pw.get())
                     >
                         <Icon icon=Decrypt />
