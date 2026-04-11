@@ -42,14 +42,19 @@ pub fn Page() -> impl IntoView {
     return view! {
         <div class="flex h-full w-full flex-col justify-center">
             <div class="flex w-full justify-center">
-                <div class="flex w-full max-w-[36rem]" on:keydown=move |ev| {
-                    if ev.key() == "Enter" {
-                        handle_submit(pw.get());
+                <div
+                    class="flex w-full max-w-[36rem]"
+                    on:keydown=move |ev| {
+                        if ev.key() == "Enter" {
+                            handle_submit(pw.get());
+                        }
                     }
-                }>
+                >
                     <Input
                         id="master-password"
-                        placeholder=Signal::derive(move || t_string!(i18n, unlock.master_password).to_string())
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, unlock.master_password).to_string()
+                        })
                         size=Size::Lg
                         input_type="password"
                         value=Signal::derive(move || pw.get())

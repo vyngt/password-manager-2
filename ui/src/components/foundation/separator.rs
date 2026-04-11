@@ -24,9 +24,7 @@ pub fn Separator(
     } else if orientation == Orientation::Vertical {
         let cls = ["separator", "separator--vertical", strong_cls, class].join(" ");
 
-        view! {
-            <div class=cls role="separator" aria-orientation="vertical"></div>
-        }
+        view! { <div class=cls role="separator" aria-orientation="vertical"></div> }
         .into_any()
     } else {
         let cls = [
@@ -37,9 +35,7 @@ pub fn Separator(
         ]
         .join(" ");
 
-        view! {
-            <hr class=cls />
-        }
+        view! { <hr class=cls /> }
         .into_any()
     }
 }

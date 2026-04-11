@@ -26,18 +26,30 @@ pub fn FormsPage() -> impl IntoView {
             <Section title="Default">
                 <div class="flex flex-wrap items-start gap-6">
                     <Label html_for="demo-default">"Default label"</Label>
-                    <Label html_for="demo-required" required=true>"Required field"</Label>
-                    <Label html_for="demo-optional" optional=true>"Optional field"</Label>
+                    <Label html_for="demo-required" required=true>
+                        "Required field"
+                    </Label>
+                    <Label html_for="demo-optional" optional=true>
+                        "Optional field"
+                    </Label>
                 </div>
             </Section>
 
             <Section title="Status">
                 <div class="flex flex-wrap items-start gap-6">
                     <Label html_for="s-default">"Default"</Label>
-                    <Label html_for="s-error" status=Status::Error>"Error"</Label>
-                    <Label html_for="s-success" status=Status::Success>"Success"</Label>
-                    <Label html_for="s-warning" status=Status::Warning>"Warning"</Label>
-                    <Label html_for="s-disabled" disabled=true>"Disabled"</Label>
+                    <Label html_for="s-error" status=Status::Error>
+                        "Error"
+                    </Label>
+                    <Label html_for="s-success" status=Status::Success>
+                        "Success"
+                    </Label>
+                    <Label html_for="s-warning" status=Status::Warning>
+                        "Warning"
+                    </Label>
+                    <Label html_for="s-disabled" disabled=true>
+                        "Disabled"
+                    </Label>
                 </div>
             </Section>
 
@@ -54,10 +66,7 @@ pub fn FormsPage() -> impl IntoView {
                         size=Size::Sm
                         placeholder=Signal::stored("Small (28px)".to_string())
                     />
-                    <Input
-                        id="size-md"
-                        placeholder=Signal::stored("Medium (36px)".to_string())
-                    />
+                    <Input id="size-md" placeholder=Signal::stored("Medium (36px)".to_string()) />
                     <Input
                         id="size-lg"
                         size=Size::Lg
@@ -69,10 +78,7 @@ pub fn FormsPage() -> impl IntoView {
             // Status
             <Section title="Status">
                 <div class="space-y-3 max-w-md">
-                    <Input
-                        id="status-default"
-                        placeholder=Signal::stored("Default".to_string())
-                    />
+                    <Input id="status-default" placeholder=Signal::stored("Default".to_string()) />
                     <Input
                         id="status-error"
                         status=Status::Error
@@ -147,7 +153,9 @@ pub fn FormsPage() -> impl IntoView {
                     <Input
                         id="icon-leading"
                         placeholder=Signal::stored("With leading icon".to_string())
-                        leading_icon=Box::new(|| view! { <Icon icon=i::FaMagnifyingGlassSolid /> }.into_any())
+                        leading_icon=Box::new(|| {
+                            view! { <Icon icon=i::FaMagnifyingGlassSolid /> }.into_any()
+                        })
                     />
                     <Input
                         id="icon-trailing"
@@ -175,7 +183,9 @@ pub fn FormsPage() -> impl IntoView {
             <Section title="Interactive">
                 <div class="space-y-3 max-w-md">
                     <div class="space-y-1">
-                        <Label html_for="interactive-text" required=true>"Full name"</Label>
+                        <Label html_for="interactive-text" required=true>
+                            "Full name"
+                        </Label>
                         <Input
                             id="interactive-text"
                             placeholder=Signal::stored("Enter your full name".to_string())
@@ -185,7 +195,8 @@ pub fn FormsPage() -> impl IntoView {
                         />
                     </div>
                     <p class="text-xs text-text-tertiary">
-                        "Value: " {move || {
+                        "Value: "
+                        {move || {
                             let v = text_val.get();
                             if v.is_empty() { "(empty)".to_string() } else { v }
                         }}
@@ -204,7 +215,9 @@ pub fn FormsPage() -> impl IntoView {
                         />
                     </div>
                     <div class="flex flex-col gap-1.5">
-                        <Label html_for="composed-error" status=Status::Error required=true>"Email"</Label>
+                        <Label html_for="composed-error" status=Status::Error required=true>
+                            "Email"
+                        </Label>
                         <Input
                             id="composed-error"
                             status=Status::Error
@@ -213,7 +226,9 @@ pub fn FormsPage() -> impl IntoView {
                         />
                     </div>
                     <div class="flex flex-col gap-1.5">
-                        <Label html_for="composed-success" status=Status::Success>"Password"</Label>
+                        <Label html_for="composed-success" status=Status::Success>
+                            "Password"
+                        </Label>
                         <Input
                             id="composed-success"
                             input_type="password"
@@ -223,7 +238,9 @@ pub fn FormsPage() -> impl IntoView {
                         />
                     </div>
                     <div class="flex flex-col gap-1.5">
-                        <Label html_for="composed-disabled" disabled=true>"Locked field"</Label>
+                        <Label html_for="composed-disabled" disabled=true>
+                            "Locked field"
+                        </Label>
                         <Input
                             id="composed-disabled"
                             disabled=true

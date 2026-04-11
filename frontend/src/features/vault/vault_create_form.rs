@@ -95,19 +95,25 @@ pub fn VaultCreateForm(
             <div class="grid grid-cols-2 gap-3">
                 <Input
                     id="vault-form-title"
-                    placeholder=Signal::derive(move || t_string!(i18n, vault.form_title).to_string())
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, vault.form_title).to_string()
+                    })
                     value=Signal::derive(move || form_title.get())
                     on_input=Callback::new(move |v: String| form_title.set(v))
                 />
                 <Input
                     id="vault-form-identifier"
-                    placeholder=Signal::derive(move || t_string!(i18n, vault.form_identifier).to_string())
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, vault.form_identifier).to_string()
+                    })
                     value=Signal::derive(move || form_identifier.get())
                     on_input=Callback::new(move |v: String| form_identifier.set(v))
                 />
                 <Input
                     id="vault-form-password"
-                    placeholder=Signal::derive(move || t_string!(i18n, vault.form_password).to_string())
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, vault.form_password).to_string()
+                    })
                     input_type="password"
                     value=Signal::derive(move || form_password.get())
                     on_input=Callback::new(move |v: String| form_password.set(v))
@@ -120,18 +126,10 @@ pub fn VaultCreateForm(
                 />
             </div>
             <div class="flex gap-2 justify-end mt-3">
-                <Button
-                    variant=Variant::Ghost
-                    size=Size::Sm
-                    on:click=handle_cancel
-                >
+                <Button variant=Variant::Ghost size=Size::Sm on:click=handle_cancel>
                     {move || t!(i18n, vault.cancel)}
                 </Button>
-                <Button
-                    variant=Variant::Primary
-                    size=Size::Sm
-                    on:click=handle_save
-                >
+                <Button variant=Variant::Primary size=Size::Sm on:click=handle_save>
                     {move || t!(i18n, vault.save)}
                 </Button>
             </div>

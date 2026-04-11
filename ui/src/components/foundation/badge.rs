@@ -23,7 +23,7 @@ pub fn Badge(
     .join(" ");
 
     view! {
-        <span class=cls aria-hidden={if is_dot { Some("true") } else { None }}>
+        <span class=cls aria-hidden=if is_dot { Some("true") } else { None }>
             {if is_dot { None } else { children.map(|c| c()) }}
         </span>
     }

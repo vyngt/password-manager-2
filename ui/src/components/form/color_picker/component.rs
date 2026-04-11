@@ -242,9 +242,12 @@ pub fn ColorPicker(
     let display_text = move || hsv.get().to_hex(alpha);
 
     view! {
-        <div style="position: relative; display: inline-block;" style:width=move || {
-            if trigger_mode == TriggerMode::SwatchOnly { "auto" } else { "100%" }
-        }>
+        <div
+            style="position: relative; display: inline-block;"
+            style:width=move || {
+                if trigger_mode == TriggerMode::SwatchOnly { "auto" } else { "100%" }
+            }
+        >
             // Trigger
             <div
                 node_ref=trigger_ref
@@ -255,32 +258,52 @@ pub fn ColorPicker(
                 aria-expanded=move || is_open().to_string()
                 aria-label="Color picker"
                 on:click=move |_: web_sys::MouseEvent| {
-                    if disabled { return; }
-                    if mounted.get_untracked() { do_close.run(()); }
-                    else { do_open.run(()); }
+                    if disabled {
+                        return;
+                    }
+                    if mounted.get_untracked() {
+                        do_close.run(());
+                    } else {
+                        do_open.run(());
+                    }
                 }
                 on:keydown=move |ev: web_sys::KeyboardEvent| {
                     if ev.key() == "Enter" || ev.key() == " " {
                         ev.prevent_default();
-                        if disabled { return; }
-                        if mounted.get_untracked() { do_close.run(()); }
-                        else { do_open.run(()); }
+                        if disabled {
+                            return;
+                        }
+                        if mounted.get_untracked() {
+                            do_close.run(());
+                        } else {
+                            do_open.run(());
+                        }
                     }
                 }
             >
                 {match trigger_mode {
-                    TriggerMode::SwatchInput => view! {
-                        <div class=swatch_class style=swatch_bg />
-                        <span class="color-picker-trigger__text">{display_text}</span>
-                        <span class="color-picker-trigger__chevron">
-                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 6l4 4 4-4"/>
-                            </svg>
-                        </span>
-                    }.into_any(),
-                    TriggerMode::SwatchOnly => view! {
-                        <div class=swatch_only_class style=swatch_bg />
-                    }.into_any(),
+                    TriggerMode::SwatchInput => {
+                        view! {
+                            <div class=swatch_class style=swatch_bg />
+                            <span class="color-picker-trigger__text">{display_text}</span>
+                            <span class="color-picker-trigger__chevron">
+                                <svg
+                                    viewBox="0 0 16 16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M4 6l4 4 4-4" />
+                                </svg>
+                            </span>
+                        }
+                            .into_any()
+                    }
+                    TriggerMode::SwatchOnly => {
+                        view! { <div class=swatch_only_class style=swatch_bg /> }.into_any()
+                    }
                 }}
             </div>
 
@@ -306,12 +329,7 @@ pub fn ColorPicker(
                         }
                     }
                 >
-                    <Gradient
-                        hsv=hsv
-                        on_change_end=on_change_end
-                        format=format
-                        alpha=alpha
-                    />
+                    <Gradient hsv=hsv on_change_end=on_change_end format=format alpha=alpha />
                     <HueSlider hsv=hsv />
                     {alpha.then(move || view! { <AlphaSlider hsv=hsv /> })}
                     <div class="cp-divider"></div>

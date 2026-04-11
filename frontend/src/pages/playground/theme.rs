@@ -21,11 +21,7 @@ fn ColorField(
     view! {
         <div class="space-y-1">
             <span class="text-xs text-text-tertiary">{label}</span>
-            <ColorPicker
-                value=value
-                on_change_end=on_change
-                size=Size::Sm
-            />
+            <ColorPicker value=value on_change_end=on_change size=Size::Sm />
         </div>
     }
 }
@@ -41,35 +37,53 @@ fn ValidationPanel(validation: Signal<Option<ThemeValidation>>) -> impl IntoView
             <h3 class="text-sm font-semibold text-text-primary mb-3">"Contrast Validation"</h3>
             {move || {
                 let Some(v) = validation.get() else {
-                    return view! { <p class="text-text-tertiary text-xs">"No validation data"</p> }.into_any();
+                    return view! { <p class="text-text-tertiary text-xs">"No validation data"</p> }
+                        .into_any();
                 };
                 let status = if v.is_valid { "Valid" } else { "Invalid \u{2014} blocked" };
                 view! {
                     <div>
-                        <p class="text-xs mb-2 font-semibold" class:text-success={v.is_valid} class:text-danger={!v.is_valid}>
+                        <p
+                            class="text-xs mb-2 font-semibold"
+                            class:text-success=v.is_valid
+                            class:text-danger=!v.is_valid
+                        >
                             {status}
                         </p>
                         <div class="space-y-1">
-                            {v.checks.into_iter().map(|c| {
-                                let icon = if c.pass { "\u{2713}" } else if c.severity == Severity::Block { "\u{2717}" } else { "!" };
-                                let color_class = if c.pass {
-                                    "text-success"
-                                } else if c.severity == Severity::Block {
-                                    "text-danger"
-                                } else {
-                                    "text-warning"
-                                };
-                                view! {
-                                    <div class="flex items-center gap-2 text-xs">
-                                        <span class=color_class>{icon}</span>
-                                        <span class="text-text-secondary font-mono">{format!("{:.1}:1", c.ratio)}</span>
-                                        <span class="text-text-tertiary">{c.pair_label}</span>
-                                    </div>
-                                }
-                            }).collect_view()}
+                            {v
+                                .checks
+                                .into_iter()
+                                .map(|c| {
+                                    let icon = if c.pass {
+                                        "\u{2713}"
+                                    } else if c.severity == Severity::Block {
+                                        "\u{2717}"
+                                    } else {
+                                        "!"
+                                    };
+                                    let color_class = if c.pass {
+                                        "text-success"
+                                    } else if c.severity == Severity::Block {
+                                        "text-danger"
+                                    } else {
+                                        "text-warning"
+                                    };
+                                    view! {
+                                        <div class="flex items-center gap-2 text-xs">
+                                            <span class=color_class>{icon}</span>
+                                            <span class="text-text-secondary font-mono">
+                                                {format!("{:.1}:1", c.ratio)}
+                                            </span>
+                                            <span class="text-text-tertiary">{c.pair_label}</span>
+                                        </div>
+                                    }
+                                })
+                                .collect_view()}
                         </div>
                     </div>
-                }.into_any()
+                }
+                    .into_any()
             }}
         </div>
     }
@@ -105,11 +119,21 @@ fn ComponentPreview() -> impl IntoView {
         <div class="rounded-lg border border-border bg-surface-1 p-4 space-y-4">
             <h3 class="text-sm font-semibold text-text-primary">"Quick Preview"</h3>
             <div class="flex flex-wrap gap-2">
-                <Button variant=Variant::Primary size=Size::Sm>"Primary"</Button>
-                <Button variant=Variant::Secondary size=Size::Sm>"Secondary"</Button>
-                <Button variant=Variant::Ghost size=Size::Sm>"Ghost"</Button>
-                <Button variant=Variant::Danger size=Size::Sm>"Danger"</Button>
-                <Button variant=Variant::Warning size=Size::Sm>"Warning"</Button>
+                <Button variant=Variant::Primary size=Size::Sm>
+                    "Primary"
+                </Button>
+                <Button variant=Variant::Secondary size=Size::Sm>
+                    "Secondary"
+                </Button>
+                <Button variant=Variant::Ghost size=Size::Sm>
+                    "Ghost"
+                </Button>
+                <Button variant=Variant::Danger size=Size::Sm>
+                    "Danger"
+                </Button>
+                <Button variant=Variant::Warning size=Size::Sm>
+                    "Warning"
+                </Button>
             </div>
             <div class="flex flex-wrap gap-2">
                 <IconButton aria_label="Primary" variant=Variant::Primary>
@@ -131,11 +155,21 @@ fn ComponentPreview() -> impl IntoView {
                 <p class="text-text-tertiary text-sm">"Tertiary text \u{2014} captions"</p>
             </div>
             <div class="flex gap-1">
-                <div class="flex-1 h-10 rounded bg-background border border-border flex items-center justify-center text-[10px] text-text-tertiary">"bg"</div>
-                <div class="flex-1 h-10 rounded bg-surface-1 border border-border flex items-center justify-center text-[10px] text-text-tertiary">"1"</div>
-                <div class="flex-1 h-10 rounded bg-surface-2 border border-border flex items-center justify-center text-[10px] text-text-tertiary">"2"</div>
-                <div class="flex-1 h-10 rounded bg-surface-3 border border-border flex items-center justify-center text-[10px] text-text-tertiary">"3"</div>
-                <div class="flex-1 h-10 rounded bg-surface-4 border border-border flex items-center justify-center text-[10px] text-text-tertiary">"4"</div>
+                <div class="flex-1 h-10 rounded bg-background border border-border flex items-center justify-center text-[10px] text-text-tertiary">
+                    "bg"
+                </div>
+                <div class="flex-1 h-10 rounded bg-surface-1 border border-border flex items-center justify-center text-[10px] text-text-tertiary">
+                    "1"
+                </div>
+                <div class="flex-1 h-10 rounded bg-surface-2 border border-border flex items-center justify-center text-[10px] text-text-tertiary">
+                    "2"
+                </div>
+                <div class="flex-1 h-10 rounded bg-surface-3 border border-border flex items-center justify-center text-[10px] text-text-tertiary">
+                    "3"
+                </div>
+                <div class="flex-1 h-10 rounded bg-surface-4 border border-border flex items-center justify-center text-[10px] text-text-tertiary">
+                    "4"
+                </div>
             </div>
         </div>
     }
@@ -197,8 +231,12 @@ pub fn ThemePage() -> impl IntoView {
             <div class="flex items-center justify-between">
                 <h1 class="text-xl font-semibold text-text-primary">"Theme Playground"</h1>
                 <div class="flex gap-2">
-                    <Button variant=Variant::Secondary size=Size::Sm on:click=apply_light>"Light Preset"</Button>
-                    <Button variant=Variant::Secondary size=Size::Sm on:click=apply_dark>"Dark Preset"</Button>
+                    <Button variant=Variant::Secondary size=Size::Sm on:click=apply_light>
+                        "Light Preset"
+                    </Button>
+                    <Button variant=Variant::Secondary size=Size::Sm on:click=apply_dark>
+                        "Dark Preset"
+                    </Button>
                 </div>
             </div>
 
@@ -246,33 +284,130 @@ pub fn ThemePage() -> impl IntoView {
                 <div class="space-y-4">
                     <ComponentPreview />
                     <div class="rounded-lg border border-border bg-surface-1 p-4">
-                        <h3 class="text-sm font-semibold text-text-primary mb-3">"Derived Tokens"</h3>
+                        <h3 class="text-sm font-semibold text-text-primary mb-3">
+                            "Derived Tokens"
+                        </h3>
                         <div class="grid grid-cols-3 gap-2">
-                            <Swatch label="background" color=Signal::derive(move || tokens_signal.get().color_background) />
-                            <Swatch label="surface-1" color=Signal::derive(move || tokens_signal.get().color_surface_1) />
-                            <Swatch label="surface-2" color=Signal::derive(move || tokens_signal.get().color_surface_2) />
-                            <Swatch label="surface-3" color=Signal::derive(move || tokens_signal.get().color_surface_3) />
-                            <Swatch label="surface-4" color=Signal::derive(move || tokens_signal.get().color_surface_4) />
-                            <Swatch label="border" color=Signal::derive(move || tokens_signal.get().color_border) />
-                            <Swatch label="border-strong" color=Signal::derive(move || tokens_signal.get().color_border_strong) />
-                            <Swatch label="text-primary" color=Signal::derive(move || tokens_signal.get().color_text_primary) />
-                            <Swatch label="text-secondary" color=Signal::derive(move || tokens_signal.get().color_text_secondary) />
-                            <Swatch label="text-tertiary" color=Signal::derive(move || tokens_signal.get().color_text_tertiary) />
-                            <Swatch label="primary" color=Signal::derive(move || tokens_signal.get().color_primary) />
-                            <Swatch label="primary-hover" color=Signal::derive(move || tokens_signal.get().color_primary_hover) />
-                            <Swatch label="primary-muted" color=Signal::derive(move || tokens_signal.get().color_primary_muted) />
-                            <Swatch label="primary-fg" color=Signal::derive(move || tokens_signal.get().color_primary_foreground) />
-                            <Swatch label="primary-text" color=Signal::derive(move || tokens_signal.get().color_primary_text) />
-                            <Swatch label="focus-ring" color=Signal::derive(move || tokens_signal.get().color_focus_ring) />
-                            <Swatch label="danger" color=Signal::derive(move || tokens_signal.get().color_danger) />
-                            <Swatch label="danger-hover" color=Signal::derive(move || tokens_signal.get().color_danger_hover) />
-                            <Swatch label="danger-muted" color=Signal::derive(move || tokens_signal.get().color_danger_muted) />
-                            <Swatch label="warning" color=Signal::derive(move || tokens_signal.get().color_warning) />
-                            <Swatch label="warning-hover" color=Signal::derive(move || tokens_signal.get().color_warning_hover) />
-                            <Swatch label="warning-muted" color=Signal::derive(move || tokens_signal.get().color_warning_muted) />
-                            <Swatch label="success" color=Signal::derive(move || tokens_signal.get().color_success) />
-                            <Swatch label="success-hover" color=Signal::derive(move || tokens_signal.get().color_success_hover) />
-                            <Swatch label="success-muted" color=Signal::derive(move || tokens_signal.get().color_success_muted) />
+                            <Swatch
+                                label="background"
+                                color=Signal::derive(move || tokens_signal.get().color_background)
+                            />
+                            <Swatch
+                                label="surface-1"
+                                color=Signal::derive(move || tokens_signal.get().color_surface_1)
+                            />
+                            <Swatch
+                                label="surface-2"
+                                color=Signal::derive(move || tokens_signal.get().color_surface_2)
+                            />
+                            <Swatch
+                                label="surface-3"
+                                color=Signal::derive(move || tokens_signal.get().color_surface_3)
+                            />
+                            <Swatch
+                                label="surface-4"
+                                color=Signal::derive(move || tokens_signal.get().color_surface_4)
+                            />
+                            <Swatch
+                                label="border"
+                                color=Signal::derive(move || tokens_signal.get().color_border)
+                            />
+                            <Swatch
+                                label="border-strong"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_border_strong
+                                })
+                            />
+                            <Swatch
+                                label="text-primary"
+                                color=Signal::derive(move || tokens_signal.get().color_text_primary)
+                            />
+                            <Swatch
+                                label="text-secondary"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_text_secondary
+                                })
+                            />
+                            <Swatch
+                                label="text-tertiary"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_text_tertiary
+                                })
+                            />
+                            <Swatch
+                                label="primary"
+                                color=Signal::derive(move || tokens_signal.get().color_primary)
+                            />
+                            <Swatch
+                                label="primary-hover"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_primary_hover
+                                })
+                            />
+                            <Swatch
+                                label="primary-muted"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_primary_muted
+                                })
+                            />
+                            <Swatch
+                                label="primary-fg"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_primary_foreground
+                                })
+                            />
+                            <Swatch
+                                label="primary-text"
+                                color=Signal::derive(move || tokens_signal.get().color_primary_text)
+                            />
+                            <Swatch
+                                label="focus-ring"
+                                color=Signal::derive(move || tokens_signal.get().color_focus_ring)
+                            />
+                            <Swatch
+                                label="danger"
+                                color=Signal::derive(move || tokens_signal.get().color_danger)
+                            />
+                            <Swatch
+                                label="danger-hover"
+                                color=Signal::derive(move || tokens_signal.get().color_danger_hover)
+                            />
+                            <Swatch
+                                label="danger-muted"
+                                color=Signal::derive(move || tokens_signal.get().color_danger_muted)
+                            />
+                            <Swatch
+                                label="warning"
+                                color=Signal::derive(move || tokens_signal.get().color_warning)
+                            />
+                            <Swatch
+                                label="warning-hover"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_warning_hover
+                                })
+                            />
+                            <Swatch
+                                label="warning-muted"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_warning_muted
+                                })
+                            />
+                            <Swatch
+                                label="success"
+                                color=Signal::derive(move || tokens_signal.get().color_success)
+                            />
+                            <Swatch
+                                label="success-hover"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_success_hover
+                                })
+                            />
+                            <Swatch
+                                label="success-muted"
+                                color=Signal::derive(move || {
+                                    tokens_signal.get().color_success_muted
+                                })
+                            />
                         </div>
                     </div>
                 </div>

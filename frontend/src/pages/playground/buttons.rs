@@ -26,19 +26,33 @@ pub fn ButtonsPage() -> impl IntoView {
             // Sizes
             <Section title="Sizes">
                 <div class="flex items-end gap-2">
-                    <Button variant=Variant::Primary size=Size::Sm>"Small"</Button>
-                    <Button variant=Variant::Primary size=Size::Md>"Medium"</Button>
-                    <Button variant=Variant::Primary size=Size::Lg>"Large"</Button>
+                    <Button variant=Variant::Primary size=Size::Sm>
+                        "Small"
+                    </Button>
+                    <Button variant=Variant::Primary size=Size::Md>
+                        "Medium"
+                    </Button>
+                    <Button variant=Variant::Primary size=Size::Lg>
+                        "Large"
+                    </Button>
                 </div>
             </Section>
 
             // Shapes
             <Section title="Shapes">
                 <div class="flex flex-wrap gap-2">
-                    <Button variant=Variant::Primary shape=Shape::Square>"Square"</Button>
-                    <Button variant=Variant::Primary shape=Shape::RoundedSm>"Rounded SM"</Button>
-                    <Button variant=Variant::Primary shape=Shape::Rounded>"Rounded"</Button>
-                    <Button variant=Variant::Primary shape=Shape::Pill>"Pill"</Button>
+                    <Button variant=Variant::Primary shape=Shape::Square>
+                        "Square"
+                    </Button>
+                    <Button variant=Variant::Primary shape=Shape::RoundedSm>
+                        "Rounded SM"
+                    </Button>
+                    <Button variant=Variant::Primary shape=Shape::Rounded>
+                        "Rounded"
+                    </Button>
+                    <Button variant=Variant::Primary shape=Shape::Pill>
+                        "Pill"
+                    </Button>
                 </div>
             </Section>
 
@@ -46,14 +60,20 @@ pub fn ButtonsPage() -> impl IntoView {
             <Section title="States">
                 <div class="flex flex-wrap gap-2">
                     <Button variant=Variant::Primary>"Default"</Button>
-                    <Button variant=Variant::Primary disabled=true>"Disabled"</Button>
-                    <Button variant=Variant::Primary loading=true>"Loading"</Button>
+                    <Button variant=Variant::Primary disabled=true>
+                        "Disabled"
+                    </Button>
+                    <Button variant=Variant::Primary loading=true>
+                        "Loading"
+                    </Button>
                 </div>
             </Section>
 
             // Full width
             <Section title="Full Width">
-                <Button variant=Variant::Primary full_width=true>"Full Width Button"</Button>
+                <Button variant=Variant::Primary full_width=true>
+                    "Full Width Button"
+                </Button>
             </Section>
 
             <h1 class="text-xl font-semibold text-text-primary pt-4">"Icon Buttons"</h1>
@@ -100,7 +120,11 @@ pub fn ButtonsPage() -> impl IntoView {
                     <IconButton aria_label="Square" variant=Variant::Primary shape=Shape::Square>
                         <Icon icon=i::FaStarSolid />
                     </IconButton>
-                    <IconButton aria_label="Rounded SM" variant=Variant::Primary shape=Shape::RoundedSm>
+                    <IconButton
+                        aria_label="Rounded SM"
+                        variant=Variant::Primary
+                        shape=Shape::RoundedSm
+                    >
                         <Icon icon=i::FaStarSolid />
                     </IconButton>
                     <IconButton aria_label="Rounded" variant=Variant::Primary shape=Shape::Rounded>

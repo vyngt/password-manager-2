@@ -41,11 +41,7 @@ fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
 
     view! {
         <A href=item.path>
-            <Tooltip
-                placement=Placement::Right
-                arrow=true
-                content=item.name
-            >
+            <Tooltip placement=Placement::Right arrow=true content=item.name>
                 <div class=item_class>
                     <Icon icon=item.icon height="100%" width="100%" />
                 </div>

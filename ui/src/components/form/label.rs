@@ -22,12 +22,16 @@ pub fn Label(
     view! {
         <label class=cls for=html_for>
             {children()}
-            {required.then(|| view! {
-                <span class="label__required" aria-hidden="true">"*"</span>
-            })}
-            {(optional && !required).then(|| view! {
-                <span class="label__optional">"(optional)"</span>
-            })}
+            {required
+                .then(|| {
+                    view! {
+                        <span class="label__required" aria-hidden="true">
+                            "*"
+                        </span>
+                    }
+                })}
+            {(optional && !required)
+                .then(|| view! { <span class="label__optional">"(optional)"</span> })}
         </label>
     }
 }

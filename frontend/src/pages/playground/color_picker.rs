@@ -58,10 +58,7 @@ pub fn ColorPickerPage() -> impl IntoView {
                     </div>
                     <div class="space-y-1">
                         <p class="text-xs text-text-tertiary">"Swatch Only"</p>
-                        <ColorPicker
-                            default_value="#8B5CF6"
-                            trigger_mode=TriggerMode::SwatchOnly
-                        />
+                        <ColorPicker default_value="#8B5CF6" trigger_mode=TriggerMode::SwatchOnly />
                     </div>
                     <div class="space-y-1">
                         <p class="text-xs text-text-tertiary">"Swatch Only (sm)"</p>
@@ -117,7 +114,12 @@ pub fn ColorPickerPage() -> impl IntoView {
                 view! {
                     <Section title="Full Featured (alpha + swatches + RGB)">
                         <div class="max-w-xs">
-                            <ColorPicker default_value="#8B5CF680" alpha=true format=ColorFormat::Rgb swatches=sw />
+                            <ColorPicker
+                                default_value="#8B5CF680"
+                                alpha=true
+                                format=ColorFormat::Rgb
+                                swatches=sw
+                            />
                         </div>
                     </Section>
                 }
@@ -146,11 +148,21 @@ pub fn ColorPickerPage() -> impl IntoView {
                         on_change_end=Callback::new(move |v: String| set_last_change_end.set(v))
                     />
                     <div class="space-y-1 text-xs text-text-tertiary">
-                        <p>"Value: " <span class="font-mono text-text-primary">{move || color_val.get()}</span></p>
-                        <p>"Last onChangeEnd: " <span class="font-mono text-text-primary">{move || {
-                            let v = last_change_end.get();
-                            if v.is_empty() { "(none)".to_string() } else { v }
-                        }}</span></p>
+                        <p>
+                            "Value: "
+                            <span class="font-mono text-text-primary">
+                                {move || color_val.get()}
+                            </span>
+                        </p>
+                        <p>
+                            "Last onChangeEnd: "
+                            <span class="font-mono text-text-primary">
+                                {move || {
+                                    let v = last_change_end.get();
+                                    if v.is_empty() { "(none)".to_string() } else { v }
+                                }}
+                            </span>
+                        </p>
                     </div>
                     <div
                         class="h-12 rounded-lg border border-border"

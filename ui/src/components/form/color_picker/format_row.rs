@@ -37,19 +37,28 @@ pub(super) fn FormatRow(
     view! {
         <div class="cp-format-row">
             <div class="cp-format-controls">
-                {eyedropper_supported.then(move || view! {
-                    <button
-                        type="button"
-                        class="cp-eyedropper"
-                        aria-label="Pick color from screen"
-                        on:click=on_eyedropper
-                    >
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M13.5 2.5a1.8 1.8 0 0 0-2.5 0L9.2 4.3 7.5 2.5l-1 1 1.8 1.8-5 5-.3 2.2 2.2-.3 5-5 1.8 1.8 1-1-1.8-1.8 1.8-1.8a1.8 1.8 0 0 0 0-2.5Z"/>
-                        </svg>
-                    </button>
-                })}
-
+                {eyedropper_supported
+                    .then(move || {
+                        view! {
+                            <button
+                                type="button"
+                                class="cp-eyedropper"
+                                aria-label="Pick color from screen"
+                                on:click=on_eyedropper
+                            >
+                                <svg
+                                    viewBox="0 0 16 16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M13.5 2.5a1.8 1.8 0 0 0-2.5 0L9.2 4.3 7.5 2.5l-1 1 1.8 1.8-5 5-.3 2.2 2.2-.3 5-5 1.8 1.8 1-1-1.8-1.8 1.8-1.8a1.8 1.8 0 0 0 0-2.5Z" />
+                                </svg>
+                            </button>
+                        }
+                    })}
                 <FormatSwitcher active_format=active_format />
             </div>
 
@@ -74,23 +83,29 @@ fn FormatSwitcher(active_format: RwSignal<ColorFormat>) -> impl IntoView {
 
     view! {
         <div class="cp-format-switcher">
-            {formats.into_iter().map(|(fmt, label)| {
-                let is_active = move || active_format.get() == fmt;
-                let cls = move || {
-                    if is_active() { "cp-format-btn cp-format-btn--active" }
-                    else { "cp-format-btn" }
-                };
-                view! {
-                    <button
-                        type="button"
-                        class=cls
-                        on:click=move |_| active_format.set(fmt)
-                        aria-pressed=move || is_active().to_string()
-                    >
-                        {label}
-                    </button>
-                }
-            }).collect_view()}
+            {formats
+                .into_iter()
+                .map(|(fmt, label)| {
+                    let is_active = move || active_format.get() == fmt;
+                    let cls = move || {
+                        if is_active() {
+                            "cp-format-btn cp-format-btn--active"
+                        } else {
+                            "cp-format-btn"
+                        }
+                    };
+                    view! {
+                        <button
+                            type="button"
+                            class=cls
+                            on:click=move |_| active_format.set(fmt)
+                            aria-pressed=move || is_active().to_string()
+                        >
+                            {label}
+                        </button>
+                    }
+                })
+                .collect_view()}
         </div>
     }
 }
@@ -105,9 +120,15 @@ fn FormatInputs(
 ) -> impl IntoView {
     view! {
         {move || match active_format.get() {
-            ColorFormat::Hex => view! { <HexInput hsv=hsv alpha=alpha on_commit=on_commit /> }.into_any(),
-            ColorFormat::Rgb => view! { <RgbInputs hsv=hsv alpha=alpha on_commit=on_commit /> }.into_any(),
-            ColorFormat::Hsl => view! { <HslInputs hsv=hsv alpha=alpha on_commit=on_commit /> }.into_any(),
+            ColorFormat::Hex => {
+                view! { <HexInput hsv=hsv alpha=alpha on_commit=on_commit /> }.into_any()
+            }
+            ColorFormat::Rgb => {
+                view! { <RgbInputs hsv=hsv alpha=alpha on_commit=on_commit /> }.into_any()
+            }
+            ColorFormat::Hsl => {
+                view! { <HslInputs hsv=hsv alpha=alpha on_commit=on_commit /> }.into_any()
+            }
         }}
     }
 }
@@ -221,9 +242,12 @@ fn RgbInputs(
             <ChannelInput text=r_text label="Red" on_commit=move || commit_rgb() />
             <ChannelInput text=g_text label="Green" on_commit=move || commit_rgb() />
             <ChannelInput text=b_text label="Blue" on_commit=move || commit_rgb() />
-            {alpha.then(move || view! {
-                <ChannelInput text=a_text label="Alpha" on_commit=move || commit_rgb() />
-            })}
+            {alpha
+                .then(move || {
+                    view! {
+                        <ChannelInput text=a_text label="Alpha" on_commit=move || commit_rgb() />
+                    }
+                })}
         </div>
     }
 }
@@ -275,9 +299,12 @@ fn HslInputs(
             <ChannelInput text=h_text label="Hue" on_commit=move || commit_hsl() />
             <ChannelInput text=s_text label="Saturation" on_commit=move || commit_hsl() />
             <ChannelInput text=l_text label="Lightness" on_commit=move || commit_hsl() />
-            {alpha.then(move || view! {
-                <ChannelInput text=a_text label="Alpha" on_commit=move || commit_hsl() />
-            })}
+            {alpha
+                .then(move || {
+                    view! {
+                        <ChannelInput text=a_text label="Alpha" on_commit=move || commit_hsl() />
+                    }
+                })}
         </div>
     }
 }

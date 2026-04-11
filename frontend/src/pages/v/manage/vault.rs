@@ -130,13 +130,18 @@ pub fn VaultPage() -> impl IntoView {
             // Table
             <Show
                 when=move || !loading.get()
-                fallback=|| view! {
-                    <div class="flex-1 flex items-center justify-center text-foreground/40 text-sm">
-                        "Loading..."
-                    </div>
+                fallback=|| {
+                    view! {
+                        <div class="flex-1 flex items-center justify-center text-foreground/40 text-sm">
+                            "Loading..."
+                        </div>
+                    }
                 }
             >
-                <VaultTable items=Signal::derive(move || filtered_items.get()) on_delete=on_delete />
+                <VaultTable
+                    items=Signal::derive(move || filtered_items.get())
+                    on_delete=on_delete
+                />
             </Show>
         </div>
     }

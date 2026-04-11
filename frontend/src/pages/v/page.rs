@@ -6,7 +6,5 @@ pub fn VPage() -> impl IntoView {
     let nav = use_navigate();
     nav("/v/vault", Default::default());
 
-    view! {
-        <div class="h-full"></div>
-    }
+    view! { <div class="h-full"></div> }
 }

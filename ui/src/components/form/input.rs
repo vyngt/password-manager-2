@@ -103,7 +103,6 @@ pub fn Input(
             // Leading area
             {leading_icon.map(|icon| view! { <span class="input-icon">{icon()}</span> })}
             {(!prefix.is_empty()).then(|| view! { <span class="input-affix">{prefix}</span> })}
-
             // Native input
             <input
                 node_ref=input_ref
@@ -119,10 +118,8 @@ pub fn Input(
                 aria-required=aria_required_attr
                 on:input:target=handle_input
             />
-
             // Suffix
             {(!suffix.is_empty()).then(|| view! { <span class="input-affix">{suffix}</span> })}
-
             // Trailing area — priority resolution
             {if loading {
                 Some(view! { <span class="input-spinner"></span> }.into_any())
@@ -133,40 +130,51 @@ pub fn Input(
                     Status::Warning => i::FaTriangleExclamationSolid,
                     Status::Default => unreachable!(),
                 };
-                Some(view! {
-                    <span class="input-status-icon">
-                        <Icon icon=icon_data />
-                    </span>
-                }.into_any())
+                Some(
+                    view! {
+                        <span class="input-status-icon">
+                            <Icon icon=icon_data />
+                        </span>
+                    }
+                        .into_any(),
+                )
             } else if is_search {
-                Some(view! {
-                    <Show when=has_value>
+                Some(
+                    view! {
+                        <Show when=has_value>
+                            <button
+                                type="button"
+                                class="input-trailing-btn"
+                                aria-label="Clear"
+                                on:click=handle_clear
+                            >
+                                <Icon icon=i::FaXmarkSolid />
+                            </button>
+                        </Show>
+                    }
+                        .into_any(),
+                )
+            } else if is_password {
+                Some(
+                    view! {
                         <button
                             type="button"
                             class="input-trailing-btn"
-                            aria-label="Clear"
-                            on:click=handle_clear
+                            aria-label=move || {
+                                if revealed.get() { "Hide password" } else { "Show password" }
+                            }
+                            on:click=move |_| set_revealed.update(|r| *r = !*r)
                         >
-                            <Icon icon=i::FaXmarkSolid />
+                            <Show
+                                when=move || revealed.get()
+                                fallback=|| view! { <Icon icon=i::FaEyeSolid /> }
+                            >
+                                <Icon icon=i::FaEyeSlashSolid />
+                            </Show>
                         </button>
-                    </Show>
-                }.into_any())
-            } else if is_password {
-                Some(view! {
-                    <button
-                        type="button"
-                        class="input-trailing-btn"
-                        aria-label=move || if revealed.get() { "Hide password" } else { "Show password" }
-                        on:click=move |_| set_revealed.update(|r| *r = !*r)
-                    >
-                        <Show
-                            when=move || revealed.get()
-                            fallback=|| view! { <Icon icon=i::FaEyeSolid /> }
-                        >
-                            <Icon icon=i::FaEyeSlashSolid />
-                        </Show>
-                    </button>
-                }.into_any())
+                    }
+                        .into_any(),
+                )
             } else if let Some(icon) = trailing_icon {
                 Some(view! { <span class="input-icon">{icon()}</span> }.into_any())
             } else {

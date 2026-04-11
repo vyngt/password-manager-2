@@ -73,7 +73,10 @@ pub fn WindowPanel() -> impl IntoView {
                 </button>
             </div>
             <div class="flex h-full" style=handle_inner_color>
-                <Tooltip content=Signal::derive(move || t_string!(i18n, window.minimize).to_string()) placement=Placement::Bottom>
+                <Tooltip
+                    content=Signal::derive(move || t_string!(i18n, window.minimize).to_string())
+                    placement=Placement::Bottom
+                >
                     <IconButton
                         aria_label=tu_string!(i18n, window.minimize).to_string()
                         size=Size::Lg
@@ -88,7 +91,10 @@ pub fn WindowPanel() -> impl IntoView {
                         <Icon icon=i::FaWindowMinimizeSolid />
                     </IconButton>
                 </Tooltip>
-                <Tooltip content=Signal::derive(move || t_string!(i18n, window.maximize).to_string()) placement=Placement::Left>
+                <Tooltip
+                    content=Signal::derive(move || t_string!(i18n, window.maximize).to_string())
+                    placement=Placement::Left
+                >
                     <IconButton
                         aria_label=tu_string!(i18n, window.maximize).to_string()
                         size=Size::Lg
@@ -115,7 +121,10 @@ pub fn WindowPanel() -> impl IntoView {
                         </Show>
                     </IconButton>
                 </Tooltip>
-                <Tooltip content=Signal::derive(move || t_string!(i18n, window.close).to_string()) placement=Placement::Left>
+                <Tooltip
+                    content=Signal::derive(move || t_string!(i18n, window.close).to_string())
+                    placement=Placement::Left
+                >
                     <IconButton
                         aria_label=tu_string!(i18n, window.close).to_string()
                         variant=Variant::Danger
