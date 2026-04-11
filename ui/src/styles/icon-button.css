@@ -1,37 +1,108 @@
 @layer components {
+  /* ============================================================
+     IconButton — base (square, icon centered)
+     ============================================================ */
   .icon-btn {
-    --background-color: var(--color-background);
-    --text-color: var(--color-foreground);
-    --text-color-80: var(--color-foreground);
-
-    padding-inline: --spacing(2);
-    padding-block: --spacing(2);
-    font-weight: var(--font-weight-semibold);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
     cursor: pointer;
-    background-color: var(--background-color);
-    color: var(--text-color);
+    border: 1px solid transparent;
+    user-select: none;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
 
-    @apply relative p-4;
+  /* Focus — instant, never hidden */
+  .icon-btn:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
 
-    &.btn-filled {
-      @apply bg-[var(--background-color)] text-[var(--text-color)];
-      @apply hover:bg-[var(--background-color)]/80 hover:text-[var(--text-color-80)];
-    }
+  /* Active — micro press */
+  .icon-btn:active:not(:disabled) {
+    transform: scale(0.97);
+    transition: transform var(--duration-micro) var(--ease-out);
+  }
 
-    &.btn-outlined {
-      @apply bg-transparent border-2;
-      @apply border-[var(--background-color)] text-[var(--background-color)];
-      @apply hover:bg-[var(--background-color)] hover:text-[var(--text-color)];
-    }
+  /* Disabled */
+  .icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 
-    &.btn-text {
-      @apply bg-transparent;
-      @apply hover:bg-[var(--background-color)]/20;
-    }
+  /* Loading */
+  .icon-btn.icon-btn-loading {
+    opacity: 0.7;
+    pointer-events: none;
+  }
 
-    &.btn-ripple {
-      position: relative;
-      overflow: hidden;
-    }
+  /* ============================================================
+     Sizes — always square (width = height), icon sized within
+     ============================================================ */
+  .icon-btn-sm {
+    width: var(--height-sm);
+    height: var(--height-sm);
+  }
+  .icon-btn-sm svg { width: 14px; height: 14px; }
+
+  .icon-btn-md {
+    width: var(--height-md);
+    height: var(--height-md);
+  }
+  .icon-btn-md svg { width: 16px; height: 16px; }
+
+  .icon-btn-lg {
+    width: var(--height-lg);
+    height: var(--height-lg);
+  }
+  .icon-btn-lg svg { width: 20px; height: 20px; }
+
+  /* ============================================================
+     Variants — same token mapping as Button
+     ============================================================ */
+  .icon-btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+  .icon-btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+
+  .icon-btn-secondary {
+    background-color: var(--color-surface-1);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+  }
+  .icon-btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-2);
+  }
+
+  .icon-btn-ghost {
+    background-color: transparent;
+    color: var(--color-text-secondary);
+  }
+  .icon-btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-surface-2);
+    color: var(--color-text-primary);
+  }
+
+  .icon-btn-danger {
+    background-color: var(--color-danger);
+    color: var(--color-danger-foreground);
+  }
+  .icon-btn-danger:hover:not(:disabled) {
+    background-color: var(--color-danger-hover);
+  }
+
+  .icon-btn-warning {
+    background-color: var(--color-warning);
+    color: var(--color-warning-foreground);
+  }
+  .icon-btn-warning:hover:not(:disabled) {
+    background-color: var(--color-warning-hover);
   }
 }

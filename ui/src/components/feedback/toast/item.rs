@@ -1,8 +1,4 @@
-use crate::{
-    components::foundation::icon_button::IconButton,
-    primitives::color::RgbColor,
-    primitives::tokens::Variant,
-};
+use crate::components::foundation::icon_button::IconButton;
 
 use super::types::{Toast, ToastState};
 
@@ -29,7 +25,7 @@ pub fn ToastRoot(toast: Toast) -> impl IntoView {
                         .description
                         .map(|d| view! { <ToastDescription>{d.clone()}</ToastDescription> })}
                 </div>
-                <ToastClose id=toast.id color=toast.color />
+                <ToastClose id=toast.id />
             </div>
         </div>
     }
@@ -46,13 +42,11 @@ pub fn ToastDescription(children: Children) -> impl IntoView {
 }
 
 #[component]
-pub fn ToastClose(id: uuid::Uuid, color: RgbColor) -> impl IntoView {
+pub fn ToastClose(id: uuid::Uuid) -> impl IntoView {
     let state = expect_context::<ToastState>();
     view! {
         <IconButton
-            color=color
-            variant=Variant::Ghost
-            auto_text_color=false
+            aria_label="Close"
             class="text-[var(--toast-color)]"
             on:click=move |_| state.dismiss(id)
         >

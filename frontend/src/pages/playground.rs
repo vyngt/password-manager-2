@@ -17,15 +17,9 @@ use web_sys::{Event, HtmlInputElement};
 
 #[component]
 fn R1() -> impl IntoView {
-    let color_store = expect_context::<Store<ColorStore>>();
-
     view! {
         <div>
-            <Button
-                variant=Variant::Primary
-                color=Signal::derive(move || color_store.primary().get())
-                size=Size::Sm
-            >
+            <Button variant=Variant::Primary size=Size::Sm>
                 "R1 Context"
             </Button>
         </div>
@@ -65,19 +59,14 @@ fn Playground() -> impl IntoView {
         />
 
         <div class="bg-violet-100 flex flex-row gap-2" data-tauri-drag-region=true>
-            <IconButton color=Signal::derive(move || color_store.primary().get()) size=Size::Sm>
+            <IconButton aria_label="Add" variant=Variant::Primary size=Size::Sm>
+                <Icon icon=i::FaPlusSolid />
+            </IconButton>
+            <IconButton aria_label="Add" variant=Variant::Secondary size=Size::Lg>
                 <Icon icon=i::FaPlusSolid />
             </IconButton>
             <IconButton
-                color=Signal::derive(move || color_store.secondary().get())
-                variant=Variant::Secondary
-                size=Size::Lg
-            >
-                <Icon icon=i::FaPlusSolid />
-            </IconButton>
-            <IconButton
-                color=Signal::derive(move || color_store.danger().get())
-                variant=Variant::Ghost
+                aria_label="Minimize"
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -88,8 +77,7 @@ fn Playground() -> impl IntoView {
                 <Icon icon=i::FaWindowMinimizeSolid />
             </IconButton>
             <IconButton
-                color=Signal::derive(move || color_store.danger().get())
-                variant=Variant::Ghost
+                aria_label="Maximize"
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -105,8 +93,8 @@ fn Playground() -> impl IntoView {
                 <Icon icon=i::FaWindowMaximizeSolid />
             </IconButton>
             <IconButton
-                color=Signal::derive(move || color_store.danger().get())
-                variant=Variant::Ghost
+                aria_label="Close"
+                variant=Variant::Danger
                 on:click=move |_ev| {
                     spawn_local(async move {
                         let app_window = get_current_window();
@@ -131,7 +119,6 @@ fn Playground() -> impl IntoView {
             />
             <Button
                 variant=Variant::Primary
-                color=Signal::derive(move || color_store.primary().get())
                 size=Size::Sm
                 class="absolute right-[3px] top-[3px]"
             >
@@ -149,14 +136,12 @@ fn Playground() -> impl IntoView {
 
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Signal::derive(move || color_store.secondary().get())
             variant=Variant::Secondary
         >
             "Hello world 2"
         </Button>
         <Button
             on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-            color=Signal::derive(move || color_store.success().get())
             size=Size::Lg
         >
             "Hello world 3"
@@ -171,7 +156,6 @@ fn Playground() -> impl IntoView {
                 view! {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-                        color=Signal::derive(move || color_store.danger().get())
                         variant=Variant::Danger
                     >
                         "Hello world 4"
@@ -189,7 +173,6 @@ fn Playground() -> impl IntoView {
                 view! {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-                        color=Signal::derive(move || color_store.danger().get())
                         variant=Variant::Danger
                     >
                         "Hello world 4"
@@ -207,7 +190,6 @@ fn Playground() -> impl IntoView {
                 view! {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-                        color=Signal::derive(move || color_store.danger().get())
                         variant=Variant::Danger
                     >
                         "Hello world 4"
@@ -225,7 +207,6 @@ fn Playground() -> impl IntoView {
                 view! {
                     <Button
                         on:click=Box::new(move |_| set_value.update(|value| *value += 1))
-                        color=Signal::derive(move || color_store.danger().get())
                         variant=Variant::Danger
                     >
                         "Hello world 4"

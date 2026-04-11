@@ -76,9 +76,7 @@ pub fn WindowPanel() -> impl IntoView {
             </div>
             <div class="flex h-full" style=handle_inner_color>
                 <IconButton
-                    color=Signal::derive(move || color_store.primary().get())
-                    variant=Variant::Ghost
-                    auto_text_color=false
+                    aria_label="Minimize window"
                     class="w-12"
                     on:click=move |_ev| {
                         spawn_local(async move {
@@ -90,9 +88,7 @@ pub fn WindowPanel() -> impl IntoView {
                     <Icon icon=i::FaWindowMinimizeSolid />
                 </IconButton>
                 <IconButton
-                    color=Signal::derive(move || color_store.primary().get())
-                    variant=Variant::Ghost
-                    auto_text_color=false
+                    aria_label="Maximize window"
                     class="w-12"
                     on:click=move |_ev| {
                         spawn_local(async move {
@@ -116,9 +112,8 @@ pub fn WindowPanel() -> impl IntoView {
                     </Show>
                 </IconButton>
                 <IconButton
-                    color=Signal::derive(move || color_store.danger().get())
-                    variant=Variant::Ghost
-                    auto_text_color=false
+                    aria_label="Close window"
+                    variant=Variant::Danger
                     class="w-12"
                     on:click=move |_ev| {
                         spawn_local(async move {

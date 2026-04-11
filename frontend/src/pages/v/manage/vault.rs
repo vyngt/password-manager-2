@@ -4,10 +4,8 @@ use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_search::VaultSearch;
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::*;
-use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use reactive_stores::Store;
 use serde_json::json;
 use serde_wasm_bindgen::{from_value, to_value as to_js_value};
 use ui::components::Button;
@@ -44,7 +42,6 @@ fn load_items(items: RwSignal<Vec<VaultItem>>, loading: RwSignal<bool>) {
 #[component]
 pub fn VaultPage() -> impl IntoView {
     let i18n = use_i18n();
-    let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
 
     let items = RwSignal::new(Vec::<VaultItem>::new());
     let loading = RwSignal::new(false);
@@ -116,7 +113,6 @@ pub fn VaultPage() -> impl IntoView {
             <div class="flex items-center gap-3">
                 <VaultSearch search_query=search_query />
                 <Button
-                    color=Signal::derive(move || color_store.primary().get())
                     variant=Variant::Primary
                     size=Size::Sm
                     class="whitespace-nowrap"

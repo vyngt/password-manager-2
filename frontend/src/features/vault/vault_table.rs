@@ -1,8 +1,6 @@
 use super::types::{VaultItem, VaultItemData};
 use crate::i18n::*;
-use crate::stores::color::{ColorStore, ColorStoreStoreFields};
 use leptos::prelude::*;
-use reactive_stores::Store;
 use ui::components::icon_button::IconButton;
 use ui::primitives::tokens::{Size, Variant};
 
@@ -54,8 +52,6 @@ pub fn VaultTable(
 
 #[component]
 fn VaultTableRow(item: VaultItem, on_delete: Callback<String>) -> impl IntoView {
-    let color_store: Store<ColorStore> = expect_context::<Store<ColorStore>>();
-
     let (identifier, url) = match &item.data {
         VaultItemData::Credential(cred) => (cred.identifier.clone(), cred.url.clone()),
     };
@@ -69,10 +65,9 @@ fn VaultTableRow(item: VaultItem, on_delete: Callback<String>) -> impl IntoView 
             <td class="p-3 text-sm font-jetbrains-mono text-foreground/60">{url}</td>
             <td class="p-3">
                 <IconButton
-                    color=Signal::derive(move || color_store.danger().get())
-                    variant=Variant::Ghost
+                    aria_label="Delete"
+                    variant=Variant::Danger
                     size=Size::Sm
-                    class="p-1"
                     on:click=move |_| on_delete.run(item_id.clone())
                 >
                     <Icon icon=i::BiTrashRegular />

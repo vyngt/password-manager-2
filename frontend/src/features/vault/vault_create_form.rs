@@ -149,7 +149,6 @@ pub fn VaultCreateForm(
             </div>
             <div class="flex gap-2 justify-end mt-3">
                 <Button
-                    color=Signal::derive(move || color_store.secondary().get())
                     variant=Variant::Ghost
                     size=Size::Sm
                     on:click=handle_cancel
@@ -157,7 +156,6 @@ pub fn VaultCreateForm(
                     {move || t!(i18n, vault.cancel)}
                 </Button>
                 <Button
-                    color=Signal::derive(move || color_store.primary().get())
                     variant=Variant::Primary
                     size=Size::Sm
                     on:click=handle_save

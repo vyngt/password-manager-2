@@ -1,43 +1,46 @@
-mod styles;
-
-use crate::primitives::color::RgbColor;
 use crate::primitives::tokens::{Size, Variant};
 use leptos::prelude::*;
 
 #[component]
 pub fn Button(
     children: Children,
-    #[prop(into, optional, default = Signal::derive(|| RgbColor::new(0, 0, 0)))] color: Signal<
-        RgbColor,
-    >,
-    #[prop(attrs, default = Size::Md)] size: Size,
-    #[prop(attrs, default = Variant::Secondary)] variant: Variant,
-    #[prop(attrs, default = "")] class: &'static str,
+    #[prop(optional)] variant: Variant,
+    #[prop(optional)] size: Size,
+    #[prop(optional)] disabled: bool,
+    #[prop(optional)] loading: bool,
+    #[prop(optional, default = "button")] button_type: &'static str,
+    #[prop(optional)] full_width: bool,
+    #[prop(optional, default = "")] class: &'static str,
+    #[prop(optional, default = "")] aria_label: &'static str,
 ) -> impl IntoView {
-    let base_cls = styles::apply_base();
-    let size_cls = styles::apply_size(size);
-    let variant_cls = styles::apply_variant(variant);
-    let cls = vec![base_cls, size_cls, variant_cls, "transition", class].join(" ");
+    let is_disabled = disabled || loading;
 
-    let handle_style = move || {
-        let c = color.get();
-        let text_color = c.calculate_white_black_text_color(None);
-        let blend_color = c.calculate_white_black_text_color(Some(0.8));
+    let cls = [
+        "btn",
+        variant.btn_class(),
+        size.btn_class(),
+        if full_width { "btn-full-width" } else { "" },
+        if loading { "btn-loading" } else { "" },
+        class,
+    ]
+    .join(" ");
 
-        let bg_color_var = format!("--background-color: rgb({}, {}, {})", c.r, c.g, c.b);
-        let text_color_var = format!(
-            "--text-color: rgb({}, {}, {})",
-            text_color.r, text_color.g, text_color.b
-        );
-        let text_color_80_var = format!(
-            "--text-color-80: rgb({}, {}, {})",
-            blend_color.r, blend_color.g, blend_color.b
-        );
-        format!("{};{};{};", bg_color_var, text_color_var, text_color_80_var)
+    let aria_label_attr = if aria_label.is_empty() {
+        None
+    } else {
+        Some(aria_label)
     };
+    let aria_busy_attr = if loading { Some("true") } else { None };
 
     view! {
-        <button type="button" class=cls style=handle_style>
+        <button
+            type=button_type
+            class=cls
+            disabled=is_disabled
+            aria-busy=aria_busy_attr
+            aria-label=aria_label_attr
+        >
+            {loading.then(|| view! { <span class="btn-spinner"></span> })}
             {children()}
         </button>
     }
