@@ -93,6 +93,14 @@ impl Size {
         }
     }
 
+    pub fn textarea_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "textarea--sm",
+            Size::Md => "",
+            Size::Lg => "textarea--lg",
+        }
+    }
+
     pub fn select_trigger_class(&self) -> &'static str {
         match self {
             Size::Sm => "select-trigger--sm",
@@ -162,6 +170,15 @@ impl Status {
             Status::Error => "number-input--error",
             Status::Success => "number-input--success",
             Status::Warning => "number-input--warning",
+        }
+    }
+
+    pub fn textarea_class(&self) -> &'static str {
+        match self {
+            Status::Default => "",
+            Status::Error => "textarea--error",
+            Status::Success => "textarea--success",
+            Status::Warning => "textarea--warning",
         }
     }
 
@@ -350,6 +367,27 @@ impl Placement {
             Placement::Bottom => "bottom",
             Placement::Left => "left",
             Placement::Right => "right",
+        }
+    }
+}
+
+/// Toast semantic variant — drives background, icon, and accent color.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum ToastVariant {
+    #[default]
+    Default,
+    Success,
+    Warning,
+    Danger,
+}
+
+impl ToastVariant {
+    pub fn toast_class(&self) -> &'static str {
+        match self {
+            ToastVariant::Default => "toast--default",
+            ToastVariant::Success => "toast--success",
+            ToastVariant::Warning => "toast--warning",
+            ToastVariant::Danger => "toast--danger",
         }
     }
 }

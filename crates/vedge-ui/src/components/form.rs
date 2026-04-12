@@ -8,6 +8,7 @@ pub mod password_strength_meter;
 pub mod radio_group;
 pub mod segmented_control;
 pub mod select;
+pub mod textarea;
 pub mod toggle;
 
 pub use checkbox::*;
@@ -20,4 +21,5 @@ pub use password_strength_meter::*;
 pub use radio_group::*;
 pub use segmented_control::*;
 pub use select::*;
+pub use textarea::*;
 pub use toggle::*;

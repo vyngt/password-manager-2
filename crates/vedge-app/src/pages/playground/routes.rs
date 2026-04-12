@@ -12,6 +12,8 @@ use super::pg_radio_group::RadioGroupPage;
 use super::pg_segmented_control::SegmentedControlPage;
 use super::pg_select::SelectPage;
 use super::pg_separator::SeparatorPage;
+use super::pg_textarea::TextareaPage;
+use super::pg_toast::ToastPage;
 use super::pg_spinner::SpinnerPage;
 use super::pg_toggle::TogglePage;
 use super::pg_tooltip::TooltipPage;
@@ -42,8 +44,10 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/radio-group") view=RadioGroupPage />
             <Route path=path!("/segmented-control") view=SegmentedControlPage />
             <Route path=path!("/select") view=SelectPage />
+            <Route path=path!("/textarea") view=TextareaPage />
             <Route path=path!("/toggle") view=TogglePage />
             // Feedback
+            <Route path=path!("/toast") view=ToastPage />
             <Route path=path!("/tooltip") view=TooltipPage />
         </ParentRoute>
     }

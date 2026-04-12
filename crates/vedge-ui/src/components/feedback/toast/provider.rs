@@ -1,5 +1,5 @@
-use super::item::ToastRoot;
-use super::types::{Toast, ToastInput, ToastState};
+use super::item::ToastItem;
+use super::types::{ToastData, ToastInput, ToastState};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -8,58 +8,69 @@ use leptos::prelude::*;
 impl ToastState {
     pub fn show(&self, input: ToastInput) -> Uuid {
         let id = Uuid::new_v4();
-        let toast = Toast {
+        let toast = ToastData {
             id,
-            title: input.title,
-            description: input.description,
-            duration_ms: input.duration_ms.unwrap_or(3000),
-            color: input.color,
+            variant: input.variant,
+            message: input.message,
+            action_label: input.action_label,
+            on_action: input.on_action,
+            duration: input.duration.unwrap_or(4000),
+            on_dismiss: input.on_dismiss,
         };
-        self.toasts.update(|v| v.push(toast.clone()));
-
-        if toast.duration_ms > 0 {
-            let toasts = self.toasts;
-            leptos::prelude::set_timeout(
-                move || toasts.update(|v| v.retain(|t| t.id != toast.id)),
-                Duration::from_millis(toast.duration_ms),
-            );
-        }
-
+        self.toasts.update(|v| v.push(toast));
         id
     }
 
     pub fn dismiss(&self, id: Uuid) {
-        self.toasts.update(|v| v.retain(|t| t.id != id));
-    }
+        // Check if already dismissing
+        let already = self.dismissing.with_untracked(|d| d.contains(&id));
+        if already {
+            return;
+        }
 
-    // pub fn clear(&self) {
-    //     self.toasts.set(Vec::new());
-    // }
+        // Run on_dismiss callback
+        if let Some(cb) = self.toasts.with_untracked(|toasts| {
+            toasts.iter().find(|t| t.id == id).and_then(|t| t.on_dismiss)
+        }) {
+            cb.run(());
+        }
+
+        // Trigger exit animation
+        self.dismissing.update(|d| d.push(id));
+
+        // Remove after exit animation (150ms)
+        let toasts = self.toasts;
+        let dismissing = self.dismissing;
+        set_timeout(
+            move || {
+                toasts.update(|v| v.retain(|t| t.id != id));
+                dismissing.update(|d| d.retain(|&did| did != id));
+            },
+            Duration::from_millis(150),
+        );
+    }
 }
 
 pub fn use_toast() -> ToastState {
     expect_context::<ToastState>()
 }
-//
+
 #[component]
 pub fn ToastProvider(children: Children) -> impl IntoView {
     let state = ToastState {
         toasts: RwSignal::new(Vec::new()),
+        dismissing: RwSignal::new(Vec::new()),
     };
 
-    provide_context(state.clone());
+    provide_context(state);
 
     view! {
         {children()}
-        <div
-            class="fixed top-2 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-3"
-            aria-live="polite"
-            aria-atomic="true"
-        >
+        <div class="toast-group">
             <For
                 each=move || state.toasts.get()
                 key=|t| t.id
-                children=move |t| view! { <ToastRoot toast=t /> }
+                children=move |t| view! { <ToastItem toast=t /> }
             />
         </div>
     }

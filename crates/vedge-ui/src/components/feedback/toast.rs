@@ -1,4 +1,6 @@
-pub mod item;
+mod item;
 pub mod provider;
-pub mod styles;
 pub mod types;
+
+pub use provider::*;
+pub use types::{ToastInput, ToastState};

@@ -36,12 +36,14 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem { name: "Radio Group", path: "/playground/radio-group" },
             SidebarItem { name: "Segmented Control", path: "/playground/segmented-control" },
             SidebarItem { name: "Select", path: "/playground/select" },
+            SidebarItem { name: "Textarea", path: "/playground/textarea" },
             SidebarItem { name: "Toggle", path: "/playground/toggle" },
         ],
     },
     SidebarGroup {
         label: "Feedback",
         items: &[
+            SidebarItem { name: "Toast", path: "/playground/toast" },
             SidebarItem { name: "Tooltip", path: "/playground/tooltip" },
         ],
     },

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./focus-ring.css";
 
 @import "./button.css";
 @import "./icon-button.css";
@@ -11,6 +12,7 @@
 @import "./helper-text.css";
 @import "./number-input.css";
 @import "./strength-meter.css";
+@import "./textarea.css";
 
 @import "./checkbox.css";
 @import "./toggle.css";

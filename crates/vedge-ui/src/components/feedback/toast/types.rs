@@ -1,42 +1,68 @@
-use leptos::prelude::RwSignal;
+use leptos::prelude::*;
 use uuid::Uuid;
 
-use crate::primitives::color::RgbColor;
+use crate::primitives::tokens::ToastVariant;
 
-#[derive(Clone, Debug)]
-pub struct Toast {
+/// Internal toast data stored in the reactive list.
+#[derive(Clone)]
+pub struct ToastData {
     pub id: Uuid,
-    pub title: String,
-    pub description: Option<String>,
-    pub duration_ms: u64,
-    pub color: RgbColor,
+    pub variant: ToastVariant,
+    pub message: String,
+    pub action_label: Option<String>,
+    pub on_action: Option<Callback<()>>,
+    pub duration: u32,
+    pub on_dismiss: Option<Callback<()>>,
 }
 
-#[derive(Clone, Debug)]
+/// Input struct for creating a toast. Use builder methods for convenience.
 pub struct ToastInput {
-    pub title: String,
-    pub description: Option<String>,
-    pub duration_ms: Option<u64>,
-    pub color: RgbColor,
+    pub variant: ToastVariant,
+    pub message: String,
+    pub action_label: Option<String>,
+    pub on_action: Option<Callback<()>>,
+    pub duration: Option<u32>,
+    pub on_dismiss: Option<Callback<()>>,
 }
 
 impl ToastInput {
-    pub fn new<T: Into<String>>(
-        title: T,
-        description: Option<T>,
-        duration_ms: Option<u64>,
-        color: RgbColor,
-    ) -> Self {
+    pub fn new(message: impl Into<String>) -> Self {
         Self {
-            title: title.into(),
-            description: description.map(Into::into),
-            duration_ms,
-            color,
+            variant: ToastVariant::Default,
+            message: message.into(),
+            action_label: None,
+            on_action: None,
+            duration: None,
+            on_dismiss: None,
         }
+    }
+
+    pub fn variant(mut self, variant: ToastVariant) -> Self {
+        self.variant = variant;
+        self
+    }
+
+    pub fn action(mut self, label: impl Into<String>, callback: Callback<()>) -> Self {
+        self.action_label = Some(label.into());
+        self.on_action = Some(callback);
+        self
+    }
+
+    pub fn duration(mut self, ms: u32) -> Self {
+        self.duration = Some(ms);
+        self
+    }
+
+    pub fn on_dismiss(mut self, callback: Callback<()>) -> Self {
+        self.on_dismiss = Some(callback);
+        self
     }
 }
 
-#[derive(Clone)]
+/// Reactive state shared via context. Provides `show` and `dismiss`.
+#[derive(Clone, Copy)]
 pub struct ToastState {
-    pub toasts: RwSignal<Vec<Toast>>,
+    pub toasts: RwSignal<Vec<ToastData>>,
+    /// IDs of toasts currently playing their exit animation.
+    pub dismissing: RwSignal<Vec<Uuid>>,
 }
