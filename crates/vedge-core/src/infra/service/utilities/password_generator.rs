@@ -1,5 +1,5 @@
 use crate::business::domain::services::GeneratePasswordOptions;
-use rand::Rng;
+use rand::RngExt;
 use std::iter;
 
 const LOWERCASE: &str = "abcdefghijklmnopqrstuvwxyz";
