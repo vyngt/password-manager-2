@@ -1,6 +1,6 @@
 # Vault Management - Feature TODO
 
-> Route: `/v` (VPage) - The core feature of vlock.
+> Route: `/v` (VPage) - The core feature of vedge.
 > Manages credential items (login, SSH, env, certs) with full CRUD, multiple view modes, search/filter, and bulk operations.
 
 ---

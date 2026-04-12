@@ -1,14 +1,14 @@
-# VLock Password Manager - Architecture Documentation
+# VEdge Password Manager - Architecture Documentation
 
 ## Overview
 
-VLock is a modern, secure password manager built with Rust and Tauri, featuring a clean architecture that separates concerns across multiple components. The application follows a layered architecture pattern with clear boundaries between the user interface, business logic, and data persistence layers.
+VEdge is a modern, secure password manager built with Rust and Tauri, featuring a clean architecture that separates concerns across multiple components. The application follows a layered architecture pattern with clear boundaries between the user interface, business logic, and data persistence layers.
 
 ## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        VLock Application                        │
+│                        VEdge Application                        │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
 │  │    App      │    │  Frontend   │    │     UI      │         │
