@@ -78,6 +78,14 @@ impl Size {
         }
     }
 
+    pub fn number_input_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "number-input--sm",
+            Size::Md => "",
+            Size::Lg => "number-input--lg",
+        }
+    }
+
     pub fn segmented_class(&self) -> &'static str {
         match self {
             Size::Sm => "segmented--sm",
@@ -136,6 +144,24 @@ impl Status {
             Status::Error => "input-root--error",
             Status::Success => "input-root--success",
             Status::Warning => "input-root--warning",
+        }
+    }
+
+    pub fn helper_text_class(&self) -> &'static str {
+        match self {
+            Status::Default => "",
+            Status::Error => "helper-text--error",
+            Status::Success => "helper-text--success",
+            Status::Warning => "helper-text--warning",
+        }
+    }
+
+    pub fn number_input_class(&self) -> &'static str {
+        match self {
+            Status::Default => "",
+            Status::Error => "number-input--error",
+            Status::Success => "number-input--success",
+            Status::Warning => "number-input--warning",
         }
     }
 

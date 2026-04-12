@@ -1,10 +1,22 @@
-use super::atoms::AtomsPage;
-use super::buttons::ButtonsPage;
-use super::color_picker::ColorPickerPage;
-use super::controls::ControlsPage;
-use super::forms::FormsPage;
 use super::layout::PlaygroundLayout;
+use super::pg_badge::BadgePage;
+use super::pg_button::ButtonPage;
+use super::pg_checkbox::CheckboxPage;
+use super::pg_helper_text::HelperTextPage;
+use super::pg_icon_button::IconButtonPage;
+use super::pg_input::InputPage;
+use super::pg_label::LabelPage;
+use super::pg_number_input::NumberInputPage;
+use super::pg_password_strength_meter::PasswordStrengthMeterPage;
+use super::pg_radio_group::RadioGroupPage;
+use super::pg_segmented_control::SegmentedControlPage;
+use super::pg_select::SelectPage;
+use super::pg_separator::SeparatorPage;
+use super::pg_spinner::SpinnerPage;
+use super::pg_toggle::TogglePage;
+use super::pg_tooltip::TooltipPage;
 use super::theme::ThemePage;
+use super::color_picker::ColorPickerPage;
 use leptos::prelude::*;
 use leptos_router::{MatchNestedRoutes, components::*, path};
 
@@ -13,11 +25,26 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
         <ParentRoute path=path!("/playground") view=PlaygroundLayout>
             <Route path=path!("/") view=ThemePage />
-            <Route path=path!("/buttons") view=ButtonsPage />
-            <Route path=path!("/forms") view=FormsPage />
-            <Route path=path!("/controls") view=ControlsPage />
-            <Route path=path!("/atoms") view=AtomsPage />
+            // Foundation
+            <Route path=path!("/badge") view=BadgePage />
+            <Route path=path!("/button") view=ButtonPage />
+            <Route path=path!("/icon-button") view=IconButtonPage />
+            <Route path=path!("/separator") view=SeparatorPage />
+            <Route path=path!("/spinner") view=SpinnerPage />
+            // Form
+            <Route path=path!("/checkbox") view=CheckboxPage />
             <Route path=path!("/color-picker") view=ColorPickerPage />
+            <Route path=path!("/helper-text") view=HelperTextPage />
+            <Route path=path!("/input") view=InputPage />
+            <Route path=path!("/label") view=LabelPage />
+            <Route path=path!("/number-input") view=NumberInputPage />
+            <Route path=path!("/password-strength-meter") view=PasswordStrengthMeterPage />
+            <Route path=path!("/radio-group") view=RadioGroupPage />
+            <Route path=path!("/segmented-control") view=SegmentedControlPage />
+            <Route path=path!("/select") view=SelectPage />
+            <Route path=path!("/toggle") view=TogglePage />
+            // Feedback
+            <Route path=path!("/tooltip") view=TooltipPage />
         </ParentRoute>
     }
     .into_inner()

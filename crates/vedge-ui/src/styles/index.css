@@ -8,6 +8,9 @@
 @import "./spinner.css";
 @import "./input.css";
 @import "./label.css";
+@import "./helper-text.css";
+@import "./number-input.css";
+@import "./strength-meter.css";
 
 @import "./checkbox.css";
 @import "./toggle.css";

@@ -1,4 +1,3 @@
-mod styles;
 mod variants;
 
 use crate::primitives::tokens::{Size, Status};
@@ -63,7 +62,11 @@ pub fn Input(
         size.input_root_class(),
         status.input_root_class(),
         if disabled { "input-root--disabled" } else { "" },
-        if read_only { "input-root--readonly" } else { "" },
+        if read_only {
+            "input-root--readonly"
+        } else {
+            ""
+        },
         if loading { "input-root--loading" } else { "" },
         class,
     ]

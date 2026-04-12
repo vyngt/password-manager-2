@@ -1,0 +1,33 @@
+@layer components {
+  .helper-text {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Status modifiers — instant, no transition */
+  .helper-text--error   { color: var(--color-danger-text); }
+  .helper-text--success { color: var(--color-success-text); }
+  .helper-text--warning { color: var(--color-warning-text); }
+
+  /* Icon */
+  .helper-text__icon {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+  }
+
+  .helper-text__icon svg {
+    width: 100%;
+    height: 100%;
+  }
+}
