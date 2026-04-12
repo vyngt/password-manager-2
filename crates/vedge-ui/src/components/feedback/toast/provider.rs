@@ -7,6 +7,13 @@ use leptos::prelude::*;
 
 impl ToastState {
     pub fn show(&self, input: ToastInput) -> Uuid {
+        #[cfg(debug_assertions)]
+        if input.dismiss_label.is_empty() {
+            web_sys::console::error_1(
+                &"Toast: `dismiss_label` is required for i18n.".into(),
+            );
+        }
+
         let id = Uuid::new_v4();
         let toast = ToastData {
             id,
@@ -16,6 +23,7 @@ impl ToastState {
             on_action: input.on_action,
             duration: input.duration.unwrap_or(4000),
             on_dismiss: input.on_dismiss,
+            dismiss_label: input.dismiss_label,
         };
         self.toasts.update(|v| v.push(toast));
         id

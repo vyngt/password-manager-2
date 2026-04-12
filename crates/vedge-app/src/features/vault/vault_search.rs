@@ -18,6 +18,7 @@ pub fn VaultSearch(search_query: RwSignal<String>) -> impl IntoView {
                 size=Size::Lg
                 value=Signal::derive(move || search_query.get())
                 on_input=Callback::new(move |v: String| search_query.set(v))
+                clear_label=Signal::derive(move || t_string!(i18n, playground.clear).to_string())
             />
         </div>
     }

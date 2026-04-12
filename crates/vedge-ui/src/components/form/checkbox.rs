@@ -1,3 +1,4 @@
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::CheckboxSize;
 use leptos::prelude::*;
 use web_sys::HtmlInputElement;
@@ -10,7 +11,7 @@ pub fn Checkbox(
     #[prop(optional)] size: CheckboxSize,
     #[prop(optional)] disabled: bool,
     #[prop(into, default = None)] on_change: Option<Callback<bool>>,
-    #[prop(optional, default = "")] aria_label: &'static str,
+    #[prop(into, default = TextProp::default())] aria_label: TextProp,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let internal = RwSignal::new(default_checked);
@@ -54,12 +55,6 @@ pub fn Checkbox(
         .join(" ")
     };
 
-    let aria_label_attr = if aria_label.is_empty() {
-        None
-    } else {
-        Some(aria_label)
-    };
-
     // Check icon SVG (polyline checkmark)
     let check_icon = move || {
         if is_indeterminate() {
@@ -94,7 +89,7 @@ pub fn Checkbox(
                 aria-checked=move || {
                     if is_indeterminate() { "mixed" } else if is_checked() { "true" } else { "false" }
                 }
-                aria-label=aria_label_attr
+                aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
                 on:change=handle_change
             />
             <span class="checkbox__box">

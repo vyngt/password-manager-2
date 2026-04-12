@@ -1,3 +1,4 @@
+use crate::i18n::*;
 use leptos::prelude::*;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -7,24 +8,27 @@ use super::common::Section;
 
 #[component]
 pub fn ToastPage() -> impl IntoView {
+    let i18n = use_i18n();
     let toast = use_toast();
 
     let show_default = move |_: web_sys::MouseEvent| {
-        toast.show(ToastInput::new("Settings saved successfully"));
+        toast.show(ToastInput::new("Settings saved successfully").dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())));
     };
     let show_success = move |_: web_sys::MouseEvent| {
-        toast.show(ToastInput::new("Entry created").variant(ToastVariant::Success));
+        toast.show(ToastInput::new("Entry created").variant(ToastVariant::Success).dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())));
     };
     let show_warning = move |_: web_sys::MouseEvent| {
         toast.show(
             ToastInput::new("Exported — some fields were skipped")
-                .variant(ToastVariant::Warning),
+                .variant(ToastVariant::Warning)
+                .dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())),
         );
     };
     let show_danger = move |_: web_sys::MouseEvent| {
         toast.show(
             ToastInput::new("Sync error — please try again")
-                .variant(ToastVariant::Danger),
+                .variant(ToastVariant::Danger)
+                .dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())),
         );
     };
 
@@ -33,8 +37,9 @@ pub fn ToastPage() -> impl IntoView {
             ToastInput::new("Item deleted")
                 .variant(ToastVariant::Default)
                 .action("Undo", Callback::new(move |()| {
-                    toast.show(ToastInput::new("Undo successful").variant(ToastVariant::Success));
-                })),
+                    toast.show(ToastInput::new("Undo successful").variant(ToastVariant::Success).dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())));
+                }))
+                .dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())),
         );
     };
 
@@ -42,14 +47,16 @@ pub fn ToastPage() -> impl IntoView {
         toast.show(
             ToastInput::new("Connection lost — waiting for reconnect")
                 .variant(ToastVariant::Danger)
-                .duration(0),
+                .duration(0)
+                .dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())),
         );
     };
 
     let show_short = move |_: web_sys::MouseEvent| {
         toast.show(
             ToastInput::new("Copied to clipboard")
-                .duration(2000),
+                .duration(2000)
+                .dismiss_label(untrack(|| t_string!(i18n, playground.dismiss_notification).to_string())),
         );
     };
 

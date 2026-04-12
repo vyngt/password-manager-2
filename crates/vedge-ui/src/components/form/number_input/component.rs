@@ -1,3 +1,4 @@
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Status};
 use leptos::prelude::*;
 use web_sys::HtmlInputElement;
@@ -39,9 +40,25 @@ pub fn NumberInput(
     #[prop(optional)] disabled: bool,
     #[prop(into, default = None)] on_change: Option<Callback<f64>>,
     #[prop(optional, default = "")] aria_label: &'static str,
+    #[prop(into, default = TextProp::default())] decrement_label: TextProp,
+    #[prop(into, default = TextProp::default())] increment_label: TextProp,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
+    #[cfg(debug_assertions)]
+    if decrement_label.get_untracked().is_empty() {
+        web_sys::console::error_1(
+            &"NumberInput: `decrement_label` is required for i18n.".into(),
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    if increment_label.get_untracked().is_empty() {
+        web_sys::console::error_1(
+            &"NumberInput: `increment_label` is required for i18n.".into(),
+        );
+    }
+
     let internal = RwSignal::new(default_value);
     let current_value = move || value.map(|s| s.get()).unwrap_or_else(|| internal.get());
 
@@ -153,7 +170,7 @@ pub fn NumberInput(
             <button
                 type="button"
                 class="number-input__stepper number-input__stepper--decrement"
-                aria-label="Decrease"
+                aria-label=move || decrement_label.get()
                 disabled=move || disabled || !can_decrement()
                 on:click=handle_decrement_click
                 tabindex="-1"
@@ -191,7 +208,7 @@ pub fn NumberInput(
             <button
                 type="button"
                 class="number-input__stepper number-input__stepper--increment"
-                aria-label="Increase"
+                aria-label=move || increment_label.get()
                 disabled=move || disabled || !can_increment()
                 on:click=handle_increment_click
                 tabindex="-1"

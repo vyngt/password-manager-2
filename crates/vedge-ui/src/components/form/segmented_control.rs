@@ -1,3 +1,4 @@
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::Size;
 use leptos::prelude::*;
 use leptos_icons::Icon;
@@ -56,7 +57,7 @@ pub fn SegmentedControl(
     #[prop(optional)] size: Size,
     #[prop(optional)] disabled: bool,
     #[prop(into, default = None)] on_change: Option<Callback<String>>,
-    #[prop(optional, default = "")] aria_label: &'static str,
+    #[prop(into, default = TextProp::default())] aria_label: TextProp,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     #[cfg(debug_assertions)]
@@ -164,18 +165,12 @@ pub fn SegmentedControl(
     ]
     .join(" ");
 
-    let aria_label_attr = if aria_label.is_empty() {
-        None
-    } else {
-        Some(aria_label)
-    };
-
     view! {
         <div
             node_ref=root_ref
             class=root_cls
             role="radiogroup"
-            aria-label=aria_label_attr
+            aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
             on:keydown=handle_keydown
         >
             <span

@@ -1,3 +1,4 @@
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::Orientation;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
@@ -29,7 +30,7 @@ pub fn RadioGroup(
     #[prop(optional)] disabled: bool,
     #[prop(into, default = None)] on_change: Option<Callback<String>>,
     #[prop(optional, default = "")] name: &'static str,
-    #[prop(optional, default = "")] aria_label: &'static str,
+    #[prop(into, default = TextProp::default())] aria_label: TextProp,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     // Generate a unique name if none provided, so multiple groups don't collide.
@@ -126,17 +127,11 @@ pub fn RadioGroup(
     ]
     .join(" ");
 
-    let aria_label_attr = if aria_label.is_empty() {
-        None
-    } else {
-        Some(aria_label)
-    };
-
     view! {
         <div
             class=root_cls
             role="radiogroup"
-            aria-label=aria_label_attr
+            aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
             on:keydown=handle_keydown
         >
             {options

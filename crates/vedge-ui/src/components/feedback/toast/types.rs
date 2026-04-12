@@ -13,6 +13,7 @@ pub struct ToastData {
     pub on_action: Option<Callback<()>>,
     pub duration: u32,
     pub on_dismiss: Option<Callback<()>>,
+    pub dismiss_label: String,
 }
 
 /// Input struct for creating a toast. Use builder methods for convenience.
@@ -23,6 +24,7 @@ pub struct ToastInput {
     pub on_action: Option<Callback<()>>,
     pub duration: Option<u32>,
     pub on_dismiss: Option<Callback<()>>,
+    pub dismiss_label: String,
 }
 
 impl ToastInput {
@@ -34,6 +36,7 @@ impl ToastInput {
             on_action: None,
             duration: None,
             on_dismiss: None,
+            dismiss_label: String::new(),
         }
     }
 
@@ -55,6 +58,11 @@ impl ToastInput {
 
     pub fn on_dismiss(mut self, callback: Callback<()>) -> Self {
         self.on_dismiss = Some(callback);
+        self
+    }
+
+    pub fn dismiss_label(mut self, label: impl Into<String>) -> Self {
+        self.dismiss_label = label.into();
         self
     }
 }

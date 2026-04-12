@@ -1,5 +1,6 @@
 mod variants;
 
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Status};
 use icondata as i;
 use leptos::ev::Targeted;
@@ -25,6 +26,9 @@ pub fn Input(
     #[prop(into, default = None)] on_input: Option<Callback<String>>,
     #[prop(optional)] required: bool,
     #[prop(optional, default = "")] aria_describedby: &'static str,
+    #[prop(into, default = TextProp::default())] clear_label: TextProp,
+    #[prop(into, default = TextProp::default())] reveal_label: TextProp,
+    #[prop(into, default = TextProp::default())] hide_label: TextProp,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     // Dev assertions
@@ -35,6 +39,22 @@ pub fn Input(
     if leading_icon.is_some() && !prefix.is_empty() {
         web_sys::console::error_1(
             &"Input: `leading_icon` and `prefix` are mutually exclusive.".into(),
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    if input_type == "search" && clear_label.get_untracked().is_empty() {
+        web_sys::console::error_1(
+            &"Input: type=\"search\" requires `clear_label` for i18n.".into(),
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    if input_type == "password"
+        && (reveal_label.get_untracked().is_empty() || hide_label.get_untracked().is_empty())
+    {
+        web_sys::console::error_1(
+            &"Input: type=\"password\" requires `reveal_label` and `hide_label` for i18n.".into(),
         );
     }
 
@@ -148,7 +168,7 @@ pub fn Input(
                             <button
                                 type="button"
                                 class="input-trailing-btn"
-                                aria-label="Clear"
+                                aria-label=move || clear_label.get()
                                 on:click=handle_clear
                             >
                                 <Icon icon=i::FaXmarkSolid />
@@ -164,7 +184,7 @@ pub fn Input(
                             type="button"
                             class="input-trailing-btn"
                             aria-label=move || {
-                                if revealed.get() { "Hide password" } else { "Show password" }
+                                if revealed.get() { hide_label.get() } else { reveal_label.get() }
                             }
                             on:click=move |_| set_revealed.update(|r| *r = !*r)
                         >

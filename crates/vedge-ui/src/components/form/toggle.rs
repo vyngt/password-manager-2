@@ -1,3 +1,4 @@
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::CheckboxSize;
 use leptos::prelude::*;
 use web_sys::HtmlInputElement;
@@ -9,7 +10,7 @@ pub fn Toggle(
     #[prop(optional)] size: CheckboxSize,
     #[prop(optional)] disabled: bool,
     #[prop(into, default = None)] on_change: Option<Callback<bool>>,
-    #[prop(optional, default = "")] aria_label: &'static str,
+    #[prop(into, default = TextProp::default())] aria_label: TextProp,
     #[prop(optional, default = "")] aria_labelledby: &'static str,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -37,12 +38,6 @@ pub fn Toggle(
     ]
     .join(" ");
 
-    let aria_label_attr = if aria_label.is_empty() {
-        None
-    } else {
-        Some(aria_label)
-    };
-
     let aria_labelledby_attr = if aria_labelledby.is_empty() {
         None
     } else {
@@ -57,7 +52,7 @@ pub fn Toggle(
                 type="checkbox"
                 disabled=disabled
                 prop:checked=is_checked
-                aria-label=aria_label_attr
+                aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
                 aria-labelledby=aria_labelledby_attr
                 on:change=handle_change
             />

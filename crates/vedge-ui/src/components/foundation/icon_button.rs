@@ -1,10 +1,11 @@
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Shape, Size, Variant};
 use leptos::prelude::*;
 
 #[component]
 pub fn IconButton(
     children: Children,
-    #[prop(into)] aria_label: String,
+    #[prop(into)] aria_label: TextProp,
     #[prop(optional, default = Variant::Ghost)] variant: Variant,
     #[prop(optional)] size: Size,
     #[prop(optional)] shape: Shape,
@@ -32,7 +33,7 @@ pub fn IconButton(
             type=button_type
             class=cls
             disabled=is_disabled
-            aria-label=aria_label
+            aria-label=move || aria_label.get()
             aria-busy=aria_busy_attr
         >
             {if loading {

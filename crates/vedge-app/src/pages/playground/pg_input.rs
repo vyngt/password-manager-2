@@ -1,3 +1,4 @@
+use crate::i18n::*;
 use leptos::prelude::*;
 use vedge_ui::components::form::label::Label;
 use vedge_ui::components::Input;
@@ -10,6 +11,7 @@ use super::common::Section;
 
 #[component]
 pub fn InputPage() -> impl IntoView {
+    let i18n = use_i18n();
     let (text_val, set_text_val) = signal(String::new());
     let (password_val, set_password_val) = signal(String::new());
     let (search_val, set_search_val) = signal(String::new());
@@ -55,6 +57,8 @@ pub fn InputPage() -> impl IntoView {
                             placeholder=Signal::stored("Enter password".to_string())
                             value=Signal::derive(move || password_val.get())
                             on_input=Callback::new(move |v: String| set_password_val.set(v))
+                            reveal_label=Signal::derive(move || t_string!(i18n, playground.show_password).to_string())
+                            hide_label=Signal::derive(move || t_string!(i18n, playground.hide_password).to_string())
                         />
                     </div>
                     <div class="space-y-1">
@@ -65,6 +69,7 @@ pub fn InputPage() -> impl IntoView {
                             placeholder=Signal::stored("Search...".to_string())
                             value=Signal::derive(move || search_val.get())
                             on_input=Callback::new(move |v: String| set_search_val.set(v))
+                            clear_label=Signal::derive(move || t_string!(i18n, playground.clear).to_string())
                         />
                     </div>
                 </div>
