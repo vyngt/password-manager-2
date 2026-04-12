@@ -2,6 +2,7 @@ draft/
 scripts/
 .vscode/
 target/
-.claude/
 
 *.env
+
+local/

@@ -1,1 +1,0 @@
-export { PasswordGenerator } from "./PasswordGenerator";

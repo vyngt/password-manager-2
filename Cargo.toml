@@ -1,0 +1,10 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/vedge-codegen",
+    "crates/vedge-core",
+    "crates/vedge-ui",
+    "crates/vedge-app",
+    "crates/vedge-tauri",
+    "crates/vedge-tools",
+]

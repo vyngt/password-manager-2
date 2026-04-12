@@ -1,0 +1,86 @@
+@layer components {
+  /* ============================================================
+     Checkbox — root label (click area)
+     ============================================================ */
+  .checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  /* ---- Hidden native input ---- */
+  .checkbox__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  /* ---- Visual box ---- */
+  .checkbox__box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-strong);
+    background: transparent;
+    transition: background-color var(--duration-fast) var(--ease-out),
+                border-color     var(--duration-fast) var(--ease-out);
+    flex-shrink: 0;
+  }
+
+  /* ---- Sizes ---- */
+  .checkbox--sm .checkbox__box { width: 14px; height: 14px; }
+  .checkbox--md .checkbox__box { width: 16px; height: 16px; }
+
+  /* ---- Checked ---- */
+  .checkbox__input:checked ~ .checkbox__box,
+  .checkbox--indeterminate .checkbox__box {
+    background: var(--color-primary);
+    border-color: transparent;
+  }
+
+  /* ---- Hover ---- */
+  .checkbox:hover:not(.checkbox--disabled) .checkbox__input:not(:checked) ~ .checkbox__box {
+    border-color: var(--color-primary);
+  }
+  .checkbox:hover:not(.checkbox--disabled) .checkbox__input:checked ~ .checkbox__box,
+  .checkbox:hover:not(.checkbox--disabled).checkbox--indeterminate .checkbox__box {
+    background: var(--color-primary-hover);
+  }
+
+  /* ---- Focus ---- */
+  .checkbox__input:focus-visible ~ .checkbox__box {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* ---- Icon ---- */
+  .checkbox__icon {
+    color: #ffffff;
+    width: 12px;
+    height: 12px;
+    animation: checkbox-pop var(--duration-fast) var(--ease-spring) forwards;
+  }
+
+  .checkbox--sm .checkbox__icon { width: 10px; height: 10px; }
+
+  @keyframes checkbox-pop {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* ---- Disabled ---- */
+  .checkbox--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .checkbox__box { transition-duration: 0.01ms !important; }
+    .checkbox__icon { animation-duration: 0.01ms !important; }
+  }
+}

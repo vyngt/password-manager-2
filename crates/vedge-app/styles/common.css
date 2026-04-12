@@ -1,0 +1,17 @@
+@layer components {
+    .app-scrollbar::-webkit-scrollbar {
+        @apply h-1 w-1 rounded-md bg-primary/10;
+    }
+
+    .app-scrollbar::-webkit-scrollbar-thumb {
+        @apply rounded-md bg-primary/30;
+    }
+
+    .app-scrollbar::-webkit-scrollbar-thumb:hover {
+        @apply bg-primary/50;
+    }
+
+    .app-scrollbar::-webkit-scrollbar-thumb:active {
+        @apply bg-primary/65;
+    }
+}

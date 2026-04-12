@@ -1,0 +1,32 @@
+[package]
+name = "vedge-tools"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "migrate_vault"
+path = "src/bin/migrate_vault.rs"
+
+[[bin]]
+name = "migrate_theme"
+path = "src/bin/migrate_theme.rs"
+
+[[bin]]
+name = "encrypt"
+path = "src/bin/encrypt.rs"
+
+[dependencies]
+tokio = { version = "1.51.1", features = ["full", "tokio-macros"] }
+vedge-core = { path = "../vedge-core" }
+dotenvy = "0.15.7"
+sea-orm-cli = "1.1.20"
+
+[dependencies.sea-orm]
+version = "1.1.20"
+features = ["sqlx-sqlite", "runtime-tokio", "macros", "sqlite-use-returning-for-3_35"]
+default-features = false
+
+[dependencies.sea-orm-migration]
+version = "1.1.20"
+features = ["runtime-tokio", "sqlx-sqlite", "sqlite-use-returning-for-3_35", "with-chrono", "with-time", "with-uuid"]
+default-features = false

@@ -1,0 +1,52 @@
+pub mod business {
+    pub mod usecases {
+        pub mod theme {
+            pub mod create_color_scheme;
+            pub mod delete_color_scheme;
+            pub mod get_color_scheme;
+            pub mod get_current_theme;
+            pub mod list_color_schemes;
+            pub mod test_utils;
+            pub mod update_color_scheme;
+            pub mod update_theme;
+        }
+        pub mod utilities {
+            pub mod generate_password;
+            pub mod read_from_file;
+            pub mod test_utils;
+            pub mod write_to_file;
+        }
+        pub mod vault {
+            pub mod change_key_vault;
+            pub mod create_vault_item;
+            pub mod delete_vault_item;
+            pub mod export_vault_items;
+            pub mod get_vault_item;
+            pub mod import_vault_items;
+            pub mod list_vault_items;
+            pub mod test_utils;
+            pub mod unlock_vault;
+            pub mod update_vault_item;
+        }
+    }
+}
+
+pub mod infra {
+    pub mod data {
+        pub mod sqlite {
+            pub mod mappers {
+                pub mod db_theme {
+                    pub mod color_scheme;
+                    pub mod theme;
+                }
+                pub mod db_vault {
+                    pub mod vault_item;
+                }
+            }
+            pub mod repositories {
+                pub mod theme;
+                pub mod vault_item;
+            }
+        }
+    }
+}
