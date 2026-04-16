@@ -43,6 +43,7 @@ const GROUPS: &[SidebarGroup] = &[
     SidebarGroup {
         label: "Feedback",
         items: &[
+            SidebarItem { name: "Dialog", path: "/playground/dialog" },
             SidebarItem { name: "Toast", path: "/playground/toast" },
             SidebarItem { name: "Tooltip", path: "/playground/tooltip" },
         ],

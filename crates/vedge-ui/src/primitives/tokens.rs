@@ -391,3 +391,25 @@ impl ToastVariant {
         }
     }
 }
+
+/// Dialog max-width scale. Separate from `Size` because `Full` (viewport-fill)
+/// is a dialog-specific concept that does not fit the sm/md/lg typography scale.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum DialogSize {
+    Sm,
+    #[default]
+    Md,
+    Lg,
+    Full,
+}
+
+impl DialogSize {
+    pub fn dialog_class(&self) -> &'static str {
+        match self {
+            DialogSize::Sm => "dialog--sm",
+            DialogSize::Md => "dialog--md",
+            DialogSize::Lg => "dialog--lg",
+            DialogSize::Full => "dialog--full",
+        }
+    }
+}

@@ -1,0 +1,134 @@
+@layer components {
+  /* ============================================================
+     Dialog / Modal — blocking overlay
+     ============================================================ */
+
+  /* Scrim — full viewport, portal-rendered */
+  .dialog-scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--shadow-scrim);
+    z-index: 50; /* architectural constant, not a design token —
+                    dialog must always render above all page content.
+                    if anything in the app legitimately exceeds 50,
+                    audit and document the z-index layers explicitly. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+  }
+
+  /* Container */
+  .dialog {
+    position: relative;
+    background: var(--color-surface-4);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-height: calc(100vh - var(--space-8));
+    overflow: hidden;
+  }
+
+  .dialog--sm   { max-width: 400px; }
+  .dialog--md   { max-width: 560px; }
+  .dialog--lg   { max-width: 720px; }
+  .dialog--full { max-width: calc(100vw - var(--space-8)); }
+
+  /* Header */
+  .dialog__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-6) var(--space-6) var(--space-4);
+    flex-shrink: 0;
+  }
+
+  .dialog__header-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dialog__title {
+    font-family: var(--font-sans);
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: 28px;
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  /* Body — scrollable */
+  .dialog__body {
+    padding: 0 var(--space-6);
+    overflow-y: auto;
+    flex: 1;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: 20px;
+    color: var(--color-text-secondary);
+  }
+
+  /* Footer */
+  .dialog__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6) var(--space-6);
+    flex-shrink: 0;
+  }
+
+  /* Danger button separation — consumer responsibility via margin-left: auto */
+  .dialog__footer .btn--danger {
+    margin-left: var(--space-6); /* minimum 24px from cancel */
+  }
+
+  /* Enter animations */
+  @keyframes scrim-enter {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes dialog-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Exit animations */
+  @keyframes scrim-exit {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+
+  @keyframes dialog-exit {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(8px); }
+  }
+
+  .dialog-scrim[data-state="open"] {
+    animation: scrim-enter var(--duration-base) var(--ease-out) forwards;
+  }
+  .dialog-scrim[data-state="open"] .dialog {
+    animation: dialog-enter var(--duration-base) var(--ease-out) forwards;
+  }
+
+  .dialog-scrim[data-state="closing"] {
+    animation: scrim-exit var(--duration-fast) var(--ease-in) forwards;
+  }
+  .dialog-scrim[data-state="closing"] .dialog {
+    animation: dialog-exit var(--duration-fast) var(--ease-in) forwards;
+  }
+
+  /* Body scroll lock — applied to <body> by Dialog on mount */
+  .dialog-scroll-lock {
+    overflow: hidden;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dialog-scrim,
+    .dialog { animation-duration: 0.01ms !important; }
+  }
+}

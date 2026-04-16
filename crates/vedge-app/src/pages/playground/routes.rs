@@ -2,6 +2,7 @@ use super::layout::PlaygroundLayout;
 use super::pg_badge::BadgePage;
 use super::pg_button::ButtonPage;
 use super::pg_checkbox::CheckboxPage;
+use super::pg_dialog::DialogPage;
 use super::pg_helper_text::HelperTextPage;
 use super::pg_icon_button::IconButtonPage;
 use super::pg_input::InputPage;
@@ -47,6 +48,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/textarea") view=TextareaPage />
             <Route path=path!("/toggle") view=TogglePage />
             // Feedback
+            <Route path=path!("/dialog") view=DialogPage />
             <Route path=path!("/toast") view=ToastPage />
             <Route path=path!("/tooltip") view=TooltipPage />
         </ParentRoute>
