@@ -48,6 +48,12 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem { name: "Tooltip", path: "/playground/tooltip" },
         ],
     },
+    SidebarGroup {
+        label: "Data Display",
+        items: &[
+            SidebarItem { name: "Data Table", path: "/playground/data-table" },
+        ],
+    },
 ];
 
 #[component]

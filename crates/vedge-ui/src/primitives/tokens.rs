@@ -392,6 +392,47 @@ impl ToastVariant {
     }
 }
 
+/// Horizontal text alignment for tabular data.
+/// Start (default) = left in LTR, right in RTL. End = the inverse.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum Align {
+    #[default]
+    Start,
+    End,
+}
+
+impl Align {
+    pub fn data_table_th_class(&self) -> &'static str {
+        match self {
+            Align::Start => "",
+            Align::End => "data-table__th--end",
+        }
+    }
+
+    pub fn data_table_td_class(&self) -> &'static str {
+        match self {
+            Align::Start => "",
+            Align::End => "data-table__td--end",
+        }
+    }
+}
+
+/// Sort direction — used by sortable tables and data grids.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortDirection {
+    Asc,
+    Desc,
+}
+
+impl SortDirection {
+    pub fn as_aria(&self) -> &'static str {
+        match self {
+            SortDirection::Asc => "ascending",
+            SortDirection::Desc => "descending",
+        }
+    }
+}
+
 /// Dialog max-width scale. Separate from `Size` because `Full` (viewport-fill)
 /// is a dialog-specific concept that does not fit the sm/md/lg typography scale.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
