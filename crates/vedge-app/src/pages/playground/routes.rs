@@ -9,10 +9,12 @@ use super::pg_dialog::DialogPage;
 use super::pg_helper_text::HelperTextPage;
 use super::pg_icon_button::IconButtonPage;
 use super::pg_input::InputPage;
+use super::pg_kbd::KbdPage;
 use super::pg_label::LabelPage;
 use super::pg_number_input::NumberInputPage;
 use super::pg_pagination::PaginationPage;
 use super::pg_password_strength_meter::PasswordStrengthMeterPage;
+use super::pg_progress_bar::ProgressBarPage;
 use super::pg_radio_group::RadioGroupPage;
 use super::pg_segmented_control::SegmentedControlPage;
 use super::pg_select::SelectPage;
@@ -38,6 +40,8 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/badge") view=BadgePage />
             <Route path=path!("/button") view=ButtonPage />
             <Route path=path!("/icon-button") view=IconButtonPage />
+            <Route path=path!("/kbd") view=KbdPage />
+            <Route path=path!("/progress-bar") view=ProgressBarPage />
             <Route path=path!("/separator") view=SeparatorPage />
             <Route path=path!("/spinner") view=SpinnerPage />
             // Form

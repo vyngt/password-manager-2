@@ -130,6 +130,14 @@ impl Size {
             Size::Lg => "datepicker-trigger--lg",
         }
     }
+
+    pub fn progress_track_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "progress__track--sm",
+            Size::Md => "progress__track--md",
+            Size::Lg => "progress__track--lg",
+        }
+    }
 }
 
 /// Field status — communicates validation state visually.
@@ -446,6 +454,26 @@ impl SortDirection {
         match self {
             SortDirection::Asc => "ascending",
             SortDirection::Desc => "descending",
+        }
+    }
+}
+
+/// ProgressBar fill variant — determinate progress only (not for indeterminate loading,
+/// which belongs to Spinner).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum ProgressVariant {
+    #[default]
+    Default,
+    Success,
+    Danger,
+}
+
+impl ProgressVariant {
+    pub fn progress_fill_class(&self) -> &'static str {
+        match self {
+            ProgressVariant::Default => "",
+            ProgressVariant::Success => "progress__fill--success",
+            ProgressVariant::Danger => "progress__fill--danger",
         }
     }
 }

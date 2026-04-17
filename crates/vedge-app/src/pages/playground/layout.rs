@@ -20,6 +20,8 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem { name: "Badge", path: "/playground/badge" },
             SidebarItem { name: "Button", path: "/playground/button" },
             SidebarItem { name: "Icon Button", path: "/playground/icon-button" },
+            SidebarItem { name: "Kbd", path: "/playground/kbd" },
+            SidebarItem { name: "Progress Bar", path: "/playground/progress-bar" },
             SidebarItem { name: "Separator", path: "/playground/separator" },
             SidebarItem { name: "Spinner", path: "/playground/spinner" },
         ],
