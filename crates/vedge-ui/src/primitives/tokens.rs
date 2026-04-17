@@ -122,6 +122,14 @@ impl Size {
             Size::Md | Size::Lg => "",
         }
     }
+
+    pub fn date_picker_trigger_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "datepicker-trigger--sm",
+            Size::Md => "",
+            Size::Lg => "datepicker-trigger--lg",
+        }
+    }
 }
 
 /// Field status — communicates validation state visually.
@@ -188,6 +196,15 @@ impl Status {
             Status::Error => "select-trigger--error",
             Status::Success => "select-trigger--success",
             Status::Warning => "select-trigger--warning",
+        }
+    }
+
+    pub fn date_picker_trigger_class(&self) -> &'static str {
+        match self {
+            Status::Default => "",
+            Status::Error => "datepicker-trigger--error",
+            Status::Success => "datepicker-trigger--success",
+            Status::Warning => "datepicker-trigger--warning",
         }
     }
 }

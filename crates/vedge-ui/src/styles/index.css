@@ -21,6 +21,7 @@
 @import "./select.css";
 
 @import "./color-picker.css";
+@import "./date-picker.css";
 @import "./dialog.css";
 @import "./toast.css";
 @import "./tooltip.css";

@@ -1,5 +1,6 @@
 pub mod checkbox;
 pub mod color_picker;
+pub mod date_picker;
 pub mod helper_text;
 pub mod input;
 pub mod label;
@@ -13,6 +14,7 @@ pub mod toggle;
 
 pub use checkbox::*;
 pub use color_picker::*;
+pub use date_picker::*;
 pub use helper_text::*;
 pub use input::*;
 pub use label::*;

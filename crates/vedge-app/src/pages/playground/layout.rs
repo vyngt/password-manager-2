@@ -28,6 +28,7 @@ const GROUPS: &[SidebarGroup] = &[
         items: &[
             SidebarItem { name: "Checkbox", path: "/playground/checkbox" },
             SidebarItem { name: "Color Picker", path: "/playground/color-picker" },
+            SidebarItem { name: "Date Picker", path: "/playground/date-picker" },
             SidebarItem { name: "Helper Text", path: "/playground/helper-text" },
             SidebarItem { name: "Input", path: "/playground/input" },
             SidebarItem { name: "Label", path: "/playground/label" },

@@ -18,6 +18,7 @@ wasm-bindgen-futures = "0.4.68"
 uuid = { version = "1.23.0", features = ["v4", "js"] }
 vedge-ui = {path = "../vedge-ui"}
 leptos_i18n = { version = "0.6.1", features = ["csr"] }
+chrono = { version = "0.4.44", default-features = false, features = ["clock", "wasmbind"] }
 
 [build-dependencies]
 leptos_i18n_build = { version = "0.6.1", features = ["csr"] }
