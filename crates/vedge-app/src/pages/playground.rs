@@ -19,6 +19,7 @@ mod pg_select;
 mod pg_separator;
 mod pg_spinner;
 mod pg_textarea;
+mod pg_time_picker;
 mod pg_toast;
 mod pg_toggle;
 mod pg_tooltip;

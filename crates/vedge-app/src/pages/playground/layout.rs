@@ -38,6 +38,7 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem { name: "Segmented Control", path: "/playground/segmented-control" },
             SidebarItem { name: "Select", path: "/playground/select" },
             SidebarItem { name: "Textarea", path: "/playground/textarea" },
+            SidebarItem { name: "Time Picker", path: "/playground/time-picker" },
             SidebarItem { name: "Toggle", path: "/playground/toggle" },
         ],
     },

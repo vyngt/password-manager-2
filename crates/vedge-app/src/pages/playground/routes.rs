@@ -16,6 +16,7 @@ use super::pg_segmented_control::SegmentedControlPage;
 use super::pg_select::SelectPage;
 use super::pg_separator::SeparatorPage;
 use super::pg_textarea::TextareaPage;
+use super::pg_time_picker::TimePickerPage;
 use super::pg_toast::ToastPage;
 use super::pg_spinner::SpinnerPage;
 use super::pg_toggle::TogglePage;
@@ -49,6 +50,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/segmented-control") view=SegmentedControlPage />
             <Route path=path!("/select") view=SelectPage />
             <Route path=path!("/textarea") view=TextareaPage />
+            <Route path=path!("/time-picker") view=TimePickerPage />
             <Route path=path!("/toggle") view=TogglePage />
             // Data Display
             <Route path=path!("/data-table") view=DataTablePage />
