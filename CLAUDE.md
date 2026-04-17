@@ -2,7 +2,101 @@
 
 ## Project Overview
 
-VEdge is a Tauri desktop app with a Leptos 0.8 (Rust/WASM) frontend and a custom design system (`vedge-ui`).
+VEdge is a Tauri desktop app with a Leptos 0.8 (Rust/WASM) frontend and a custom design system (`vedge-ui`). Target is CSR (Client-Side Rendering) only — SSR / cargo-leptos are **not** in scope.
+
+## Leptos fundamentals
+
+Full reference: [`docs/Leptos Development Guidelines — Rust 2024 Edition.md`](docs/Leptos%20Development%20Guidelines%20%E2%80%94%20Rust%202024%20Edition.md). Read that first when the task touches reactivity, async, or global state. The rules below are the subset that matters for component authoring in `vedge-ui`.
+
+### Signal hierarchy — pick the least powerful thing that works
+
+| Shape | Use when |
+|---|---|
+| `move \|\| expr` (plain closure) | Default for derived values — zero allocation, recomputes on read |
+| `signal(T)` → `(ReadSignal, WriteSignal)` | Local component state with clear read/write separation |
+| `RwSignal::new(T)` | Internal state that must be captured by several closures or stored in a struct (`Copy + 'static`) |
+| `Memo::new(\|_\| expr)` | Expensive computation **or** to suppress downstream re-runs when the value hasn't changed (uses `PartialEq`) |
+| `StoredValue::new(T)` | Non-reactive captured values: configs, heavy structs, `NodeRef` groups |
+
+Reach for `Memo` only when the work is non-trivial or you need to gate re-renders — additions and lookups belong in a plain closure.
+
+### Reactivity anti-patterns
+
+- **Static snapshot**: `view! { <p>{count.get()}</p> }` renders once. Use `{count}` (signals are `IntoView`) or `{move || count.get()}`.
+- **Derive via Effect**: don't `set_derived.set(...)` inside an `Effect` — use a closure or `Memo`. `Effect` is only for side effects leaving the reactive world.
+- **`<For>` keyed by index**: always key by a stable unique ID. Reorders otherwise produce wrong DOM.
+- **Branch type mismatch in `view!`**: two `view!` arms in an `if/else` don't type-check. Use `leptos::either::{Either, EitherOf3, EitherOf4}` or, for boolean toggles, `<Show when=… fallback=…>`.
+- **Inline `{move || if cond { view!{…A} } else { view!{…B} }}`**: the closure re-runs whenever any signal inside it changes. `<Show>` memoizes the predicate — prefer it for non-trivial branches.
+- **`RwSignal<Vec<RwSignal<T>>>`**: inner signals leak when the outer `Vec` shrinks. Use `#[derive(Store)]` from `reactive_stores` for structured/nested app state.
+
+### Types and ownership in props
+
+- **Literal-only props** (`id`, `class`, icon tokens): `&'static str` is fine — `'static` doesn't trigger Rust 2024's RPIT capture rules.
+- **User-provided strings** (labels, placeholders): prefer `String`, or `Signal<String>` for reactive content. Do **not** introduce `&'a` lifetime parameters on `#[component]` functions — they collide with 2024 RPIT capture.
+- **Cross-boundary integers** (IDs, counts): use explicit widths (`u32`, `u64`). WASM is 32-bit, so `usize` values above `u32::MAX` silently truncate.
+- **Callbacks**: `Callback<T>` (not bare `Fn`) — it's `Copy + 'static` and plays well with `#[prop(into)]`.
+
+### Controlled inputs
+
+Never write `value=signal` on an `<input>` — that sets the HTML attribute once and then stops. Use the DOM property binding:
+
+```rust
+view! {
+    <input
+        prop:value=move || name.get()
+        on:input:target=move |ev| set_name.set(ev.target().value())
+    />
+}
+```
+
+### Dynamic attributes and classes
+
+```rust
+view! {
+    <button
+        class="btn"
+        class:active=move || is_active.get()                  // toggle a single class
+        class=("btn--primary", move || variant.get().is_primary()) // class name w/ special chars
+        style:opacity=move || if loading.get() { "0.5" } else { "1" }
+        aria-pressed=move || is_pressed.get().then_some("true") // Option<&str> → renders or skipped
+        prop:value=move || input_value.get()                   // DOM property, not attribute
+        on:input:target=move |ev| set_input_value.set(ev.target().value())
+    />
+}
+```
+
+`Option<&str>` is the idiomatic way to suppress an attribute: return `None` and nothing renders.
+
+### Control flow
+
+```rust
+// Boolean toggle
+<Show when=move || is_open.get() fallback=|| view!{<Closed/>}>
+    <OpenPanel/>
+</Show>
+
+// Multi-branch
+use leptos::either::EitherOf3;
+{move || match status.get() {
+    Status::Loading => EitherOf3::A(view!{<Spinner/>}),
+    Status::Error   => EitherOf3::B(view!{<ErrorView/>}),
+    Status::Done    => EitherOf3::C(view!{<Content/>}),
+}}
+
+// List — stable unique key, never index
+<For
+    each=move || items.get()
+    key=|item| item.id
+    children=|item| view!{ <Row item=item/> }
+/>
+```
+
+### Async and side effects
+
+- Mutations / commands: `Action::new(|input: &T| async { … })`. Read `.pending()`, `.value()` reactively.
+- Data fetch: `Resource::new(source, fetcher)`; browser-only / `!Send` fetches use `LocalResource`. Read inside `<Suspense>` / `<Transition>`.
+- No `tokio::spawn` in WASM — use `leptos::task::spawn_local`.
+- Tauri calls live in `bridge/` wrappers, not inside components.
 
 ## Implementing a UI Component from a Spec
 
@@ -106,18 +200,18 @@ pub fn MyComponent(
 }
 ```
 
-Key conventions:
-- **State:** `RwSignal<T>` for internal state, merge with external `Signal<T>` via `move || value.map(|s| s.get()).unwrap_or_else(|| internal.get())`
-- **CSS classes:** Build as array joined with spaces: `["base", size.class(), status.class(), if disabled { "..." } else { "" }, class].join(" ")`
-- **ARIA:** Return `None` for empty string attributes so they don't render: `let attr = if s.is_empty() { None } else { Some(s) };`
-- **Icons:** Use `icondata` crate: `use icondata as i;` then `<Icon icon=i::FaCircleCheckSolid />`
-  - Error: `i::FaCircleExclamationSolid`
-  - Success: `i::FaCircleCheckSolid`
-  - Warning: `i::FaTriangleExclamationSolid`
-- **Inline SVG:** For simple shapes (plus, minus, checkmark), use inline `<svg>` like Checkbox does — don't pull in a full icon
-- **DOM refs:** `let input_ref = NodeRef::<leptos::html::Input>::new();`
-- **Keyboard:** `on:keydown=move |ev: web_sys::KeyboardEvent| { ... }` — call `ev.prevent_default()` for handled keys
-- **Events:** `on:input:target=handler` for input events, `on:click=handler` for clicks, `on:blur=handler` for blur
+Key conventions (aligned with the Leptos guide):
+- **Controlled/uncontrolled merge:** `RwSignal<T>` for the internal fallback; when computing the effective value, use a plain closure — `let effective = move || value.map(|s| s.get()).unwrap_or_else(|| internal.get());` — or wrap in `Memo::new` only if downstream closures should skip work when the value is unchanged.
+- **Controlled `<input>`s:** `prop:value=` (DOM property) plus an `on:input:target=` handler. Never `value=signal` — that sets the HTML attribute once and then detaches.
+- **CSS classes:** Build as an array joined with spaces: `["base", size.class(), status.class(), if disabled { "timepicker-root--disabled" } else { "" }, class].join(" ")`. Prefer the `class:name=move || cond` syntax for a single toggled class, or `class=("name-with-dashes", move || cond)` when the class name needs special characters.
+- **Reactive attributes:** return `Option<&str>` so the attribute is omitted when empty — `let attr = if s.is_empty() { None } else { Some(s) };`. For boolean-ish ARIA, use `move || is_on.get().then_some("true")`.
+- **Callbacks:** accept `Option<Callback<T>>` (or `Callback<T>` when always required). Don't accept bare `Fn`/`FnMut` — `Callback<T>` is `Copy + 'static` and composes with `#[prop(into)]`.
+- **Icons:** `use icondata as i;` then `<Icon icon=i::FaCircleCheckSolid />`. Status defaults: Error → `i::FaCircleExclamationSolid`, Success → `i::FaCircleCheckSolid`, Warning → `i::FaTriangleExclamationSolid`.
+- **Inline SVG** for simple shapes (plus, minus, checkmark) — see Checkbox. Don't pull in a full icon for two paths.
+- **DOM refs:** `let input_ref = NodeRef::<leptos::html::Input>::new();`. To programmatically focus a `Span`, coerce: `let raw: &web_sys::HtmlElement = &el; let _ = raw.focus();`.
+- **Event typing:** `on:keydown=move |ev: web_sys::KeyboardEvent| { … }`, `on:input:target=…`, `on:click=move |_: web_sys::MouseEvent| …`, `on:blur=move |_: web_sys::FocusEvent| …`. Call `ev.prevent_default()` for any key you handle.
+- **Control flow inside `view!`:** boolean → `<Show when= fallback=>`; list → `<For each= key= children=>` with a **stable unique ID**; multi-branch → `leptos::either::{Either, EitherOf3, …}`. Never branch with raw `if`/`match` returning different `view!` types, and never key `<For>` by index.
+- **No derive-via-Effect:** do not set a signal from inside `Effect::new` to keep another signal in sync. Use a closure or `Memo` instead. `Effect` is reserved for side effects that leave the reactive system (console logs, `web_sys` calls, imperative DOM work).
 
 #### 5. Register the module
 
