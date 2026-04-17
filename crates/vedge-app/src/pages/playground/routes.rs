@@ -1,4 +1,5 @@
 use super::layout::PlaygroundLayout;
+use super::pg_avatar::AvatarPage;
 use super::pg_badge::BadgePage;
 use super::pg_button::ButtonPage;
 use super::pg_checkbox::CheckboxPage;
@@ -32,6 +33,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
         <ParentRoute path=path!("/playground") view=PlaygroundLayout>
             <Route path=path!("/") view=ThemePage />
             // Foundation
+            <Route path=path!("/avatar") view=AvatarPage />
             <Route path=path!("/badge") view=BadgePage />
             <Route path=path!("/button") view=ButtonPage />
             <Route path=path!("/icon-button") view=IconButtonPage />

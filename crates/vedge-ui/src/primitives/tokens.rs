@@ -450,6 +450,58 @@ impl SortDirection {
     }
 }
 
+/// Avatar diameter scale — five sizes (spec adds `xs` + `xl` beyond the base Size scale).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum AvatarSize {
+    Xs,
+    Sm,
+    #[default]
+    Md,
+    Lg,
+    Xl,
+}
+
+impl AvatarSize {
+    pub fn avatar_class(&self) -> &'static str {
+        match self {
+            AvatarSize::Xs => "avatar-root--xs",
+            AvatarSize::Sm => "avatar-root--sm",
+            AvatarSize::Md => "avatar-root--md",
+            AvatarSize::Lg => "avatar-root--lg",
+            AvatarSize::Xl => "avatar-root--xl",
+        }
+    }
+}
+
+/// Avatar presence indicator — communicates availability.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AvatarStatus {
+    Online,
+    Away,
+    Busy,
+    Offline,
+}
+
+impl AvatarStatus {
+    pub fn avatar_class(&self) -> &'static str {
+        match self {
+            AvatarStatus::Online => "avatar-status--online",
+            AvatarStatus::Away => "avatar-status--away",
+            AvatarStatus::Busy => "avatar-status--busy",
+            AvatarStatus::Offline => "avatar-status--offline",
+        }
+    }
+
+    pub fn aria_label(&self) -> &'static str {
+        match self {
+            AvatarStatus::Online => "Status: online",
+            AvatarStatus::Away => "Status: away",
+            AvatarStatus::Busy => "Status: busy",
+            AvatarStatus::Offline => "Status: offline",
+        }
+    }
+}
+
 /// Dialog max-width scale. Separate from `Size` because `Full` (viewport-fill)
 /// is a dialog-specific concept that does not fit the sm/md/lg typography scale.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]

@@ -1,6 +1,7 @@
 mod common;
 mod color_picker;
 mod layout;
+mod pg_avatar;
 mod pg_badge;
 mod pg_button;
 mod pg_checkbox;

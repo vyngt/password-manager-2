@@ -16,6 +16,7 @@ const GROUPS: &[SidebarGroup] = &[
     SidebarGroup {
         label: "Foundation",
         items: &[
+            SidebarItem { name: "Avatar", path: "/playground/avatar" },
             SidebarItem { name: "Badge", path: "/playground/badge" },
             SidebarItem { name: "Button", path: "/playground/button" },
             SidebarItem { name: "Icon Button", path: "/playground/icon-button" },
