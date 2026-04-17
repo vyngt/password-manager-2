@@ -39,7 +39,7 @@ pub fn NumberInput(
     #[prop(optional)] status: Status,
     #[prop(optional)] disabled: bool,
     #[prop(into, default = None)] on_change: Option<Callback<f64>>,
-    #[prop(optional, default = "")] aria_label: &'static str,
+    #[prop(into, default = TextProp::default())] aria_label: TextProp,
     #[prop(into, default = TextProp::default())] decrement_label: TextProp,
     #[prop(into, default = TextProp::default())] increment_label: TextProp,
     #[prop(optional, default = "")] aria_describedby: &'static str,
@@ -157,7 +157,10 @@ pub fn NumberInput(
     .join(" ");
 
     // ARIA
-    let aria_label_attr = if aria_label.is_empty() { None } else { Some(aria_label) };
+    let aria_label_attr = move || {
+        let v = aria_label.get();
+        if v.is_empty() { None } else { Some(v) }
+    };
     let aria_describedby_attr = if aria_describedby.is_empty() {
         None
     } else {

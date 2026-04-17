@@ -55,6 +55,7 @@ const GROUPS: &[SidebarGroup] = &[
         label: "Data Display",
         items: &[
             SidebarItem { name: "Data Table", path: "/playground/data-table" },
+            SidebarItem { name: "Pagination", path: "/playground/pagination" },
         ],
     },
 ];

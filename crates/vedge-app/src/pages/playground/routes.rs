@@ -11,6 +11,7 @@ use super::pg_icon_button::IconButtonPage;
 use super::pg_input::InputPage;
 use super::pg_label::LabelPage;
 use super::pg_number_input::NumberInputPage;
+use super::pg_pagination::PaginationPage;
 use super::pg_password_strength_meter::PasswordStrengthMeterPage;
 use super::pg_radio_group::RadioGroupPage;
 use super::pg_segmented_control::SegmentedControlPage;
@@ -56,6 +57,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/toggle") view=TogglePage />
             // Data Display
             <Route path=path!("/data-table") view=DataTablePage />
+            <Route path=path!("/pagination") view=PaginationPage />
             // Feedback
             <Route path=path!("/dialog") view=DialogPage />
             <Route path=path!("/toast") view=ToastPage />

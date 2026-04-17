@@ -3,6 +3,7 @@ use super::types::{
     h24_hours_second_digit, is_before, minutes_first_digit, minutes_second_digit, to_12h,
     DigitOutcome, Segment, TimeFormat, TimeValue,
 };
+use crate::primitives::text_prop::TextProp;
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
@@ -18,7 +19,7 @@ pub fn TimePicker(
     #[prop(optional)] min_time: Option<TimeValue>,
     #[prop(optional)] max_time: Option<TimeValue>,
     #[prop(optional)] disabled: bool,
-    #[prop(optional, default = "")] aria_label: &'static str,
+    #[prop(into, default = TextProp::default())] aria_label: TextProp,
     #[prop(optional, default = "")] aria_labelledby: &'static str,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -396,7 +397,10 @@ pub fn TimePicker(
         TimeFormat::H12 => "1",
     };
 
-    let aria_label_attr = if aria_label.is_empty() { None } else { Some(aria_label) };
+    let aria_label_attr = move || {
+        let v = aria_label.get();
+        if v.is_empty() { None } else { Some(v) }
+    };
     let aria_labelledby_attr =
         if aria_labelledby.is_empty() { None } else { Some(aria_labelledby) };
     let aria_disabled_attr = if disabled { Some("true") } else { None };

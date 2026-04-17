@@ -1,4 +1,5 @@
 use super::types::{flatten_options, SelectItem};
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Status};
 use leptos::prelude::*;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -11,7 +12,7 @@ pub fn Select(
     options: Vec<SelectItem>,
     #[prop(into, default = None)] value: Option<Signal<String>>,
     #[prop(optional, default = "")] default_value: &'static str,
-    #[prop(optional, default = "")] placeholder: &'static str,
+    #[prop(into, default = TextProp::default())] placeholder: TextProp,
     #[prop(optional)] size: Size,
     #[prop(optional)] status: Status,
     #[prop(optional)] disabled: bool,
@@ -318,7 +319,7 @@ pub fn Select(
                     } else {
                         view! {
                             <span class="select-trigger__text select-trigger__placeholder">
-                                {placeholder}
+                                {move || placeholder.get()}
                             </span>
                         }
                             .into_any()

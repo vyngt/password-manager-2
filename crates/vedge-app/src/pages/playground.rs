@@ -13,6 +13,7 @@ mod pg_icon_button;
 mod pg_input;
 mod pg_label;
 mod pg_number_input;
+mod pg_pagination;
 mod pg_password_strength_meter;
 mod pg_radio_group;
 mod pg_segmented_control;
