@@ -74,15 +74,15 @@ pub fn CalendarPanel(
                         .into_any()
                 } else {
                     render_day_view(
-                        ctx,
-                        locale,
-                        effective,
-                        min_date,
-                        max_date,
-                        disabled_dates,
-                        on_select_day,
-                    )
-                    .into_any()
+                            ctx,
+                            locale,
+                            effective,
+                            min_date,
+                            max_date,
+                            disabled_dates,
+                            on_select_day,
+                        )
+                        .into_any()
                 }
             }}
         </div>
@@ -357,7 +357,11 @@ fn render_month_view(
                 let max_y = max_date.map(|d| (d.year(), d.month()));
                 (1u32..=12)
                     .map(|m| {
-                        let is_sel = matches!(selected, Some(ym) if ym.year == year && ym.month == m);
+                        let is_sel = matches!(
+                            selected,
+                            Some(ym)
+                            if ym.year == year && ym.month == m
+                        );
                         let mut disabled = false;
                         if let Some((my, mm)) = min_y {
                             if year < my || (year == my && m < mm) {
@@ -370,12 +374,18 @@ fn render_month_view(
                             }
                         }
                         let mut classes = vec!["month-cell"];
-                        if is_sel { classes.push("month-cell--selected"); }
-                        if disabled { classes.push("month-cell--disabled"); }
+                        if is_sel {
+                            classes.push("month-cell--selected");
+                        }
+                        if disabled {
+                            classes.push("month-cell--disabled");
+                        }
                         let cls = classes.join(" ");
                         let name = names.get((m - 1) as usize).cloned().unwrap_or_default();
                         let on_click = move |_: web_sys::MouseEvent| {
-                            if disabled { return; }
+                            if disabled {
+                                return;
+                            }
                             on_select_month.run(YearMonth::new(year, m));
                         };
                         let aria_selected = if is_sel { Some("true") } else { None };

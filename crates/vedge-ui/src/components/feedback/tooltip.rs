@@ -1,9 +1,9 @@
 use crate::primitives::tokens::Placement;
+use crate::utils::id::id_with_prefix;
 use leptos::prelude::*;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use uuid::Uuid;
 
 #[component]
 pub fn Tooltip(
@@ -21,7 +21,7 @@ pub fn Tooltip(
 
     // content is Signal<String> — reactive, works with i18n
     let trigger_ref: NodeRef<leptos::html::Span> = NodeRef::new();
-    let tooltip_id: String = format!("tooltip-{}", Uuid::new_v4());
+    let tooltip_id: String = id_with_prefix("tooltip");
 
     let mounted = RwSignal::new(false);
     let data_state = RwSignal::new(Option::<&'static str>::None);

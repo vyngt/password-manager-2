@@ -49,21 +49,12 @@ pub fn PasswordStrengthMeter(
             <div class="strength-meter__track">
                 {(1..=4u8)
                     .map(|idx| {
-                        let filled = move || {
-                            if score.get() >= idx { "true" } else { "false" }
-                        };
-                        view! {
-                            <div
-                                class="strength-meter__segment"
-                                data-filled=filled
-                            />
-                        }
+                        let filled = move || { if score.get() >= idx { "true" } else { "false" } };
+                        view! { <div class="strength-meter__segment" data-filled=filled /> }
                     })
                     .collect_view()}
             </div>
-            {show_label.then(|| view! {
-                <span class="strength-meter__label">{label_text}</span>
-            })}
+            {show_label.then(|| view! { <span class="strength-meter__label">{label_text}</span> })}
         </div>
     }
 }

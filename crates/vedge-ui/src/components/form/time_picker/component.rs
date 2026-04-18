@@ -473,7 +473,9 @@ pub fn TimePicker(
             >
                 {hours_display}
             </span>
-            <span class="timepicker-separator" aria-hidden="true">":"</span>
+            <span class="timepicker-separator" aria-hidden="true">
+                ":"
+            </span>
             <span
                 node_ref=minutes_ref
                 class=move || segment_cls(Segment::Minutes)

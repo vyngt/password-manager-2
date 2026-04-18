@@ -380,11 +380,19 @@ fn render_select_item(
             let label = group.label.clone();
             view! {
                 <div class="select-group" role="group">
-                    <div class="select-group__label" role="presentation">{label}</div>
+                    <div class="select-group__label" role="presentation">
+                        {label}
+                    </div>
                     {group
                         .options
                         .into_iter()
-                        .map(|opt| render_option(opt, flat_options, highlighted, selected, select_value))
+                        .map(|opt| render_option(
+                            opt,
+                            flat_options,
+                            highlighted,
+                            selected,
+                            select_value,
+                        ))
                         .collect::<Vec<_>>()}
                 </div>
             }
@@ -462,11 +470,21 @@ fn render_option(
             <span class="select-option__text">{label}</span>
             {move || {
                 if is_selected_icon() {
-                    Some(view! {
-                        <svg class="select-option__check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3.5,8 6.5,11 12.5,5" />
-                        </svg>
-                    })
+                    Some(
+                        view! {
+                            <svg
+                                class="select-option__check"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <polyline points="3.5,8 6.5,11 12.5,5" />
+                            </svg>
+                        },
+                    )
                 } else {
                     None
                 }

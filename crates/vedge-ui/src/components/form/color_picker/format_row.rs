@@ -58,8 +58,7 @@ pub(super) fn FormatRow(
                                 </svg>
                             </button>
                         }
-                    })}
-                <FormatSwitcher active_format=active_format />
+                    })} <FormatSwitcher active_format=active_format />
             </div>
 
             <FormatInputs

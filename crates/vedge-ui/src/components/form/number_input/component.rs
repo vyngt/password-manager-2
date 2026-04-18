@@ -1,5 +1,6 @@
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Status};
+use crate::utils::format::format_float_display;
 use leptos::prelude::*;
 use web_sys::HtmlInputElement;
 
@@ -16,14 +17,6 @@ fn clamp(val: f64, min: Option<f64>, max: Option<f64>) -> f64 {
         }
     }
     v
-}
-
-fn format_value(val: f64) -> String {
-    if val == val.trunc() {
-        format!("{}", val as i64)
-    } else {
-        format!("{}", val)
-    }
 }
 
 #[component]
@@ -93,7 +86,7 @@ pub fn NumberInput(
                 commit(parsed);
             }
             // Always sync display back to the canonical value
-            raw.set_value(&format_value(current_value()));
+            raw.set_value(&format_float_display(current_value()));
         }
     };
 
@@ -178,7 +171,13 @@ pub fn NumberInput(
                 on:click=handle_decrement_click
                 tabindex="-1"
             >
-                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <svg
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                >
                     <line x1="2.5" y1="6" x2="9.5" y2="6" />
                 </svg>
             </button>
@@ -192,7 +191,7 @@ pub fn NumberInput(
                 inputmode="numeric"
                 role="spinbutton"
                 disabled=disabled
-                prop:value=move || format_value(current_value())
+                prop:value=move || format_float_display(current_value())
                 aria-valuenow=move || current_value().to_string()
                 aria-valuemin=min.map(|v| v.to_string())
                 aria-valuemax=max.map(|v| v.to_string())
@@ -203,9 +202,7 @@ pub fn NumberInput(
             />
 
             // Unit label
-            {(!unit.is_empty()).then(|| view! {
-                <span class="number-input__unit">{unit}</span>
-            })}
+            {(!unit.is_empty()).then(|| view! { <span class="number-input__unit">{unit}</span> })}
 
             // Increment stepper
             <button
@@ -216,7 +213,13 @@ pub fn NumberInput(
                 on:click=handle_increment_click
                 tabindex="-1"
             >
-                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <svg
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                >
                     <line x1="2.5" y1="6" x2="9.5" y2="6" />
                     <line x1="6" y1="2.5" x2="6" y2="9.5" />
                 </svg>

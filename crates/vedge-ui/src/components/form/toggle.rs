@@ -52,7 +52,10 @@ pub fn Toggle(
                 type="checkbox"
                 disabled=disabled
                 prop:checked=is_checked
-                aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
+                aria-label=move || {
+                    let v = aria_label.get();
+                    if v.is_empty() { None } else { Some(v) }
+                }
                 aria-labelledby=aria_labelledby_attr
                 on:change=handle_change
             />

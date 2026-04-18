@@ -105,7 +105,9 @@ pub fn DatePickerPage() -> impl IntoView {
                         <DatePicker
                             id="v-single"
                             variant=DatePickerVariant::Single
-                            placeholder=Signal::derive(move || t_string!(i18n, date_picker.select_date).to_string())
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, date_picker.select_date).to_string()
+                            })
                         />
                     </div>
                     <div class="space-y-1">
@@ -115,7 +117,9 @@ pub fn DatePickerPage() -> impl IntoView {
                         <DatePicker
                             id="v-range"
                             variant=DatePickerVariant::Range
-                            placeholder=Signal::derive(move || t_string!(i18n, date_picker.select_range).to_string())
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, date_picker.select_range).to_string()
+                            })
                         />
                     </div>
                     <div class="space-y-1">
@@ -125,7 +129,9 @@ pub fn DatePickerPage() -> impl IntoView {
                         <DatePicker
                             id="v-month"
                             variant=DatePickerVariant::Month
-                            placeholder=Signal::derive(move || t_string!(i18n, date_picker.select_month).to_string())
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, date_picker.select_month).to_string()
+                            })
                         />
                     </div>
                 </div>
@@ -133,18 +139,38 @@ pub fn DatePickerPage() -> impl IntoView {
 
             <Section title="Sizes">
                 <div class="space-y-3 max-w-md">
-                    <DatePicker id="size-sm" size=Size::Sm placeholder=Signal::stored("Small".to_string()) />
+                    <DatePicker
+                        id="size-sm"
+                        size=Size::Sm
+                        placeholder=Signal::stored("Small".to_string())
+                    />
                     <DatePicker id="size-md" placeholder=Signal::stored("Medium".to_string()) />
-                    <DatePicker id="size-lg" size=Size::Lg placeholder=Signal::stored("Large".to_string()) />
+                    <DatePicker
+                        id="size-lg"
+                        size=Size::Lg
+                        placeholder=Signal::stored("Large".to_string())
+                    />
                 </div>
             </Section>
 
             <Section title="Status">
                 <div class="space-y-3 max-w-md">
                     <DatePicker id="s-default" placeholder=Signal::stored("Default".to_string()) />
-                    <DatePicker id="s-error" status=Status::Error placeholder=Signal::stored("Error".to_string()) />
-                    <DatePicker id="s-success" status=Status::Success placeholder=Signal::stored("Success".to_string()) />
-                    <DatePicker id="s-warning" status=Status::Warning placeholder=Signal::stored("Warning".to_string()) />
+                    <DatePicker
+                        id="s-error"
+                        status=Status::Error
+                        placeholder=Signal::stored("Error".to_string())
+                    />
+                    <DatePicker
+                        id="s-success"
+                        status=Status::Success
+                        placeholder=Signal::stored("Success".to_string())
+                    />
+                    <DatePicker
+                        id="s-warning"
+                        status=Status::Warning
+                        placeholder=Signal::stored("Warning".to_string())
+                    />
                 </div>
             </Section>
 
@@ -164,20 +190,13 @@ pub fn DatePickerPage() -> impl IntoView {
                         <Label html_for="minmax">
                             {move || t_string!(i18n, date_picker.min_max_note).to_string()}
                         </Label>
-                        <DatePicker
-                            id="minmax"
-                            min_date=min_date
-                            max_date=max_date
-                        />
+                        <DatePicker id="minmax" min_date=min_date max_date=max_date />
                     </div>
                     <div class="space-y-1">
                         <Label html_for="disabled-dates">
                             {move || t_string!(i18n, date_picker.disabled_dates_note).to_string()}
                         </Label>
-                        <DatePicker
-                            id="disabled-dates"
-                            disabled_dates=weekends
-                        />
+                        <DatePicker id="disabled-dates" disabled_dates=weekends />
                     </div>
                 </div>
             </Section>
@@ -193,7 +212,8 @@ pub fn DatePickerPage() -> impl IntoView {
                             on_change=Callback::new(move |v: DatePickerValue| single_val.set(v))
                         />
                         <p class="text-xs text-text-tertiary">
-                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "{single_readout}
+                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "
+                            {single_readout}
                         </p>
                     </div>
                     <div class="space-y-1">
@@ -205,7 +225,8 @@ pub fn DatePickerPage() -> impl IntoView {
                             on_change=Callback::new(move |v: DatePickerValue| range_val.set(v))
                         />
                         <p class="text-xs text-text-tertiary">
-                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "{range_readout}
+                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "
+                            {range_readout}
                         </p>
                     </div>
                     <div class="space-y-1">
@@ -217,7 +238,8 @@ pub fn DatePickerPage() -> impl IntoView {
                             on_change=Callback::new(move |v: DatePickerValue| month_val.set(v))
                         />
                         <p class="text-xs text-text-tertiary">
-                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "{month_readout}
+                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "
+                            {month_readout}
                         </p>
                     </div>
                 </div>
@@ -226,10 +248,18 @@ pub fn DatePickerPage() -> impl IntoView {
             <Section title="Locale">
                 <div class="space-y-3 max-w-md">
                     <div class="flex gap-2">
-                        <button class=locale_btn_cls("en-US") on:click=set_locale("en-US")>"en-US"</button>
-                        <button class=locale_btn_cls("vi-VN") on:click=set_locale("vi-VN")>"vi-VN"</button>
-                        <button class=locale_btn_cls("ja-JP") on:click=set_locale("ja-JP")>"ja-JP"</button>
-                        <button class=locale_btn_cls("de-DE") on:click=set_locale("de-DE")>"de-DE"</button>
+                        <button class=locale_btn_cls("en-US") on:click=set_locale("en-US")>
+                            "en-US"
+                        </button>
+                        <button class=locale_btn_cls("vi-VN") on:click=set_locale("vi-VN")>
+                            "vi-VN"
+                        </button>
+                        <button class=locale_btn_cls("ja-JP") on:click=set_locale("ja-JP")>
+                            "ja-JP"
+                        </button>
+                        <button class=locale_btn_cls("de-DE") on:click=set_locale("de-DE")>
+                            "de-DE"
+                        </button>
                     </div>
                     <DatePicker
                         id="locale-demo"

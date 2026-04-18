@@ -117,8 +117,12 @@ pub fn VaultCreateForm(
                     input_type="password"
                     value=Signal::derive(move || form_password.get())
                     on_input=Callback::new(move |v: String| form_password.set(v))
-                    reveal_label=Signal::derive(move || t_string!(i18n, playground.show_password).to_string())
-                    hide_label=Signal::derive(move || t_string!(i18n, playground.hide_password).to_string())
+                    reveal_label=Signal::derive(move || {
+                        t_string!(i18n, playground.show_password).to_string()
+                    })
+                    hide_label=Signal::derive(move || {
+                        t_string!(i18n, playground.hide_password).to_string()
+                    })
                 />
                 <Input
                     id="vault-form-url"

@@ -127,11 +127,7 @@ pub fn ToastItem(toast: ToastData) -> impl IntoView {
                         }
                     })}
             </div>
-            <button
-                class="toast__dismiss"
-                aria-label=dismiss_label.clone()
-                on:click=handle_dismiss
-            >
+            <button class="toast__dismiss" aria-label=dismiss_label.clone() on:click=handle_dismiss>
                 <Icon icon=i::FaXmarkSolid />
             </button>
         </div>

@@ -20,11 +20,21 @@ pub fn SpinnerPage() -> impl IntoView {
 
             <Section title="Color Inheritance">
                 <div class="flex items-center gap-4">
-                    <span class="text-text-secondary"><Spinner /></span>
-                    <span class="text-primary"><Spinner /></span>
-                    <span class="text-danger"><Spinner /></span>
-                    <span class="text-success"><Spinner /></span>
-                    <span class="text-warning"><Spinner /></span>
+                    <span class="text-text-secondary">
+                        <Spinner />
+                    </span>
+                    <span class="text-primary">
+                        <Spinner />
+                    </span>
+                    <span class="text-danger">
+                        <Spinner />
+                    </span>
+                    <span class="text-success">
+                        <Spinner />
+                    </span>
+                    <span class="text-warning">
+                        <Spinner />
+                    </span>
                 </div>
             </Section>
         </div>

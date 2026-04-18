@@ -24,26 +24,61 @@ pub fn InputPage() -> impl IntoView {
 
             <Section title="Sizes">
                 <div class="space-y-3 max-w-md">
-                    <Input id="size-sm" size=Size::Sm placeholder=Signal::stored("Small (28px)".to_string()) />
+                    <Input
+                        id="size-sm"
+                        size=Size::Sm
+                        placeholder=Signal::stored("Small (28px)".to_string())
+                    />
                     <Input id="size-md" placeholder=Signal::stored("Medium (36px)".to_string()) />
-                    <Input id="size-lg" size=Size::Lg placeholder=Signal::stored("Large (44px)".to_string()) />
+                    <Input
+                        id="size-lg"
+                        size=Size::Lg
+                        placeholder=Signal::stored("Large (44px)".to_string())
+                    />
                 </div>
             </Section>
 
             <Section title="Status">
                 <div class="space-y-3 max-w-md">
                     <Input id="status-default" placeholder=Signal::stored("Default".to_string()) />
-                    <Input id="status-error" status=Status::Error placeholder=Signal::stored("Error".to_string()) />
-                    <Input id="status-success" status=Status::Success placeholder=Signal::stored("Success".to_string()) />
-                    <Input id="status-warning" status=Status::Warning placeholder=Signal::stored("Warning".to_string()) />
+                    <Input
+                        id="status-error"
+                        status=Status::Error
+                        placeholder=Signal::stored("Error".to_string())
+                    />
+                    <Input
+                        id="status-success"
+                        status=Status::Success
+                        placeholder=Signal::stored("Success".to_string())
+                    />
+                    <Input
+                        id="status-warning"
+                        status=Status::Warning
+                        placeholder=Signal::stored("Warning".to_string())
+                    />
                 </div>
             </Section>
 
             <Section title="States">
                 <div class="space-y-3 max-w-md">
-                    <Input id="state-disabled" disabled=true value=Signal::stored("Disabled input".to_string()) placeholder=Signal::stored("Disabled".to_string()) />
-                    <Input id="state-readonly" read_only=true value=Signal::stored("Read-only value".to_string()) placeholder=Signal::stored("Read-only".to_string()) />
-                    <Input id="state-loading" loading=true value=Signal::stored("Loading...".to_string()) placeholder=Signal::stored("Loading".to_string()) />
+                    <Input
+                        id="state-disabled"
+                        disabled=true
+                        value=Signal::stored("Disabled input".to_string())
+                        placeholder=Signal::stored("Disabled".to_string())
+                    />
+                    <Input
+                        id="state-readonly"
+                        read_only=true
+                        value=Signal::stored("Read-only value".to_string())
+                        placeholder=Signal::stored("Read-only".to_string())
+                    />
+                    <Input
+                        id="state-loading"
+                        loading=true
+                        value=Signal::stored("Loading...".to_string())
+                        placeholder=Signal::stored("Loading".to_string())
+                    />
                 </div>
             </Section>
 
@@ -57,8 +92,12 @@ pub fn InputPage() -> impl IntoView {
                             placeholder=Signal::stored("Enter password".to_string())
                             value=Signal::derive(move || password_val.get())
                             on_input=Callback::new(move |v: String| set_password_val.set(v))
-                            reveal_label=Signal::derive(move || t_string!(i18n, playground.show_password).to_string())
-                            hide_label=Signal::derive(move || t_string!(i18n, playground.hide_password).to_string())
+                            reveal_label=Signal::derive(move || {
+                                t_string!(i18n, playground.show_password).to_string()
+                            })
+                            hide_label=Signal::derive(move || {
+                                t_string!(i18n, playground.hide_password).to_string()
+                            })
                         />
                     </div>
                     <div class="space-y-1">
@@ -69,7 +108,9 @@ pub fn InputPage() -> impl IntoView {
                             placeholder=Signal::stored("Search...".to_string())
                             value=Signal::derive(move || search_val.get())
                             on_input=Callback::new(move |v: String| set_search_val.set(v))
-                            clear_label=Signal::derive(move || t_string!(i18n, playground.clear).to_string())
+                            clear_label=Signal::derive(move || {
+                                t_string!(i18n, playground.clear).to_string()
+                            })
                         />
                     </div>
                 </div>
@@ -80,7 +121,9 @@ pub fn InputPage() -> impl IntoView {
                     <Input
                         id="icon-leading"
                         placeholder=Signal::stored("With leading icon".to_string())
-                        leading_icon=Box::new(|| view! { <Icon icon=i::FaMagnifyingGlassSolid /> }.into_any())
+                        leading_icon=Box::new(|| {
+                            view! { <Icon icon=i::FaMagnifyingGlassSolid /> }.into_any()
+                        })
                     />
                     <Input
                         id="icon-trailing"
@@ -107,7 +150,9 @@ pub fn InputPage() -> impl IntoView {
             <Section title="Interactive">
                 <div class="space-y-3 max-w-md">
                     <div class="space-y-1">
-                        <Label html_for="interactive-text" required=true>"Full name"</Label>
+                        <Label html_for="interactive-text" required=true>
+                            "Full name"
+                        </Label>
                         <Input
                             id="interactive-text"
                             placeholder=Signal::stored("Enter your full name".to_string())

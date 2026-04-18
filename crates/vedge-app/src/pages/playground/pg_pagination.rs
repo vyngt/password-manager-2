@@ -65,8 +65,7 @@ fn OffsetFullSection() -> impl IntoView {
                 })
             />
             <div class="text-xs text-text-tertiary mt-2">
-                "page " {move || page.get()}
-                " · size " {move || page_size.get()}
+                "page " {move || page.get()} " · size " {move || page_size.get()}
                 " · derived total_pages " {move || total_pages.get()}
             </div>
         </Section>
@@ -120,9 +119,9 @@ fn CursorSection() -> impl IntoView {
                 on_next=Callback::new(move |_: ()| step.update(|s| *s += 1))
             />
             <div class="text-xs text-text-tertiary mt-2">
-                "cursor step: " {move || step.get()}
-                " (has_prev=" {move || has_prev.get().to_string()}
-                ", has_next=" {move || has_next.get().to_string()} ")"
+                "cursor step: " {move || step.get()} " (has_prev="
+                {move || has_prev.get().to_string()} ", has_next="
+                {move || has_next.get().to_string()} ")"
             </div>
         </Section>
     }
@@ -161,13 +160,15 @@ fn PageWindowSection() -> impl IntoView {
             <div class="flex gap-2 mt-3">
                 {[1u32, 2, 3, 5, 10, 13, 20, 23, 24, 25]
                     .into_iter()
-                    .map(|target| view! {
-                        <button
-                            class="px-2 py-1 text-xs rounded border border-border bg-background text-text-primary hover:bg-surface-2"
-                            on:click=move |_| page.set(target)
-                        >
-                            {format!("jump to {}", target)}
-                        </button>
+                    .map(|target| {
+                        view! {
+                            <button
+                                class="px-2 py-1 text-xs rounded border border-border bg-background text-text-primary hover:bg-surface-2"
+                                on:click=move |_| page.set(target)
+                            >
+                                {format!("jump to {}", target)}
+                            </button>
+                        }
                     })
                     .collect_view()}
             </div>

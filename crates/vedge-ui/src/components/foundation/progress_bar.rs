@@ -70,9 +70,12 @@ pub fn ProgressBar(
                             {move || label.get()}
                         </span>
                     </Show>
-                    {move || show_value.then(|| view! {
-                        <span class="progress__value">{value_rounded()}</span>
-                    })}
+                    {move || {
+                        show_value
+                            .then(|| {
+                                view! { <span class="progress__value">{value_rounded()}</span> }
+                            })
+                    }}
                 </div>
             }
         })

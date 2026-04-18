@@ -66,22 +66,13 @@ pub fn DialogPage() -> impl IntoView {
             // --- Sizes ---
             <Section title="Sizes">
                 <div class="flex flex-wrap gap-2">
-                    <Button
-                        variant=Variant::Secondary
-                        on:click=move |_| open_size(DialogSize::Sm)
-                    >
+                    <Button variant=Variant::Secondary on:click=move |_| open_size(DialogSize::Sm)>
                         "Small (400px)"
                     </Button>
-                    <Button
-                        variant=Variant::Secondary
-                        on:click=move |_| open_size(DialogSize::Md)
-                    >
+                    <Button variant=Variant::Secondary on:click=move |_| open_size(DialogSize::Md)>
                         "Medium (560px)"
                     </Button>
-                    <Button
-                        variant=Variant::Secondary
-                        on:click=move |_| open_size(DialogSize::Lg)
-                    >
+                    <Button variant=Variant::Secondary on:click=move |_| open_size(DialogSize::Lg)>
                         "Large (720px)"
                     </Button>
                     <Button
@@ -101,7 +92,9 @@ pub fn DialogPage() -> impl IntoView {
                         <DialogTitle>"Small dialog"</DialogTitle>
                     </DialogHeader>
                     <DialogBody>
-                        <p class="py-2">"max-width: 400px — simple confirmations, short messages."</p>
+                        <p class="py-2">
+                            "max-width: 400px — simple confirmations, short messages."
+                        </p>
                     </DialogBody>
                     <DialogFooter>
                         <Button variant=Variant::Primary on:click=move |_| close_size.run(())>
@@ -119,7 +112,9 @@ pub fn DialogPage() -> impl IntoView {
                         <DialogTitle>"Medium dialog"</DialogTitle>
                     </DialogHeader>
                     <DialogBody>
-                        <p class="py-2">"max-width: 560px — the default. Short forms, rename, quick edits."</p>
+                        <p class="py-2">
+                            "max-width: 560px — the default. Short forms, rename, quick edits."
+                        </p>
                     </DialogBody>
                     <DialogFooter>
                         <Button variant=Variant::Primary on:click=move |_| close_size.run(())>
@@ -170,10 +165,7 @@ pub fn DialogPage() -> impl IntoView {
             // --- Closeable / Non-closeable ---
             <Section title="Closeable vs. non-closeable">
                 <div class="flex flex-wrap gap-2">
-                    <Button
-                        variant=Variant::Secondary
-                        on:click=move |_| closeable_open.set(true)
-                    >
+                    <Button variant=Variant::Secondary on:click=move |_| closeable_open.set(true)>
                         "Open closeable"
                     </Button>
                     <Button
@@ -236,10 +228,7 @@ pub fn DialogPage() -> impl IntoView {
             // --- Form ---
             <Section title="Form content">
                 <div class="flex flex-wrap gap-2">
-                    <Button
-                        variant=Variant::Secondary
-                        on:click=move |_| form_open.set(true)
-                    >
+                    <Button variant=Variant::Secondary on:click=move |_| form_open.set(true)>
                         "Rename entry"
                     </Button>
                     <span class="text-sm text-text-secondary self-center">
@@ -273,16 +262,10 @@ pub fn DialogPage() -> impl IntoView {
                         </div>
                     </DialogBody>
                     <DialogFooter>
-                        <Button
-                            variant=Variant::Secondary
-                            on:click=move |_| form_open.set(false)
-                        >
+                        <Button variant=Variant::Secondary on:click=move |_| form_open.set(false)>
                             "Cancel"
                         </Button>
-                        <Button
-                            variant=Variant::Primary
-                            on:click=move |_| form_open.set(false)
-                        >
+                        <Button variant=Variant::Primary on:click=move |_| form_open.set(false)>
                             "Save"
                         </Button>
                     </DialogFooter>
@@ -292,10 +275,7 @@ pub fn DialogPage() -> impl IntoView {
             // --- Destructive ---
             <Section title="Destructive action">
                 <div class="flex flex-wrap gap-2 items-center">
-                    <Button
-                        variant=Variant::Danger
-                        on:click=move |_| destructive_open.set(true)
-                    >
+                    <Button variant=Variant::Danger on:click=move |_| destructive_open.set(true)>
                         "Delete entry…"
                     </Button>
                     <span class="text-sm text-text-secondary">
@@ -373,8 +353,9 @@ pub fn DialogPage() -> impl IntoView {
                     <DialogBody>
                         <p class="py-2">
                             "Delete entry #"
-                            {move || delete_target_id.get().map(|id| id.to_string()).unwrap_or_default()}
-                            "? This action cannot be undone."
+                            {move || {
+                                delete_target_id.get().map(|id| id.to_string()).unwrap_or_default()
+                            }} "? This action cannot be undone."
                         </p>
                     </DialogBody>
                     <DialogFooter>
@@ -398,7 +379,9 @@ pub fn DialogPage() -> impl IntoView {
                     <DialogBody>
                         <p class="py-2">
                             "Renaming entry #"
-                            {move || rename_target_id.get().map(|id| id.to_string()).unwrap_or_default()}
+                            {move || {
+                                rename_target_id.get().map(|id| id.to_string()).unwrap_or_default()
+                            }}
                         </p>
                     </DialogBody>
                     <DialogFooter>
@@ -434,10 +417,7 @@ pub fn DialogPage() -> impl IntoView {
                 <p class="text-xs text-text-tertiary">
                     "No header, no footer — the dialog container itself receives focus since there are no focusable elements inside."
                 </p>
-                <Button
-                    variant=Variant::Secondary
-                    on:click=move |_| body_only_open.set(true)
-                >
+                <Button variant=Variant::Secondary on:click=move |_| body_only_open.set(true)>
                     "Open body-only"
                 </Button>
 

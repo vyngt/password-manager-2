@@ -52,7 +52,11 @@ pub fn IconButtonPage() -> impl IntoView {
                     <IconButton aria_label="Square" variant=Variant::Primary shape=Shape::Square>
                         <Icon icon=i::FaStarSolid />
                     </IconButton>
-                    <IconButton aria_label="Rounded SM" variant=Variant::Primary shape=Shape::RoundedSm>
+                    <IconButton
+                        aria_label="Rounded SM"
+                        variant=Variant::Primary
+                        shape=Shape::RoundedSm
+                    >
                         <Icon icon=i::FaStarSolid />
                     </IconButton>
                     <IconButton aria_label="Rounded" variant=Variant::Primary shape=Shape::Rounded>

@@ -26,21 +26,14 @@ pub fn TimePickerPage() -> impl IntoView {
             <Section title="Default (24h)">
                 <div class="max-w-xs space-y-1">
                     <Label html_for="tp-default-label">"Notify at"</Label>
-                    <TimePicker
-                        id="tp-default"
-                        aria_labelledby="tp-default-label"
-                    />
+                    <TimePicker id="tp-default" aria_labelledby="tp-default-label" />
                 </div>
             </Section>
 
             <Section title="12-hour format">
                 <div class="max-w-xs space-y-1">
                     <Label html_for="tp-12h-label">"Meeting start"</Label>
-                    <TimePicker
-                        id="tp-12h"
-                        format=TimeFormat::H12
-                        aria_labelledby="tp-12h-label"
-                    />
+                    <TimePicker id="tp-12h" format=TimeFormat::H12 aria_labelledby="tp-12h-label" />
                 </div>
             </Section>
 
@@ -59,7 +52,10 @@ pub fn TimePickerPage() -> impl IntoView {
                         <TimePicker
                             id="tp-dv-12"
                             format=TimeFormat::H12
-                            default_value=TimeValue { hours: 14, minutes: 45 }
+                            default_value=TimeValue {
+                                hours: 14,
+                                minutes: 45,
+                            }
                             aria_labelledby="tp-dv-12-label"
                         />
                     </div>
@@ -136,9 +132,7 @@ pub fn TimePickerPage() -> impl IntoView {
                         on_change=Callback::new(move |v: Option<TimeValue>| controlled.set(v))
                         aria_labelledby="tp-controlled-label"
                     />
-                    <p class="text-xs text-text-tertiary">
-                        "Value (24h): "{controlled_readout}
-                    </p>
+                    <p class="text-xs text-text-tertiary">"Value (24h): "{controlled_readout}</p>
                 </div>
             </Section>
         </div>

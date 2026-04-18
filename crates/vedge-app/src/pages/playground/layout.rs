@@ -248,9 +248,7 @@ pub fn PlaygroundLayout() -> impl IntoView {
                                     <h3 class="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-1.5 px-2">
                                         {group.label}
                                     </h3>
-                                    <ul class="space-y-0.5">
-                                        {items}
-                                    </ul>
+                                    <ul class="space-y-0.5">{items}</ul>
                                 </div>
                             }
                         })

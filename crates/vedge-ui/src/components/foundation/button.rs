@@ -36,7 +36,10 @@ pub fn Button(
             class=cls
             disabled=is_disabled
             aria-busy=aria_busy_attr
-            aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
+            aria-label=move || {
+                let v = aria_label.get();
+                if v.is_empty() { None } else { Some(v) }
+            }
         >
             {loading.then(|| view! { <span class="btn__spinner"></span> })}
             {children()}

@@ -36,7 +36,8 @@ pub fn SelectPage() -> impl IntoView {
                         on_change=Callback::new(move |v: String| set_select_val.set(v))
                     />
                     <p class="text-xs text-text-tertiary pt-2">
-                        "Selected: " {move || {
+                        "Selected: "
+                        {move || {
                             let v = select_val.get();
                             if v.is_empty() { "(none)".to_string() } else { v }
                         }}
@@ -48,16 +49,22 @@ pub fn SelectPage() -> impl IntoView {
                 <div class="max-w-xs">
                     <Select
                         options=vec![
-                            SelectItem::group("Fruits", vec![
-                                SelectOption::new("apple", "Apple"),
-                                SelectOption::new("banana", "Banana"),
-                                SelectOption::new("cherry", "Cherry"),
-                            ]),
-                            SelectItem::group("Vegetables", vec![
-                                SelectOption::new("carrot", "Carrot"),
-                                SelectOption::new("broccoli", "Broccoli"),
-                                SelectOption::new("spinach", "Spinach"),
-                            ]),
+                            SelectItem::group(
+                                "Fruits",
+                                vec![
+                                    SelectOption::new("apple", "Apple"),
+                                    SelectOption::new("banana", "Banana"),
+                                    SelectOption::new("cherry", "Cherry"),
+                                ],
+                            ),
+                            SelectItem::group(
+                                "Vegetables",
+                                vec![
+                                    SelectOption::new("carrot", "Carrot"),
+                                    SelectOption::new("broccoli", "Broccoli"),
+                                    SelectOption::new("spinach", "Spinach"),
+                                ],
+                            ),
                         ]
                         value=Signal::derive(move || select_grouped_val.get())
                         placeholder="Choose food..."
@@ -68,17 +75,43 @@ pub fn SelectPage() -> impl IntoView {
 
             <Section title="Sizes">
                 <div class="space-y-3 max-w-xs">
-                    <Select options=simple_options() default_value="option-1" size=Size::Sm placeholder="Small" />
-                    <Select options=simple_options() default_value="option-1" placeholder="Medium (default)" />
-                    <Select options=simple_options() default_value="option-1" size=Size::Lg placeholder="Large" />
+                    <Select
+                        options=simple_options()
+                        default_value="option-1"
+                        size=Size::Sm
+                        placeholder="Small"
+                    />
+                    <Select
+                        options=simple_options()
+                        default_value="option-1"
+                        placeholder="Medium (default)"
+                    />
+                    <Select
+                        options=simple_options()
+                        default_value="option-1"
+                        size=Size::Lg
+                        placeholder="Large"
+                    />
                 </div>
             </Section>
 
             <Section title="Status">
                 <div class="space-y-3 max-w-xs">
-                    <Select options=simple_options() default_value="option-1" status=Status::Error />
-                    <Select options=simple_options() default_value="option-1" status=Status::Success />
-                    <Select options=simple_options() default_value="option-1" status=Status::Warning />
+                    <Select
+                        options=simple_options()
+                        default_value="option-1"
+                        status=Status::Error
+                    />
+                    <Select
+                        options=simple_options()
+                        default_value="option-1"
+                        status=Status::Success
+                    />
+                    <Select
+                        options=simple_options()
+                        default_value="option-1"
+                        status=Status::Warning
+                    />
                 </div>
             </Section>
 

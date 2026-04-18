@@ -131,7 +131,10 @@ pub fn RadioGroup(
         <div
             class=root_cls
             role="radiogroup"
-            aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
+            aria-label=move || {
+                let v = aria_label.get();
+                if v.is_empty() { None } else { Some(v) }
+            }
             on:keydown=handle_keydown
         >
             {options
@@ -146,21 +149,14 @@ pub fn RadioGroup(
                     let input_name = group_name.clone();
                     let opt_disabled = opt.disabled;
                     let item_disabled = disabled || opt_disabled;
-
                     let is_selected = {
                         let v = val.clone();
                         move || selected() == v
                     };
-
                     let item_cls = move || {
-                        [
-                            "radio-item",
-                            if item_disabled { "radio-item--disabled" } else { "" },
-                        ]
-                        .join(" ")
+                        ["radio-item", if item_disabled { "radio-item--disabled" } else { "" }]
+                            .join(" ")
                     };
-
-                    // Roving tabindex: only selected (or first if none selected) gets 0
                     let is_selected2 = is_selected.clone();
                     let tab_idx = move || {
                         if is_selected2() {
@@ -171,7 +167,6 @@ pub fn RadioGroup(
                             -1
                         }
                     };
-
                     let on_change_handler = {
                         let select_value = select_value.clone();
                         move |_: web_sys::Event| {
@@ -180,6 +175,8 @@ pub fn RadioGroup(
                             }
                         }
                     };
+
+                    // Roving tabindex: only selected (or first if none selected) gets 0
 
                     view! {
                         <label class=item_cls>

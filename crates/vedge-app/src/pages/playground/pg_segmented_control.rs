@@ -26,9 +26,7 @@ pub fn SegmentedControlPage() -> impl IntoView {
                     on_change=Callback::new(move |v: String| set_seg_val.set(v))
                     aria_label="View mode"
                 />
-                <p class="text-xs text-text-tertiary pt-1">
-                    "Active: " {move || seg_val.get()}
-                </p>
+                <p class="text-xs text-text-tertiary pt-1">"Active: " {move || seg_val.get()}</p>
             </Section>
 
             <Section title="Icon segments">

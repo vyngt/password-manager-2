@@ -340,15 +340,19 @@ where
     let empty_view = move || {
         view! {
             <tr>
-                <td
-                    class="data-table__empty"
-                    colspan=total_cols
-                    role="status"
-                    aria-live="polite"
-                >
+                <td class="data-table__empty" colspan=total_cols role="status" aria-live="polite">
                     <div class="data-table__empty-content">
                         <span class="data-table__empty-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                width="28"
+                                height="28"
+                            >
                                 <rect x="3" y="5" width="18" height="14" rx="2" />
                                 <line x1="3" y1="10" x2="21" y2="10" />
                                 <line x1="9" y1="15" x2="15" y2="15" />
@@ -382,14 +386,9 @@ where
                 aria-busy=move || loading.get().then_some("true")
                 aria-rowcount=move || row_keys.with(|k| k.len()).to_string()
             >
-                <colgroup>
-                    {colgroup_view}
-                </colgroup>
+                <colgroup>{colgroup_view}</colgroup>
                 <thead>
-                    <tr>
-                        {header_checkbox_view}
-                        {header_cells_view}
-                    </tr>
+                    <tr>{header_checkbox_view} {header_cells_view}</tr>
                 </thead>
                 <tbody>
                     <Show when=move || !rows.with(|r| r.is_empty()) fallback=empty_view>
@@ -460,11 +459,7 @@ fn render_header_cell<T: 'static>(
         };
         view! {
             <th class=full_cls scope="col" aria-sort=aria_sort>
-                <button
-                    type="button"
-                    class="data-table__sort-btn"
-                    on:click=on_click
-                >
+                <button type="button" class="data-table__sort-btn" on:click=on_click>
                     <span>{header}</span>
                     {sort_icon}
                 </button>
@@ -473,7 +468,9 @@ fn render_header_cell<T: 'static>(
         .into_any()
     } else {
         view! {
-            <th class=full_cls scope="col">{header}</th>
+            <th class=full_cls scope="col">
+                {header}
+            </th>
         }
         .into_any()
     }
@@ -496,10 +493,9 @@ fn render_cell<T: 'static>(col: &ColumnDef<T>, row: &T) -> AnyView {
         CellValue::Text(s) => {
             if stop_click {
                 view! {
-                    <td
-                        class=cls
-                        on:click=|ev: web_sys::MouseEvent| ev.stop_propagation()
-                    >{s}</td>
+                    <td class=cls on:click=|ev: web_sys::MouseEvent| ev.stop_propagation()>
+                        {s}
+                    </td>
                 }
                 .into_any()
             } else {
@@ -515,10 +511,9 @@ fn render_cell<T: 'static>(col: &ColumnDef<T>, row: &T) -> AnyView {
         CellValue::View(v) => {
             if stop_click {
                 view! {
-                    <td
-                        class=cls
-                        on:click=|ev: web_sys::MouseEvent| ev.stop_propagation()
-                    >{v}</td>
+                    <td class=cls on:click=|ev: web_sys::MouseEvent| ev.stop_propagation()>
+                        {v}
+                    </td>
                 }
                 .into_any()
             } else {

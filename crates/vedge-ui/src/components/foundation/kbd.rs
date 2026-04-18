@@ -6,7 +6,5 @@ pub fn Kbd(
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let cls = ["kbd", class].join(" ");
-    view! {
-        <kbd class=cls>{children()}</kbd>
-    }
+    view! { <kbd class=cls>{children()}</kbd> }
 }

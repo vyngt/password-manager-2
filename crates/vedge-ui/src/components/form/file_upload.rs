@@ -3,6 +3,9 @@ use crate::components::foundation::icon_button::IconButton;
 use crate::components::foundation::progress_bar::ProgressBar;
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{BadgeSize, BadgeVariant, Size, Variant};
+use crate::utils::format::format_bytes;
+use crate::utils::id::new_uuid;
+use crate::utils::text::text_or;
 use icondata as i;
 use leptos::ev::Targeted;
 use leptos::prelude::*;
@@ -10,7 +13,6 @@ use leptos_icons::Icon;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
-use uuid::Uuid;
 use web_sys::{DragEvent, Event, HtmlInputElement};
 
 // -------------------------------------------------------------------------
@@ -45,7 +47,7 @@ pub struct FileItem {
 impl FileItem {
     pub fn new(file: web_sys::File) -> Self {
         Self {
-            id: Uuid::new_v4().to_string(),
+            id: new_uuid(),
             file,
             status: FileStatus::Idle,
             progress: None,
@@ -88,21 +90,6 @@ enum DragState {
 // -------------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------------
-
-fn format_bytes(n: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-    const GB: u64 = MB * 1024;
-    if n >= GB {
-        format!("{:.1} GB", n as f64 / GB as f64)
-    } else if n >= MB {
-        format!("{:.1} MB", n as f64 / MB as f64)
-    } else if n >= KB {
-        format!("{:.0} KB", n as f64 / KB as f64)
-    } else {
-        format!("{} B", n)
-    }
-}
 
 /// Check whether a MIME type + filename satisfies an accept pattern.
 /// Accept forms: `"*"`, `"*/*"`, `"image/*"`, `"application/pdf"`, `".pem"`, `".pem,.crt,image/*"`.
@@ -192,13 +179,6 @@ fn auto_hint(accept: &str, max_size: Option<u64>, up_to: &str) -> String {
         parts.push(format!("{} {}", up_to, format_bytes(m)));
     }
     parts.join(" \u{00B7} ")
-}
-
-/// Reactive read with English fallback. Use inside reactive closures — subscribes
-/// to the prop, so updates flow through (supports locale switching).
-fn text_or(prop: TextProp, fallback: &str) -> String {
-    let v = prop.get();
-    if v.is_empty() { fallback.to_string() } else { v }
 }
 
 // -------------------------------------------------------------------------
@@ -574,36 +554,42 @@ pub fn FileUpload(
 
                 <Show
                     when=move || is_compact()
-                    fallback=move || view! {
-                        <span class="file-upload__zone-icon" aria-hidden="true">
-                            <Icon icon=i::FaCloudArrowUpSolid />
-                        </span>
-                        <span class="file-upload__prompt">
-                            {move || text_or(placeholder, "Drag files here or click to browse")}
-                        </span>
-                        {move || {
-                            let h = resolved_hint();
-                            (!h.is_empty()).then(|| view! {
-                                <span class="file-upload__hint">{h}</span>
-                            })
-                        }}
+                    fallback=move || {
+                        view! {
+                            <span class="file-upload__zone-icon" aria-hidden="true">
+                                <Icon icon=i::FaCloudArrowUpSolid />
+                            </span>
+                            <span class="file-upload__prompt">
+                                {move || text_or(placeholder, "Drag files here or click to browse")}
+                            </span>
+                            {move || {
+                                let h = resolved_hint();
+                                (!h.is_empty())
+                                    .then(|| view! { <span class="file-upload__hint">{h}</span> })
+                            }}
+                        }
                     }
                 >
-                    {move || compact_item().map(|item| view! {
-                        <CompactItem
-                            id=item.id.clone()
-                            file=item.file.clone()
-                            items_sig=items_sig
-                            allow_cancel=allow_cancel
-                            disabled=disabled
-                            on_remove=Callback::new(handle_remove)
-                            done_label=done_label
-                            error_label=error_label
-                            replace_label=replace_label
-                            remove_label=remove_label
-                            uploading_label=uploading_label
-                        />
-                    })}
+                    {move || {
+                        compact_item()
+                            .map(|item| {
+                                view! {
+                                    <CompactItem
+                                        id=item.id.clone()
+                                        file=item.file.clone()
+                                        items_sig=items_sig
+                                        allow_cancel=allow_cancel
+                                        disabled=disabled
+                                        on_remove=Callback::new(handle_remove)
+                                        done_label=done_label
+                                        error_label=error_label
+                                        replace_label=replace_label
+                                        remove_label=remove_label
+                                        uploading_label=uploading_label
+                                    />
+                                }
+                            })
+                    }}
                 </Show>
             </label>
 
@@ -682,39 +668,39 @@ fn FileRow(
             <span class="file-upload__item-icon" aria-hidden="true">
                 <Icon icon=i::FaFileSolid />
             </span>
-            <span class="file-upload__item-name" title=name.clone()>{name.clone()}</span>
+            <span class="file-upload__item-name" title=name.clone()>
+                {name.clone()}
+            </span>
             <span class="file-upload__item-status">
                 {move || match status() {
-                    FileStatus::Idle => view! {
-                        <span class="file-upload__item-size">{size_text_c.clone()}</span>
-                    }.into_any(),
+                    FileStatus::Idle => {
+                        view! { <span class="file-upload__item-size">{size_text_c.clone()}</span> }
+                            .into_any()
+                    }
                     FileStatus::Uploading => {
                         let aria = format!(
                             "{} {}",
                             text_or(uploading_label, "Uploading"),
-                            name_stored.get_value()
+                            name_stored.get_value(),
                         );
                         view! {
                             <span class="file-upload__item-progress">
-                                <ProgressBar
-                                    value=progress_sig
-                                    size=Size::Sm
-                                    aria_label=aria
-                                />
+                                <ProgressBar value=progress_sig size=Size::Sm aria_label=aria />
                                 <span class="file-upload__item-progress-value">
                                     {move || format!("{}%", progress_sig.get() as u8)}
                                 </span>
                             </span>
-                        }.into_any()
+                        }
+                            .into_any()
                     }
-                    FileStatus::Done => view! {
-                        <Badge
-                            variant=BadgeVariant::Success
-                            size=BadgeSize::Sm
-                        >
-                            {move || text_or(done_label, "Done")}
-                        </Badge>
-                    }.into_any(),
+                    FileStatus::Done => {
+                        view! {
+                            <Badge variant=BadgeVariant::Success size=BadgeSize::Sm>
+                                {move || text_or(done_label, "Done")}
+                            </Badge>
+                        }
+                            .into_any()
+                    }
                     FileStatus::Error => {
                         let err = error_text();
                         let fallback = text_or(error_label, "Error");
@@ -723,31 +709,36 @@ fn FileRow(
                             <span class="file-upload__item-error" title=err>
                                 {display}
                             </span>
-                        }.into_any()
+                        }
+                            .into_any()
                     }
                 }}
                 {move || {
-                    if !show_remove() { return None; }
+                    if !show_remove() {
+                        return None;
+                    }
                     let it = lookup()?;
                     let lbl = format!(
                         "{} {}",
                         text_or(remove_label, "Remove"),
-                        name_stored.get_value()
+                        name_stored.get_value(),
                     );
-                    Some(view! {
-                        <IconButton
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            aria_label=lbl
-                            disabled=disabled
-                            on:click=move |ev: web_sys::MouseEvent| {
-                                ev.stop_propagation();
-                                on_remove.run(it.clone());
-                            }
-                        >
-                            <Icon icon=i::FaXmarkSolid />
-                        </IconButton>
-                    })
+                    Some(
+                        view! {
+                            <IconButton
+                                variant=Variant::Ghost
+                                size=Size::Sm
+                                aria_label=lbl
+                                disabled=disabled
+                                on:click=move |ev: web_sys::MouseEvent| {
+                                    ev.stop_propagation();
+                                    on_remove.run(it.clone());
+                                }
+                            >
+                                <Icon icon=i::FaXmarkSolid />
+                            </IconButton>
+                        },
+                    )
                 }}
             </span>
         </div>
@@ -794,44 +785,46 @@ fn CompactItem(
         <span class="file-upload__zone-icon" aria-hidden="true">
             <Icon icon=i::FaFileSolid />
         </span>
-        <span class="file-upload__compact-name" title=name.clone()>{name.clone()}</span>
+        <span class="file-upload__compact-name" title=name.clone()>
+            {name.clone()}
+        </span>
         {move || match status() {
-            FileStatus::Idle => view! {
-                <span class="file-upload__compact-size">{size_text_c.clone()}</span>
-                <span class="file-upload__compact-replace">
-                    {move || text_or(replace_label, "Replace")}
-                </span>
-            }.into_any(),
+            FileStatus::Idle => {
+                view! {
+                    <span class="file-upload__compact-size">{size_text_c.clone()}</span>
+                    <span class="file-upload__compact-replace">
+                        {move || text_or(replace_label, "Replace")}
+                    </span>
+                }
+                    .into_any()
+            }
             FileStatus::Uploading => {
                 let aria = format!(
                     "{} {}",
                     text_or(uploading_label, "Uploading"),
-                    name_stored.get_value()
+                    name_stored.get_value(),
                 );
                 view! {
                     <span class="file-upload__item-progress">
-                        <ProgressBar
-                            value=progress_sig
-                            size=Size::Sm
-                            aria_label=aria
-                        />
+                        <ProgressBar value=progress_sig size=Size::Sm aria_label=aria />
                         <span class="file-upload__item-progress-value">
                             {move || format!("{}%", progress_sig.get() as u8)}
                         </span>
                     </span>
-                }.into_any()
+                }
+                    .into_any()
             }
-            FileStatus::Done => view! {
-                <Badge
-                    variant=BadgeVariant::Success
-                    size=BadgeSize::Sm
-                >
-                    {move || text_or(done_label, "Done")}
-                </Badge>
-                <span class="file-upload__compact-replace">
-                    {move || text_or(replace_label, "Replace")}
-                </span>
-            }.into_any(),
+            FileStatus::Done => {
+                view! {
+                    <Badge variant=BadgeVariant::Success size=BadgeSize::Sm>
+                        {move || text_or(done_label, "Done")}
+                    </Badge>
+                    <span class="file-upload__compact-replace">
+                        {move || text_or(replace_label, "Replace")}
+                    </span>
+                }
+                    .into_any()
+            }
             FileStatus::Error => {
                 let err = error_text();
                 let fallback = text_or(error_label, "Error");
@@ -843,32 +836,33 @@ fn CompactItem(
                     <span class="file-upload__compact-replace">
                         {move || text_or(replace_label, "Replace")}
                     </span>
-                }.into_any()
+                }
+                    .into_any()
             }
         }}
         {move || {
-            if !show_remove() { return None; }
+            if !show_remove() {
+                return None;
+            }
             let it = lookup()?;
-            let lbl = format!(
-                "{} {}",
-                text_or(remove_label, "Remove"),
-                name_stored.get_value()
-            );
-            Some(view! {
-                <IconButton
-                    variant=Variant::Ghost
-                    size=Size::Sm
-                    aria_label=lbl
-                    disabled=disabled
-                    on:click=move |ev: web_sys::MouseEvent| {
-                        ev.stop_propagation();
-                        ev.prevent_default();
-                        on_remove.run(it.clone());
-                    }
-                >
-                    <Icon icon=i::FaXmarkSolid />
-                </IconButton>
-            })
+            let lbl = format!("{} {}", text_or(remove_label, "Remove"), name_stored.get_value());
+            Some(
+                view! {
+                    <IconButton
+                        variant=Variant::Ghost
+                        size=Size::Sm
+                        aria_label=lbl
+                        disabled=disabled
+                        on:click=move |ev: web_sys::MouseEvent| {
+                            ev.stop_propagation();
+                            ev.prevent_default();
+                            on_remove.run(it.clone());
+                        }
+                    >
+                        <Icon icon=i::FaXmarkSolid />
+                    </IconButton>
+                },
+            )
         }}
     }
 }

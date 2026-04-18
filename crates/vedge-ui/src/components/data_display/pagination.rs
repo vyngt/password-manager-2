@@ -116,7 +116,9 @@ pub fn Pagination(
                             on_click=Callback::new(move |_: ()| {
                                 let p = page.get_untracked();
                                 if p > 1 {
-                                    if let Some(cb) = on_page_change { cb.run(p - 1); }
+                                    if let Some(cb) = on_page_change {
+                                        cb.run(p - 1);
+                                    }
                                 }
                             })
                         />
@@ -125,12 +127,16 @@ pub fn Pagination(
                         </span>
                         <NextButton
                             label=next_label
-                            disabled=Signal::derive(move || disabled || page.get() >= total_pages.get())
+                            disabled=Signal::derive(move || {
+                                disabled || page.get() >= total_pages.get()
+                            })
                             on_click=Callback::new(move |_: ()| {
                                 let p = page.get_untracked();
                                 let tp = total_pages.get_untracked();
                                 if p < tp {
-                                    if let Some(cb) = on_page_change { cb.run(p + 1); }
+                                    if let Some(cb) = on_page_change {
+                                        cb.run(p + 1);
+                                    }
                                 }
                             })
                         />
@@ -145,7 +151,9 @@ pub fn Pagination(
                             on_click=Callback::new(move |_: ()| {
                                 let p = page.get_untracked();
                                 if p > 1 {
-                                    if let Some(cb) = on_page_change { cb.run(p - 1); }
+                                    if let Some(cb) = on_page_change {
+                                        cb.run(p - 1);
+                                    }
                                 }
                             })
                         />
@@ -158,46 +166,66 @@ pub fn Pagination(
                                 .map(|(idx, item)| match item {
                                     PageItem::Page(n) => {
                                         let is_current = n == current;
-                                        let variant = if is_current { Variant::Primary } else { Variant::Ghost };
-                                        let aria_current = if is_current { Some("page") } else { None };
-                                        Either::Left(view! {
-                                            <Button
-                                                variant=variant
-                                                size=Size::Sm
-                                                disabled=disabled
-                                                class="pagination__page-btn"
-                                                aria_label=format!("Page {}", n)
-                                                on:click=move |_| {
-                                                    if !is_current {
-                                                        if let Some(cb) = on_page_change { cb.run(n); }
+                                        let variant = if is_current {
+                                            Variant::Primary
+                                        } else {
+                                            Variant::Ghost
+                                        };
+                                        let aria_current = if is_current {
+                                            Some("page")
+                                        } else {
+                                            None
+                                        };
+                                        Either::Left(
+                                            view! {
+                                                <Button
+                                                    variant=variant
+                                                    size=Size::Sm
+                                                    disabled=disabled
+                                                    class="pagination__page-btn"
+                                                    aria_label=format!("Page {}", n)
+                                                    on:click=move |_| {
+                                                        if !is_current {
+                                                            if let Some(cb) = on_page_change {
+                                                                cb.run(n);
+                                                            }
+                                                        }
                                                     }
-                                                }
-                                                attr:aria-current=aria_current
-                                            >
-                                                {n.to_string()}
-                                            </Button>
-                                        })
+                                                    attr:aria-current=aria_current
+                                                >
+                                                    {n.to_string()}
+                                                </Button>
+                                            },
+                                        )
                                     }
-                                    PageItem::Ellipsis => Either::Right(view! {
-                                        <span
-                                            class="pagination__ellipsis"
-                                            aria-hidden="true"
-                                            data-idx=idx
-                                        >
-                                            "\u{2026}"
-                                        </span>
-                                    }),
+                                    PageItem::Ellipsis => {
+                                        Either::Right(
+                                            view! {
+                                                <span
+                                                    class="pagination__ellipsis"
+                                                    aria-hidden="true"
+                                                    data-idx=idx
+                                                >
+                                                    "\u{2026}"
+                                                </span>
+                                            },
+                                        )
+                                    }
                                 })
                                 .collect_view()
                         }}
                         <NextButton
                             label=next_label
-                            disabled=Signal::derive(move || disabled || page.get() >= total_pages.get())
+                            disabled=Signal::derive(move || {
+                                disabled || page.get() >= total_pages.get()
+                            })
                             on_click=Callback::new(move |_: ()| {
                                 let p = page.get_untracked();
                                 let tp = total_pages.get_untracked();
                                 if p < tp {
-                                    if let Some(cb) = on_page_change { cb.run(p + 1); }
+                                    if let Some(cb) = on_page_change {
+                                        cb.run(p + 1);
+                                    }
                                 }
                             })
                         />
@@ -212,7 +240,9 @@ pub fn Pagination(
                     disabled=Signal::derive(move || disabled || !has_prev_page.get())
                     on_click=Callback::new(move |_: ()| {
                         if has_prev_page.get_untracked() {
-                            if let Some(cb) = on_prev { cb.run(()); }
+                            if let Some(cb) = on_prev {
+                                cb.run(());
+                            }
                         }
                     })
                 />
@@ -221,7 +251,9 @@ pub fn Pagination(
                     disabled=Signal::derive(move || disabled || !has_next_page.get())
                     on_click=Callback::new(move |_: ()| {
                         if has_next_page.get_untracked() {
-                            if let Some(cb) = on_next { cb.run(()); }
+                            if let Some(cb) = on_next {
+                                cb.run(());
+                            }
                         }
                     })
                 />
@@ -257,7 +289,11 @@ fn PrevButton(
                     size=Size::Sm
                     disabled=is_disabled
                     aria_label=label
-                    on:click=move |_| { if !is_disabled { on_click.run(()); } }
+                    on:click=move |_| {
+                        if !is_disabled {
+                            on_click.run(());
+                        }
+                    }
                 >
                     <Icon icon=i::FaChevronLeftSolid />
                 </Button>
@@ -281,7 +317,11 @@ fn NextButton(
                     size=Size::Sm
                     disabled=is_disabled
                     aria_label=label
-                    on:click=move |_| { if !is_disabled { on_click.run(()); } }
+                    on:click=move |_| {
+                        if !is_disabled {
+                            on_click.run(());
+                        }
+                    }
                 >
                     <Icon icon=i::FaChevronRightSolid />
                 </Button>

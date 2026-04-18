@@ -69,10 +69,7 @@ fn HeaderSection() -> impl IntoView {
                     show_value=true
                     variant=ProgressVariant::Success
                 />
-                <ProgressBar
-                    value=Signal::stored(15.0)
-                    label="Syncing"
-                />
+                <ProgressBar value=Signal::stored(15.0) label="Syncing" />
                 <ProgressBar
                     value=Signal::stored(72.0)
                     show_value=true
@@ -91,13 +88,15 @@ fn LiveSection() -> impl IntoView {
     view! {
         <Section title="Live — drag slider to see the fill transition">
             <div class="space-y-3">
-                {move || view! {
-                    <ProgressBar
-                        value=value
-                        variant=variant.get()
-                        label="Live progress"
-                        show_value=true
-                    />
+                {move || {
+                    view! {
+                        <ProgressBar
+                            value=value
+                            variant=variant.get()
+                            label="Live progress"
+                            show_value=true
+                        />
+                    }
                 }}
                 <input
                     type="range"
@@ -116,20 +115,33 @@ fn LiveSection() -> impl IntoView {
                         }
                     }
                     class="w-full"
-                />
-                <div class="flex gap-2">
+                /> <div class="flex gap-2">
                     <button
                         class="px-2 py-1 text-xs rounded border border-border bg-background text-text-primary hover:bg-surface-2"
-                        on:click=move |_| { value.set(0.0); variant.set(ProgressVariant::Default); }
-                    >"reset"</button>
+                        on:click=move |_| {
+                            value.set(0.0);
+                            variant.set(ProgressVariant::Default);
+                        }
+                    >
+                        "reset"
+                    </button>
                     <button
                         class="px-2 py-1 text-xs rounded border border-border bg-background text-text-primary hover:bg-surface-2"
-                        on:click=move |_| { value.set(100.0); variant.set(ProgressVariant::Success); }
-                    >"complete"</button>
+                        on:click=move |_| {
+                            value.set(100.0);
+                            variant.set(ProgressVariant::Success);
+                        }
+                    >
+                        "complete"
+                    </button>
                     <button
                         class="px-2 py-1 text-xs rounded border border-border bg-background text-text-primary hover:bg-surface-2"
-                        on:click=move |_| { variant.set(ProgressVariant::Danger); }
-                    >"mark error"</button>
+                        on:click=move |_| {
+                            variant.set(ProgressVariant::Danger);
+                        }
+                    >
+                        "mark error"
+                    </button>
                 </div>
             </div>
         </Section>

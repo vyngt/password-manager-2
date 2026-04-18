@@ -71,11 +71,7 @@ fn VerticalSection() -> impl IntoView {
     view! {
         <Section title="Vertical — labels and descriptions right of each node">
             <div class="max-w-sm">
-                <StepIndicator
-                    steps=steps
-                    current_step=1usize
-                    variant=Orientation::Vertical
-                />
+                <StepIndicator steps=steps current_step=1usize variant=Orientation::Vertical />
             </div>
         </Section>
     }
@@ -97,15 +93,29 @@ fn InteractiveSection() -> impl IntoView {
                         type="button"
                         class="px-3 py-1.5 text-sm rounded border border-border bg-background text-text-primary hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled=move || current.get() == 0
-                        on:click=move |_| current.update(|c| if *c > 0 { *c -= 1; })
+                        on:click=move |_| {
+                            current
+                                .update(|c| {
+                                    if *c > 0 {
+                                        *c -= 1;
+                                    }
+                                })
+                        }
                     >
                         "Back"
                     </button>
                     <button
                         type="button"
                         class="px-3 py-1.5 text-sm rounded border border-border bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={move || current.get() >= max}
-                        on:click=move |_| current.update(|c| if *c < max { *c += 1; })
+                        disabled=move || current.get() >= max
+                        on:click=move |_| {
+                            current
+                                .update(|c| {
+                                    if *c < max {
+                                        *c += 1;
+                                    }
+                                })
+                        }
                     >
                         "Next"
                     </button>

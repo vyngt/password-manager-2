@@ -23,24 +23,40 @@ pub fn BadgePage() -> impl IntoView {
             <Section title="Variants (outline)">
                 <div class="flex flex-wrap gap-2">
                     <Badge appearance=BadgeAppearance::Outline>"Default"</Badge>
-                    <Badge variant=BadgeVariant::Info appearance=BadgeAppearance::Outline>"Info"</Badge>
-                    <Badge variant=BadgeVariant::Success appearance=BadgeAppearance::Outline>"Success"</Badge>
-                    <Badge variant=BadgeVariant::Warning appearance=BadgeAppearance::Outline>"Warning"</Badge>
-                    <Badge variant=BadgeVariant::Danger appearance=BadgeAppearance::Outline>"Danger"</Badge>
+                    <Badge variant=BadgeVariant::Info appearance=BadgeAppearance::Outline>
+                        "Info"
+                    </Badge>
+                    <Badge variant=BadgeVariant::Success appearance=BadgeAppearance::Outline>
+                        "Success"
+                    </Badge>
+                    <Badge variant=BadgeVariant::Warning appearance=BadgeAppearance::Outline>
+                        "Warning"
+                    </Badge>
+                    <Badge variant=BadgeVariant::Danger appearance=BadgeAppearance::Outline>
+                        "Danger"
+                    </Badge>
                 </div>
             </Section>
 
             <Section title="Sizes">
                 <div class="flex items-center gap-2">
-                    <Badge variant=BadgeVariant::Info size=BadgeSize::Sm>"Small"</Badge>
-                    <Badge variant=BadgeVariant::Info size=BadgeSize::Md>"Medium"</Badge>
+                    <Badge variant=BadgeVariant::Info size=BadgeSize::Sm>
+                        "Small"
+                    </Badge>
+                    <Badge variant=BadgeVariant::Info size=BadgeSize::Md>
+                        "Medium"
+                    </Badge>
                 </div>
             </Section>
 
             <Section title="Shapes">
                 <div class="flex items-center gap-2">
-                    <Badge variant=BadgeVariant::Info shape=BadgeShape::Pill>"Pill"</Badge>
-                    <Badge variant=BadgeVariant::Info shape=BadgeShape::Square>"12"</Badge>
+                    <Badge variant=BadgeVariant::Info shape=BadgeShape::Pill>
+                        "Pill"
+                    </Badge>
+                    <Badge variant=BadgeVariant::Info shape=BadgeShape::Square>
+                        "12"
+                    </Badge>
                     <Badge variant=BadgeVariant::Danger shape=BadgeShape::Dot />
                     <Badge variant=BadgeVariant::Success shape=BadgeShape::Dot />
                     <Badge variant=BadgeVariant::Warning shape=BadgeShape::Dot />

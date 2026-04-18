@@ -204,10 +204,16 @@ fn SortableSection() -> impl IntoView {
                 "Current sort: "
                 {move || match sort.get() {
                     None => "none".to_string(),
-                    Some(s) => format!("{} {}", s.column_id, match s.direction {
-                        SortDirection::Asc => "↑",
-                        SortDirection::Desc => "↓",
-                    }),
+                    Some(s) => {
+                        format!(
+                            "{} {}",
+                            s.column_id,
+                            match s.direction {
+                                SortDirection::Asc => "↑",
+                                SortDirection::Desc => "↓",
+                            },
+                        )
+                    }
                 }}
             </div>
             <DataTable
@@ -423,7 +429,9 @@ fn RowClickVsSelectionSection() -> impl IntoView {
                         columns=columns_click
                         rows=rows
                         row_key=string_fn(|e: &Entry| e.id.to_string())
-                        on_row_click=Callback::new(move |e: Entry| last_clicked.set(e.name.to_string()))
+                        on_row_click=Callback::new(move |e: Entry| {
+                            last_clicked.set(e.name.to_string())
+                        })
                         empty_message="No entries"
                     />
                 </div>
@@ -576,8 +584,12 @@ fn EmptySection() -> impl IntoView {
                         rows=rows
                         row_key=string_fn(|e: &Entry| e.id.to_string())
                         empty_message="No entries in this vault"
-                        empty_action=move || view! {
-                            <Button variant=Variant::Primary size=Size::Sm>"Add entry"</Button>
+                        empty_action=move || {
+                            view! {
+                                <Button variant=Variant::Primary size=Size::Sm>
+                                    "Add entry"
+                                </Button>
+                            }
                         }
                     />
                 </div>
@@ -735,8 +747,12 @@ fn KitchenSinkSection() -> impl IntoView {
                 deselect_all_label="Deselect all entries"
                 row_select_label=string_fn(|e: &Entry| format!("Select {}", e.name))
                 empty_message="No entries"
-                empty_action=move || view! {
-                    <Button variant=Variant::Primary size=Size::Sm>"Add entry"</Button>
+                empty_action=move || {
+                    view! {
+                        <Button variant=Variant::Primary size=Size::Sm>
+                            "Add entry"
+                        </Button>
+                    }
                 }
             />
         </Section>

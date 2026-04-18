@@ -170,7 +170,10 @@ pub fn SegmentedControl(
             node_ref=root_ref
             class=root_cls
             role="radiogroup"
-            aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
+            aria-label=move || {
+                let v = aria_label.get();
+                if v.is_empty() { None } else { Some(v) }
+            }
             on:keydown=handle_keydown
         >
             <span
@@ -186,15 +189,12 @@ pub fn SegmentedControl(
                     let val2 = opt.value.clone();
                     let opt_disabled = opt.disabled;
                     let item_disabled = disabled || opt_disabled;
-
                     let is_active = {
                         let v = val.clone();
                         move || value.get() == v
                     };
-
                     let is_active2 = is_active.clone();
                     let tab_idx = move || if is_active2() { 0 } else { -1 };
-
                     let on_click = {
                         let select_value = select_value.clone();
                         let val = val2.clone();

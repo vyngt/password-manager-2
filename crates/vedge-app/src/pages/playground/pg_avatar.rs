@@ -20,18 +20,42 @@ pub fn AvatarPage() -> impl IntoView {
 
             <Section title="Sizes">
                 <div class="flex items-end gap-4">
-                    <Avatar src=PHOTO.to_string() name="Ada Lovelace".to_string() size=AvatarSize::Xs />
-                    <Avatar src=PHOTO.to_string() name="Ada Lovelace".to_string() size=AvatarSize::Sm />
-                    <Avatar src=PHOTO.to_string() name="Ada Lovelace".to_string() size=AvatarSize::Md />
-                    <Avatar src=PHOTO.to_string() name="Ada Lovelace".to_string() size=AvatarSize::Lg />
-                    <Avatar src=PHOTO.to_string() name="Ada Lovelace".to_string() size=AvatarSize::Xl />
+                    <Avatar
+                        src=PHOTO.to_string()
+                        name="Ada Lovelace".to_string()
+                        size=AvatarSize::Xs
+                    />
+                    <Avatar
+                        src=PHOTO.to_string()
+                        name="Ada Lovelace".to_string()
+                        size=AvatarSize::Sm
+                    />
+                    <Avatar
+                        src=PHOTO.to_string()
+                        name="Ada Lovelace".to_string()
+                        size=AvatarSize::Md
+                    />
+                    <Avatar
+                        src=PHOTO.to_string()
+                        name="Ada Lovelace".to_string()
+                        size=AvatarSize::Lg
+                    />
+                    <Avatar
+                        src=PHOTO.to_string()
+                        name="Ada Lovelace".to_string()
+                        size=AvatarSize::Xl
+                    />
                 </div>
             </Section>
 
             <Section title="Fallback cascade">
                 <div class="flex items-center gap-4">
                     <div class="flex flex-col items-center gap-1">
-                        <Avatar src=PHOTO.to_string() name="Ada Lovelace".to_string() size=AvatarSize::Lg />
+                        <Avatar
+                            src=PHOTO.to_string()
+                            name="Ada Lovelace".to_string()
+                            size=AvatarSize::Lg
+                        />
                         <span class="text-xs text-text-tertiary">"image"</span>
                     </div>
                     <div class="flex flex-col items-center gap-1">
@@ -68,7 +92,12 @@ pub fn AvatarPage() -> impl IntoView {
 
             <Section title="Status — all statuses, all sizes">
                 <div class="space-y-3">
-                    {[AvatarStatus::Online, AvatarStatus::Away, AvatarStatus::Busy, AvatarStatus::Offline]
+                    {[
+                        AvatarStatus::Online,
+                        AvatarStatus::Away,
+                        AvatarStatus::Busy,
+                        AvatarStatus::Offline,
+                    ]
                         .iter()
                         .map(|st| {
                             let s = *st;
@@ -81,11 +110,36 @@ pub fn AvatarPage() -> impl IntoView {
                             view! {
                                 <div class="flex items-end gap-4">
                                     <span class="w-16 text-xs text-text-tertiary">{label}</span>
-                                    <Avatar src=PHOTO.to_string() name="Ada".to_string() size=AvatarSize::Xs status=Some(s) />
-                                    <Avatar src=PHOTO.to_string() name="Ada".to_string() size=AvatarSize::Sm status=Some(s) />
-                                    <Avatar src=PHOTO.to_string() name="Ada".to_string() size=AvatarSize::Md status=Some(s) />
-                                    <Avatar src=PHOTO.to_string() name="Ada".to_string() size=AvatarSize::Lg status=Some(s) />
-                                    <Avatar src=PHOTO.to_string() name="Ada".to_string() size=AvatarSize::Xl status=Some(s) />
+                                    <Avatar
+                                        src=PHOTO.to_string()
+                                        name="Ada".to_string()
+                                        size=AvatarSize::Xs
+                                        status=Some(s)
+                                    />
+                                    <Avatar
+                                        src=PHOTO.to_string()
+                                        name="Ada".to_string()
+                                        size=AvatarSize::Sm
+                                        status=Some(s)
+                                    />
+                                    <Avatar
+                                        src=PHOTO.to_string()
+                                        name="Ada".to_string()
+                                        size=AvatarSize::Md
+                                        status=Some(s)
+                                    />
+                                    <Avatar
+                                        src=PHOTO.to_string()
+                                        name="Ada".to_string()
+                                        size=AvatarSize::Lg
+                                        status=Some(s)
+                                    />
+                                    <Avatar
+                                        src=PHOTO.to_string()
+                                        name="Ada".to_string()
+                                        size=AvatarSize::Xl
+                                        status=Some(s)
+                                    />
                                 </div>
                             }
                         })
@@ -134,7 +188,12 @@ pub fn AvatarPage() -> impl IntoView {
 
             <Section title="In a row (composition)">
                 <div class="flex items-center gap-3">
-                    <Avatar src=PHOTO.to_string() name="Ada Lovelace".to_string() size=AvatarSize::Sm status=Some(AvatarStatus::Online) />
+                    <Avatar
+                        src=PHOTO.to_string()
+                        name="Ada Lovelace".to_string()
+                        size=AvatarSize::Sm
+                        status=Some(AvatarStatus::Online)
+                    />
                     <div class="flex flex-col gap-0.5">
                         <span class="text-sm font-medium text-text-primary">"Ada Lovelace"</span>
                         <span class="text-xs text-text-secondary">"Enchantress of Numbers"</span>

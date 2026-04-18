@@ -22,31 +22,51 @@ pub fn ButtonPage() -> impl IntoView {
 
             <Section title="Sizes">
                 <div class="flex items-end gap-2">
-                    <Button variant=Variant::Primary size=Size::Sm>"Small"</Button>
-                    <Button variant=Variant::Primary size=Size::Md>"Medium"</Button>
-                    <Button variant=Variant::Primary size=Size::Lg>"Large"</Button>
+                    <Button variant=Variant::Primary size=Size::Sm>
+                        "Small"
+                    </Button>
+                    <Button variant=Variant::Primary size=Size::Md>
+                        "Medium"
+                    </Button>
+                    <Button variant=Variant::Primary size=Size::Lg>
+                        "Large"
+                    </Button>
                 </div>
             </Section>
 
             <Section title="Shapes">
                 <div class="flex flex-wrap gap-2">
-                    <Button variant=Variant::Primary shape=Shape::Square>"Square"</Button>
-                    <Button variant=Variant::Primary shape=Shape::RoundedSm>"Rounded SM"</Button>
-                    <Button variant=Variant::Primary shape=Shape::Rounded>"Rounded"</Button>
-                    <Button variant=Variant::Primary shape=Shape::Pill>"Pill"</Button>
+                    <Button variant=Variant::Primary shape=Shape::Square>
+                        "Square"
+                    </Button>
+                    <Button variant=Variant::Primary shape=Shape::RoundedSm>
+                        "Rounded SM"
+                    </Button>
+                    <Button variant=Variant::Primary shape=Shape::Rounded>
+                        "Rounded"
+                    </Button>
+                    <Button variant=Variant::Primary shape=Shape::Pill>
+                        "Pill"
+                    </Button>
                 </div>
             </Section>
 
             <Section title="States">
                 <div class="flex flex-wrap gap-2">
                     <Button variant=Variant::Primary>"Default"</Button>
-                    <Button variant=Variant::Primary disabled=true>"Disabled"</Button>
-                    <Button variant=Variant::Primary loading=true>"Loading"</Button>
+                    <Button variant=Variant::Primary disabled=true>
+                        "Disabled"
+                    </Button>
+                    <Button variant=Variant::Primary loading=true>
+                        "Loading"
+                    </Button>
                 </div>
             </Section>
 
             <Section title="Full Width">
-                <Button variant=Variant::Primary full_width=true>"Full Width Button"</Button>
+                <Button variant=Variant::Primary full_width=true>
+                    "Full Width Button"
+                </Button>
             </Section>
         </div>
     }

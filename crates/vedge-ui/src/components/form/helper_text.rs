@@ -58,16 +58,19 @@ pub fn HelperText(
 
     view! {
         <p id=id class=cls role=role>
-            {icon.map(|icon_data| {
-                view! {
-                    <span
-                        class="helper-text__icon"
-                        aria-label=move || label_signal.map(|s| s.get()).filter(|s| !s.is_empty())
-                    >
-                        <Icon icon=icon_data />
-                    </span>
-                }
-            })}
+            {icon
+                .map(|icon_data| {
+                    view! {
+                        <span
+                            class="helper-text__icon"
+                            aria-label=move || {
+                                label_signal.map(|s| s.get()).filter(|s| !s.is_empty())
+                            }
+                        >
+                            <Icon icon=icon_data />
+                        </span>
+                    }
+                })}
             <span>{move || message.get()}</span>
         </p>
     }

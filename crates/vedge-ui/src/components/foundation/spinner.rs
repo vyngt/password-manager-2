@@ -10,5 +10,14 @@ pub fn Spinner(
 ) -> impl IntoView {
     let cls = ["spinner", size.spinner_class(), class].join(" ");
 
-    view! { <span class=cls role="status" aria-label=move || { let v = label.get(); if v.is_empty() { None } else { Some(v) } }></span> }
+    view! {
+        <span
+            class=cls
+            role="status"
+            aria-label=move || {
+                let v = label.get();
+                if v.is_empty() { None } else { Some(v) }
+            }
+        ></span>
+    }
 }

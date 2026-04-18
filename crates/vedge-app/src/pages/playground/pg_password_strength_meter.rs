@@ -36,23 +36,43 @@ pub fn PasswordStrengthMeterPage() -> impl IntoView {
                 <div class="space-y-4 max-w-sm">
                     <div class="space-y-1">
                         <span class="text-xs text-text-tertiary">"Score 0 (empty)"</span>
-                        <PasswordStrengthMeter score=Signal::stored(0u8) strength_label=sl level_labels=ll />
+                        <PasswordStrengthMeter
+                            score=Signal::stored(0u8)
+                            strength_label=sl
+                            level_labels=ll
+                        />
                     </div>
                     <div class="space-y-1">
                         <span class="text-xs text-text-tertiary">"Score 1 (weak)"</span>
-                        <PasswordStrengthMeter score=Signal::stored(1u8) strength_label=sl level_labels=ll />
+                        <PasswordStrengthMeter
+                            score=Signal::stored(1u8)
+                            strength_label=sl
+                            level_labels=ll
+                        />
                     </div>
                     <div class="space-y-1">
                         <span class="text-xs text-text-tertiary">"Score 2 (fair)"</span>
-                        <PasswordStrengthMeter score=Signal::stored(2u8) strength_label=sl level_labels=ll />
+                        <PasswordStrengthMeter
+                            score=Signal::stored(2u8)
+                            strength_label=sl
+                            level_labels=ll
+                        />
                     </div>
                     <div class="space-y-1">
                         <span class="text-xs text-text-tertiary">"Score 3 (strong)"</span>
-                        <PasswordStrengthMeter score=Signal::stored(3u8) strength_label=sl level_labels=ll />
+                        <PasswordStrengthMeter
+                            score=Signal::stored(3u8)
+                            strength_label=sl
+                            level_labels=ll
+                        />
                     </div>
                     <div class="space-y-1">
                         <span class="text-xs text-text-tertiary">"Score 4 (very strong)"</span>
-                        <PasswordStrengthMeter score=Signal::stored(4u8) strength_label=sl level_labels=ll />
+                        <PasswordStrengthMeter
+                            score=Signal::stored(4u8)
+                            strength_label=sl
+                            level_labels=ll
+                        />
                     </div>
                 </div>
             </Section>
@@ -67,17 +87,30 @@ pub fn PasswordStrengthMeterPage() -> impl IntoView {
                             placeholder=Signal::stored("Type to see strength".to_string())
                             value=Signal::derive(move || strength_pw.get())
                             on_input=Callback::new(move |v: String| set_strength_pw.set(v))
-                            reveal_label=Signal::derive(move || t_string!(i18n, playground.show_password).to_string())
-                            hide_label=Signal::derive(move || t_string!(i18n, playground.hide_password).to_string())
+                            reveal_label=Signal::derive(move || {
+                                t_string!(i18n, playground.show_password).to_string()
+                            })
+                            hide_label=Signal::derive(move || {
+                                t_string!(i18n, playground.hide_password).to_string()
+                            })
                         />
                     </div>
-                    <PasswordStrengthMeter score=Signal::derive(move || strength_score.get()) strength_label=sl level_labels=ll />
+                    <PasswordStrengthMeter
+                        score=Signal::derive(move || strength_score.get())
+                        strength_label=sl
+                        level_labels=ll
+                    />
                 </div>
             </Section>
 
             <Section title="No Label">
                 <div class="max-w-sm">
-                    <PasswordStrengthMeter score=Signal::stored(3u8) show_label=false strength_label=sl level_labels=ll />
+                    <PasswordStrengthMeter
+                        score=Signal::stored(3u8)
+                        show_label=false
+                        strength_label=sl
+                        level_labels=ll
+                    />
                 </div>
             </Section>
         </div>

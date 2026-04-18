@@ -1,11 +1,11 @@
 use super::dialog::DialogContext;
+use crate::utils::id::id_with_prefix;
 use leptos::prelude::*;
-use uuid::Uuid;
 
 #[component]
 pub fn DialogTitle(children: Children) -> impl IntoView {
     let ctx = expect_context::<DialogContext>();
-    let id = format!("dialog-title-{}", Uuid::new_v4());
+    let id = id_with_prefix("dialog-title");
 
     let id_for_ctx = id.clone();
     Effect::new(move |_| {
@@ -13,5 +13,9 @@ pub fn DialogTitle(children: Children) -> impl IntoView {
     });
     on_cleanup(move || ctx.set_title_id.set(None));
 
-    view! { <h2 id=id class="dialog__title">{children()}</h2> }
+    view! {
+        <h2 id=id class="dialog__title">
+            {children()}
+        </h2>
+    }
 }

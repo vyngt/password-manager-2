@@ -62,23 +62,13 @@ fn VariantsSection() -> impl IntoView {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-2">
                     <p class="text-xs text-text-tertiary">"variant=\"single\""</p>
-                    <FileUpload
-                        variant=FileUploadVariant::Single
-                        on_change=on_single
-                    />
-                    <p class="text-xs text-text-tertiary min-h-[1em]">
-                        {move || single_log.get()}
-                    </p>
+                    <FileUpload variant=FileUploadVariant::Single on_change=on_single />
+                    <p class="text-xs text-text-tertiary min-h-[1em]">{move || single_log.get()}</p>
                 </div>
                 <div class="space-y-2">
                     <p class="text-xs text-text-tertiary">"variant=\"multiple\""</p>
-                    <FileUpload
-                        variant=FileUploadVariant::Multiple
-                        on_change=on_multi
-                    />
-                    <p class="text-xs text-text-tertiary min-h-[1em]">
-                        {move || multi_log.get()}
-                    </p>
+                    <FileUpload variant=FileUploadVariant::Multiple on_change=on_multi />
+                    <p class="text-xs text-text-tertiary min-h-[1em]">{move || multi_log.get()}</p>
                 </div>
             </div>
         </Section>
@@ -157,11 +147,7 @@ fn MaxSizeSection() -> impl IntoView {
 fn MaxFilesSection() -> impl IntoView {
     view! {
         <Section title="max_files=3 — zone becomes inert after 3 files">
-            <FileUpload
-                variant=FileUploadVariant::Multiple
-                max_files=3u32
-                hint="Up to 3 files"
-            />
+            <FileUpload variant=FileUploadVariant::Multiple max_files=3u32 hint="Up to 3 files" />
         </Section>
     }
 }

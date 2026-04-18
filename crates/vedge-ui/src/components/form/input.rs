@@ -140,8 +140,7 @@ pub fn Input(
                 aria-describedby=aria_describedby_attr
                 aria-required=aria_required_attr
                 on:input:target=handle_input
-            />
-            // Suffix
+            /> // Suffix
             {(!suffix.is_empty()).then(|| view! { <span class="input-affix">{suffix}</span> })}
             // Trailing area — priority resolution
             {if loading {

@@ -288,7 +288,9 @@ pub fn DatePicker(
                 aria-invalid=aria_invalid
                 aria-describedby=aria_describedby_attr
                 on:click=move |_: web_sys::MouseEvent| {
-                    if disabled { return; }
+                    if disabled {
+                        return;
+                    }
                     if mounted.get_untracked() {
                         do_close.run(());
                     } else {

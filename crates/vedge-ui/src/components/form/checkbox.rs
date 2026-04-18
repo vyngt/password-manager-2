@@ -60,7 +60,14 @@ pub fn Checkbox(
         if is_indeterminate() {
             // Dash icon for indeterminate
             view! {
-                <svg class="checkbox__icon" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <svg
+                    class="checkbox__icon"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                >
                     <line x1="2.5" y1="6" x2="9.5" y2="6" />
                 </svg>
             }
@@ -68,7 +75,15 @@ pub fn Checkbox(
         } else if is_checked() {
             // Checkmark icon
             view! {
-                <svg class="checkbox__icon" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                    class="checkbox__icon"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
                     <polyline points="2.5,6 5,8.5 9.5,3.5" />
                 </svg>
             }
@@ -87,14 +102,21 @@ pub fn Checkbox(
                 disabled=disabled
                 prop:checked=is_checked
                 aria-checked=move || {
-                    if is_indeterminate() { "mixed" } else if is_checked() { "true" } else { "false" }
+                    if is_indeterminate() {
+                        "mixed"
+                    } else if is_checked() {
+                        "true"
+                    } else {
+                        "false"
+                    }
                 }
-                aria-label=move || { let v = aria_label.get(); if v.is_empty() { None } else { Some(v) } }
+                aria-label=move || {
+                    let v = aria_label.get();
+                    if v.is_empty() { None } else { Some(v) }
+                }
                 on:change=handle_change
             />
-            <span class="checkbox__box">
-                {check_icon}
-            </span>
+            <span class="checkbox__box">{check_icon}</span>
         </label>
     }
 }

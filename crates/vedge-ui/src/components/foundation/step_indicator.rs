@@ -1,13 +1,9 @@
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::Orientation;
+use crate::utils::text::text_or;
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-
-fn text_or(prop: TextProp, fallback: &str) -> String {
-    let v = prop.get();
-    if v.is_empty() { fallback.to_string() } else { v }
-}
 
 // -------------------------------------------------------------------------
 // Public types
@@ -100,31 +96,33 @@ pub fn StepIndicator(
                 let all = steps.get();
                 let len = all.len();
                 let cur = if len == 0 { 0 } else { current_step.get().min(len - 1) };
+                all.into_iter()
+                    .enumerate()
+                    .map(|(idx, step)| {
+                        let state = if idx < cur {
+                            StepState::Completed
+                        } else if idx == cur {
+                            StepState::Current
+                        } else {
+                            StepState::Upcoming
+                        };
+                        let is_last = idx + 1 == len;
+                        let step_number = idx + 1;
 
-                all.into_iter().enumerate().map(|(idx, step)| {
-                    let state = if idx < cur {
-                        StepState::Completed
-                    } else if idx == cur {
-                        StepState::Current
-                    } else {
-                        StepState::Upcoming
-                    };
-                    let is_last = idx + 1 == len;
-                    let step_number = idx + 1;
-
-                    view! {
-                        <StepItem
-                            step=step
-                            step_number=step_number
-                            state=state
-                            is_last=is_last
-                            is_vertical=is_vertical
-                            step_prefix=step_prefix
-                            completed_label=completed_label
-                            current_label=current_label
-                        />
-                    }
-                }).collect_view()
+                        view! {
+                            <StepItem
+                                step=step
+                                step_number=step_number
+                                state=state
+                                is_last=is_last
+                                is_vertical=is_vertical
+                                step_prefix=step_prefix
+                                completed_label=completed_label
+                                current_label=current_label
+                            />
+                        }
+                    })
+                    .collect_view()
             }}
         </ol>
     }
@@ -199,9 +197,7 @@ fn StepItem(
             </span>
         }
         .into_any(),
-        StepState::Current | StepState::Upcoming => view! {
-            <span aria-hidden="true">{step_number}</span>
-        }
+        StepState::Current | StepState::Upcoming => view! { <span aria-hidden="true">{step_number}</span> }
         .into_any(),
     };
 
@@ -214,15 +210,17 @@ fn StepItem(
                     <span class=node_cls aria-label=node_aria role="img">
                         {node_content}
                     </span>
-                    {(!is_last).then(|| view! {
-                        <span class=connector_cls aria-hidden="true"></span>
-                    })}
+                    {(!is_last)
+                        .then(|| view! { <span class=connector_cls aria-hidden="true"></span> })}
                 </div>
                 <div class="step-indicator__content">
                     <span class=label_cls>{step.label.clone()}</span>
-                    {show_description.then(|| view! {
-                        <span class="step-indicator__description">{description_text}</span>
-                    })}
+                    {show_description
+                        .then(|| {
+                            view! {
+                                <span class="step-indicator__description">{description_text}</span>
+                            }
+                        })}
                 </div>
             </li>
         }
@@ -238,9 +236,7 @@ fn StepItem(
                         <span class=label_cls>{step.label.clone()}</span>
                     </div>
                 </div>
-                {(!is_last).then(|| view! {
-                    <span class=connector_cls aria-hidden="true"></span>
-                })}
+                {(!is_last).then(|| view! { <span class=connector_cls aria-hidden="true"></span> })}
             </li>
         }
         .into_any()

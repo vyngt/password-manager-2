@@ -139,9 +139,18 @@ fn OnChangeVsEndSection() -> impl IntoView {
                     })
                 />
                 <div class="grid grid-cols-3 gap-4 text-xs text-text-secondary">
-                    <div>"on_change: " <span class="text-text-primary">{move || change_count.get()}</span></div>
-                    <div>"on_change_end: " <span class="text-text-primary">{move || end_count.get()}</span></div>
-                    <div>"last value: " <span class="text-text-primary">{move || last_value.get()}</span></div>
+                    <div>
+                        "on_change: "
+                        <span class="text-text-primary">{move || change_count.get()}</span>
+                    </div>
+                    <div>
+                        "on_change_end: "
+                        <span class="text-text-primary">{move || end_count.get()}</span>
+                    </div>
+                    <div>
+                        "last value: "
+                        <span class="text-text-primary">{move || last_value.get()}</span>
+                    </div>
                 </div>
             </div>
         </Section>
@@ -152,11 +161,7 @@ fn OnChangeVsEndSection() -> impl IntoView {
 fn DisabledSection() -> impl IntoView {
     view! {
         <Section title="Disabled">
-            <Slider
-                default_value=40.0
-                disabled=true
-                aria_label="Disabled slider"
-            />
+            <Slider default_value=40.0 disabled=true aria_label="Disabled slider" />
         </Section>
     }
 }

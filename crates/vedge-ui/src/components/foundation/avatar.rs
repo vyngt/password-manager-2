@@ -25,7 +25,9 @@ pub fn Avatar(
 
     let fallback_view = if has_initials {
         Either::Left(view! {
-            <span class="avatar-initials" aria-hidden="true">{initials}</span>
+            <span class="avatar-initials" aria-hidden="true">
+                {initials}
+            </span>
         })
     } else {
         Either::Right(view! {
@@ -67,20 +69,12 @@ pub fn Avatar(
     let status_view = status.map(|s| {
         view! {
             <span class="avatar-status-wrap" role="img" aria-label=s.aria_label()>
-                <span
-                    class=format!("avatar-status {}", s.avatar_class())
-                    aria-hidden="true"
-                ></span>
+                <span class=format!("avatar-status {}", s.avatar_class()) aria-hidden="true"></span>
             </span>
         }
     });
 
-    let media = view! {
-        <span class="avatar-media">
-            {fallback_view}
-            {image_view}
-        </span>
-    };
+    let media = view! { <span class="avatar-media">{fallback_view} {image_view}</span> };
 
     if interactive {
         let label = if !aria_label.is_empty() {
@@ -97,7 +91,9 @@ pub fn Avatar(
                 disabled=disabled
                 aria-label=label
                 on:click=move |ev: web_sys::MouseEvent| {
-                    if let Some(cb) = on_click { cb.run(ev); }
+                    if let Some(cb) = on_click {
+                        cb.run(ev);
+                    }
                 }
             >
                 {media}

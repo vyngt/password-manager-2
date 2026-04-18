@@ -37,7 +37,10 @@ pub fn CheckboxPage() -> impl IntoView {
                         <span class="text-sm text-text-secondary">"Checked"</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <Checkbox indeterminate=Signal::derive(move || cb_indeterminate.get()) aria_label="Indeterminate" />
+                        <Checkbox
+                            indeterminate=Signal::derive(move || cb_indeterminate.get())
+                            aria_label="Indeterminate"
+                        />
                         <span class="text-sm text-text-secondary">"Indeterminate"</span>
                     </div>
                     <div class="flex items-center gap-2">
@@ -45,7 +48,11 @@ pub fn CheckboxPage() -> impl IntoView {
                         <span class="text-sm text-text-secondary">"Disabled"</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <Checkbox disabled=true default_checked=true aria_label="Disabled checked" />
+                        <Checkbox
+                            disabled=true
+                            default_checked=true
+                            aria_label="Disabled checked"
+                        />
                         <span class="text-sm text-text-secondary">"Disabled checked"</span>
                     </div>
                 </div>
