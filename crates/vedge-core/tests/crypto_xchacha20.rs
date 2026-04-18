@@ -1,22 +1,31 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::needless_pass_by_value
+)]
+
 use vedge_core::application::vault::ports::CryptoProvider;
 use vedge_core::domain::vault::crypto_constants::{DEK_LEN, DEK_WRAPPED_LEN, KEK_LEN, NONCE_LEN};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::infrastructure::crypto::XChaCha20CryptoProvider;
 
-fn provider() -> XChaCha20CryptoProvider {
+const fn provider() -> XChaCha20CryptoProvider {
     XChaCha20CryptoProvider::new()
 }
 
-fn dek_a() -> [u8; DEK_LEN] {
+const fn dek_a() -> [u8; DEK_LEN] {
     [0x11; DEK_LEN]
 }
-fn dek_b() -> [u8; DEK_LEN] {
+const fn dek_b() -> [u8; DEK_LEN] {
     [0x22; DEK_LEN]
 }
-fn kek_a() -> [u8; KEK_LEN] {
+const fn kek_a() -> [u8; KEK_LEN] {
     [0xAA; KEK_LEN]
 }
-fn kek_b() -> [u8; KEK_LEN] {
+const fn kek_b() -> [u8; KEK_LEN] {
     [0xBB; KEK_LEN]
 }
 

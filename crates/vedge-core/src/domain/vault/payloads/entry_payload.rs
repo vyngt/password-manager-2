@@ -31,7 +31,8 @@ pub enum EntryPayload {
 }
 
 impl EntryPayload {
-    pub fn meta(&self) -> &CommonMeta {
+    #[must_use] 
+    pub const fn meta(&self) -> &CommonMeta {
         match self {
             Self::Login(p) => &p.meta,
             Self::Card(p) => &p.meta,
@@ -46,7 +47,7 @@ impl EntryPayload {
         }
     }
 
-    pub fn meta_mut(&mut self) -> &mut CommonMeta {
+    pub const fn meta_mut(&mut self) -> &mut CommonMeta {
         match self {
             Self::Login(p) => &mut p.meta,
             Self::Card(p) => &mut p.meta,
@@ -61,7 +62,8 @@ impl EntryPayload {
         }
     }
 
-    pub fn entry_type(&self) -> &EntryType {
+    #[must_use] 
+    pub const fn entry_type(&self) -> &EntryType {
         &self.meta().entry_type
     }
 
@@ -89,21 +91,22 @@ impl EntryPayload {
             // Preserve the typed errors we raise from Deserialize; otherwise
             // report as malformed.
             let msg = e.to_string();
-            if let Some(n) = extract_unsupported_schema(&msg) {
-                VaultError::UnsupportedPayloadSchema(n)
-            } else {
-                VaultError::MalformedPayload(msg)
-            }
+            extract_unsupported_schema(&msg).map_or(
+                VaultError::MalformedPayload(msg),
+                VaultError::UnsupportedPayloadSchema,
+            )
         })
     }
 }
 
 fn extract_unsupported_schema(msg: &str) -> Option<u32> {
     // Deserialize error messages look like "unsupported payload_schema: 2".
-    let prefix = "unsupported payload_schema: ";
-    msg.find(prefix)
-        .and_then(|i| msg[i + prefix.len()..].split_whitespace().next())
-        .and_then(|tok| tok.trim_end_matches(|c: char| !c.is_ascii_digit()).parse().ok())
+    let rest = msg.split_once("unsupported payload_schema: ")?.1;
+    let token = rest.split_whitespace().next()?;
+    token
+        .trim_end_matches(|c: char| !c.is_ascii_digit())
+        .parse()
+        .ok()
 }
 
 impl Serialize for EntryPayload {
@@ -129,10 +132,11 @@ impl<'de> Deserialize<'de> for EntryPayload {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = serde_json::Value::deserialize(d)?;
 
-        let schema = value
+        let schema_u64 = value
             .get("payload_schema")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(1) as u32;
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(1);
+        let schema = u32::try_from(schema_u64).unwrap_or(u32::MAX);
         if schema > CURRENT_PAYLOAD_SCHEMA {
             return Err(D::Error::custom(format!(
                 "unsupported payload_schema: {schema}"

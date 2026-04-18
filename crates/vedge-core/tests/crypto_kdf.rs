@@ -1,22 +1,32 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::let_underscore_must_use,
+    clippy::needless_pass_by_value
+)]
+
 use vedge_core::application::vault::ports::KeyDerivationProvider;
 use vedge_core::domain::vault::crypto_constants::{MASTER_KEY_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::kdf_params::KdfParams;
 use vedge_core::infrastructure::crypto::Argon2idKdfProvider;
 
-fn provider() -> Argon2idKdfProvider {
+const fn provider() -> Argon2idKdfProvider {
     Argon2idKdfProvider::new()
 }
 
-fn password() -> &'static [u8] {
+const fn password() -> &'static [u8] {
     b"correct horse battery staple"
 }
 
-fn secret_key() -> [u8; SECRET_KEY_LEN] {
+const fn secret_key() -> [u8; SECRET_KEY_LEN] {
     [0u8; SECRET_KEY_LEN]
 }
 
-fn vault_salt() -> [u8; VAULT_SALT_LEN] {
+const fn vault_salt() -> [u8; VAULT_SALT_LEN] {
     [0u8; VAULT_SALT_LEN]
 }
 
@@ -33,9 +43,10 @@ fn test_params() -> KdfParams {
 }
 
 fn to_hex(bytes: &[u8]) -> String {
+    use std::fmt::Write;
     let mut s = String::with_capacity(bytes.len() * 2);
     for b in bytes {
-        s.push_str(&format!("{:02x}", b));
+        let _ = write!(s, "{b:02x}");
     }
     s
 }
@@ -43,31 +54,31 @@ fn to_hex(bytes: &[u8]) -> String {
 #[test]
 fn preprocess_2skd_is_deterministic() {
     let p = provider();
-    let a = p.preprocess_2skd(password(), &secret_key());
-    let b = p.preprocess_2skd(password(), &secret_key());
+    let a = p.preprocess_2skd(password(), &secret_key()).unwrap();
+    let b = p.preprocess_2skd(password(), &secret_key()).unwrap();
     assert_eq!(*a, *b);
 }
 
 #[test]
 fn preprocess_2skd_differs_when_password_differs() {
     let p = provider();
-    let a = p.preprocess_2skd(b"one", &secret_key());
-    let b = p.preprocess_2skd(b"two", &secret_key());
+    let a = p.preprocess_2skd(b"one", &secret_key()).unwrap();
+    let b = p.preprocess_2skd(b"two", &secret_key()).unwrap();
     assert_ne!(*a, *b);
 }
 
 #[test]
 fn preprocess_2skd_differs_when_secret_key_differs() {
     let p = provider();
-    let a = p.preprocess_2skd(password(), &[0u8; SECRET_KEY_LEN]);
-    let b = p.preprocess_2skd(password(), &[1u8; SECRET_KEY_LEN]);
+    let a = p.preprocess_2skd(password(), &[0u8; SECRET_KEY_LEN]).unwrap();
+    let b = p.preprocess_2skd(password(), &[1u8; SECRET_KEY_LEN]).unwrap();
     assert_ne!(*a, *b);
 }
 
 #[test]
 fn derive_master_key_is_deterministic() {
     let p = provider();
-    let input = *p.preprocess_2skd(password(), &secret_key());
+    let input = *p.preprocess_2skd(password(), &secret_key()).unwrap();
     let a = p
         .derive_master_key(&input, &vault_salt(), &test_params())
         .unwrap();
@@ -95,9 +106,9 @@ fn derive_master_key_rejects_unknown_alg() {
 fn derive_kek_verify_and_sync_are_domain_separated() {
     let p = provider();
     let mk = [42u8; MASTER_KEY_LEN];
-    let kek = p.derive_kek(&mk);
-    let vh = p.derive_verify_hash(&mk);
-    let sa = p.derive_sync_auth(&mk);
+    let kek = p.derive_kek(&mk).unwrap();
+    let vh = p.derive_verify_hash(&mk).unwrap();
+    let sa = p.derive_sync_auth(&mk).unwrap();
 
     assert_ne!(*kek, vh);
     assert_ne!(*kek, *sa);
@@ -110,11 +121,11 @@ fn derive_kek_verify_and_sync_are_domain_separated() {
 #[ignore = "reveal-only; prints the current golden vector"]
 fn reveal_golden() {
     let p = provider();
-    let input = *p.preprocess_2skd(password(), &secret_key());
+    let input = *p.preprocess_2skd(password(), &secret_key()).unwrap();
     let mk = p
         .derive_master_key(&input, &vault_salt(), &test_params())
         .unwrap();
-    let vh = p.derive_verify_hash(&mk);
+    let vh = p.derive_verify_hash(&mk).unwrap();
     eprintln!("GOLDEN verify_hash = {}", to_hex(&vh));
 }
 
@@ -122,9 +133,9 @@ fn reveal_golden() {
 ///
 /// Inputs:
 ///   password    = "correct horse battery staple"
-///   secret_key  = [0; 16]
-///   vault_salt  = [0; 32]
-///   kdf_params  = { alg: "argon2id", m: 8, t: 1, p: 1, version: 1 }
+///   `secret_key`  = [0; 16]
+///   `vault_salt`  = [0; 32]
+///   `kdf_params`  = { alg: "argon2id", m: 8, t: 1, p: 1, version: 1 }
 ///
 /// Flow: `preprocess_2skd → derive_master_key → derive_verify_hash`.
 /// Captured on 2026-04-18; Argon2id is deterministic, so this reproduces on every
@@ -133,20 +144,18 @@ fn reveal_golden() {
 /// intentional change.
 #[test]
 fn golden_vector_verify_hash() {
+    const EXPECTED_HEX: &str =
+        "e5b0e4feade8298a7a45180a69f5ffe8fa2e2dae6a48be78a7793d4759b97b3c";
+
     let p = provider();
-    let input = *p.preprocess_2skd(password(), &secret_key());
+    let input = *p.preprocess_2skd(password(), &secret_key()).unwrap();
     let mk = p
         .derive_master_key(&input, &vault_salt(), &test_params())
         .unwrap();
-    let vh = p.derive_verify_hash(&mk);
-
-    const EXPECTED_HEX: &str =
-        "e5b0e4feade8298a7a45180a69f5ffe8fa2e2dae6a48be78a7793d4759b97b3c";
-    if to_hex(&vh) != EXPECTED_HEX {
-        panic!(
-            "golden verify_hash mismatch\n  expected = {}\n  actual   = {}",
-            EXPECTED_HEX,
-            to_hex(&vh)
-        );
-    }
+    let vh = p.derive_verify_hash(&mk).unwrap();
+    let actual = to_hex(&vh);
+    assert!(
+        actual == EXPECTED_HEX,
+        "golden verify_hash mismatch\n  expected = {EXPECTED_HEX}\n  actual   = {actual}"
+    );
 }

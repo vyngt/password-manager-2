@@ -18,9 +18,14 @@ fn tag_ulid_bytes(id: &TagId) -> Result<[u8; 16], VaultError> {
 
 /// AAD for an entry ciphertext: entry ULID (16 bytes) || version as u64-LE (8 bytes).
 pub fn entry_aad(id: &EntryId, version: i64) -> Result<Vec<u8>, VaultError> {
+    // Version is monotonic and non-negative by construction (starts at 1, only
+    // increases). A negative value means the DB row is corrupt.
+    let version_u64 = u64::try_from(version).map_err(|_| {
+        VaultError::MalformedPayload(format!("entry version must be non-negative: {version}"))
+    })?;
     let mut aad = Vec::with_capacity(24);
     aad.extend_from_slice(&entry_ulid_bytes(id)?);
-    aad.extend_from_slice(&(version as u64).to_le_bytes());
+    aad.extend_from_slice(&version_u64.to_le_bytes());
     Ok(aad)
 }
 

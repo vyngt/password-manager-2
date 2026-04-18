@@ -5,7 +5,7 @@ use crate::domain::vault::payloads::entry_type::EntryType;
 
 pub const CURRENT_PAYLOAD_SCHEMA: u32 = 1;
 
-fn default_payload_schema() -> u32 {
+const fn default_payload_schema() -> u32 {
     CURRENT_PAYLOAD_SCHEMA
 }
 

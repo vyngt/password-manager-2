@@ -14,6 +14,7 @@ use crate::domain::vault::kdf_params::KdfParams;
 pub struct Argon2idKdfProvider;
 
 impl Argon2idKdfProvider {
+    #[must_use] 
     pub const fn new() -> Self {
         Self
     }
@@ -25,12 +26,12 @@ impl Default for Argon2idKdfProvider {
     }
 }
 
-fn hkdf_expand<const N: usize>(ikm: &[u8], info: &[u8]) -> [u8; N] {
+fn hkdf_expand<const N: usize>(ikm: &[u8], info: &[u8]) -> Result<[u8; N], VaultError> {
     let hk = Hkdf::<Sha256>::new(None, ikm);
     let mut out = [0u8; N];
-    // expand fails only when N > 255 * 32 = 8160; our outputs are 32 bytes.
-    hk.expand(info, &mut out).expect("HKDF output within bounds");
-    out
+    hk.expand(info, &mut out)
+        .map_err(|e| VaultError::KeyDerivationFailed(format!("hkdf expand: {e}")))?;
+    Ok(out)
 }
 
 impl KeyDerivationProvider for Argon2idKdfProvider {
@@ -38,13 +39,13 @@ impl KeyDerivationProvider for Argon2idKdfProvider {
         &self,
         master_password: &[u8],
         secret_key: &[u8; SECRET_KEY_LEN],
-    ) -> Zeroizing<[u8; 32]> {
+    ) -> Result<Zeroizing<[u8; 32]>, VaultError> {
         // 2SKD: HKDF-SHA256(ikm=password, salt=secret_key, info="vedge-v1-2skd").
         let hk = Hkdf::<Sha256>::new(Some(secret_key), master_password);
         let mut out = [0u8; 32];
         hk.expand(HKDF_INFO_2SKD, &mut out)
-            .expect("HKDF output within bounds");
-        Zeroizing::new(out)
+            .map_err(|e| VaultError::KeyDerivationFailed(format!("hkdf expand: {e}")))?;
+        Ok(Zeroizing::new(out))
     }
 
     fn derive_master_key(
@@ -70,15 +71,24 @@ impl KeyDerivationProvider for Argon2idKdfProvider {
         Ok(Zeroizing::new(out))
     }
 
-    fn derive_kek(&self, master_key: &[u8; MASTER_KEY_LEN]) -> Zeroizing<[u8; KEK_LEN]> {
-        Zeroizing::new(hkdf_expand::<KEK_LEN>(master_key, HKDF_INFO_KEK))
+    fn derive_kek(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
+        Ok(Zeroizing::new(hkdf_expand::<KEK_LEN>(master_key, HKDF_INFO_KEK)?))
     }
 
-    fn derive_verify_hash(&self, master_key: &[u8; MASTER_KEY_LEN]) -> [u8; VERIFY_HASH_LEN] {
+    fn derive_verify_hash(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<[u8; VERIFY_HASH_LEN], VaultError> {
         hkdf_expand::<VERIFY_HASH_LEN>(master_key, HKDF_INFO_VERIFY)
     }
 
-    fn derive_sync_auth(&self, master_key: &[u8; MASTER_KEY_LEN]) -> Zeroizing<[u8; 32]> {
-        Zeroizing::new(hkdf_expand::<32>(master_key, HKDF_INFO_SYNC_AUTH))
+    fn derive_sync_auth(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<Zeroizing<[u8; 32]>, VaultError> {
+        Ok(Zeroizing::new(hkdf_expand::<32>(master_key, HKDF_INFO_SYNC_AUTH)?))
     }
 }

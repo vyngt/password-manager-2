@@ -24,6 +24,7 @@ secrecy = { version = "0.10", features = ["serde"] }
 subtle = "2"
 rand = "0.10"
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service"] }
+base64 = "0.22"
 
 [dependencies.sea-orm]
 version = "1.1.20"
@@ -38,3 +39,6 @@ features = ["runtime-tokio", "sqlx-sqlite", "sqlite-use-returning-for-3_35", "wi
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tempfile = "3"
+
+[lints]
+workspace = true

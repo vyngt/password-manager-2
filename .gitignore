@@ -6,4 +6,4 @@ target/
 
 *.env
 
-docs/Design
+docs/

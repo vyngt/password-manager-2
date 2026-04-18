@@ -1,6 +1,15 @@
 //! Full round-trip: payload → JSON → ciphertext → JSON → payload, under the real
 //! `XChaCha20CryptoProvider`. Ensures the serde + crypto layers compose correctly.
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::needless_pass_by_value
+)]
+
 use secrecy::{ExposeSecret, SecretString};
 
 use vedge_core::application::vault::ports::CryptoProvider;

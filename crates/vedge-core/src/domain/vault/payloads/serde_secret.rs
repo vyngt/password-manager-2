@@ -18,6 +18,9 @@ pub fn expose_secret_string<S: Serializer>(
     secret.expose_secret().serialize(ser)
 }
 
+// `&Option<T>` is mandated by serde's `serialize_with` contract when the field is
+// `Option<T>`; we can't take `Option<&T>` here.
+#[allow(clippy::ref_option)]
 pub fn expose_optional_secret_string<S: Serializer>(
     secret: &Option<SecretString>,
     ser: S,

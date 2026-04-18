@@ -13,9 +13,10 @@ pub struct OsKeychainProvider {
 }
 
 impl OsKeychainProvider {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
-            service: DEFAULT_SERVICE.to_string(),
+            service: DEFAULT_SERVICE.to_owned(),
         }
     }
 
@@ -40,15 +41,15 @@ impl Default for OsKeychainProvider {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // signature matches `map_err` combinator
 fn map_keyring_err(err: KeyringError) -> VaultError {
     match err {
-        KeyringError::NoEntry => VaultError::KeychainEntryNotFound,
         KeyringError::PlatformFailure(_) | KeyringError::NoStorageAccess(_) => {
             VaultError::KeychainUnavailable
         }
         KeyringError::Ambiguous(_) => VaultError::KeychainAccessDenied,
-        // Bad encoding / TooLong / Invalid imply a corrupted or otherwise unusable
-        // entry — treat as "not found" rather than surfacing raw driver detail.
+        // NoEntry + corrupt-entry variants (BadEncoding / TooLong / Invalid) all surface
+        // as "not found" — raw driver detail is intentionally hidden from callers.
         _ => VaultError::KeychainEntryNotFound,
     }
 }
@@ -62,7 +63,7 @@ impl KeychainProvider for OsKeychainProvider {
         let mut bytes = entry.get_secret().map_err(map_keyring_err)?;
         let result = <[u8; SECRET_KEY_LEN]>::try_from(bytes.as_slice())
             .map_err(|_| VaultError::KeychainEntryNotFound);
-        bytes.iter_mut().for_each(|b| *b = 0);
+        bytes.fill(0);
         result.map(Zeroizing::new)
     }
 

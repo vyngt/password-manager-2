@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::needless_pass_by_value
+)]
+
 use std::path::PathBuf;
 
 use serde_json::json;
@@ -29,6 +38,11 @@ async fn migrations_run_and_seed_themes() {
     assert!(ids.contains(&"builtin-dark".to_owned()));
     for t in &themes {
         assert!(t.is_built_in);
+        // Semantic colors must be seeded — NULL is reserved for user-created themes
+        // that opt into Rust-constant defaults.
+        assert_eq!(t.danger_base.as_deref(), Some("#dc2626"));
+        assert_eq!(t.warning_base.as_deref(), Some("#d97706"));
+        assert_eq!(t.success_base.as_deref(), Some("#16a34a"));
     }
 }
 

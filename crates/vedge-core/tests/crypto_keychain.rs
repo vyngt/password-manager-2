@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::needless_pass_by_value
+)]
+
 use std::path::PathBuf;
 
 use vedge_core::application::vault::ports::KeychainProvider;
@@ -10,7 +19,7 @@ fn vault_id(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
 }
 
-fn sample_key() -> [u8; SECRET_KEY_LEN] {
+const fn sample_key() -> [u8; SECRET_KEY_LEN] {
     [0x7Fu8; SECRET_KEY_LEN]
 }
 

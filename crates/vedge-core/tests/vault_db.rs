@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::needless_pass_by_value
+)]
+
 use tempfile::tempdir;
 
 use vedge_core::application::vault::ports::VaultRepository;

@@ -15,6 +15,7 @@ pub fn model_to_domain(model: Model) -> Result<TagRow, VaultError> {
     })
 }
 
+#[must_use] 
 pub fn domain_to_model(tag: &TagRow) -> Model {
     Model {
         id: tag.id.as_str().to_owned(),

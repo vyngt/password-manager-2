@@ -31,11 +31,13 @@ pub struct SqliteVaultRepository {
 }
 
 impl SqliteVaultRepository {
-    pub fn new(conn: Arc<DatabaseConnection>) -> Self {
+    #[must_use] 
+    pub const fn new(conn: Arc<DatabaseConnection>) -> Self {
         Self { conn }
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // signature matches `map_err` combinator
 fn db_err(e: sea_orm::DbErr) -> VaultError {
     VaultError::Storage(StorageError::Database(e.to_string()))
 }

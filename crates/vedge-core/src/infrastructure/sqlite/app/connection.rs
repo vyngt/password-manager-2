@@ -29,7 +29,8 @@ impl AppDbConnection {
         })
     }
 
+    #[must_use]
     pub fn handle(&self) -> Arc<DatabaseConnection> {
-        self.conn.clone()
+        Arc::clone(&self.conn)
     }
 }

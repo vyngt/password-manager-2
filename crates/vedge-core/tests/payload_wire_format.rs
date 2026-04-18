@@ -1,6 +1,15 @@
 //! Golden wire-format tests. These pin the JSON layout of every payload variant.
 //! A diff here is a schema change and must trigger a `payload_schema` discussion.
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::needless_pass_by_value
+)]
+
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::{Value, json};
 

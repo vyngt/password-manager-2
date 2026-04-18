@@ -7,8 +7,44 @@ members = [
     "crates/vedge-app",
 ]
 # Temporarily excluded while vedge-core is rebuilt (see docs/ReimplementCore.md).
-# Rewire against the new ports/repositories in a follow-up task, then re-add.
+# Rewire against the new ports/repositories once the use-case layer is in place.
 exclude = [
     "crates/vedge-tauri",
-    "crates/vedge-tools",
 ]
+
+# Canonical lint set — see `docs/Design/Vedge/Core/vedge-core/Rust Coding Rules`.
+# Every member crate opts in via `[lints] workspace = true` in its own Cargo.toml.
+# Test modules relax these via `#![cfg_attr(test, allow(...))]` at the crate root.
+[workspace.lints.clippy]
+unwrap_used              = "deny"
+expect_used              = "deny"
+panic                    = "deny"
+unreachable              = "deny"
+unimplemented            = "deny"
+todo                     = "deny"
+indexing_slicing         = "deny"
+unwrap_in_result         = "deny"
+let_underscore_must_use  = "deny"
+mem_forget               = "deny"
+arithmetic_side_effects  = "deny"
+float_arithmetic         = "deny"
+integer_division         = "deny"
+pedantic                 = { level = "warn", priority = -1 }
+nursery                  = { level = "warn", priority = -1 }
+clone_on_ref_ptr         = "warn"
+needless_pass_by_value   = "warn"
+str_to_string            = "warn"
+redundant_closure_for_method_calls = "warn"
+# Opinionated pedantic lints that produce documentation/style noise without catching
+# real bugs. Relaxing so CI `-D warnings` stays achievable.
+missing_errors_doc       = "allow"
+missing_panics_doc       = "allow"
+module_name_repetitions  = "allow"
+similar_names            = "allow"
+
+[workspace.lints.rust]
+unsafe_code       = "deny"
+unused_must_use   = "deny"
+unused_imports    = "deny"
+unused_variables  = "deny"
+dead_code         = "deny"

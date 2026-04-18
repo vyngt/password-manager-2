@@ -17,6 +17,7 @@ use crate::domain::vault::errors::VaultError;
 pub struct XChaCha20CryptoProvider;
 
 impl XChaCha20CryptoProvider {
+    #[must_use] 
     pub const fn new() -> Self {
         Self
     }

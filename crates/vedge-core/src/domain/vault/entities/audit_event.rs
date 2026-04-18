@@ -21,39 +21,41 @@ pub enum AuditAction {
 }
 
 impl AuditAction {
-    pub fn as_str(&self) -> &'static str {
+    #[must_use] 
+    pub const fn as_str(&self) -> &'static str {
         match self {
-            AuditAction::Unlocked => "Unlocked",
-            AuditAction::Locked => "Locked",
-            AuditAction::Created => "Created",
-            AuditAction::Viewed => "Viewed",
-            AuditAction::Updated => "Updated",
-            AuditAction::Deleted => "Deleted",
-            AuditAction::Restored => "Restored",
-            AuditAction::PermanentlyDeleted => "PermanentlyDeleted",
-            AuditAction::Exported => "Exported",
-            AuditAction::PasswordChanged => "PasswordChanged",
-            AuditAction::TagCreated => "TagCreated",
-            AuditAction::TagRenamed => "TagRenamed",
-            AuditAction::TagDeleted => "TagDeleted",
+            Self::Unlocked => "Unlocked",
+            Self::Locked => "Locked",
+            Self::Created => "Created",
+            Self::Viewed => "Viewed",
+            Self::Updated => "Updated",
+            Self::Deleted => "Deleted",
+            Self::Restored => "Restored",
+            Self::PermanentlyDeleted => "PermanentlyDeleted",
+            Self::Exported => "Exported",
+            Self::PasswordChanged => "PasswordChanged",
+            Self::TagCreated => "TagCreated",
+            Self::TagRenamed => "TagRenamed",
+            Self::TagDeleted => "TagDeleted",
         }
     }
 
+    #[must_use] 
     pub fn parse(raw: &str) -> Option<Self> {
         Some(match raw {
-            "Unlocked" => AuditAction::Unlocked,
-            "Locked" => AuditAction::Locked,
-            "Created" => AuditAction::Created,
-            "Viewed" => AuditAction::Viewed,
-            "Updated" => AuditAction::Updated,
-            "Deleted" => AuditAction::Deleted,
-            "Restored" => AuditAction::Restored,
-            "PermanentlyDeleted" => AuditAction::PermanentlyDeleted,
-            "Exported" => AuditAction::Exported,
-            "PasswordChanged" => AuditAction::PasswordChanged,
-            "TagCreated" => AuditAction::TagCreated,
-            "TagRenamed" => AuditAction::TagRenamed,
-            "TagDeleted" => AuditAction::TagDeleted,
+            "Unlocked" => Self::Unlocked,
+            "Locked" => Self::Locked,
+            "Created" => Self::Created,
+            "Viewed" => Self::Viewed,
+            "Updated" => Self::Updated,
+            "Deleted" => Self::Deleted,
+            "Restored" => Self::Restored,
+            "PermanentlyDeleted" => Self::PermanentlyDeleted,
+            "Exported" => Self::Exported,
+            "PasswordChanged" => Self::PasswordChanged,
+            "TagCreated" => Self::TagCreated,
+            "TagRenamed" => Self::TagRenamed,
+            "TagDeleted" => Self::TagDeleted,
             _ => return None,
         })
     }

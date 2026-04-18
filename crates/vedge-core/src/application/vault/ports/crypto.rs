@@ -80,7 +80,7 @@ pub trait CryptoProvider: Send + Sync {
     /// no zeroize wrapper.
     fn generate_nonce(&self) -> Nonce;
 
-    /// Constant-time equality for verify_hash values. Callers must never use `==`.
+    /// Constant-time equality for `verify_hash` values. Callers must never use `==`.
     fn verify_hash_matches(
         &self,
         candidate: &[u8; VERIFY_HASH_LEN],

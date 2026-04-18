@@ -6,6 +6,13 @@ pub struct Migration;
 
 const SEED_ISO_TIMESTAMP: &str = "2026-01-01T00:00:00+00:00";
 
+// Semantic base colors — match the canonical palette in `vedge-ui/src/styles/tokens.css`.
+// Hover / muted / foreground / text variants are derived at runtime from these bases
+// plus `root_background` per the theme spec ("muted = mix(base, root_background, 0.85)").
+const DANGER_BASE: &str = "#dc2626";
+const WARNING_BASE: &str = "#d97706";
+const SUCCESS_BASE: &str = "#16a34a";
+
 const SEED_ROWS: &[SeedTheme] = &[
     SeedTheme {
         id: "builtin-light",
@@ -13,6 +20,9 @@ const SEED_ROWS: &[SeedTheme] = &[
         root_background: "#FFFFFF",
         root_foreground: "#111418",
         root_primary: "#1D9E75",
+        danger_base: DANGER_BASE,
+        warning_base: WARNING_BASE,
+        success_base: SUCCESS_BASE,
     },
     SeedTheme {
         id: "builtin-dark",
@@ -20,6 +30,9 @@ const SEED_ROWS: &[SeedTheme] = &[
         root_background: "#0E0F12",
         root_foreground: "#E6E8EB",
         root_primary: "#1D9E75",
+        danger_base: DANGER_BASE,
+        warning_base: WARNING_BASE,
+        success_base: SUCCESS_BASE,
     },
 ];
 
@@ -29,6 +42,9 @@ struct SeedTheme {
     root_background: &'static str,
     root_foreground: &'static str,
     root_primary: &'static str,
+    danger_base: &'static str,
+    warning_base: &'static str,
+    success_base: &'static str,
 }
 
 #[async_trait::async_trait]
@@ -63,16 +79,19 @@ impl MigrationTrait for Migration {
         for seed in SEED_ROWS {
             let stmt = Statement::from_sql_and_values(
                 backend,
-                r#"INSERT OR IGNORE INTO themes
+                r"INSERT OR IGNORE INTO themes
                    (id, name, is_built_in, root_background, root_foreground, root_primary,
                     danger_base, warning_base, success_base, created_at, updated_at)
-                   VALUES (?, ?, 1, ?, ?, ?, NULL, NULL, NULL, ?, ?)"#,
+                   VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     seed.id.into(),
                     seed.name.into(),
                     seed.root_background.into(),
                     seed.root_foreground.into(),
                     seed.root_primary.into(),
+                    seed.danger_base.into(),
+                    seed.warning_base.into(),
+                    seed.success_base.into(),
                     SEED_ISO_TIMESTAMP.into(),
                     SEED_ISO_TIMESTAMP.into(),
                 ],

@@ -15,11 +15,15 @@ pub trait KeyDerivationProvider: Send + Sync {
     /// 2SKD preprocessing: `HKDF-SHA256(ikm = master_password, salt = secret_key,
     /// info = "vedge-v1-2skd")` — produces a 32-byte, uniformly distributed input for
     /// Argon2id regardless of password length / character class.
+    ///
+    /// Returns `KeyDerivationFailed` only if the underlying HKDF expand reports an
+    /// `InvalidLength` — structurally impossible for 32-byte output with SHA-256, but
+    /// we propagate rather than panic.
     fn preprocess_2skd(
         &self,
         master_password: &[u8],
         secret_key: &[u8; SECRET_KEY_LEN],
-    ) -> Zeroizing<[u8; 32]>;
+    ) -> Result<Zeroizing<[u8; 32]>, VaultError>;
 
     /// Derive the Master Key via Argon2id. Blocking — call via `spawn_blocking`.
     fn derive_master_key(
@@ -30,11 +34,20 @@ pub trait KeyDerivationProvider: Send + Sync {
     ) -> Result<Zeroizing<[u8; MASTER_KEY_LEN]>, VaultError>;
 
     /// HKDF-expand the Master Key to the KEK.
-    fn derive_kek(&self, master_key: &[u8; MASTER_KEY_LEN]) -> Zeroizing<[u8; KEK_LEN]>;
+    fn derive_kek(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError>;
 
-    /// HKDF-expand the Master Key to the verify_hash. Stored on disk — **not secret**.
-    fn derive_verify_hash(&self, master_key: &[u8; MASTER_KEY_LEN]) -> [u8; VERIFY_HASH_LEN];
+    /// HKDF-expand the Master Key to the `verify_hash`. Stored on disk — **not secret**.
+    fn derive_verify_hash(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<[u8; VERIFY_HASH_LEN], VaultError>;
 
     /// HKDF-expand the Master Key to the sync auth key.
-    fn derive_sync_auth(&self, master_key: &[u8; MASTER_KEY_LEN]) -> Zeroizing<[u8; 32]>;
+    fn derive_sync_auth(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<Zeroizing<[u8; 32]>, VaultError>;
 }
