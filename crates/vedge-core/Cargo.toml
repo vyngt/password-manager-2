@@ -12,6 +12,20 @@ ulid = "1"
 async-trait = "0.1"
 libsqlite3-sys = { version = "*", features = ["bundled"] }
 
+# Crypto stack — pinned to the RustCrypto 0.10 ecosystem (rand_core 0.6 era).
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc", "getrandom"] }
+aes = "0.8"
+aes-kw = "0.2"
+hkdf = "0.12"
+sha2 = "0.10"
+argon2 = "0.5"
+zeroize = { version = "1", features = ["zeroize_derive"] }
+secrecy = "0.10"
+subtle = "2"
+rand = "0.8"
+rand_core = "0.6"
+keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service"] }
+
 [dependencies.sea-orm]
 version = "1.1.20"
 default-features = false

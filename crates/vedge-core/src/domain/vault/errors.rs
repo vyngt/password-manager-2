@@ -35,6 +35,38 @@ pub enum VaultError {
         actual: usize,
     },
 
+    #[error("invalid entry id: {0}")]
+    InvalidEntryId(String),
+
+    #[error("invalid tag id: {0}")]
+    InvalidTagId(String),
+
+    // --- crypto ---
+    #[error("wrong password or Secret Key")]
+    WrongCredentials,
+
+    #[error("decryption failed")]
+    DecryptionFailed,
+
+    #[error("encryption failed")]
+    EncryptionFailed,
+
+    #[error("key derivation failed: {0}")]
+    KeyDerivationFailed(String),
+
+    #[error("mlock() failed — cannot pin key material to RAM")]
+    MlockFailed,
+
+    // --- keychain ---
+    #[error("OS keychain is unavailable")]
+    KeychainUnavailable,
+
+    #[error("OS keychain access denied")]
+    KeychainAccessDenied,
+
+    #[error("Secret Key not found in keychain")]
+    KeychainEntryNotFound,
+
     #[error("storage failure")]
     Storage(#[source] StorageError),
 }
