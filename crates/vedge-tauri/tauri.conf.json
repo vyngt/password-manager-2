@@ -53,7 +53,8 @@
         "resizable": true,
         "title": "VEdge",
         "width": 1180,
-        "decorations": false
+        "decorations": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {

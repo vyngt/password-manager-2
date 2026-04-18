@@ -28,6 +28,7 @@
 
 @import "./color-picker.css";
 @import "./date-picker.css";
+@import "./file-upload.css";
 @import "./dialog.css";
 @import "./toast.css";
 @import "./tooltip.css";

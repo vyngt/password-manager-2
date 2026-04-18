@@ -6,6 +6,7 @@ use super::pg_checkbox::CheckboxPage;
 use super::pg_data_table::DataTablePage;
 use super::pg_date_picker::DatePickerPage;
 use super::pg_dialog::DialogPage;
+use super::pg_file_upload::FileUploadPage;
 use super::pg_helper_text::HelperTextPage;
 use super::pg_icon_button::IconButtonPage;
 use super::pg_input::InputPage;
@@ -51,6 +52,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/checkbox") view=CheckboxPage />
             <Route path=path!("/color-picker") view=ColorPickerPage />
             <Route path=path!("/date-picker") view=DatePickerPage />
+            <Route path=path!("/file-upload") view=FileUploadPage />
             <Route path=path!("/helper-text") view=HelperTextPage />
             <Route path=path!("/input") view=InputPage />
             <Route path=path!("/label") view=LabelPage />

@@ -8,6 +8,7 @@ mod pg_checkbox;
 mod pg_data_table;
 mod pg_date_picker;
 mod pg_dialog;
+mod pg_file_upload;
 mod pg_helper_text;
 mod pg_icon_button;
 mod pg_input;
