@@ -1,61 +1,111 @@
+//! Vedge Tauri shell. Thin adapter over `vedge-core` use cases.
+
 pub mod commands;
-pub mod config;
-pub mod interface;
-pub mod store;
+pub mod dto;
+pub mod error;
+pub mod setup;
+pub mod state;
 
-use tokio::sync::Mutex;
-
-use store::registry::Registry;
-use store::state::AppState;
 use tauri::Manager;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Entry point wired from `main.rs`.
+///
+/// Constructs the Tauri builder, registers plugins, runs
+/// `setup::services::compose` to build [`state::AppState`], and declares
+/// every `#[tauri::command]` in `invoke_handler!`.
+///
+/// `.run(...).expect(...)` mirrors the canonical Tauri bootstrap —
+/// a failure here means the runtime itself couldn't start, which is
+/// irrecoverable. Allowed inline so the rest of the crate keeps
+/// `expect_used = deny`.
+#[allow(
+    clippy::too_many_lines,
+    clippy::expect_used,
+    clippy::large_stack_frames,
+)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_os::init());
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+            .plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+    }
+
+    builder
         .setup(|app| {
-            let settings = config::settings::Settings::from_env(app);
-            settings.init_home_dir();
-
-            let registry =
-                tauri::async_runtime::block_on(async { Registry::from_settings(&settings).await });
-            app.manage(Mutex::new(AppState { registry, settings }));
-
+            // `compose` is `!Send` (holds &tauri::App); run it on the
+            // current thread via Tauri's async runtime. The error type of
+            // `compose` is `Box<dyn Error + Send + Sync>`; tauri's setup
+            // hook wants `Box<dyn Error>` — just re-box.
+            let state = tauri::async_runtime::block_on(setup::services::compose(app))
+                .map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?;
+            app.manage(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // Vault commands
+            // ---- vault lifecycle + read queries ----
             commands::vault::unlock_vault,
-            commands::vault::change_key_vault,
-            commands::vault::create_vault_item,
-            commands::vault::get_vault_item,
-            commands::vault::update_vault_item,
-            commands::vault::delete_vault_item,
-            commands::vault::list_vault_items,
-            commands::vault::export_vault_items,
-            commands::vault::import_vault_items,
-            // Theme commands
-            commands::theme::get_current_theme,
-            commands::theme::create_color_scheme,
-            commands::theme::get_color_scheme,
-            commands::theme::update_color_scheme,
-            commands::theme::delete_color_scheme,
-            commands::theme::list_color_schemes,
-            commands::theme::update_theme,
-            // Utilities commands
-            commands::utilities::generate_password,
-            commands::utilities::read_from_file,
-            commands::utilities::write_to_file
+            commands::vault::lock_vault,
+            commands::vault::is_unlocked,
+            commands::vault::list_entries,
+            commands::vault::list_trashed,
+            commands::vault::search,
+            commands::vault::by_tag,
+            commands::vault::by_folder,
+            commands::vault::by_domain,
+            commands::vault::list_tags,
+            // ---- entry CRUD + clipboard + move ----
+            commands::entry::create_entry,
+            commands::entry::update_entry,
+            commands::entry::soft_delete_entry,
+            commands::entry::restore_entry,
+            commands::entry::hard_delete_entry,
+            commands::entry::copy_field,
+            commands::entry::move_entry,
+            // ---- tag ops ----
+            commands::tag::create_tag,
+            commands::tag::rename_tag,
+            commands::tag::delete_tag,
+            // ---- document import/export ----
+            commands::document::import_document,
+            commands::document::export_document,
+            // ---- password + maintenance ----
+            commands::password::change_password,
+            commands::maintenance::run_maintenance,
+            // ---- app.db: recent vaults ----
+            commands::recent::list_recent_vaults,
+            commands::recent::add_recent_vault,
+            commands::recent::remove_recent_vault,
+            commands::recent::touch_recent_vault,
+            // ---- app.db: settings + themes ----
+            commands::settings::get_app_setting,
+            commands::settings::set_app_setting,
+            commands::settings::delete_app_setting,
+            commands::settings::list_app_settings,
+            commands::settings::list_themes,
+            commands::settings::get_theme,
+            commands::settings::upsert_theme,
+            commands::settings::delete_theme,
+            // ---- app.db: devices + extension sessions ----
+            commands::device::list_known_devices,
+            commands::device::upsert_known_device,
+            commands::device::delete_known_device,
+            commands::device::touch_known_device_last_seen,
+            commands::device::list_extension_sessions,
+            commands::device::upsert_extension_session,
+            commands::device::delete_extension_session,
+            commands::device::touch_extension_session_last_active,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("tauri runtime error");
 }
