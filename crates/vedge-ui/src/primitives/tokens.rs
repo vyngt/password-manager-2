@@ -138,6 +138,22 @@ impl Size {
             Size::Lg => "progress__track--lg",
         }
     }
+
+    pub fn slider_root_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "slider-root--sm",
+            Size::Md => "slider-root--md",
+            Size::Lg => "slider-root--lg",
+        }
+    }
+
+    pub fn qrcode_class(&self) -> &'static str {
+        match self {
+            Size::Sm => "qrcode--sm",
+            Size::Md => "qrcode--md",
+            Size::Lg => "qrcode--lg",
+        }
+    }
 }
 
 /// Field status — communicates validation state visually.

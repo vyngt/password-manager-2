@@ -8,6 +8,7 @@
 @import "./badge.css";
 @import "./kbd.css";
 @import "./progress-bar.css";
+@import "./qrcode.css";
 @import "./separator.css";
 @import "./spinner.css";
 @import "./input.css";
@@ -23,6 +24,7 @@
 @import "./radio-group.css";
 @import "./segmented-control.css";
 @import "./select.css";
+@import "./slider.css";
 
 @import "./color-picker.css";
 @import "./date-picker.css";

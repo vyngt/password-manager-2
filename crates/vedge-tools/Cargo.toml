@@ -16,7 +16,7 @@ name = "encrypt"
 path = "src/bin/encrypt.rs"
 
 [dependencies]
-tokio = { version = "1.51.1", features = ["full", "tokio-macros"] }
+tokio = { version = "1.52.1", features = ["full", "tokio-macros"] }
 vedge-core = { path = "../vedge-core" }
 dotenvy = "0.15.7"
 sea-orm-cli = "1.1.20"

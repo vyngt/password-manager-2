@@ -15,10 +15,12 @@ use super::pg_number_input::NumberInputPage;
 use super::pg_pagination::PaginationPage;
 use super::pg_password_strength_meter::PasswordStrengthMeterPage;
 use super::pg_progress_bar::ProgressBarPage;
+use super::pg_qrcode::QRCodePage;
 use super::pg_radio_group::RadioGroupPage;
 use super::pg_segmented_control::SegmentedControlPage;
 use super::pg_select::SelectPage;
 use super::pg_separator::SeparatorPage;
+use super::pg_slider::SliderPage;
 use super::pg_textarea::TextareaPage;
 use super::pg_time_picker::TimePickerPage;
 use super::pg_toast::ToastPage;
@@ -42,6 +44,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/icon-button") view=IconButtonPage />
             <Route path=path!("/kbd") view=KbdPage />
             <Route path=path!("/progress-bar") view=ProgressBarPage />
+            <Route path=path!("/qrcode") view=QRCodePage />
             <Route path=path!("/separator") view=SeparatorPage />
             <Route path=path!("/spinner") view=SpinnerPage />
             // Form
@@ -56,6 +59,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/radio-group") view=RadioGroupPage />
             <Route path=path!("/segmented-control") view=SegmentedControlPage />
             <Route path=path!("/select") view=SelectPage />
+            <Route path=path!("/slider") view=SliderPage />
             <Route path=path!("/textarea") view=TextareaPage />
             <Route path=path!("/time-picker") view=TimePickerPage />
             <Route path=path!("/toggle") view=TogglePage />

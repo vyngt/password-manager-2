@@ -4,6 +4,7 @@ pub mod button;
 pub mod icon_button;
 pub mod kbd;
 pub mod progress_bar;
+pub mod qrcode;
 pub mod separator;
 pub mod spinner;
 
@@ -13,5 +14,6 @@ pub use button::*;
 pub use icon_button::*;
 pub use kbd::*;
 pub use progress_bar::*;
+pub use qrcode::*;
 pub use separator::*;
 pub use spinner::*;

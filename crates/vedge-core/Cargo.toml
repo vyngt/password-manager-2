@@ -12,8 +12,8 @@ thiserror = "2.0.18"
 anyhow = "1.0.102"
 validator = { version = "0.20.0", features = ["derive"] }
 async-trait = "0.1.89"
-uuid = { version = "1.23.0", features = ["serde", "v4"] }
-tokio = { version = "1.51.1", features = ["test-util", "macros", "rt-multi-thread"] }
+uuid = { version = "1.23.1", features = ["serde", "v4"] }
+tokio = { version = "1.52.1", features = ["test-util", "macros", "rt-multi-thread"] }
 libsqlite3-sys = { version = "0.30.1", features = ["bundled-sqlcipher", "bundled-sqlcipher-vendored-openssl"] }
 chrono = { version = "0.4.44", features = ["serde"] }
 argon2 = "0.5.3"
