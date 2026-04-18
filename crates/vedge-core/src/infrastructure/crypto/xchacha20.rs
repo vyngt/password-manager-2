@@ -1,8 +1,7 @@
-use aes_kw::KekAes256;
-use chacha20poly1305::aead::{Aead, KeyInit, Payload};
+use aes_kw::{KeyInit as AesKwKeyInit, KwAes256};
+use chacha20poly1305::aead::{Aead, KeyInit as AeadKeyInit, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
-use rand::rngs::OsRng;
-use rand::RngCore;
+use rand::{Rng, rng};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroizing;
 
@@ -35,7 +34,7 @@ fn cipher(key: &[u8; 32]) -> XChaCha20Poly1305 {
 
 fn aead_encrypt(key: &[u8; 32], payload: &[u8], aad: &[u8]) -> Result<(Nonce, Vec<u8>), VaultError> {
     let mut nonce_bytes = [0u8; NONCE_LEN];
-    OsRng.fill_bytes(&mut nonce_bytes);
+    rng().fill_bytes(&mut nonce_bytes);
     let nonce = XNonce::from_slice(&nonce_bytes);
 
     let ct = cipher(key)
@@ -101,9 +100,10 @@ impl CryptoProvider for XChaCha20CryptoProvider {
         dek: &[u8; DEK_LEN],
         kek: &[u8; KEK_LEN],
     ) -> Result<[u8; DEK_WRAPPED_LEN], VaultError> {
-        let kek = KekAes256::from(*kek);
+        let kw = KwAes256::new(kek.into());
         let mut out = [0u8; DEK_WRAPPED_LEN];
-        kek.wrap(dek, &mut out).map_err(|_| VaultError::EncryptionFailed)?;
+        kw.wrap_key(dek, &mut out)
+            .map_err(|_| VaultError::EncryptionFailed)?;
         Ok(out)
     }
 
@@ -112,22 +112,22 @@ impl CryptoProvider for XChaCha20CryptoProvider {
         wrapped: &[u8; DEK_WRAPPED_LEN],
         kek: &[u8; KEK_LEN],
     ) -> Result<Zeroizing<[u8; DEK_LEN]>, VaultError> {
-        let kek = KekAes256::from(*kek);
+        let kw = KwAes256::new(kek.into());
         let mut out = [0u8; DEK_LEN];
-        kek.unwrap(wrapped, &mut out)
+        kw.unwrap_key(wrapped, &mut out)
             .map_err(|_| VaultError::DecryptionFailed)?;
         Ok(Zeroizing::new(out))
     }
 
     fn generate_dek(&self) -> Zeroizing<[u8; DEK_LEN]> {
         let mut k = [0u8; DEK_LEN];
-        OsRng.fill_bytes(&mut k);
+        rng().fill_bytes(&mut k);
         Zeroizing::new(k)
     }
 
     fn generate_nonce(&self) -> Nonce {
         let mut n = [0u8; NONCE_LEN];
-        OsRng.fill_bytes(&mut n);
+        rng().fill_bytes(&mut n);
         n
     }
 
