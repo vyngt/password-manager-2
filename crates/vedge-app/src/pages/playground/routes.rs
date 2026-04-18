@@ -26,6 +26,7 @@ use super::pg_textarea::TextareaPage;
 use super::pg_time_picker::TimePickerPage;
 use super::pg_toast::ToastPage;
 use super::pg_spinner::SpinnerPage;
+use super::pg_step_indicator::StepIndicatorPage;
 use super::pg_toggle::TogglePage;
 use super::pg_tooltip::TooltipPage;
 use super::theme::ThemePage;
@@ -48,6 +49,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/qrcode") view=QRCodePage />
             <Route path=path!("/separator") view=SeparatorPage />
             <Route path=path!("/spinner") view=SpinnerPage />
+            <Route path=path!("/step-indicator") view=StepIndicatorPage />
             // Form
             <Route path=path!("/checkbox") view=CheckboxPage />
             <Route path=path!("/color-picker") view=ColorPickerPage />

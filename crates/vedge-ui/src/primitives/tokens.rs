@@ -389,6 +389,13 @@ impl Orientation {
             Orientation::Vertical => "radio-group--vertical",
         }
     }
+
+    pub fn step_indicator_class(&self) -> &'static str {
+        match self {
+            Orientation::Horizontal => "step-indicator--horizontal",
+            Orientation::Vertical => "step-indicator--vertical",
+        }
+    }
 }
 
 /// Floating element placement — preferred side relative to trigger.

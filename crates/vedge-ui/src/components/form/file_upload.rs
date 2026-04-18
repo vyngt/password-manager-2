@@ -1,6 +1,7 @@
 use crate::components::foundation::badge::Badge;
 use crate::components::foundation::icon_button::IconButton;
 use crate::components::foundation::progress_bar::ProgressBar;
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{BadgeSize, BadgeVariant, Size, Variant};
 use icondata as i;
 use leptos::ev::Targeted;
@@ -181,16 +182,23 @@ fn is_duplicate(existing: &[FileItem], file: &web_sys::File) -> bool {
         .any(|it| it.file.name() == name && (it.file.size() as u64) == size)
 }
 
-fn auto_hint(accept: &str, max_size: Option<u64>) -> String {
+fn auto_hint(accept: &str, max_size: Option<u64>, up_to: &str) -> String {
     let mut parts: Vec<String> = Vec::new();
     let trimmed = accept.trim();
     if !trimmed.is_empty() && trimmed != "*" && trimmed != "*/*" {
         parts.push(trimmed.to_string());
     }
     if let Some(m) = max_size {
-        parts.push(format!("up to {}", format_bytes(m)));
+        parts.push(format!("{} {}", up_to, format_bytes(m)));
     }
-    parts.join(" · ")
+    parts.join(" \u{00B7} ")
+}
+
+/// Reactive read with English fallback. Use inside reactive closures — subscribes
+/// to the prop, so updates flow through (supports locale switching).
+fn text_or(prop: TextProp, fallback: &str) -> String {
+    let v = prop.get();
+    if v.is_empty() { fallback.to_string() } else { v }
 }
 
 // -------------------------------------------------------------------------
@@ -207,8 +215,22 @@ pub fn FileUpload(
     #[prop(into, default = None)] on_change: Option<Callback<FileChangeEvent>>,
     #[prop(into, default = None)] on_validation_error: Option<Callback<ValidationError>>,
     #[prop(optional)] allow_cancel: bool,
-    #[prop(optional, default = "Drag files here or click to browse")] placeholder: &'static str,
-    #[prop(into, default = String::new())] hint: String,
+    // i18n-ready visible strings — defaults fall back to English at render.
+    #[prop(into, default = TextProp::default())] placeholder: TextProp,
+    #[prop(into, default = TextProp::default())] hint: TextProp,
+    #[prop(into, default = TextProp::default())] done_label: TextProp,
+    #[prop(into, default = TextProp::default())] error_label: TextProp,
+    #[prop(into, default = TextProp::default())] replace_label: TextProp,
+    // i18n-ready aria / live-region labels. Combined as "{prefix} {filename}"
+    // or "{filename} {message}" at render time — these templates are simple
+    // enough that prefix/suffix concatenation works for most languages; for
+    // right-to-left word-order languages, provide the full reactive string.
+    #[prop(into, default = TextProp::default())] remove_label: TextProp,
+    #[prop(into, default = TextProp::default())] uploading_label: TextProp,
+    #[prop(into, default = TextProp::default())] added_message: TextProp,
+    #[prop(into, default = TextProp::default())] removed_message: TextProp,
+    #[prop(into, default = TextProp::default())] files_added_message: TextProp,
+    #[prop(into, default = TextProp::default())] up_to_label: TextProp,
     #[prop(optional)] disabled: bool,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -220,8 +242,6 @@ pub fn FileUpload(
     let drag_counter = StoredValue::new(0i32);
     let live_message = RwSignal::new(String::new());
     let invalid_flash_ver: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-
-    let hint_stored = StoredValue::new(hint);
 
     // Effective file list (controlled vs uncontrolled). Using a Signal here so
     // child rows can subscribe reactively — if we passed a plain FnOnce
@@ -307,9 +327,17 @@ pub fn FileUpload(
         }
 
         let announce = if accepted.len() == 1 {
-            format!("{} added", accepted[0].name())
+            format!(
+                "{} {}",
+                accepted[0].name(),
+                text_or(added_message, "added")
+            )
         } else {
-            format!("{} files added", accepted.len())
+            format!(
+                "{} {}",
+                accepted.len(),
+                text_or(files_added_message, "files added")
+            )
         };
         live_message.set(announce);
 
@@ -460,7 +488,7 @@ pub fn FileUpload(
             internal_items.update(|v| v.retain(|it| it.id != id));
         }
 
-        live_message.set(format!("{} removed", filename));
+        live_message.set(format!("{} {}", filename, text_or(removed_message, "removed")));
 
         if let Some(cb) = on_change {
             if was_uploading {
@@ -506,11 +534,13 @@ pub fn FileUpload(
         }
     };
 
-    // Resolved hint text — prefer explicit prop, else auto-generate.
+    // Resolved hint text — prefer explicit prop, else auto-generate from
+    // accept/max_size using the reactive `up_to_label`.
     let resolved_hint = move || {
-        let h = hint_stored.get_value();
+        let h = hint.get();
         if h.is_empty() {
-            auto_hint(accept, max_size)
+            let up_to = text_or(up_to_label, "up to");
+            auto_hint(accept, max_size, &up_to)
         } else {
             h
         }
@@ -548,7 +578,9 @@ pub fn FileUpload(
                         <span class="file-upload__zone-icon" aria-hidden="true">
                             <Icon icon=i::FaCloudArrowUpSolid />
                         </span>
-                        <span class="file-upload__prompt">{placeholder}</span>
+                        <span class="file-upload__prompt">
+                            {move || text_or(placeholder, "Drag files here or click to browse")}
+                        </span>
                         {move || {
                             let h = resolved_hint();
                             (!h.is_empty()).then(|| view! {
@@ -565,6 +597,11 @@ pub fn FileUpload(
                             allow_cancel=allow_cancel
                             disabled=disabled
                             on_remove=Callback::new(handle_remove)
+                            done_label=done_label
+                            error_label=error_label
+                            replace_label=replace_label
+                            remove_label=remove_label
+                            uploading_label=uploading_label
                         />
                     })}
                 </Show>
@@ -585,6 +622,10 @@ pub fn FileUpload(
                                     allow_cancel=allow_cancel
                                     disabled=disabled
                                     on_remove=Callback::new(handle_remove)
+                                    done_label=done_label
+                                    error_label=error_label
+                                    remove_label=remove_label
+                                    uploading_label=uploading_label
                                 />
                             }
                         }
@@ -612,6 +653,10 @@ fn FileRow(
     allow_cancel: bool,
     disabled: bool,
     on_remove: Callback<FileItem>,
+    done_label: TextProp,
+    error_label: TextProp,
+    remove_label: TextProp,
+    uploading_label: TextProp,
 ) -> impl IntoView {
     let name = file.name();
     let size_text = format_bytes(file.size() as u64);
@@ -644,7 +689,11 @@ fn FileRow(
                         <span class="file-upload__item-size">{size_text_c.clone()}</span>
                     }.into_any(),
                     FileStatus::Uploading => {
-                        let aria = format!("Uploading {}", name_stored.get_value());
+                        let aria = format!(
+                            "{} {}",
+                            text_or(uploading_label, "Uploading"),
+                            name_stored.get_value()
+                        );
                         view! {
                             <span class="file-upload__item-progress">
                                 <ProgressBar
@@ -663,12 +712,13 @@ fn FileRow(
                             variant=BadgeVariant::Success
                             size=BadgeSize::Sm
                         >
-                            "Done"
+                            {move || text_or(done_label, "Done")}
                         </Badge>
                     }.into_any(),
                     FileStatus::Error => {
                         let err = error_text();
-                        let display = if err.is_empty() { "Error".to_string() } else { err.clone() };
+                        let fallback = text_or(error_label, "Error");
+                        let display = if err.is_empty() { fallback } else { err.clone() };
                         view! {
                             <span class="file-upload__item-error" title=err>
                                 {display}
@@ -679,7 +729,11 @@ fn FileRow(
                 {move || {
                     if !show_remove() { return None; }
                     let it = lookup()?;
-                    let lbl = format!("Remove {}", name_stored.get_value());
+                    let lbl = format!(
+                        "{} {}",
+                        text_or(remove_label, "Remove"),
+                        name_stored.get_value()
+                    );
                     Some(view! {
                         <IconButton
                             variant=Variant::Ghost
@@ -712,6 +766,11 @@ fn CompactItem(
     allow_cancel: bool,
     disabled: bool,
     on_remove: Callback<FileItem>,
+    done_label: TextProp,
+    error_label: TextProp,
+    replace_label: TextProp,
+    remove_label: TextProp,
+    uploading_label: TextProp,
 ) -> impl IntoView {
     let name = file.name();
     let size_text = format_bytes(file.size() as u64);
@@ -739,10 +798,16 @@ fn CompactItem(
         {move || match status() {
             FileStatus::Idle => view! {
                 <span class="file-upload__compact-size">{size_text_c.clone()}</span>
-                <span class="file-upload__compact-replace">"Replace"</span>
+                <span class="file-upload__compact-replace">
+                    {move || text_or(replace_label, "Replace")}
+                </span>
             }.into_any(),
             FileStatus::Uploading => {
-                let aria = format!("Uploading {}", name_stored.get_value());
+                let aria = format!(
+                    "{} {}",
+                    text_or(uploading_label, "Uploading"),
+                    name_stored.get_value()
+                );
                 view! {
                     <span class="file-upload__item-progress">
                         <ProgressBar
@@ -761,25 +826,34 @@ fn CompactItem(
                     variant=BadgeVariant::Success
                     size=BadgeSize::Sm
                 >
-                    "Done"
+                    {move || text_or(done_label, "Done")}
                 </Badge>
-                <span class="file-upload__compact-replace">"Replace"</span>
+                <span class="file-upload__compact-replace">
+                    {move || text_or(replace_label, "Replace")}
+                </span>
             }.into_any(),
             FileStatus::Error => {
                 let err = error_text();
-                let display = if err.is_empty() { "Error".to_string() } else { err.clone() };
+                let fallback = text_or(error_label, "Error");
+                let display = if err.is_empty() { fallback } else { err.clone() };
                 view! {
                     <span class="file-upload__item-error" title=err>
                         {display}
                     </span>
-                    <span class="file-upload__compact-replace">"Replace"</span>
+                    <span class="file-upload__compact-replace">
+                        {move || text_or(replace_label, "Replace")}
+                    </span>
                 }.into_any()
             }
         }}
         {move || {
             if !show_remove() { return None; }
             let it = lookup()?;
-            let lbl = format!("Remove {}", name_stored.get_value());
+            let lbl = format!(
+                "{} {}",
+                text_or(remove_label, "Remove"),
+                name_stored.get_value()
+            );
             Some(view! {
                 <IconButton
                     variant=Variant::Ghost

@@ -25,6 +25,7 @@ mod pg_select;
 mod pg_separator;
 mod pg_slider;
 mod pg_spinner;
+mod pg_step_indicator;
 mod pg_textarea;
 mod pg_time_picker;
 mod pg_toast;

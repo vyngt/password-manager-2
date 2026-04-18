@@ -1,0 +1,183 @@
+@layer components {
+  /* ============================================================
+     StepIndicator — read-only progress through ordered steps
+     ============================================================ */
+  .step-indicator {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .step-indicator--horizontal {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .step-indicator--vertical {
+    flex-direction: column;
+  }
+
+  /* ---- Step <li> --------------------------------------------- */
+  .step-indicator__step {
+    display: flex;
+    min-width: 0;
+  }
+
+  /* Horizontal: each step is [body | connector], body is node+label column */
+  .step-indicator--horizontal .step-indicator__step {
+    flex: 1 1 0;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .step-indicator--horizontal .step-indicator__step:last-child {
+    flex: 0 0 auto;
+  }
+
+  /* Vertical: each step is [body | content], body is node+connector column */
+  .step-indicator--vertical .step-indicator__step {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  /* ---- Body (node + label below in horizontal, node + vertical
+           connector in vertical) ----------------------------- */
+  .step-indicator__body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* ---- Node -------------------------------------------------- */
+  .step-indicator__node {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-sans);
+    line-height: 1;
+    transition:
+      background var(--duration-base) var(--ease-out),
+      border-color var(--duration-base) var(--ease-out),
+      color var(--duration-base) var(--ease-out);
+  }
+
+  .step-indicator__node--completed,
+  .step-indicator__node--current {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border: none;
+  }
+
+  .step-indicator__node--upcoming {
+    background: transparent;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text-tertiary);
+  }
+
+  .step-indicator__check {
+    width: 12px;
+    height: 12px;
+    display: inline-flex;
+  }
+
+  /* ---- Connector --------------------------------------------- */
+  .step-indicator__connector {
+    transition: background var(--duration-base) var(--ease-out);
+  }
+
+  .step-indicator__connector--completed {
+    background: var(--color-primary);
+  }
+
+  .step-indicator__connector--upcoming {
+    background: var(--color-border);
+  }
+
+  /* Horizontal connector — sibling of body, aligned with node center */
+  .step-indicator--horizontal .step-indicator__connector {
+    flex: 1;
+    height: 1px;
+    /* Half the node height (24 / 2 = 12px) to align with node center */
+    margin-top: 12px;
+    margin-left: var(--space-2);
+    margin-right: var(--space-2);
+  }
+
+  /* Vertical connector — inside body, directly below node */
+  .step-indicator--vertical .step-indicator__connector {
+    width: 1px;
+    flex: 1;
+    min-height: 20px;
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-1);
+  }
+
+  /* ---- Label area -------------------------------------------- */
+  .step-indicator__content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .step-indicator--horizontal .step-indicator__content {
+    margin-top: var(--space-1);
+    text-align: center;
+    align-items: center;
+  }
+
+  .step-indicator--vertical .step-indicator__content {
+    margin-left: var(--space-2);
+    text-align: left;
+    padding-bottom: var(--space-3);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .step-indicator__label {
+    font-size: var(--text-sm);
+    color: var(--color-text-tertiary);
+    transition: color var(--duration-base) var(--ease-out);
+    max-width: 100%;
+  }
+
+  .step-indicator--horizontal .step-indicator__label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .step-indicator--vertical .step-indicator__label {
+    white-space: normal;
+  }
+
+  .step-indicator__label--active {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .step-indicator__label--done {
+    color: var(--color-text-primary);
+  }
+
+  .step-indicator__description {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    margin-top: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .step-indicator__node,
+    .step-indicator__connector,
+    .step-indicator__label {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

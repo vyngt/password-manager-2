@@ -16,51 +16,145 @@ const GROUPS: &[SidebarGroup] = &[
     SidebarGroup {
         label: "Foundation",
         items: &[
-            SidebarItem { name: "Avatar", path: "/playground/avatar" },
-            SidebarItem { name: "Badge", path: "/playground/badge" },
-            SidebarItem { name: "Button", path: "/playground/button" },
-            SidebarItem { name: "Icon Button", path: "/playground/icon-button" },
-            SidebarItem { name: "Kbd", path: "/playground/kbd" },
-            SidebarItem { name: "Progress Bar", path: "/playground/progress-bar" },
-            SidebarItem { name: "QR Code", path: "/playground/qrcode" },
-            SidebarItem { name: "Separator", path: "/playground/separator" },
-            SidebarItem { name: "Spinner", path: "/playground/spinner" },
+            SidebarItem {
+                name: "Avatar",
+                path: "/playground/avatar",
+            },
+            SidebarItem {
+                name: "Badge",
+                path: "/playground/badge",
+            },
+            SidebarItem {
+                name: "Button",
+                path: "/playground/button",
+            },
+            SidebarItem {
+                name: "Icon Button",
+                path: "/playground/icon-button",
+            },
+            SidebarItem {
+                name: "Kbd",
+                path: "/playground/kbd",
+            },
+            SidebarItem {
+                name: "Progress Bar",
+                path: "/playground/progress-bar",
+            },
+            SidebarItem {
+                name: "QR Code",
+                path: "/playground/qrcode",
+            },
+            SidebarItem {
+                name: "Separator",
+                path: "/playground/separator",
+            },
+            SidebarItem {
+                name: "Spinner",
+                path: "/playground/spinner",
+            },
+            SidebarItem {
+                name: "Step Indicator",
+                path: "/playground/step-indicator",
+            },
         ],
     },
     SidebarGroup {
         label: "Form",
         items: &[
-            SidebarItem { name: "Checkbox", path: "/playground/checkbox" },
-            SidebarItem { name: "Color Picker", path: "/playground/color-picker" },
-            SidebarItem { name: "Date Picker", path: "/playground/date-picker" },
-            SidebarItem { name: "File Upload", path: "/playground/file-upload" },
-            SidebarItem { name: "Helper Text", path: "/playground/helper-text" },
-            SidebarItem { name: "Input", path: "/playground/input" },
-            SidebarItem { name: "Label", path: "/playground/label" },
-            SidebarItem { name: "Number Input", path: "/playground/number-input" },
-            SidebarItem { name: "Password Strength Meter", path: "/playground/password-strength-meter" },
-            SidebarItem { name: "Radio Group", path: "/playground/radio-group" },
-            SidebarItem { name: "Segmented Control", path: "/playground/segmented-control" },
-            SidebarItem { name: "Select", path: "/playground/select" },
-            SidebarItem { name: "Slider", path: "/playground/slider" },
-            SidebarItem { name: "Textarea", path: "/playground/textarea" },
-            SidebarItem { name: "Time Picker", path: "/playground/time-picker" },
-            SidebarItem { name: "Toggle", path: "/playground/toggle" },
+            SidebarItem {
+                name: "Checkbox",
+                path: "/playground/checkbox",
+            },
+            SidebarItem {
+                name: "Color Picker",
+                path: "/playground/color-picker",
+            },
+            SidebarItem {
+                name: "Date Picker",
+                path: "/playground/date-picker",
+            },
+            SidebarItem {
+                name: "File Upload",
+                path: "/playground/file-upload",
+            },
+            SidebarItem {
+                name: "Helper Text",
+                path: "/playground/helper-text",
+            },
+            SidebarItem {
+                name: "Input",
+                path: "/playground/input",
+            },
+            SidebarItem {
+                name: "Label",
+                path: "/playground/label",
+            },
+            SidebarItem {
+                name: "Number Input",
+                path: "/playground/number-input",
+            },
+            SidebarItem {
+                name: "Password Strength Meter",
+                path: "/playground/password-strength-meter",
+            },
+            SidebarItem {
+                name: "Radio Group",
+                path: "/playground/radio-group",
+            },
+            SidebarItem {
+                name: "Segmented Control",
+                path: "/playground/segmented-control",
+            },
+            SidebarItem {
+                name: "Select",
+                path: "/playground/select",
+            },
+            SidebarItem {
+                name: "Slider",
+                path: "/playground/slider",
+            },
+            SidebarItem {
+                name: "Textarea",
+                path: "/playground/textarea",
+            },
+            SidebarItem {
+                name: "Time Picker",
+                path: "/playground/time-picker",
+            },
+            SidebarItem {
+                name: "Toggle",
+                path: "/playground/toggle",
+            },
         ],
     },
     SidebarGroup {
         label: "Feedback",
         items: &[
-            SidebarItem { name: "Dialog", path: "/playground/dialog" },
-            SidebarItem { name: "Toast", path: "/playground/toast" },
-            SidebarItem { name: "Tooltip", path: "/playground/tooltip" },
+            SidebarItem {
+                name: "Dialog",
+                path: "/playground/dialog",
+            },
+            SidebarItem {
+                name: "Toast",
+                path: "/playground/toast",
+            },
+            SidebarItem {
+                name: "Tooltip",
+                path: "/playground/tooltip",
+            },
         ],
     },
     SidebarGroup {
         label: "Data Display",
         items: &[
-            SidebarItem { name: "Data Table", path: "/playground/data-table" },
-            SidebarItem { name: "Pagination", path: "/playground/pagination" },
+            SidebarItem {
+                name: "Data Table",
+                path: "/playground/data-table",
+            },
+            SidebarItem {
+                name: "Pagination",
+                path: "/playground/pagination",
+            },
         ],
     },
 ];
@@ -110,7 +204,7 @@ pub fn PlaygroundLayout() -> impl IntoView {
     view! {
         <div class="flex h-full">
             // Sidebar
-            <aside class="w-[220px] flex-shrink-0 border-r border-border overflow-y-auto flex flex-col">
+            <aside class="w-[220px] shrink-0 border-r border-border overflow-y-auto flex flex-col">
                 <nav class="p-4 space-y-5 flex-1">
                     // Theme — top item
                     <div>
