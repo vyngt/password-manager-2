@@ -25,6 +25,14 @@ subtle = "2"
 rand = "0.10"
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service"] }
 base64 = "0.22"
+tracing = { version = "0.1", features = ["attributes"] }
+arboard = { version = "3", default-features = false }
+indexmap = "2"
+region = "3"
+totp-rs = "5"
+# Async file I/O primitives for BlobStore. `vedge-core` does not create a
+# runtime — callers (shells) supply one.
+tokio = { version = "1", default-features = false, features = ["fs", "io-util", "rt", "sync", "time", "macros"] }
 
 [dependencies.sea-orm]
 version = "1.1.20"
@@ -37,8 +45,9 @@ default-features = false
 features = ["runtime-tokio", "sqlx-sqlite", "sqlite-use-returning-for-3_35", "with-chrono"]
 
 [dev-dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "test-util", "time"] }
 tempfile = "3"
+tracing-subscriber = "0.3"
 
 [lints]
 workspace = true

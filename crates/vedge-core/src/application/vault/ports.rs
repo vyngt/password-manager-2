@@ -1,8 +1,12 @@
+pub mod blob_store;
+pub mod clipboard;
 pub mod crypto;
 pub mod kdf;
 pub mod keychain;
 pub mod repository;
 
+pub use blob_store::BlobStore;
+pub use clipboard::ClipboardProvider;
 pub use crypto::{CryptoProvider, Nonce};
 pub use kdf::KeyDerivationProvider;
 pub use keychain::KeychainProvider;

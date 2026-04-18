@@ -1,4 +1,4 @@
-use serde::de::{self, Error as DeError};
+use serde::de::Error as DeError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use zeroize::Zeroizing;
 
@@ -179,7 +179,3 @@ impl<'de> Deserialize<'de> for EntryPayload {
     }
 }
 
-// Silence the "`de` imported but only used in paths" lint if the compiler flags
-// re-exported module paths. Kept for explicit documentation of the dependency.
-#[allow(dead_code)]
-fn _anchor(_: &dyn Fn(&str) -> de::value::Error) {}

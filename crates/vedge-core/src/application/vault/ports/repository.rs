@@ -37,4 +37,18 @@ pub trait VaultRepository: Send + Sync {
         limit: u32,
     ) -> Result<Vec<AuditEvent>, VaultError>;
     async fn delete_audit_before(&self, cutoff: Timestamp) -> Result<u64, VaultError>;
+
+    /// Atomic re-wrap during `ChangePassword`.
+    ///
+    /// Updates every listed entry's `dek_wrapped` **and** the vault config
+    /// (which carries the new `verify_hash` / `kdf_params` /
+    /// `last_unlocked_at`) as a single transaction. If any step fails the
+    /// whole batch rolls back, so the vault never lands in a "half the
+    /// DEKs are under the new KEK, the other half under the old KEK"
+    /// state — which would be unrecoverable by either password.
+    async fn rewrap_all_deks(
+        &self,
+        updates: &[(EntryId, [u8; 40])],
+        new_config: &VaultConfig,
+    ) -> Result<(), VaultError>;
 }

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, Order,
-    QueryFilter, QueryOrder, QuerySelect,
+    QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
 };
 
 use crate::application::vault::ports::VaultRepository;
@@ -325,5 +325,64 @@ impl VaultRepository for SqliteVaultRepository {
             .await
             .map_err(db_err)?;
         Ok(res.rows_affected)
+    }
+
+    async fn rewrap_all_deks(
+        &self,
+        updates: &[(EntryId, [u8; 40])],
+        new_config: &VaultConfig,
+    ) -> Result<(), VaultError> {
+        let config_model = config_map::domain_to_model(new_config)?;
+
+        let txn = self.conn.begin().await.map_err(db_err)?;
+
+        for (entry_id, dek_wrapped) in updates {
+            let active = entry_entity::ActiveModel {
+                id: ActiveValue::Unchanged(entry_id.as_str().to_owned()),
+                dek_wrapped: ActiveValue::Set(dek_wrapped.to_vec()),
+                ..Default::default()
+            };
+            entry_entity::Entity::update(active)
+                .exec(&txn)
+                .await
+                .map_err(db_err)?;
+        }
+
+        let config_active = config_entity::ActiveModel {
+            id: ActiveValue::Set(config_model.id.clone()),
+            magic: ActiveValue::Set(config_model.magic),
+            schema_version: ActiveValue::Set(config_model.schema_version),
+            vault_salt: ActiveValue::Set(config_model.vault_salt),
+            kdf_params: ActiveValue::Set(config_model.kdf_params),
+            verify_hash: ActiveValue::Set(config_model.verify_hash),
+            preferred_cipher_suite: ActiveValue::Set(config_model.preferred_cipher_suite),
+            trash_retention_days: ActiveValue::Set(config_model.trash_retention_days),
+            audit_retention_days: ActiveValue::Set(config_model.audit_retention_days),
+            created_at: ActiveValue::Set(config_model.created_at),
+            last_unlocked_at: ActiveValue::Set(config_model.last_unlocked_at),
+        };
+        config_entity::Entity::insert(config_active)
+            .on_conflict(
+                OnConflict::column(ConfigCol::Id)
+                    .update_columns([
+                        ConfigCol::Magic,
+                        ConfigCol::SchemaVersion,
+                        ConfigCol::VaultSalt,
+                        ConfigCol::KdfParams,
+                        ConfigCol::VerifyHash,
+                        ConfigCol::PreferredCipherSuite,
+                        ConfigCol::TrashRetentionDays,
+                        ConfigCol::AuditRetentionDays,
+                        ConfigCol::CreatedAt,
+                        ConfigCol::LastUnlockedAt,
+                    ])
+                    .to_owned(),
+            )
+            .exec(&txn)
+            .await
+            .map_err(db_err)?;
+
+        txn.commit().await.map_err(db_err)?;
+        Ok(())
     }
 }

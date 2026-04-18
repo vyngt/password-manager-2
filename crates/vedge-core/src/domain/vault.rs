@@ -2,6 +2,7 @@ pub mod aad;
 pub mod crypto_constants;
 pub mod entities;
 pub mod errors;
+pub mod index;
 pub mod kdf_params;
 pub mod payloads;
 
@@ -13,6 +14,7 @@ pub use crypto_constants::{
 };
 pub use entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
 pub use errors::VaultError;
+pub use index::{IndexEntry, TagMeta, VaultIndex};
 pub use kdf_params::KdfParams;
 pub use payloads::{
     Address, ApiKeyPayload, CardPayload, CommonMeta, CURRENT_PAYLOAD_SCHEMA, DocumentPayload,

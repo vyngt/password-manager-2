@@ -50,6 +50,21 @@ pub enum VaultError {
     #[error("malformed payload: {0}")]
     MalformedPayload(String),
 
+    #[error("folder not found: {0}")]
+    FolderNotFound(EntryId),
+
+    #[error("folder has children; move or delete them first")]
+    FolderNotEmpty,
+
+    #[error("document too large: {size} bytes exceeds {limit} bytes")]
+    DocumentTooLarge { size: u64, limit: u64 },
+
+    #[error("blob not found for entry {0}")]
+    BlobNotFound(EntryId),
+
+    #[error("requested field is not present on this entry type")]
+    FieldNotApplicable,
+
     // --- crypto ---
     #[error("wrong password or Secret Key")]
     WrongCredentials,
