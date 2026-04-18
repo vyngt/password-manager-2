@@ -5,6 +5,10 @@ members = [
     "crates/vedge-core",
     "crates/vedge-ui",
     "crates/vedge-app",
+]
+# Temporarily excluded while vedge-core is rebuilt (see docs/ReimplementCore.md).
+# Rewire against the new ports/repositories in a follow-up task, then re-add.
+exclude = [
     "crates/vedge-tauri",
     "crates/vedge-tools",
 ]
