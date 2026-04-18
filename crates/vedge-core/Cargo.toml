@@ -20,7 +20,7 @@ hkdf = "0.13"
 sha2 = "0.11"
 argon2 = "0.5"
 zeroize = { version = "1", features = ["zeroize_derive"] }
-secrecy = "0.10"
+secrecy = { version = "0.10", features = ["serde"] }
 subtle = "2"
 rand = "0.10"
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service"] }

@@ -3,6 +3,7 @@ pub mod crypto_constants;
 pub mod entities;
 pub mod errors;
 pub mod kdf_params;
+pub mod payloads;
 
 pub use aad::{blob_aad, entry_aad, tag_aad};
 pub use crypto_constants::{
@@ -13,3 +14,8 @@ pub use crypto_constants::{
 pub use entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
 pub use errors::VaultError;
 pub use kdf_params::KdfParams;
+pub use payloads::{
+    Address, ApiKeyPayload, CardPayload, CommonMeta, CURRENT_PAYLOAD_SCHEMA, DocumentPayload,
+    EntryPayload, EntryType, EnvVar, EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload,
+    NotePayload, SshKeyPayload, TagPayload, UnknownPayload,
+};

@@ -41,6 +41,15 @@ pub enum VaultError {
     #[error("invalid tag id: {0}")]
     InvalidTagId(String),
 
+    #[error("unsupported payload schema: {0}")]
+    UnsupportedPayloadSchema(u32),
+
+    #[error("unsupported entry type: {0}")]
+    UnsupportedEntryType(String),
+
+    #[error("malformed payload: {0}")]
+    MalformedPayload(String),
+
     // --- crypto ---
     #[error("wrong password or Secret Key")]
     WrongCredentials,
