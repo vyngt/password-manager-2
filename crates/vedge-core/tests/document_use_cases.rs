@@ -9,39 +9,26 @@
 
 mod common;
 
-use std::sync::Arc;
-
-use common::Harness;
+use common::{build_unlock, Harness};
 use tokio::io::AsyncWriteExt;
 
-use vedge_core::application::vault::ports::{
-    CryptoProvider, KeyDerivationProvider, KeychainProvider, VaultRepository,
-};
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    export_document, hard_delete_entry, import_document, ImportDocumentInput, UnlockVault,
-    UnlockVaultInput, DOCUMENT_SIZE_LIMIT_BYTES,
+    export_document, hard_delete_entry, import_document, ImportDocumentInput, UnlockVaultInput,
+    DOCUMENT_SIZE_LIMIT_BYTES,
 };
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryType};
 
 async fn unlock(h: &Harness) -> VaultSession {
-    let uv = UnlockVault {
-        repo: Arc::clone(&h.repo) as Arc<dyn VaultRepository>,
-        crypto: Arc::clone(&h.crypto) as Arc<dyn CryptoProvider>,
-        blob: Arc::clone(&h.blob) as Arc<dyn vedge_core::application::vault::ports::BlobStore>,
-        clipboard: Arc::clone(&h.clipboard)
-            as Arc<dyn vedge_core::application::vault::ports::ClipboardProvider>,
-        kdf: Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
-        keychain: Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-    };
-    uv.execute(UnlockVaultInput {
-        vault_path: h.vdb_path.clone(),
-        master_password: h.master_password.clone(),
-        secret_key: None,
-    })
-    .await
-    .unwrap()
+    build_unlock(h)
+        .execute(UnlockVaultInput {
+            vault_path: h.vdb_path.clone(),
+            master_password: h.master_password.clone(),
+            secret_key: None,
+        })
+        .await
+        .unwrap()
 }
 
 fn meta(name: &str) -> CommonMeta {

@@ -9,30 +9,13 @@
 
 mod common;
 
-use std::sync::Arc;
-
-use common::Harness;
+use common::{build_unlock, Harness};
 use zeroize::Zeroizing;
 
-use vedge_core::application::vault::ports::{
-    BlobStore, ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
-    VaultRepository,
-};
-// The imports above may look unused in parts of the test but they're needed
-// for the explicit trait-object coercions in `build_unlock`.
-use vedge_core::application::vault::use_cases::{lock_vault, UnlockVault, UnlockVaultInput};
+// Traits needed for `h.repo.*` / `h.keychain.*` calls below.
+use vedge_core::application::vault::ports::{KeychainProvider, VaultRepository};
+use vedge_core::application::vault::use_cases::{lock_vault, UnlockVaultInput};
 use vedge_core::domain::vault::errors::VaultError;
-
-fn build_unlock(h: &Harness) -> UnlockVault {
-    UnlockVault {
-        repo: Arc::clone(&h.repo) as Arc<dyn VaultRepository>,
-        crypto: Arc::clone(&h.crypto) as Arc<dyn CryptoProvider>,
-        blob: Arc::clone(&h.blob) as Arc<dyn BlobStore>,
-        clipboard: Arc::clone(&h.clipboard) as Arc<dyn ClipboardProvider>,
-        kdf: Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
-        keychain: Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-    }
-}
 
 #[tokio::test]
 async fn unlock_returns_session_with_seeded_index() {

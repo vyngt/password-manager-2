@@ -5,6 +5,7 @@ pub mod document_ops;
 pub mod hard_delete_entry;
 pub mod lock_vault;
 pub mod move_entry;
+pub mod queries;
 pub mod refs;
 pub mod restore_entry;
 pub mod run_maintenance;
@@ -26,6 +27,10 @@ pub use restore_entry::restore_entry;
 pub use run_maintenance::{run_maintenance, MaintenanceReport};
 pub use soft_delete_entry::soft_delete_entry;
 pub use tag_ops::{create_tag, delete_tag, normalize_tag_name, rename_tag};
+pub use queries::{
+    entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries, list_tags,
+    list_trashed_entries, search_entries,
+};
 pub use unlock_vault::{UnlockVault, UnlockVaultInput};
 pub use update_entry::{update_entry, UpdateEntryInput};
 

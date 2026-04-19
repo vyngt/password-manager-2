@@ -84,9 +84,12 @@ pub fn run() {
             commands::maintenance::run_maintenance,
             // ---- app.db: recent vaults ----
             commands::recent::list_recent_vaults,
+            commands::recent::list_recent_vaults_with_status,
             commands::recent::add_recent_vault,
             commands::recent::remove_recent_vault,
             commands::recent::touch_recent_vault,
+            commands::recent::touch_recent_vault_on_unlock,
+            commands::recent::remove_stale_recent_vaults,
             // ---- app.db: settings + themes ----
             commands::settings::get_app_setting,
             commands::settings::set_app_setting,
@@ -94,8 +97,12 @@ pub fn run() {
             commands::settings::list_app_settings,
             commands::settings::list_themes,
             commands::settings::get_theme,
-            commands::settings::upsert_theme,
-            commands::settings::delete_theme,
+            commands::settings::get_active_theme,
+            commands::settings::set_active_theme,
+            commands::settings::create_custom_theme,
+            commands::settings::update_custom_theme,
+            commands::settings::duplicate_theme,
+            commands::settings::delete_custom_theme,
             // ---- app.db: devices + extension sessions ----
             commands::device::list_known_devices,
             commands::device::upsert_known_device,

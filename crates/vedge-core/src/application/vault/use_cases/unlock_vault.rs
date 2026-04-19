@@ -25,12 +25,11 @@ use std::sync::Arc;
 use tracing::instrument;
 use zeroize::Zeroizing;
 
-use crate::application::vault::ports::blob_store::BlobStore;
 use crate::application::vault::ports::clipboard::ClipboardProvider;
 use crate::application::vault::ports::crypto::CryptoProvider;
+use crate::application::vault::ports::factories::{BlobStoreFactory, VaultRepositoryFactory};
 use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::application::vault::ports::keychain::KeychainProvider;
-use crate::application::vault::ports::repository::VaultRepository;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{now, VaultId};
 use crate::domain::vault::aad::{entry_aad, tag_aad};
@@ -51,10 +50,12 @@ pub struct UnlockVaultInput {
     pub secret_key: Option<Zeroizing<[u8; SECRET_KEY_LEN]>>,
 }
 
+/// Use-case wiring. `repo_factory` and `blob_factory` construct per-vault
+/// infrastructure inside `execute`; the other ports are app-lifetime.
 pub struct UnlockVault {
-    pub repo: Arc<dyn VaultRepository>,
+    pub repo_factory: Arc<dyn VaultRepositoryFactory>,
+    pub blob_factory: Arc<dyn BlobStoreFactory>,
     pub crypto: Arc<dyn CryptoProvider>,
-    pub blob: Arc<dyn BlobStore>,
     pub clipboard: Arc<dyn ClipboardProvider>,
     pub kdf: Arc<dyn KeyDerivationProvider>,
     pub keychain: Arc<dyn KeychainProvider>,
@@ -66,8 +67,17 @@ impl UnlockVault {
         &self,
         input: UnlockVaultInput,
     ) -> Result<VaultSession, VaultError> {
+        // ---- 0. Per-vault infrastructure ------------------------------------
+        // The repo + blob store are tied to this specific `.vdb`, so they're
+        // constructed here via the factory ports and owned by the resulting
+        // session — they die when the session drops.
+        let repo = self.repo_factory.open(&input.vault_path).await?;
+        let blob = self
+            .blob_factory
+            .create(&input.vault_path, Arc::clone(&self.crypto))?;
+
         // ---- 1. Load config --------------------------------------------------
-        let config = self.repo.load_config().await?;
+        let config = repo.load_config().await?;
         if config.magic != "VEDG" {
             return Err(VaultError::BadMagic);
         }
@@ -122,13 +132,13 @@ impl UnlockVault {
         // ---- 6. Build VaultIndex --------------------------------------------
         let mut index = VaultIndex::new();
 
-        let tag_rows = self.repo.all_tags().await?;
+        let tag_rows = repo.all_tags().await?;
         for tag_row in tag_rows {
             let meta = self.decrypt_tag_row(&tag_row, kek.expose())?;
             index.insert_tag(meta);
         }
 
-        let entry_rows = self.repo.all_entries().await?;
+        let entry_rows = repo.all_entries().await?;
         for row in entry_rows {
             let entry = self.decrypt_entry_row(&row, kek.expose())?;
             index.insert_entry(entry);
@@ -143,11 +153,11 @@ impl UnlockVault {
             occurred_at: when,
             device_id: None,
         };
-        self.repo.append_audit(&event).await?;
+        repo.append_audit(&event).await?;
 
         let mut updated_config = config;
         updated_config.last_unlocked_at = Some(when);
-        self.repo.save_config(&updated_config).await?;
+        repo.save_config(&updated_config).await?;
 
         // ---- 8. Build session ------------------------------------------------
         Ok(VaultSession::assemble(
@@ -155,9 +165,9 @@ impl UnlockVault {
             kek,
             index,
             updated_config,
-            Arc::clone(&self.repo),
+            repo,
             Arc::clone(&self.crypto),
-            Arc::clone(&self.blob),
+            blob,
             Arc::clone(&self.clipboard),
         ))
     }

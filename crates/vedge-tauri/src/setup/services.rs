@@ -24,8 +24,11 @@ use vedge_core::application::app::ports::{
     RecentVaultRepository, ThemeRepository,
 };
 use vedge_core::application::vault::ports::{
-    ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
+    BlobStoreFactory, ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
+    VaultRepositoryFactory,
 };
+use vedge_core::application::vault::use_cases::UnlockVault;
+use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
 use vedge_core::infrastructure::clipboard::ArboardClipboardProvider;
 use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
 use vedge_core::infrastructure::keychain::OsKeychainProvider;
@@ -33,6 +36,7 @@ use vedge_core::infrastructure::sqlite::app::{
     AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
     SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
 };
+use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 
 use crate::state::AppState;
 
@@ -73,6 +77,18 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
     let keychain: Arc<dyn KeychainProvider> = Arc::new(OsKeychainProvider::new());
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(ArboardClipboardProvider::new()?);
 
+    // Pre-wire the unlock use case so per-vault repo/blob construction is
+    // the use case's job at `execute` time. The factories are cheap Arcs.
+    let unlock_vault = UnlockVault {
+        repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+            as Arc<dyn VaultRepositoryFactory>,
+        blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
+        crypto: Arc::clone(&crypto),
+        clipboard: Arc::clone(&clipboard),
+        kdf: Arc::clone(&kdf),
+        keychain: Arc::clone(&keychain),
+    };
+
     Ok(AppState::new(
         crypto,
         kdf,
@@ -83,6 +99,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         themes,
         known_devices,
         extension_sessions,
+        unlock_vault,
     ))
 }
 
@@ -131,6 +148,17 @@ mod tests {
             vedge_core::infrastructure::clipboard::MemoryClipboardProvider::new(),
         );
 
+        let unlock_vault = UnlockVault {
+            repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+                as Arc<dyn VaultRepositoryFactory>,
+            blob_factory: Arc::new(FilesystemBlobStoreFactory::new())
+                as Arc<dyn BlobStoreFactory>,
+            crypto: Arc::clone(&crypto),
+            clipboard: Arc::clone(&clipboard),
+            kdf: Arc::clone(&kdf),
+            keychain: Arc::clone(&keychain),
+        };
+
         AppState::new(
             crypto,
             kdf,
@@ -141,6 +169,7 @@ mod tests {
             themes,
             known_devices,
             extension_sessions,
+            unlock_vault,
         )
     }
 

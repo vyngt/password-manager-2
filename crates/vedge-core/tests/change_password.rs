@@ -11,33 +11,20 @@ mod common;
 
 use std::sync::Arc;
 
-use common::Harness;
+use common::{build_unlock, Harness};
 use secrecy::SecretString;
 use zeroize::Zeroizing;
 
-use vedge_core::application::vault::ports::{
-    CryptoProvider, KeyDerivationProvider, KeychainProvider, VaultRepository,
-};
+// Traits needed for trait-method lookup + trait-object coercions.
+use vedge_core::application::vault::ports::{KeyDerivationProvider, KeychainProvider};
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    change_password, create_entry, lock_vault, ChangePasswordInput, CreateEntryInput, UnlockVault,
+    change_password, create_entry, lock_vault, ChangePasswordInput, CreateEntryInput,
     UnlockVaultInput,
 };
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
-
-fn build_unlock(h: &Harness) -> UnlockVault {
-    UnlockVault {
-        repo: Arc::clone(&h.repo) as Arc<dyn VaultRepository>,
-        crypto: Arc::clone(&h.crypto) as Arc<dyn CryptoProvider>,
-        blob: Arc::clone(&h.blob) as Arc<dyn vedge_core::application::vault::ports::BlobStore>,
-        clipboard: Arc::clone(&h.clipboard)
-            as Arc<dyn vedge_core::application::vault::ports::ClipboardProvider>,
-        kdf: Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
-        keychain: Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-    }
-}
 
 async fn unlock(h: &Harness, pw: &str) -> Result<VaultSession, VaultError> {
     let uv = build_unlock(h);

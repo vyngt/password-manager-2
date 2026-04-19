@@ -52,6 +52,24 @@ impl RecentVaultDto {
     }
 }
 
+/// `RecentVault` plus a filesystem existence flag. Returned by the
+/// `list_recent_vaults_with_status` command for the onboarding UI.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecentVaultStatusDto {
+    #[serde(flatten)]
+    pub vault: RecentVaultDto,
+    pub exists: bool,
+}
+
+impl From<&vedge_core::RecentVaultStatus> for RecentVaultStatusDto {
+    fn from(s: &vedge_core::RecentVaultStatus) -> Self {
+        Self {
+            vault: RecentVaultDto::from(&s.vault),
+            exists: s.exists,
+        }
+    }
+}
+
 // ---- AppSetting --------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,6 +126,39 @@ impl From<&Theme> for ThemeDto {
             updated_at: ts_to_string(t.updated_at),
         }
     }
+}
+
+/// Input DTO for `create_custom_theme`. No `id` (generated) or
+/// `is_built_in` (forced to false by the use case).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateCustomThemeInputDto {
+    pub name: String,
+    pub root_background: String,
+    pub root_foreground: String,
+    pub root_primary: String,
+    #[serde(default)]
+    pub danger_base: Option<String>,
+    #[serde(default)]
+    pub warning_base: Option<String>,
+    #[serde(default)]
+    pub success_base: Option<String>,
+}
+
+/// Input DTO for `update_custom_theme`. `created_at` is preserved server
+/// side; `is_built_in` is rejected (built-ins can't be mutated).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateCustomThemeInputDto {
+    pub id: String,
+    pub name: String,
+    pub root_background: String,
+    pub root_foreground: String,
+    pub root_primary: String,
+    #[serde(default)]
+    pub danger_base: Option<String>,
+    #[serde(default)]
+    pub warning_base: Option<String>,
+    #[serde(default)]
+    pub success_base: Option<String>,
 }
 
 impl ThemeDto {

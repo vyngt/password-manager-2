@@ -23,8 +23,10 @@ use tempfile::TempDir;
 use zeroize::Zeroizing;
 
 use vedge_core::application::vault::ports::{
-    CryptoProvider, KeyDerivationProvider, KeychainProvider, VaultRepository,
+    BlobStoreFactory, ClipboardProvider, CryptoProvider, KeyDerivationProvider,
+    KeychainProvider, VaultRepository, VaultRepositoryFactory,
 };
+use vedge_core::application::vault::use_cases::UnlockVault;
 use vedge_core::domain::shared::{now, EntryId, TagId, VaultId};
 use vedge_core::domain::vault::aad::{entry_aad, tag_aad};
 use vedge_core::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN};
@@ -229,4 +231,25 @@ pub fn tempdir_path() -> (TempDir, PathBuf) {
 
 pub fn as_path(h: &Harness) -> &Path {
     &h.vdb_path
+}
+
+/// Construct an `UnlockVault` use case wired to the harness's ports +
+/// real infrastructure factories. The factories open a *second*
+/// `SQLite` connection to the same `.vdb` that the harness already
+/// seeded — `SQLite` allows concurrent connections, so both live side
+/// by side for the duration of the test.
+pub fn build_unlock(h: &Harness) -> UnlockVault {
+    use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
+    use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
+
+    UnlockVault {
+        repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+            as Arc<dyn VaultRepositoryFactory>,
+        blob_factory: Arc::new(FilesystemBlobStoreFactory::new())
+            as Arc<dyn BlobStoreFactory>,
+        crypto: Arc::clone(&h.crypto) as Arc<dyn CryptoProvider>,
+        clipboard: Arc::clone(&h.clipboard) as Arc<dyn ClipboardProvider>,
+        kdf: Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        keychain: Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+    }
 }

@@ -1,16 +1,23 @@
-//! `known_devices` + `extension_sessions` app.db commands. Both tables
-//! hold IPC-related public keys / session keys; exposure lets an attacker
-//! *impersonate* peers but does not unlock vaults.
+//! `known_devices` + `extension_sessions` app.db commands. Every command
+//! routes through a `vedge-core` use case.
 //!
-//! See `commands/vault.rs` for the `#![allow]` rationale (no session
-//! mutex here, but the macro-generated patterns still trip the first
-//! two lints).
+//! See `commands/vault.rs` for the `#![allow]` rationale.
 
 #![allow(clippy::unreachable, clippy::let_underscore_must_use)]
 
 use tracing::instrument;
 
-use vedge_core::domain::shared::{now, DeviceId, SessionId};
+use vedge_core::domain::shared::{DeviceId, SessionId};
+use vedge_core::{
+    delete_extension_session as delete_extension_session_core,
+    delete_known_device as delete_known_device_core,
+    list_extension_sessions as list_extension_sessions_core,
+    list_known_devices as list_known_devices_core,
+    touch_extension_session_last_active as touch_extension_session_last_active_core,
+    touch_known_device_last_seen as touch_known_device_last_seen_core,
+    upsert_extension_session as upsert_extension_session_core,
+    upsert_known_device as upsert_known_device_core,
+};
 
 use crate::dto::settings::{ExtensionSessionDto, KnownDeviceDto};
 use crate::error::CommandError;
@@ -23,7 +30,7 @@ use crate::state::AppState;
 pub async fn list_known_devices(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<KnownDeviceDto>, CommandError> {
-    let rows = state.known_devices.list().await?;
+    let rows = list_known_devices_core(&*state.known_devices).await?;
     Ok(rows.iter().map(KnownDeviceDto::from).collect())
 }
 
@@ -34,7 +41,7 @@ pub async fn upsert_known_device(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     let domain = device.into_domain()?;
-    state.known_devices.upsert(&domain).await?;
+    upsert_known_device_core(&*state.known_devices, &domain).await?;
     Ok(())
 }
 
@@ -45,7 +52,7 @@ pub async fn delete_known_device(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     let did = DeviceId::from_raw(device_id);
-    state.known_devices.delete(&did).await?;
+    delete_known_device_core(&*state.known_devices, &did).await?;
     Ok(())
 }
 
@@ -56,7 +63,7 @@ pub async fn touch_known_device_last_seen(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     let did = DeviceId::from_raw(device_id);
-    state.known_devices.touch_last_seen(&did, now()).await?;
+    touch_known_device_last_seen_core(&*state.known_devices, &did).await?;
     Ok(())
 }
 
@@ -67,7 +74,7 @@ pub async fn touch_known_device_last_seen(
 pub async fn list_extension_sessions(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<ExtensionSessionDto>, CommandError> {
-    let rows = state.extension_sessions.list().await?;
+    let rows = list_extension_sessions_core(&*state.extension_sessions).await?;
     Ok(rows.iter().map(ExtensionSessionDto::from).collect())
 }
 
@@ -78,7 +85,7 @@ pub async fn upsert_extension_session(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     let domain = session.into_domain()?;
-    state.extension_sessions.upsert(&domain).await?;
+    upsert_extension_session_core(&*state.extension_sessions, &domain).await?;
     Ok(())
 }
 
@@ -89,7 +96,7 @@ pub async fn delete_extension_session(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     let sid = SessionId::from_raw(session_id);
-    state.extension_sessions.delete(&sid).await?;
+    delete_extension_session_core(&*state.extension_sessions, &sid).await?;
     Ok(())
 }
 
@@ -100,9 +107,6 @@ pub async fn touch_extension_session_last_active(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     let sid = SessionId::from_raw(session_id);
-    state
-        .extension_sessions
-        .touch_last_active(&sid, now())
-        .await?;
+    touch_extension_session_last_active_core(&*state.extension_sessions, &sid).await?;
     Ok(())
 }

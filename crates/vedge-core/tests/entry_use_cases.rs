@@ -9,18 +9,14 @@
 
 mod common;
 
-use std::sync::Arc;
-
-use common::Harness;
+use common::{build_unlock, Harness};
 use secrecy::SecretString;
 
-use vedge_core::application::vault::ports::{
-    CryptoProvider, KeyDerivationProvider, KeychainProvider, VaultRepository,
-};
+use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     create_entry, hard_delete_entry, restore_entry, soft_delete_entry, update_entry,
-    CreateEntryInput, UnlockVault, UnlockVaultInput, UpdateEntryInput,
+    CreateEntryInput, UnlockVaultInput, UpdateEntryInput,
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::errors::VaultError;
@@ -29,22 +25,14 @@ use vedge_core::domain::vault::payloads::{
 };
 
 async fn unlock(h: &Harness) -> VaultSession {
-    let uv = UnlockVault {
-        repo: Arc::clone(&h.repo) as Arc<dyn VaultRepository>,
-        crypto: Arc::clone(&h.crypto) as Arc<dyn CryptoProvider>,
-        blob: Arc::clone(&h.blob) as Arc<dyn vedge_core::application::vault::ports::BlobStore>,
-        clipboard: Arc::clone(&h.clipboard)
-            as Arc<dyn vedge_core::application::vault::ports::ClipboardProvider>,
-        kdf: Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
-        keychain: Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-    };
-    uv.execute(UnlockVaultInput {
-        vault_path: h.vdb_path.clone(),
-        master_password: h.master_password.clone(),
-        secret_key: None,
-    })
-    .await
-    .unwrap()
+    build_unlock(h)
+        .execute(UnlockVaultInput {
+            vault_path: h.vdb_path.clone(),
+            master_password: h.master_password.clone(),
+            secret_key: None,
+        })
+        .await
+        .unwrap()
 }
 
 fn login_payload(name: &str, pw: &str) -> EntryPayload {

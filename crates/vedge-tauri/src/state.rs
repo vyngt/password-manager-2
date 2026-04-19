@@ -22,6 +22,7 @@ use vedge_core::application::vault::ports::{
     ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
 };
 use vedge_core::application::vault::session::VaultSession;
+use vedge_core::application::vault::use_cases::UnlockVault;
 use vedge_core::domain::shared::VaultId;
 
 use crate::error::CommandError;
@@ -42,6 +43,10 @@ pub struct AppState {
     pub known_devices: Arc<dyn KnownDeviceRepository>,
     pub extension_sessions: Arc<dyn ExtensionSessionRepository>,
 
+    // ---- pre-wired UnlockVault use case (per-vault infra built via factories
+    //      inside `execute`; this struct is constructed once in `compose`) ----
+    pub unlock_vault: UnlockVault,
+
     // ---- active vault sessions ---------------------------------------------
     sessions: Arc<StdMutex<HashMap<VaultId, SessionHandle>>>,
 }
@@ -58,6 +63,7 @@ impl AppState {
         themes: Arc<dyn ThemeRepository>,
         known_devices: Arc<dyn KnownDeviceRepository>,
         extension_sessions: Arc<dyn ExtensionSessionRepository>,
+        unlock_vault: UnlockVault,
     ) -> Self {
         Self {
             crypto,
@@ -69,6 +75,7 @@ impl AppState {
             themes,
             known_devices,
             extension_sessions,
+            unlock_vault,
             sessions: Arc::new(StdMutex::new(HashMap::new())),
         }
     }
@@ -135,6 +142,12 @@ mod tests {
     use std::path::PathBuf;
 
     async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
+        use vedge_core::application::app::ports::{
+            AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository,
+            RecentVaultRepository, ThemeRepository,
+        };
+        use vedge_core::application::vault::ports::{BlobStoreFactory, VaultRepositoryFactory};
+        use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
         use vedge_core::infrastructure::clipboard::MemoryClipboardProvider;
         use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
         use vedge_core::infrastructure::keychain::MemoryKeychainProvider;
@@ -142,10 +155,7 @@ mod tests {
             AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
             SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
         };
-        use vedge_core::application::app::ports::{
-            AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository,
-            RecentVaultRepository, ThemeRepository,
-        };
+        use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 
         let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
         let kdf: Arc<dyn KeyDerivationProvider> = Arc::new(Argon2idKdfProvider::new());
@@ -165,6 +175,17 @@ mod tests {
         let extension_sessions: Arc<dyn ExtensionSessionRepository> =
             Arc::new(SqliteExtensionSessionRepository::new(db.handle()));
 
+        let unlock_vault = UnlockVault {
+            repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+                as Arc<dyn VaultRepositoryFactory>,
+            blob_factory: Arc::new(FilesystemBlobStoreFactory::new())
+                as Arc<dyn BlobStoreFactory>,
+            crypto: Arc::clone(&crypto),
+            clipboard: Arc::clone(&clipboard),
+            kdf: Arc::clone(&kdf),
+            keychain: Arc::clone(&keychain),
+        };
+
         AppState::new(
             crypto,
             kdf,
@@ -175,6 +196,7 @@ mod tests {
             themes,
             known_devices,
             extension_sessions,
+            unlock_vault,
         )
     }
 

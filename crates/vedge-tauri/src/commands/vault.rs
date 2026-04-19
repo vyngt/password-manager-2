@@ -1,13 +1,13 @@
 //! Session-lifecycle + read-side commands.
 //!
 //! - `unlock_vault` / `lock_vault` / `is_unlocked`
-//! - Non-mutating queries on the in-memory `VaultIndex`:
+//! - Non-mutating queries via the vault query use cases:
 //!   `list_entries`, `list_trashed`, `search`, `by_tag`, `by_folder`,
 //!   `by_domain`, `list_tags`.
 //!
-//! Read commands all follow the same pattern: look up the session, take
-//! the async mutex, and project the index into DTO form. None of them
-//! touch `SQLite`.
+//! Every command routes through a `vedge-core` use case. The shell never
+//! touches `VaultRepository` or `VaultIndex` methods directly — the strict
+//! "every command via a use case" rule is enforced here.
 //!
 //! ## Allow block below
 //!
@@ -18,10 +18,11 @@
 //! --all-targets -- -D warnings`. The `significant_drop_tightening` lint
 //! (nursery, promoted by `-D warnings`) also fires because every command
 //! holds the async mutex guard for its full body — which is correct:
-//! the guard must outlive the `&mut session` handed to the use case.
+//! the guard must outlive the `&mut session` / `&VaultIndex` passed to
+//! the use case.
 //!
 //! Repro: `cargo clippy -p vedge-tauri --all-targets -- -D warnings`
-//! without this allow yields 92 errors, all macro-generated.
+//! without this allow yields 92+ errors, all macro-generated.
 
 #![allow(
     clippy::unreachable,
@@ -35,14 +36,14 @@ use std::sync::Arc;
 use tracing::instrument;
 use zeroize::Zeroizing;
 
-use vedge_core::application::vault::ports::blob_store::BlobStore;
-use vedge_core::application::vault::ports::repository::VaultRepository;
 use vedge_core::domain::shared::VaultId;
-use vedge_core::infrastructure::blob::FilesystemBlobStore;
-use vedge_core::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
-use vedge_core::{UnlockVault, UnlockVaultInput, lock_vault as lock_vault_core};
+use vedge_core::{
+    entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries,
+    list_tags as list_tags_core, list_trashed_entries, lock_vault as lock_vault_core,
+    search_entries, UnlockVaultInput,
+};
 
-use crate::dto::entry::{IndexEntryDto, tag_id_from_str};
+use crate::dto::entry::{entry_id_from_str, tag_id_from_str, IndexEntryDto};
 use crate::dto::misc::UnlockVaultInputDto;
 use crate::dto::tag::TagMetaDto;
 use crate::error::CommandError;
@@ -52,17 +53,6 @@ use crate::state::AppState;
 
 fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
-}
-
-/// Project the session's `VaultIndex` into DTOs via `f`, holding the async
-/// mutex for the minimum time. Used by every read command in this module.
-async fn with_index_dto<F, T>(state: &AppState, vault_id: &VaultId, f: F) -> Result<T, CommandError>
-where
-    F: FnOnce(&vedge_core::VaultIndex) -> T,
-{
-    let handle = state.get_session(vault_id)?;
-    let guard = handle.lock().await;
-    Ok(f(guard.index()))
 }
 
 // ---- unlock / lock / is_unlocked --------------------------------------------
@@ -76,8 +66,7 @@ pub async fn unlock_vault(
     let vault_path = PathBuf::from(&input.vault_path);
     let vault_id = VaultId::new(vault_path.clone());
 
-    // Refuse a double-unlock — caller must lock first. Avoids spinning up
-    // a second VaultDbConnection / blob store only to error on insert.
+    // Refuse a double-unlock — caller must lock first.
     if state.is_unlocked(&vault_id) {
         return Err(CommandError::Invalid(format!(
             "vault already unlocked: {}",
@@ -85,27 +74,13 @@ pub async fn unlock_vault(
         )));
     }
 
-    // Per-vault infra: dies with the session.
-    let db = VaultDbConnection::open(&vault_path).await?;
-    let repo: Arc<dyn VaultRepository> = Arc::new(SqliteVaultRepository::new(db.handle()));
-    let blob: Arc<dyn BlobStore> = Arc::new(FilesystemBlobStore::new(
-        &vault_path,
-        Arc::clone(&state.crypto),
-    )?);
-
     let secret_key = input.decode_secret_key()?;
     let master_password = Zeroizing::new(input.master_password.clone());
 
-    let uc = UnlockVault {
-        repo,
-        crypto: Arc::clone(&state.crypto),
-        blob,
-        clipboard: Arc::clone(&state.clipboard),
-        kdf: Arc::clone(&state.kdf),
-        keychain: Arc::clone(&state.keychain),
-    };
-
-    let session = uc
+    // The use case constructs the per-vault repo + blob store via its
+    // factory ports; the shell never touches infrastructure directly.
+    let session = state
+        .unlock_vault
         .execute(UnlockVaultInput {
             vault_path,
             master_password,
@@ -166,7 +141,7 @@ pub async fn is_unlocked(
     Ok(state.is_unlocked(&vault_id_from_string(&vault_path)))
 }
 
-// ---- read queries ------------------------------------------------------------
+// ---- read queries (via use cases) -------------------------------------------
 
 #[tauri::command]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
@@ -174,13 +149,13 @@ pub async fn list_entries(
     vault_path: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<IndexEntryDto>, CommandError> {
-    with_index_dto(&state, &vault_id_from_string(&vault_path), |idx| {
-        idx.all_active()
-            .into_iter()
-            .map(IndexEntryDto::from)
-            .collect()
-    })
-    .await
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    Ok(list_active_entries(guard.index())
+        .await
+        .iter()
+        .map(IndexEntryDto::from)
+        .collect())
 }
 
 #[tauri::command]
@@ -189,13 +164,13 @@ pub async fn list_trashed(
     vault_path: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<IndexEntryDto>, CommandError> {
-    with_index_dto(&state, &vault_id_from_string(&vault_path), |idx| {
-        idx.all_trashed()
-            .into_iter()
-            .map(IndexEntryDto::from)
-            .collect()
-    })
-    .await
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    Ok(list_trashed_entries(guard.index())
+        .await
+        .iter()
+        .map(IndexEntryDto::from)
+        .collect())
 }
 
 #[tauri::command]
@@ -205,13 +180,13 @@ pub async fn search(
     query: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<IndexEntryDto>, CommandError> {
-    with_index_dto(&state, &vault_id_from_string(&vault_path), |idx| {
-        idx.search(&query)
-            .into_iter()
-            .map(IndexEntryDto::from)
-            .collect()
-    })
-    .await
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    Ok(search_entries(guard.index(), &query)
+        .await
+        .iter()
+        .map(IndexEntryDto::from)
+        .collect())
 }
 
 #[tauri::command]
@@ -222,13 +197,13 @@ pub async fn by_tag(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<IndexEntryDto>, CommandError> {
     let tid = tag_id_from_str(&tag_id);
-    with_index_dto(&state, &vault_id_from_string(&vault_path), move |idx| {
-        idx.by_tag(&tid)
-            .into_iter()
-            .map(IndexEntryDto::from)
-            .collect()
-    })
-    .await
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    Ok(entries_by_tag(guard.index(), &tid)
+        .await
+        .iter()
+        .map(IndexEntryDto::from)
+        .collect())
 }
 
 #[tauri::command]
@@ -238,14 +213,14 @@ pub async fn by_folder(
     folder_id: Option<String>,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<IndexEntryDto>, CommandError> {
-    let folder = folder_id.map(|s| crate::dto::entry::entry_id_from_str(&s));
-    with_index_dto(&state, &vault_id_from_string(&vault_path), move |idx| {
-        idx.by_folder(folder.as_ref())
-            .into_iter()
-            .map(IndexEntryDto::from)
-            .collect()
-    })
-    .await
+    let folder = folder_id.as_deref().map(entry_id_from_str);
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    Ok(entries_by_folder(guard.index(), folder.as_ref())
+        .await
+        .iter()
+        .map(IndexEntryDto::from)
+        .collect())
 }
 
 #[tauri::command]
@@ -255,13 +230,13 @@ pub async fn by_domain(
     domain: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<IndexEntryDto>, CommandError> {
-    with_index_dto(&state, &vault_id_from_string(&vault_path), |idx| {
-        idx.by_domain(&domain)
-            .into_iter()
-            .map(IndexEntryDto::from)
-            .collect()
-    })
-    .await
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    Ok(entries_by_domain(guard.index(), &domain)
+        .await
+        .iter()
+        .map(IndexEntryDto::from)
+        .collect())
 }
 
 #[tauri::command]
@@ -270,10 +245,11 @@ pub async fn list_tags(
     vault_path: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<TagMetaDto>, CommandError> {
-    with_index_dto(&state, &vault_id_from_string(&vault_path), |idx| {
-        let mut tags: Vec<_> = idx.tags.values().map(TagMetaDto::from).collect();
-        tags.sort_by(|a, b| a.sort_order.cmp(&b.sort_order).then(a.name.cmp(&b.name)));
-        tags
-    })
-    .await
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    Ok(list_tags_core(guard.index())
+        .await
+        .iter()
+        .map(TagMetaDto::from)
+        .collect())
 }
