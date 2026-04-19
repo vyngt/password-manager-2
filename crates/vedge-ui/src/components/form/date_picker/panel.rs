@@ -32,6 +32,7 @@ pub fn CalendarPanel(
     on_select_day: Callback<NaiveDate>,
     on_select_month: Callback<YearMonth>,
     on_close: Callback<()>,
+    #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let handle_keydown = move |ev: web_sys::KeyboardEvent| match ev.key().as_str() {
         "Escape" => {
@@ -55,10 +56,12 @@ pub fn CalendarPanel(
         }
     };
 
+    let root_cls = ["datepicker-panel", class].join(" ");
+
     view! {
         <div
             node_ref=ctx.panel_ref
-            class="datepicker-panel"
+            class=root_cls
             style=move || ctx.panel_style.get()
             role="dialog"
             aria-label="Choose date"

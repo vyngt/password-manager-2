@@ -8,6 +8,7 @@ use super::pg_checkbox::CheckboxPage;
 use super::pg_copy_button::CopyButtonPage;
 use super::pg_data_table::DataTablePage;
 use super::pg_date_picker::DatePickerPage;
+use super::pg_date_time_picker::DateTimePickerPage;
 use super::pg_dialog::DialogPage;
 use super::pg_file_upload::FileUploadPage;
 use super::pg_form_field::FormFieldPage;
@@ -30,6 +31,7 @@ use super::pg_sidebar_item::SidebarItemPage;
 use super::pg_slider::SliderPage;
 use super::pg_spinner::SpinnerPage;
 use super::pg_step_indicator::StepIndicatorPage;
+use super::pg_tabs::TabsPage;
 use super::pg_tag_input::TagInputPage;
 use super::pg_textarea::TextareaPage;
 use super::pg_time_picker::TimePickerPage;
@@ -60,11 +62,13 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/sidebar-item") view=SidebarItemPage />
             <Route path=path!("/spinner") view=SpinnerPage />
             <Route path=path!("/step-indicator") view=StepIndicatorPage />
+            <Route path=path!("/tabs") view=TabsPage />
             <Route path=path!("/tooltip-icon-button") view=TooltipIconButtonPage />
             // Form
             <Route path=path!("/checkbox") view=CheckboxPage />
             <Route path=path!("/color-picker") view=ColorPickerPage />
             <Route path=path!("/date-picker") view=DatePickerPage />
+            <Route path=path!("/date-time-picker") view=DateTimePickerPage />
             <Route path=path!("/file-upload") view=FileUploadPage />
             <Route path=path!("/form-field") view=FormFieldPage />
             <Route path=path!("/helper-text") view=HelperTextPage />

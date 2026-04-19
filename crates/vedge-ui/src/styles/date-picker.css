@@ -104,6 +104,22 @@
     transition-timing-function: var(--ease-in);
   }
 
+  /* Inline mode — used by DateTimePicker. Strips the floating-panel chrome
+     (position, background, border, shadow, opacity animation) so the grid
+     can sit inside another container. */
+  .datepicker-panel--inline {
+    position: static;
+    z-index: auto;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
   /* ============================================================
      Header (prev / title / next)
      ============================================================ */

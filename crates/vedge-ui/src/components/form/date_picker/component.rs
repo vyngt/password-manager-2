@@ -26,6 +26,10 @@ pub fn DatePicker(
     #[prop(into, default = None)] placeholder: Option<Signal<String>>,
     #[prop(into, default = Signal::stored("en-US".to_string()))] locale: Signal<String>,
     #[prop(optional)] disabled: bool,
+    /// When `true`, renders just the calendar grid with no trigger or floating
+    /// panel. Used by DateTimePicker to compose the calendar alongside a
+    /// TimePicker inside a shared Popover.
+    #[prop(optional)] inline: bool,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -40,9 +44,13 @@ pub fn DatePicker(
     let focused_date = RwSignal::new(today());
     let interim_start = RwSignal::<Option<NaiveDate>>::new(None);
 
-    // Panel state
-    let mounted = RwSignal::new(false);
-    let data_state = RwSignal::<Option<&'static str>>::new(None);
+    // Panel state — inline mode keeps the panel permanently visible.
+    let mounted = RwSignal::new(inline);
+    let data_state = RwSignal::<Option<&'static str>>::new(if inline {
+        Some("open")
+    } else {
+        None
+    });
     let panel_style = RwSignal::new(String::new());
 
     let trigger_ref = NodeRef::<leptos::html::Button>::new();
@@ -174,7 +182,9 @@ pub fn DatePicker(
                 if let Some(cb) = on_change {
                     cb.run(new_val);
                 }
-                do_close.run(());
+                if !inline {
+                    do_close.run(());
+                }
             }
             DatePickerVariant::Range => {
                 let interim = interim_start.get_untracked();
@@ -201,7 +211,9 @@ pub fn DatePicker(
                         if let Some(cb) = on_change {
                             cb.run(new_val);
                         }
-                        do_close.run(());
+                        if !inline {
+                            do_close.run(());
+                        }
                     }
                 }
             }
@@ -217,7 +229,9 @@ pub fn DatePicker(
         if let Some(cb) = on_change {
             cb.run(new_val);
         }
-        do_close.run(());
+        if !inline {
+            do_close.run(());
+        }
     });
 
     // ---- Trigger class ----
@@ -292,6 +306,24 @@ pub fn DatePicker(
         Some(aria_describedby)
     };
 
+    if inline {
+        return view! {
+            <CalendarPanel
+                ctx=ctx
+                locale=locale
+                effective=effective
+                min_date=min_date
+                max_date=max_date
+                disabled_dates=disabled_dates
+                on_select_day=on_select_day
+                on_select_month=on_select_month
+                on_close=do_close
+                class="datepicker-panel--inline"
+            />
+        }
+        .into_any();
+    }
+
     view! {
         <div style="position: relative; display: inline-block; width: 100%;">
             <button
@@ -356,4 +388,5 @@ pub fn DatePicker(
             </Show>
         </div>
     }
+    .into_any()
 }

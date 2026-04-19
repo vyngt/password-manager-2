@@ -1,0 +1,141 @@
+@layer components {
+  /* ============================================================
+     DateTimePicker — trigger + Popover panel with side-by-side
+     DatePicker (inline) and TimePicker
+     ============================================================ */
+  .datetime-root {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+
+  .datetime-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: var(--height-md);
+    padding: 0 var(--space-3);
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    text-align: left;
+    transition: border-color var(--duration-fast) var(--ease-out);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+
+  .datetime-trigger:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
+  }
+
+  .datetime-trigger:focus-visible,
+  .datetime-trigger[aria-expanded="true"] {
+    border-color: var(--color-primary);
+    outline-color: var(--color-focus-ring);
+  }
+
+  .datetime-trigger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .datetime-trigger--error   { border-color: var(--color-danger); }
+  .datetime-trigger--success { border-color: var(--color-success); }
+  .datetime-trigger--warning { border-color: var(--color-warning); }
+  .datetime-trigger--error:focus-visible,
+  .datetime-trigger--error[aria-expanded="true"] { border-color: var(--color-danger); }
+
+  .datetime-trigger__icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+
+  .datetime-trigger__value,
+  .datetime-trigger__placeholder {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .datetime-trigger__value { color: var(--color-text-primary); }
+  .datetime-trigger__placeholder { color: var(--color-text-tertiary); }
+
+  /* Clear button — positioned absolutely over the trigger's right edge so it
+     can be its own interactive element (clicking it must not trigger the
+     outer button). */
+  .datetime-trigger__clear {
+    position: absolute;
+    top: 50%;
+    right: var(--space-3);
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .datetime-trigger__clear:hover {
+    opacity: 1;
+    color: var(--color-text-primary);
+    background: var(--color-surface-2);
+  }
+  .datetime-trigger__clear:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
+    opacity: 1;
+  }
+  .datetime-trigger__clear:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* When clear is shown, reserve space so the value text doesn't overlap it. */
+  .datetime-trigger--has-clear {
+    padding-right: calc(var(--space-3) + 24px);
+  }
+
+  /* Panel — inside the shared Popover */
+  .datetime-panel {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .datetime-panel__date {
+    padding: var(--space-3);
+  }
+
+  .datetime-panel__divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--color-border);
+    flex-shrink: 0;
+  }
+
+  .datetime-panel__time {
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 140px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .datetime-trigger { transition-duration: 0.01ms !important; }
+  }
+}

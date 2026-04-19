@@ -1,6 +1,7 @@
 pub mod checkbox;
 pub mod color_picker;
 pub mod date_picker;
+pub mod date_time_picker;
 pub mod file_upload;
 pub mod form_field;
 pub mod helper_text;
@@ -20,6 +21,7 @@ pub mod toggle;
 pub use checkbox::*;
 pub use color_picker::*;
 pub use date_picker::*;
+pub use date_time_picker::*;
 pub use file_upload::*;
 pub use form_field::*;
 pub use helper_text::*;

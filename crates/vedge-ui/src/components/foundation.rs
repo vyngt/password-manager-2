@@ -11,6 +11,7 @@ pub mod separator;
 pub mod sidebar_item;
 pub mod spinner;
 pub mod step_indicator;
+pub mod tabs;
 pub mod tooltip_icon_button;
 
 pub use accordion::*;
@@ -26,4 +27,5 @@ pub use separator::*;
 pub use sidebar_item::*;
 pub use spinner::*;
 pub use step_indicator::*;
+pub use tabs::*;
 pub use tooltip_icon_button::*;

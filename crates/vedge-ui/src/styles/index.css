@@ -15,6 +15,7 @@
 @import "./sidebar-item.css";
 @import "./spinner.css";
 @import "./step-indicator.css";
+@import "./tabs.css";
 @import "./tooltip-icon-button.css";
 @import "./input.css";
 @import "./label.css";
@@ -34,6 +35,7 @@
 
 @import "./color-picker.css";
 @import "./date-picker.css";
+@import "./date-time-picker.css";
 @import "./file-upload.css";
 @import "./form-field.css";
 @import "./dialog.css";

@@ -69,6 +69,10 @@ const GROUPS: &[SidebarGroup] = &[
                 path: "/playground/step-indicator",
             },
             SidebarItem {
+                name: "Tabs",
+                path: "/playground/tabs",
+            },
+            SidebarItem {
                 name: "Tooltip Icon Button",
                 path: "/playground/tooltip-icon-button",
             },
@@ -88,6 +92,10 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem {
                 name: "Date Picker",
                 path: "/playground/date-picker",
+            },
+            SidebarItem {
+                name: "Date Time Picker",
+                path: "/playground/date-time-picker",
             },
             SidebarItem {
                 name: "File Upload",

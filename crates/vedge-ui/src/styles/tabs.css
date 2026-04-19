@@ -1,0 +1,100 @@
+@layer components {
+  /* ============================================================
+     Tabs — Tier 2: tab list + sliding underline + panels
+     ============================================================ */
+  .tabs {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .tabs__list {
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+    border-bottom: 1px solid var(--color-border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs__list::-webkit-scrollbar { display: none; }
+
+  /* Active indicator — single element, slides to match active trigger */
+  .tabs__indicator {
+    position: absolute;
+    bottom: -1px; /* sits on top of the border-bottom */
+    left: 0;
+    height: 2px;
+    width: 0;
+    background: var(--color-primary);
+    border-radius: 1px;
+    pointer-events: none;
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      width var(--duration-fast) var(--ease-out);
+  }
+
+  /* Trigger */
+  .tabs__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1_5);
+    height: 36px;
+    padding: 0 var(--space-3);
+    border: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+
+  .tabs__trigger:hover:not([aria-selected="true"]):not([aria-disabled="true"]) {
+    color: var(--color-text-primary);
+    background: var(--color-surface-1);
+  }
+
+  .tabs__trigger[aria-selected="true"] {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .tabs__trigger:focus-visible {
+    outline-color: var(--color-focus-ring);
+  }
+
+  .tabs__trigger[aria-disabled="true"] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Pill variant */
+  .tabs--pill .tabs__list { border-bottom: none; }
+  .tabs--pill .tabs__indicator { display: none; }
+  .tabs--pill .tabs__trigger {
+    border-radius: var(--radius);
+  }
+  .tabs--pill .tabs__trigger[aria-selected="true"] {
+    background: var(--color-surface-3);
+  }
+
+  /* Panel */
+  .tabs__panel {
+    padding-top: var(--space-4);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tabs__trigger,
+    .tabs__indicator {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
