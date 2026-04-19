@@ -41,14 +41,12 @@ pub fn App() -> impl IntoView {
 
     view! {
         <I18nContextProvider>
-            <div class="h-full flex flex-col bg-background text-text-primary">
-                <ToastProvider>
-                    <WindowPanel />
-                    <main class="h-[calc(100%-48px)] overflow-y-auto app-scrollbar">
-                        <AppRoutes />
-                    </main>
-                </ToastProvider>
-            </div>
+            <ToastProvider>
+                <WindowPanel />
+                <main class="h-[calc(100%-var(--titlebar-height))] overflow-y-auto app-scrollbar">
+                    <AppRoutes />
+                </main>
+            </ToastProvider>
         </I18nContextProvider>
     }
 }

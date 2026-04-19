@@ -4,6 +4,7 @@
 
 @import "../../vedge-ui/src/styles/index.css";
 @import "./common.css";
+@import "./app.css";
 @import "./fonts/index.css";
 
 @theme inline {

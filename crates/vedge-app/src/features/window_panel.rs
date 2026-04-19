@@ -58,7 +58,7 @@ pub fn WindowPanel() -> impl IntoView {
                 </div>
             </div>
             <div class="flex grow" data-tauri-drag-region=true></div>
-            <div class="flex h-full items-center" style=handle_inner_color>
+            <div class="flex flex-col justify-center" style=handle_inner_color>
                 <button
                     class="px-2 text-xs font-semibold opacity-60 hover:opacity-100 cursor-pointer uppercase tracking-wide"
                     on:click=move |_| {
