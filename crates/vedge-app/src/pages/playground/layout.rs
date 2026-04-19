@@ -49,6 +49,10 @@ const GROUPS: &[SidebarGroup] = &[
                 path: "/playground/separator",
             },
             SidebarItem {
+                name: "Sidebar Item",
+                path: "/playground/sidebar-item",
+            },
+            SidebarItem {
                 name: "Spinner",
                 path: "/playground/spinner",
             },

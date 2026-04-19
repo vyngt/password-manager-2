@@ -6,6 +6,7 @@ pub mod kbd;
 pub mod progress_bar;
 pub mod qrcode;
 pub mod separator;
+pub mod sidebar_item;
 pub mod spinner;
 pub mod step_indicator;
 
@@ -17,5 +18,6 @@ pub use kbd::*;
 pub use progress_bar::*;
 pub use qrcode::*;
 pub use separator::*;
+pub use sidebar_item::*;
 pub use spinner::*;
 pub use step_indicator::*;

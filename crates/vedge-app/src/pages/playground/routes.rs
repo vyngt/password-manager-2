@@ -22,6 +22,7 @@ use super::pg_radio_group::RadioGroupPage;
 use super::pg_segmented_control::SegmentedControlPage;
 use super::pg_select::SelectPage;
 use super::pg_separator::SeparatorPage;
+use super::pg_sidebar_item::SidebarItemPage;
 use super::pg_slider::SliderPage;
 use super::pg_spinner::SpinnerPage;
 use super::pg_step_indicator::StepIndicatorPage;
@@ -48,6 +49,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/progress-bar") view=ProgressBarPage />
             <Route path=path!("/qrcode") view=QRCodePage />
             <Route path=path!("/separator") view=SeparatorPage />
+            <Route path=path!("/sidebar-item") view=SidebarItemPage />
             <Route path=path!("/spinner") view=SpinnerPage />
             <Route path=path!("/step-indicator") view=StepIndicatorPage />
             // Form

@@ -23,6 +23,7 @@ mod pg_radio_group;
 mod pg_segmented_control;
 mod pg_select;
 mod pg_separator;
+mod pg_sidebar_item;
 mod pg_slider;
 mod pg_spinner;
 mod pg_step_indicator;
