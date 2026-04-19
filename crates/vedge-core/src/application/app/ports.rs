@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::domain::app::entities::{
-    AppSetting, ExtensionSession, KnownDevice, RecentVault, Theme,
-};
+use crate::domain::app::entities::{AppSetting, ExtensionSession, KnownDevice, RecentVault, Theme};
 use crate::domain::app::errors::AppDbError;
 use crate::domain::shared::{DeviceId, SessionId, ThemeId, Timestamp};
 

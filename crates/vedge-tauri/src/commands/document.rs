@@ -15,11 +15,12 @@ use std::path::PathBuf;
 use tracing::instrument;
 
 use vedge_core::domain::shared::VaultId;
-use vedge_core::{export_document as export_document_core, import_document as import_document_core,
-    ImportDocumentInput,
+use vedge_core::{
+    ImportDocumentInput, export_document as export_document_core,
+    import_document as import_document_core,
 };
 
-use crate::dto::common::{b64_encode, CommonMetaDto};
+use crate::dto::common::{CommonMetaDto, b64_encode};
 use crate::dto::entry::entry_id_from_str;
 use crate::dto::misc::ExportedDocumentDto;
 use crate::error::CommandError;

@@ -35,17 +35,29 @@ impl YearMonth {
 
     pub fn prev(&self) -> Self {
         if self.month == 1 {
-            Self { year: self.year - 1, month: 12 }
+            Self {
+                year: self.year - 1,
+                month: 12,
+            }
         } else {
-            Self { year: self.year, month: self.month - 1 }
+            Self {
+                year: self.year,
+                month: self.month - 1,
+            }
         }
     }
 
     pub fn next(&self) -> Self {
         if self.month == 12 {
-            Self { year: self.year + 1, month: 1 }
+            Self {
+                year: self.year + 1,
+                month: 1,
+            }
         } else {
-            Self { year: self.year, month: self.month + 1 }
+            Self {
+                year: self.year,
+                month: self.month + 1,
+            }
         }
     }
 }

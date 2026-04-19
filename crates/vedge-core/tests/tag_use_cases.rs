@@ -9,20 +9,18 @@
 
 mod common;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use secrecy::SecretString;
 
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    create_entry, create_tag, delete_tag, normalize_tag_name, rename_tag, CreateEntryInput,
-    UnlockVaultInput,
+    CreateEntryInput, UnlockVaultInput, create_entry, create_tag, delete_tag, normalize_tag_name,
+    rename_tag,
 };
 use vedge_core::domain::shared::TagId;
 use vedge_core::domain::vault::errors::VaultError;
-use vedge_core::domain::vault::payloads::{
-    CommonMeta, EntryPayload, EntryType, LoginPayload,
-};
+use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
 
 async fn unlock(h: &Harness) -> VaultSession {
     build_unlock(h)
@@ -93,7 +91,10 @@ async fn rename_tag_is_o1_on_entries() {
     rename_tag(&mut session, &tag_id, "git").await.unwrap();
 
     let v_after = h.repo.get_entry(&entry_id).await.unwrap().version;
-    assert_eq!(v_before, v_after, "entries must not be re-encrypted on rename");
+    assert_eq!(
+        v_before, v_after,
+        "entries must not be re-encrypted on rename"
+    );
     assert_eq!(session.index().tags.get(&tag_id).unwrap().name, "git");
 }
 
@@ -137,8 +138,24 @@ async fn delete_tag_removes_from_referencing_entries() {
     assert_eq!(v2_after, v1_before + 1);
 
     // Index entries no longer carry the tag.
-    assert!(!session.index().entries.get(&e1).unwrap().tag_ids.contains(&tag_id));
-    assert!(!session.index().entries.get(&e2).unwrap().tag_ids.contains(&tag_id));
+    assert!(
+        !session
+            .index()
+            .entries
+            .get(&e1)
+            .unwrap()
+            .tag_ids
+            .contains(&tag_id)
+    );
+    assert!(
+        !session
+            .index()
+            .entries
+            .get(&e2)
+            .unwrap()
+            .tag_ids
+            .contains(&tag_id)
+    );
 }
 
 #[tokio::test]

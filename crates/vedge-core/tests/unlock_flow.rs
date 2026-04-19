@@ -9,12 +9,12 @@
 
 mod common;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use zeroize::Zeroizing;
 
 // Traits needed for `h.repo.*` / `h.keychain.*` calls below.
 use vedge_core::application::vault::ports::{KeychainProvider, VaultRepository};
-use vedge_core::application::vault::use_cases::{lock_vault, UnlockVaultInput};
+use vedge_core::application::vault::use_cases::{UnlockVaultInput, lock_vault};
 use vedge_core::domain::vault::errors::VaultError;
 
 #[tokio::test]

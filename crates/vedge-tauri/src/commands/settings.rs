@@ -10,15 +10,13 @@ use tracing::instrument;
 
 use vedge_core::domain::shared::ThemeId;
 use vedge_core::{
-    create_custom_theme as create_custom_theme_core,
-    delete_app_setting as delete_app_setting_core,
+    CreateCustomThemeInput, UpdateCustomThemeInput,
+    create_custom_theme as create_custom_theme_core, delete_app_setting as delete_app_setting_core,
     delete_custom_theme as delete_custom_theme_core, duplicate_theme as duplicate_theme_core,
     get_app_setting as get_app_setting_core, get_theme as get_theme_core,
     list_app_settings as list_app_settings_core, list_themes as list_themes_core,
-    resolve_active_theme as resolve_active_theme_core,
-    set_active_theme as set_active_theme_core, set_app_setting as set_app_setting_core,
-    update_custom_theme as update_custom_theme_core, CreateCustomThemeInput,
-    UpdateCustomThemeInput,
+    resolve_active_theme as resolve_active_theme_core, set_active_theme as set_active_theme_core,
+    set_app_setting as set_app_setting_core, update_custom_theme as update_custom_theme_core,
 };
 
 use crate::dto::settings::{
@@ -74,9 +72,7 @@ pub async fn list_app_settings(
 
 #[tauri::command]
 #[instrument(skip_all)]
-pub async fn list_themes(
-    state: tauri::State<'_, AppState>,
-) -> Result<Vec<ThemeDto>, CommandError> {
+pub async fn list_themes(state: tauri::State<'_, AppState>) -> Result<Vec<ThemeDto>, CommandError> {
     let rows = list_themes_core(&*state.themes).await?;
     Ok(rows.iter().map(ThemeDto::from).collect())
 }
@@ -96,11 +92,8 @@ pub async fn get_theme(
 /// setting is unset or points at a missing row. Called on app startup.
 #[tauri::command]
 #[instrument(skip_all)]
-pub async fn get_active_theme(
-    state: tauri::State<'_, AppState>,
-) -> Result<ThemeDto, CommandError> {
-    let theme =
-        resolve_active_theme_core(&*state.themes, &*state.app_settings).await?;
+pub async fn get_active_theme(state: tauri::State<'_, AppState>) -> Result<ThemeDto, CommandError> {
+    let theme = resolve_active_theme_core(&*state.themes, &*state.app_settings).await?;
     Ok(ThemeDto::from(&theme))
 }
 

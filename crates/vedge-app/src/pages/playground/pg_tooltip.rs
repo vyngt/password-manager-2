@@ -1,7 +1,7 @@
 use leptos::prelude::*;
+use vedge_ui::components::Tooltip;
 use vedge_ui::components::button::Button;
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::components::Tooltip;
 use vedge_ui::primitives::tokens::{Placement, Variant};
 
 use icondata as i;

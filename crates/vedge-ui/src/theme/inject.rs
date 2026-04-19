@@ -49,10 +49,7 @@ pub fn inject_css_vars(tokens: &ThemeTokens) {
             ("--color-danger", &tokens.color_danger),
             ("--color-danger-hover", &tokens.color_danger_hover),
             ("--color-danger-muted", &tokens.color_danger_muted),
-            (
-                "--color-danger-foreground",
-                &tokens.color_danger_foreground,
-            ),
+            ("--color-danger-foreground", &tokens.color_danger_foreground),
             ("--color-danger-text", &tokens.color_danger_text),
             // Warning
             ("--color-warning", &tokens.color_warning),

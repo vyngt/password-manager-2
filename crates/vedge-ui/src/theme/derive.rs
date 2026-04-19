@@ -3,8 +3,8 @@ use super::color_space::{ColorError, hex_to_oklch, hex_to_srgb, oklch_to_hex};
 use super::contrast::{contrast_ratio, relative_luminance};
 use super::mix::oklch_mix;
 use super::shadows::compute_shadows;
-use super::types::ThemeTokens;
 use super::types::ThemeConfig;
+use super::types::ThemeTokens;
 
 // Surface mix ratios (background → foreground)
 const SURFACE_1_RATIO: f32 = 0.04;
@@ -221,8 +221,7 @@ mod tests {
         let default_danger = hex_to_oklch("#DC2626").unwrap();
         // They should be different
         assert!(
-            (danger.h - default_danger.h).abs() > 1.0
-                || (danger.c - default_danger.c).abs() > 0.01,
+            (danger.h - default_danger.h).abs() > 1.0 || (danger.c - default_danger.c).abs() > 0.01,
             "custom danger should differ from default"
         );
     }
@@ -233,9 +232,6 @@ mod tests {
         let bg_lum = relative_luminance(hex_to_srgb(&tokens.color_background).unwrap());
         let fr_lum = relative_luminance(hex_to_srgb(&tokens.color_focus_ring).unwrap());
         let cr = contrast_ratio(bg_lum, fr_lum);
-        assert!(
-            cr >= 3.0,
-            "focus ring contrast {cr:.2} should be >= 3.0"
-        );
+        assert!(cr >= 3.0, "focus ring contrast {cr:.2} should be >= 3.0");
     }
 }

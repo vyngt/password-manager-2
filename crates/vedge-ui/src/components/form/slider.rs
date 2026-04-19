@@ -173,7 +173,11 @@ pub fn Slider(
     let root_cls = [
         "slider-root",
         size.slider_root_class(),
-        if show_value_label { "slider-root--with-label" } else { "" },
+        if show_value_label {
+            "slider-root--with-label"
+        } else {
+            ""
+        },
         class,
     ]
     .join(" ");
@@ -196,8 +200,11 @@ pub fn Slider(
         let v = aria_label.get();
         if v.is_empty() { None } else { Some(v) }
     };
-    let aria_labelledby_attr =
-        if aria_labelledby.is_empty() { None } else { Some(aria_labelledby) };
+    let aria_labelledby_attr = if aria_labelledby.is_empty() {
+        None
+    } else {
+        Some(aria_labelledby)
+    };
 
     let aria_valuenow = move || format!("{}", current.get());
     let aria_valuetext = move || format_label.map(|f| f.run(current.get()));

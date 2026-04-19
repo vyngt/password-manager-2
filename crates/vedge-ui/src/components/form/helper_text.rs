@@ -24,17 +24,16 @@ pub fn HelperText(
         };
         if let Some(prop) = missing {
             web_sys::console::error_1(
-                &format!("HelperText: `{}` is required for i18n when status is non-Default.", prop).into(),
+                &format!(
+                    "HelperText: `{}` is required for i18n when status is non-Default.",
+                    prop
+                )
+                .into(),
             );
         }
     }
 
-    let cls = [
-        "helper-text",
-        status.helper_text_class(),
-        class,
-    ]
-    .join(" ");
+    let cls = ["helper-text", status.helper_text_class(), class].join(" ");
 
     let role = if status == Status::Error {
         Some("alert")

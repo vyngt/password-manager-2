@@ -1,8 +1,8 @@
 use crate::primitives::tokens::Placement;
 use crate::utils::id::id_with_prefix;
 use leptos::prelude::*;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
 #[component]

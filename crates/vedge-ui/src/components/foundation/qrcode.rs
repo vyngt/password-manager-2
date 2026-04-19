@@ -58,13 +58,9 @@ pub fn QRCode(
         );
     }
 
-    let qr = Memo::new(move |_| {
-        QrCode::encode_text(&value.get(), to_ecc(error_correction)).ok()
-    });
+    let qr = Memo::new(move |_| QrCode::encode_text(&value.get(), to_ecc(error_correction)).ok());
 
-    let path_d = move || {
-        qr.with(|opt| opt.as_ref().map(matrix_to_path_d).unwrap_or_default())
-    };
+    let path_d = move || qr.with(|opt| opt.as_ref().map(matrix_to_path_d).unwrap_or_default());
 
     let view_box = move || {
         qr.with(|opt| {

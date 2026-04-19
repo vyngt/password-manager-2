@@ -136,16 +136,16 @@ pub fn ts_from_string(s: &str) -> Result<Timestamp, CommandError> {
 /// Base64-encode a byte slice using the standard alphabet with padding.
 #[must_use]
 pub fn b64_encode(bytes: &[u8]) -> String {
-    use base64::engine::general_purpose::STANDARD;
     use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD;
     STANDARD.encode(bytes)
 }
 
 /// Decode a base64 string into bytes. Accepts both standard and URL-safe
 /// alphabets with or without padding.
 pub fn b64_decode(s: &str) -> Result<Vec<u8>, CommandError> {
-    use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
     use base64::Engine as _;
+    use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
     STANDARD
         .decode(s)
         .or_else(|_| URL_SAFE_NO_PAD.decode(s))
@@ -155,9 +155,8 @@ pub fn b64_decode(s: &str) -> Result<Vec<u8>, CommandError> {
 /// Decode a base64 string and coerce into a fixed-length array.
 pub fn b64_decode_fixed<const N: usize>(s: &str) -> Result<[u8; N], CommandError> {
     let v = b64_decode(s)?;
-    <[u8; N]>::try_from(v.as_slice()).map_err(|_| {
-        CommandError::Invalid(format!("base64 payload must decode to {N} bytes"))
-    })
+    <[u8; N]>::try_from(v.as_slice())
+        .map_err(|_| CommandError::Invalid(format!("base64 payload must decode to {N} bytes")))
 }
 
 #[cfg(test)]
@@ -223,10 +222,7 @@ mod tests {
         let s = ts_to_string(ts);
         let back = ts_from_string(&s).unwrap();
         // Millisecond precision — equal at that resolution.
-        assert_eq!(
-            back.timestamp_millis(),
-            ts.timestamp_millis(),
-        );
+        assert_eq!(back.timestamp_millis(), ts.timestamp_millis(),);
     }
 
     #[test]

@@ -21,10 +21,22 @@ mod tests {
 
     #[test]
     fn known_variants_serialize_as_pascal_case() {
-        assert_eq!(serde_json::to_string(&EntryType::Login).unwrap(), "\"Login\"");
-        assert_eq!(serde_json::to_string(&EntryType::SshKey).unwrap(), "\"SshKey\"");
-        assert_eq!(serde_json::to_string(&EntryType::EnvVars).unwrap(), "\"EnvVars\"");
-        assert_eq!(serde_json::to_string(&EntryType::ApiKey).unwrap(), "\"ApiKey\"");
+        assert_eq!(
+            serde_json::to_string(&EntryType::Login).unwrap(),
+            "\"Login\""
+        );
+        assert_eq!(
+            serde_json::to_string(&EntryType::SshKey).unwrap(),
+            "\"SshKey\""
+        );
+        assert_eq!(
+            serde_json::to_string(&EntryType::EnvVars).unwrap(),
+            "\"EnvVars\""
+        );
+        assert_eq!(
+            serde_json::to_string(&EntryType::ApiKey).unwrap(),
+            "\"ApiKey\""
+        );
     }
 
     #[test]

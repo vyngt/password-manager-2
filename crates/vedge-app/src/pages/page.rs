@@ -5,8 +5,8 @@ use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 use serde_json::json;
 use serde_wasm_bindgen::to_value as to_js_value;
-use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::components::Tooltip;
+use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
 use leptos_icons::Icon;

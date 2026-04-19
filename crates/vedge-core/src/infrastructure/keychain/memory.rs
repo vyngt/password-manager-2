@@ -15,7 +15,7 @@ pub struct MemoryKeychainProvider {
 }
 
 impl MemoryKeychainProvider {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             store: Mutex::new(HashMap::new()),
@@ -71,12 +71,11 @@ impl KeychainProvider for MemoryKeychainProvider {
         let Ok(mut guard) = self.store.lock() else {
             return Err(VaultError::KeychainUnavailable);
         };
-        guard.remove(vault_id).map_or(
-            Err(VaultError::KeychainEntryNotFound),
-            |mut v| {
+        guard
+            .remove(vault_id)
+            .map_or(Err(VaultError::KeychainEntryNotFound), |mut v| {
                 v.fill(0);
                 Ok(())
-            },
-        )
+            })
     }
 }

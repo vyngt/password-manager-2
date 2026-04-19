@@ -10,20 +10,18 @@
 mod common;
 
 use chrono::Duration;
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use secrecy::SecretString;
 
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    create_entry, run_maintenance, soft_delete_entry, CreateEntryInput, UnlockVaultInput,
+    CreateEntryInput, UnlockVaultInput, create_entry, run_maintenance, soft_delete_entry,
 };
-use vedge_core::domain::shared::{now, EntryId};
+use vedge_core::domain::shared::{EntryId, now};
 use vedge_core::domain::vault::entities::{AuditAction, AuditEvent};
 use vedge_core::domain::vault::errors::VaultError;
-use vedge_core::domain::vault::payloads::{
-    CommonMeta, EntryPayload, EntryType, LoginPayload,
-};
+use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
 
 async fn unlock(h: &Harness) -> VaultSession {
     build_unlock(h)

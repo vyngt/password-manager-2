@@ -11,7 +11,7 @@ mod common;
 
 use std::sync::Arc;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use secrecy::SecretString;
 use zeroize::Zeroizing;
 
@@ -19,8 +19,8 @@ use zeroize::Zeroizing;
 use vedge_core::application::vault::ports::{KeyDerivationProvider, KeychainProvider};
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    change_password, create_entry, lock_vault, ChangePasswordInput, CreateEntryInput,
-    UnlockVaultInput,
+    ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password, create_entry,
+    lock_vault,
 };
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::errors::VaultError;
@@ -82,7 +82,9 @@ async fn rotate_password_then_unlock_with_new_only() {
     lock_vault(session_new).await.unwrap();
 
     // Unlock with old fails.
-    let err = unlock(&h, "correct horse battery staple").await.unwrap_err();
+    let err = unlock(&h, "correct horse battery staple")
+        .await
+        .unwrap_err();
     assert!(matches!(err, VaultError::WrongCredentials));
 }
 
@@ -151,12 +153,7 @@ async fn rotate_preserves_all_existing_entries_decrypted() {
     lock_vault(session).await.unwrap();
 
     let session_new = unlock(&h, "next-pw").await.unwrap();
-    let mut got: Vec<_> = session_new
-        .index()
-        .entries
-        .keys()
-        .cloned()
-        .collect();
+    let mut got: Vec<_> = session_new.index().entries.keys().cloned().collect();
     got.sort_by_key(|id| id.as_str().to_owned());
     assert_eq!(got, expected_ids);
     lock_vault(session_new).await.unwrap();

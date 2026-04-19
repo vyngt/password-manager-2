@@ -23,11 +23,8 @@ pub(crate) fn string_to_ts_opt(raw: Option<&str>) -> Result<Option<Timestamp>, S
 }
 
 pub(crate) fn fixed_key(raw: &[u8], field: &'static str) -> Result<[u8; 32], StorageError> {
-    let arr: [u8; 32] = raw
-        .try_into()
-        .map_err(|_| StorageError::Serialization(format!(
-            "{field}: expected 32 bytes, got {}",
-            raw.len()
-        )))?;
+    let arr: [u8; 32] = raw.try_into().map_err(|_| {
+        StorageError::Serialization(format!("{field}: expected 32 bytes, got {}", raw.len()))
+    })?;
     Ok(arr)
 }

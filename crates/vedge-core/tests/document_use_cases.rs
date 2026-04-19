@@ -9,13 +9,13 @@
 
 mod common;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use tokio::io::AsyncWriteExt;
 
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    export_document, hard_delete_entry, import_document, ImportDocumentInput, UnlockVaultInput,
-    DOCUMENT_SIZE_LIMIT_BYTES,
+    DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, UnlockVaultInput, export_document,
+    hard_delete_entry, import_document,
 };
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryType};

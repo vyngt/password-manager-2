@@ -32,7 +32,7 @@
 use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, TagId};
+use crate::domain::shared::{TagId, now};
 use crate::domain::vault::aad::{entry_aad, tag_aad};
 use crate::domain::vault::entities::{AuditAction, TagRow};
 use crate::domain::vault::errors::VaultError;
@@ -92,7 +92,9 @@ pub async fn create_tag(
     let bytes = serde_json::to_vec(&payload)
         .map_err(|e| VaultError::MalformedPayload(format!("tag serialize: {e}")))?;
     let aad = tag_aad(&id)?;
-    let (nonce, ciphertext) = session.crypto.encrypt_tag(session.kek.expose(), &bytes, &aad)?;
+    let (nonce, ciphertext) = session
+        .crypto
+        .encrypt_tag(session.kek.expose(), &bytes, &aad)?;
 
     let when = now();
     let row = TagRow {
@@ -141,14 +143,16 @@ pub async fn rename_tag(
     let bytes = serde_json::to_vec(&payload)
         .map_err(|e| VaultError::MalformedPayload(format!("tag serialize: {e}")))?;
     let aad = tag_aad(tag_id)?;
-    let (nonce, ciphertext) = session.crypto.encrypt_tag(session.kek.expose(), &bytes, &aad)?;
+    let (nonce, ciphertext) = session
+        .crypto
+        .encrypt_tag(session.kek.expose(), &bytes, &aad)?;
 
     let when = now();
     let row = TagRow {
         id: tag_id.clone(),
         nonce,
         ciphertext,
-        created_at: when,   // not updated by caller intent; overwritten by update_tag
+        created_at: when, // not updated by caller intent; overwritten by update_tag
         updated_at: when,
     };
     session.repo.update_tag(&row).await?;
@@ -160,10 +164,7 @@ pub async fn rename_tag(
 }
 
 #[instrument(skip_all, fields(tag_id = %tag_id))]
-pub async fn delete_tag(
-    session: &mut VaultSession,
-    tag_id: &TagId,
-) -> Result<(), VaultError> {
+pub async fn delete_tag(session: &mut VaultSession, tag_id: &TagId) -> Result<(), VaultError> {
     if !session.index.tags.contains_key(tag_id) {
         return Err(VaultError::TagNotFound(tag_id.clone()));
     }
@@ -184,9 +185,10 @@ pub async fn delete_tag(
             .crypto
             .unwrap_dek(&existing.dek_wrapped, session.kek.expose())?;
         let aad_old = entry_aad(&entry_id, existing.version)?;
-        let plaintext = session
-            .crypto
-            .decrypt_entry(&dek, &existing.nonce, &existing.ciphertext, &aad_old)?;
+        let plaintext =
+            session
+                .crypto
+                .decrypt_entry(&dek, &existing.nonce, &existing.ciphertext, &aad_old)?;
         let mut payload = EntryPayload::from_decrypted_json(&plaintext)?;
         drop(plaintext);
 
@@ -203,7 +205,9 @@ pub async fn delete_tag(
         })?;
         let aad_new = entry_aad(&entry_id, new_version)?;
         let payload_bytes = payload.to_encryptable_json()?;
-        let (nonce, ciphertext) = session.crypto.encrypt_entry(&dek, &payload_bytes, &aad_new)?;
+        let (nonce, ciphertext) = session
+            .crypto
+            .encrypt_entry(&dek, &payload_bytes, &aad_new)?;
         drop(dek);
 
         let when = now();

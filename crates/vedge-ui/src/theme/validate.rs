@@ -150,9 +150,7 @@ fn check(
     let message = if pass {
         format!("{label}: {ratio:.1}:1 (meets {required:.1}:1)")
     } else {
-        format!(
-            "{fail_message} Current contrast: {ratio:.1}:1. Required: {required:.1}:1."
-        )
+        format!("{fail_message} Current contrast: {ratio:.1}:1. Required: {required:.1}:1.")
     };
 
     checks.push(ContrastResult {
@@ -207,7 +205,10 @@ mod tests {
         let validation = validate_theme_config(&config).unwrap();
         assert!(!validation.is_valid, "low contrast should block");
         assert!(
-            validation.checks.iter().any(|c| c.severity == Severity::Block && !c.pass),
+            validation
+                .checks
+                .iter()
+                .any(|c| c.severity == Severity::Block && !c.pass),
             "should have at least one Block failure"
         );
     }

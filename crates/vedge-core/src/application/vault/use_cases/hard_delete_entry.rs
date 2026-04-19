@@ -45,12 +45,8 @@ pub async fn hard_delete_entry(
     }
 
     // Audit while the entry still exists.
-    super::create_entry::append_audit(
-        session,
-        AuditAction::PermanentlyDeleted,
-        Some(entry_id),
-    )
-    .await?;
+    super::create_entry::append_audit(session, AuditAction::PermanentlyDeleted, Some(entry_id))
+        .await?;
 
     session.repo.hard_delete_entry(entry_id).await?;
 

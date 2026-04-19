@@ -6,7 +6,9 @@ pub fn PasswordStrengthMeter(
     #[prop(into)] score: Signal<u8>,
     #[prop(optional, default = true)] show_label: bool,
     #[prop(into, default = TextProp::default())] strength_label: TextProp,
-    #[prop(into, default = Signal::stored(<[String; 4]>::default()))] level_labels: Signal<[String; 4]>,
+    #[prop(into, default = Signal::stored(<[String; 4]>::default()))] level_labels: Signal<
+        [String; 4],
+    >,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     #[cfg(debug_assertions)]

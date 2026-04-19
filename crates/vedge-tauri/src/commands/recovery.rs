@@ -20,7 +20,7 @@ use zeroize::Zeroizing;
 
 use vedge_core::application::vault::ports::KeychainProvider;
 use vedge_core::domain::shared::VaultId;
-use vedge_core::{recover_vault as core_recover, RecoverVaultInput};
+use vedge_core::{RecoverVaultInput, recover_vault as core_recover};
 
 use crate::dto::emergency_kit::{RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
 use crate::error::CommandError;

@@ -2,11 +2,11 @@ use super::format_row::FormatRow;
 use super::gradient::Gradient;
 use super::sliders::{AlphaSlider, HueSlider};
 use super::swatches::SwatchesGrid;
-use super::types::{parse_color_value, ColorFormat, SwatchItem, TriggerMode};
+use super::types::{ColorFormat, SwatchItem, TriggerMode, parse_color_value};
 use crate::primitives::tokens::Size;
 use leptos::prelude::*;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 use wasm_bindgen::JsCast;
 
@@ -26,9 +26,7 @@ pub fn ColorPicker(
 ) -> impl IntoView {
     #[cfg(debug_assertions)]
     if size == Size::Lg {
-        web_sys::console::warn_1(
-            &"ColorPicker: Size::Lg is not supported. Using Md.".into(),
-        );
+        web_sys::console::warn_1(&"ColorPicker: Size::Lg is not supported. Using Md.".into());
     }
 
     let initial_hsv = parse_color_value(default_value).unwrap_or_default();
@@ -114,9 +112,8 @@ pub fn ColorPicker(
                 .and_then(|v| v.as_f64())
                 .unwrap_or(800.0);
 
-            let panel_h = 220.0
-                + if alpha { 18.0 } else { 0.0 }
-                + if !swatches_empty { 30.0 } else { 0.0 };
+            let panel_h =
+                220.0 + if alpha { 18.0 } else { 0.0 } + if !swatches_empty { 30.0 } else { 0.0 };
 
             let space_below = viewport_height - rect.bottom() - 8.0;
             let place_below = space_below >= panel_h || rect.top() < panel_h + 8.0;
@@ -162,49 +159,47 @@ pub fn ColorPicker(
     // ---- Trigger class ----
     let is_open = move || mounted.get();
 
-    let trigger_cls = move || {
-        match trigger_mode {
-            TriggerMode::SwatchInput => [
-                "color-picker-trigger",
-                if size == Size::Sm {
-                    "color-picker-trigger--sm"
-                } else {
-                    ""
-                },
-                if is_open() {
-                    "color-picker-trigger--open"
-                } else {
-                    ""
-                },
-                if disabled {
-                    "color-picker-trigger--disabled"
-                } else {
-                    ""
-                },
-                class,
-            ]
-            .join(" "),
-            TriggerMode::SwatchOnly => [
-                "color-picker-trigger-only",
-                if size == Size::Sm {
-                    "color-picker-trigger-only--sm"
-                } else {
-                    ""
-                },
-                if is_open() {
-                    "color-picker-trigger-only--open"
-                } else {
-                    ""
-                },
-                if disabled {
-                    "color-picker-trigger-only--disabled"
-                } else {
-                    ""
-                },
-                class,
-            ]
-            .join(" "),
-        }
+    let trigger_cls = move || match trigger_mode {
+        TriggerMode::SwatchInput => [
+            "color-picker-trigger",
+            if size == Size::Sm {
+                "color-picker-trigger--sm"
+            } else {
+                ""
+            },
+            if is_open() {
+                "color-picker-trigger--open"
+            } else {
+                ""
+            },
+            if disabled {
+                "color-picker-trigger--disabled"
+            } else {
+                ""
+            },
+            class,
+        ]
+        .join(" "),
+        TriggerMode::SwatchOnly => [
+            "color-picker-trigger-only",
+            if size == Size::Sm {
+                "color-picker-trigger-only--sm"
+            } else {
+                ""
+            },
+            if is_open() {
+                "color-picker-trigger-only--open"
+            } else {
+                ""
+            },
+            if disabled {
+                "color-picker-trigger-only--disabled"
+            } else {
+                ""
+            },
+            class,
+        ]
+        .join(" "),
     };
 
     let swatch_bg = move || {

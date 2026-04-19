@@ -23,11 +23,11 @@ use tempfile::TempDir;
 use zeroize::Zeroizing;
 
 use vedge_core::application::vault::ports::{
-    BlobStoreFactory, ClipboardProvider, CryptoProvider, KeyDerivationProvider,
-    KeychainProvider, VaultRepository, VaultRepositoryFactory,
+    BlobStoreFactory, ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
+    VaultRepository, VaultRepositoryFactory,
 };
 use vedge_core::application::vault::use_cases::UnlockVault;
-use vedge_core::domain::shared::{now, EntryId, TagId, VaultId};
+use vedge_core::domain::shared::{EntryId, TagId, VaultId, now};
 use vedge_core::domain::vault::aad::{entry_aad, tag_aad};
 use vedge_core::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN};
 use vedge_core::domain::vault::entities::{EntryRow, TagRow, VaultConfig};
@@ -126,11 +126,8 @@ impl Harness {
         repo.save_config(&config).await.unwrap();
 
         let blob = Arc::new(
-            FilesystemBlobStore::new(
-                &vdb_path,
-                Arc::clone(&crypto) as Arc<dyn CryptoProvider>,
-            )
-            .unwrap(),
+            FilesystemBlobStore::new(&vdb_path, Arc::clone(&crypto) as Arc<dyn CryptoProvider>)
+                .unwrap(),
         );
 
         Self {
@@ -154,12 +151,7 @@ impl Harness {
     /// Encrypt and insert a `Login` entry directly via the repo + crypto
     /// layer — bypassing the use-case API so tests can set up state
     /// deterministically.
-    pub async fn seed_login(
-        &self,
-        name: &str,
-        username: &str,
-        password: &str,
-    ) -> EntryId {
+    pub async fn seed_login(&self, name: &str, username: &str, password: &str) -> EntryId {
         let id = EntryId::new();
         let version: i64 = 1;
 
@@ -245,8 +237,7 @@ pub fn build_unlock(h: &Harness) -> UnlockVault {
     UnlockVault {
         repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
             as Arc<dyn VaultRepositoryFactory>,
-        blob_factory: Arc::new(FilesystemBlobStoreFactory::new())
-            as Arc<dyn BlobStoreFactory>,
+        blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
         crypto: Arc::clone(&h.crypto) as Arc<dyn CryptoProvider>,
         clipboard: Arc::clone(&h.clipboard) as Arc<dyn ClipboardProvider>,
         kdf: Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,

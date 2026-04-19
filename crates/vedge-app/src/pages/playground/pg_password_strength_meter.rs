@@ -1,8 +1,8 @@
 use crate::i18n::*;
 use leptos::prelude::*;
+use vedge_ui::components::Input;
 use vedge_ui::components::form::label::Label;
 use vedge_ui::components::form::password_strength_meter::PasswordStrengthMeter;
-use vedge_ui::components::Input;
 
 use super::common::Section;
 
@@ -10,12 +10,14 @@ use super::common::Section;
 pub fn PasswordStrengthMeterPage() -> impl IntoView {
     let i18n = use_i18n();
     let sl = Signal::derive(move || t_string!(i18n, playground.password_strength).to_string());
-    let ll = Signal::derive(move || [
-        t_string!(i18n, playground.strength_weak).to_string(),
-        t_string!(i18n, playground.strength_fair).to_string(),
-        t_string!(i18n, playground.strength_strong).to_string(),
-        t_string!(i18n, playground.strength_very_strong).to_string(),
-    ]);
+    let ll = Signal::derive(move || {
+        [
+            t_string!(i18n, playground.strength_weak).to_string(),
+            t_string!(i18n, playground.strength_fair).to_string(),
+            t_string!(i18n, playground.strength_strong).to_string(),
+            t_string!(i18n, playground.strength_very_strong).to_string(),
+        ]
+    });
     let (strength_pw, set_strength_pw) = signal(String::new());
     let strength_score = Memo::new(move |_| {
         let len = strength_pw.get().len();

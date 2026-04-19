@@ -230,7 +230,10 @@ impl VaultIndex {
                 .push(entry.id.clone());
         }
         if let Some(dom) = entry.url.as_deref().and_then(registrable_domain) {
-            self.url_index.entry(dom).or_default().push(entry.id.clone());
+            self.url_index
+                .entry(dom)
+                .or_default()
+                .push(entry.id.clone());
         }
         if let Some(folder) = entry.folder_id.clone() {
             self.folders
@@ -394,7 +397,10 @@ mod tests {
             registrable_domain("http://user:pass@example.org:8443/path?q=1#f").as_deref(),
             Some("example.org")
         );
-        assert_eq!(registrable_domain("localhost").as_deref(), Some("localhost"));
+        assert_eq!(
+            registrable_domain("localhost").as_deref(),
+            Some("localhost")
+        );
         assert_eq!(registrable_domain(""), None);
     }
 
@@ -411,7 +417,11 @@ mod tests {
 
         let entry_id = EntryId::new();
         let row = fake_row(&entry_id);
-        let p = note_payload("github token", Some("https://github.com"), vec![tag_a.clone()]);
+        let p = note_payload(
+            "github token",
+            Some("https://github.com"),
+            vec![tag_a.clone()],
+        );
         idx.insert_entry(IndexEntry::from_payload(&p, &row));
 
         assert_eq!(idx.all_active().len(), 1);

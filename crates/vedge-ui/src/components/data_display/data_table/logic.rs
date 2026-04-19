@@ -25,7 +25,11 @@ pub fn toggle_row(
 
     if shift {
         if let Some(a) = anchor {
-            let (lo, hi) = if a <= clicked_idx { (a, clicked_idx) } else { (clicked_idx, a) };
+            let (lo, hi) = if a <= clicked_idx {
+                (a, clicked_idx)
+            } else {
+                (clicked_idx, a)
+            };
             let hi = hi.min(keys.len().saturating_sub(1));
             let mut next: Vec<String> = current.to_vec();
             for k in keys[lo..=hi].iter() {
@@ -113,10 +117,7 @@ mod tests {
     fn toggle_shift_range_up() {
         let ks = keys(5);
         let (next, anchor) = toggle_row(&[], &ks, 3, Some(1), true);
-        assert_eq!(
-            next,
-            vec!["k1".to_string(), "k2".into(), "k3".into()]
-        );
+        assert_eq!(next, vec!["k1".to_string(), "k2".into(), "k3".into()]);
         assert_eq!(anchor, Some(1), "anchor preserved across range-select");
     }
 
@@ -124,10 +125,7 @@ mod tests {
     fn toggle_shift_range_down() {
         let ks = keys(5);
         let (next, _) = toggle_row(&[], &ks, 1, Some(3), true);
-        assert_eq!(
-            next,
-            vec!["k1".to_string(), "k2".into(), "k3".into()]
-        );
+        assert_eq!(next, vec!["k1".to_string(), "k2".into(), "k3".into()]);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::types::{
-    from_12h, h12_hours_first_digit, h12_hours_second_digit, h24_hours_first_digit,
-    h24_hours_second_digit, is_before, minutes_first_digit, minutes_second_digit, to_12h,
-    DigitOutcome, Segment, TimeFormat, TimeValue,
+    DigitOutcome, Segment, TimeFormat, TimeValue, from_12h, h12_hours_first_digit,
+    h12_hours_second_digit, h24_hours_first_digit, h24_hours_second_digit, is_before,
+    minutes_first_digit, minutes_second_digit, to_12h,
 };
 use crate::primitives::text_prop::TextProp;
 use icondata as i;
@@ -69,7 +69,8 @@ pub fn TimePicker(
                     let h24 = match format {
                         TimeFormat::H24 => d,
                         TimeFormat::H12 => {
-                            let (_, is_pm) = current.map(|v| to_12h(v.hours)).unwrap_or((12, false));
+                            let (_, is_pm) =
+                                current.map(|v| to_12h(v.hours)).unwrap_or((12, false));
                             from_12h(if d == 0 { 12 } else { d }, is_pm)
                         }
                     };
@@ -114,7 +115,10 @@ pub fn TimePicker(
     };
 
     let set_ampm = move |is_pm: bool| {
-        let current = effective.get_untracked().unwrap_or(TimeValue { hours: 0, minutes: 0 });
+        let current = effective.get_untracked().unwrap_or(TimeValue {
+            hours: 0,
+            minutes: 0,
+        });
         let (h12, _) = to_12h(current.hours);
         emit(Some(TimeValue {
             hours: from_12h(h12, is_pm),
@@ -146,7 +150,12 @@ pub fn TimePicker(
                 ev.prevent_default();
                 clear_segment(Segment::Hours);
             }
-            k if k.len() == 1 && k.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) => {
+            k if k.len() == 1
+                && k.chars()
+                    .next()
+                    .map(|c| c.is_ascii_digit())
+                    .unwrap_or(false) =>
+            {
                 ev.prevent_default();
                 let d = k.parse::<u8>().unwrap_or(0);
                 let pend = pending.get_untracked();
@@ -211,18 +220,19 @@ pub fn TimePicker(
                 pending.set(None);
                 let current = effective.get_untracked();
                 let m = current.map(|v| v.minutes).unwrap_or(0);
-                let new_m = if m >= step {
-                    m - step
-                } else {
-                    60 - (step - m)
-                };
+                let new_m = if m >= step { m - step } else { 60 - (step - m) };
                 set_minutes(new_m.min(59));
             }
             "Backspace" | "Delete" => {
                 ev.prevent_default();
                 clear_segment(Segment::Minutes);
             }
-            k if k.len() == 1 && k.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) => {
+            k if k.len() == 1
+                && k.chars()
+                    .next()
+                    .map(|c| c.is_ascii_digit())
+                    .unwrap_or(false) =>
+            {
                 ev.prevent_default();
                 let d = k.parse::<u8>().unwrap_or(0);
                 let pend = pending.get_untracked();
@@ -370,8 +380,16 @@ pub fn TimePicker(
     let root_cls = move || {
         [
             "timepicker-root",
-            if is_out_of_range.get() { "timepicker-root--error" } else { "" },
-            if disabled { "timepicker-root--disabled" } else { "" },
+            if is_out_of_range.get() {
+                "timepicker-root--error"
+            } else {
+                ""
+            },
+            if disabled {
+                "timepicker-root--disabled"
+            } else {
+                ""
+            },
             class,
         ]
         .join(" ")
@@ -382,8 +400,16 @@ pub fn TimePicker(
         let is_active = active.get() == Some(seg);
         [
             "timepicker-segment",
-            if empty { "timepicker-segment--empty" } else { "" },
-            if is_active { "timepicker-segment--active" } else { "" },
+            if empty {
+                "timepicker-segment--empty"
+            } else {
+                ""
+            },
+            if is_active {
+                "timepicker-segment--active"
+            } else {
+                ""
+            },
         ]
         .join(" ")
     };
@@ -401,8 +427,11 @@ pub fn TimePicker(
         let v = aria_label.get();
         if v.is_empty() { None } else { Some(v) }
     };
-    let aria_labelledby_attr =
-        if aria_labelledby.is_empty() { None } else { Some(aria_labelledby) };
+    let aria_labelledby_attr = if aria_labelledby.is_empty() {
+        None
+    } else {
+        Some(aria_labelledby)
+    };
     let aria_disabled_attr = if disabled { Some("true") } else { None };
     let tab_index = if disabled { "-1" } else { "0" };
 

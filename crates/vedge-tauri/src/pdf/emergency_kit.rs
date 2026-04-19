@@ -33,7 +33,7 @@
 #![allow(
     clippy::float_arithmetic,
     clippy::integer_division,
-    clippy::indexing_slicing,
+    clippy::indexing_slicing
 )]
 
 use printpdf::{BuiltinFont, Image, ImageTransform, Mm, PdfDocument, PdfDocumentReference};
@@ -111,12 +111,11 @@ pub fn render(content: &EmergencyKitContent) -> Result<Vec<u8>, CommandError> {
     match QrCode::encode_text(&content.secret_key_display, QrCodeEcc::Medium) {
         Ok(qr) => {
             let png_bytes = qr_to_png_bytes(&qr)?;
-            let decoder = image_crate_re::codecs::png::PngDecoder::new(
-                std::io::Cursor::new(&png_bytes),
-            )
-            .map_err(|e| internal(format!("qr png decode: {e}")))?;
-            let image = Image::try_from(decoder)
-                .map_err(|e| internal(format!("qr to image: {e}")))?;
+            let decoder =
+                image_crate_re::codecs::png::PngDecoder::new(std::io::Cursor::new(&png_bytes))
+                    .map_err(|e| internal(format!("qr png decode: {e}")))?;
+            let image =
+                Image::try_from(decoder).map_err(|e| internal(format!("qr to image: {e}")))?;
             let transform = ImageTransform {
                 translate_x: Some(Mm(150.0)),
                 translate_y: Some(Mm(215.0)),
@@ -155,8 +154,8 @@ pub fn render(content: &EmergencyKitContent) -> Result<Vec<u8>, CommandError> {
 
 /// Convert a QR matrix into a monochrome PNG byte buffer.
 fn qr_to_png_bytes(qr: &QrCode) -> Result<Vec<u8>, CommandError> {
-    let size = usize::try_from(qr.size())
-        .map_err(|_| internal("qr size out of range".to_owned()))?;
+    let size =
+        usize::try_from(qr.size()).map_err(|_| internal("qr size out of range".to_owned()))?;
     // 8× scale per module = readable at A4 print resolution.
     let scale: u32 = 8;
     let px_side = u32::try_from(size)

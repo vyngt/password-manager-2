@@ -16,8 +16,14 @@ pub fn TimePickerPage() -> impl IntoView {
         None => "(none)".to_string(),
     };
 
-    let min_time = TimeValue { hours: 8, minutes: 0 };
-    let max_time = TimeValue { hours: 17, minutes: 0 };
+    let min_time = TimeValue {
+        hours: 8,
+        minutes: 0,
+    };
+    let max_time = TimeValue {
+        hours: 17,
+        minutes: 0,
+    };
 
     view! {
         <div class="p-6 max-w-4xl mx-auto space-y-6">

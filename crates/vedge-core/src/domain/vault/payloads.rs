@@ -17,7 +17,7 @@ pub mod unknown;
 
 pub use api_key::ApiKeyPayload;
 pub use card::CardPayload;
-pub use common_meta::{CommonMeta, CURRENT_PAYLOAD_SCHEMA};
+pub use common_meta::{CURRENT_PAYLOAD_SCHEMA, CommonMeta};
 pub use document::DocumentPayload;
 pub use entry_payload::EntryPayload;
 pub use entry_type::EntryType;

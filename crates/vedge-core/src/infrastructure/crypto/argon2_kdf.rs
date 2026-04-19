@@ -14,7 +14,7 @@ use crate::domain::vault::kdf_params::KdfParams;
 pub struct Argon2idKdfProvider;
 
 impl Argon2idKdfProvider {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -75,7 +75,10 @@ impl KeyDerivationProvider for Argon2idKdfProvider {
         &self,
         master_key: &[u8; MASTER_KEY_LEN],
     ) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
-        Ok(Zeroizing::new(hkdf_expand::<KEK_LEN>(master_key, HKDF_INFO_KEK)?))
+        Ok(Zeroizing::new(hkdf_expand::<KEK_LEN>(
+            master_key,
+            HKDF_INFO_KEK,
+        )?))
     }
 
     fn derive_verify_hash(
@@ -89,6 +92,9 @@ impl KeyDerivationProvider for Argon2idKdfProvider {
         &self,
         master_key: &[u8; MASTER_KEY_LEN],
     ) -> Result<Zeroizing<[u8; 32]>, VaultError> {
-        Ok(Zeroizing::new(hkdf_expand::<32>(master_key, HKDF_INFO_SYNC_AUTH)?))
+        Ok(Zeroizing::new(hkdf_expand::<32>(
+            master_key,
+            HKDF_INFO_SYNC_AUTH,
+        )?))
     }
 }

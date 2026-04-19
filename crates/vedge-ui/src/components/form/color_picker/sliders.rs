@@ -1,4 +1,4 @@
-use super::types::{hsv_to_hsl, HsvColor};
+use super::types::{HsvColor, hsv_to_hsl};
 use leptos::prelude::*;
 
 #[component]

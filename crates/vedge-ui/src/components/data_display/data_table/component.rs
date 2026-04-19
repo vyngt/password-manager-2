@@ -1,8 +1,8 @@
-use super::logic::{cycle_header, cycle_sort, header_state, toggle_row, HeaderCheckState};
+use super::logic::{HeaderCheckState, cycle_header, cycle_sort, header_state, toggle_row};
 use super::types::{CellValue, ColumnDef, ColumnType, ColumnWidth, SortState, StringFn};
+use crate::components::form::checkbox::Checkbox;
 use crate::components::foundation::badge::Badge;
 use crate::components::foundation::spinner::Spinner;
-use crate::components::form::checkbox::Checkbox;
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, SortDirection};
 use leptos::prelude::*;
@@ -72,28 +72,19 @@ where
     // Header tri-state signals driven by selection vs. total.
     let header_chk_checked = Signal::derive(move || {
         matches!(
-            header_state(
-                selected_rows.with(|s| s.len()),
-                row_keys.with(|k| k.len())
-            ),
+            header_state(selected_rows.with(|s| s.len()), row_keys.with(|k| k.len())),
             HeaderCheckState::Checked
         )
     });
     let header_chk_indeterminate = Signal::derive(move || {
         matches!(
-            header_state(
-                selected_rows.with(|s| s.len()),
-                row_keys.with(|k| k.len())
-            ),
+            header_state(selected_rows.with(|s| s.len()), row_keys.with(|k| k.len())),
             HeaderCheckState::Indeterminate
         )
     });
     let header_chk_label = Signal::derive(move || {
         if matches!(
-            header_state(
-                selected_rows.with(|s| s.len()),
-                row_keys.with(|k| k.len())
-            ),
+            header_state(selected_rows.with(|s| s.len()), row_keys.with(|k| k.len())),
             HeaderCheckState::Checked
         ) {
             deselect_all_label.get()
@@ -103,8 +94,7 @@ where
     });
 
     let on_header_toggle = Callback::new(move |_: bool| {
-        let new_sel =
-            row_keys.with(|keys| cycle_header(&selected_rows.get(), keys));
+        let new_sel = row_keys.with(|keys| cycle_header(&selected_rows.get(), keys));
         anchor_idx.set(None);
         fire_selection(new_sel);
     });
@@ -198,8 +188,13 @@ where
                     c
                 });
 
-                let tr_tabindex =
-                    Signal::derive(move || if focus_idx.get() == Some(idx) { "0" } else { "-1" });
+                let tr_tabindex = Signal::derive(move || {
+                    if focus_idx.get() == Some(idx) {
+                        "0"
+                    } else {
+                        "-1"
+                    }
+                });
 
                 // Sync native focus when focus_idx transitions to this row.
                 let tr_ref = NodeRef::<leptos::html::Tr>::new();

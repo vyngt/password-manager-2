@@ -1,7 +1,7 @@
 use crate::i18n::*;
 use leptos::prelude::*;
-use vedge_ui::components::form::label::Label;
 use vedge_ui::components::Input;
+use vedge_ui::components::form::label::Label;
 use vedge_ui::primitives::tokens::{Size, Status};
 
 use icondata as i;

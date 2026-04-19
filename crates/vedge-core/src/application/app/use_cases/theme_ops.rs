@@ -18,7 +18,7 @@ use tracing::instrument;
 use crate::application::app::ports::{AppSettingRepository, ThemeRepository};
 use crate::domain::app::entities::Theme;
 use crate::domain::app::errors::AppDbError;
-use crate::domain::shared::{now, ThemeId};
+use crate::domain::shared::{ThemeId, now};
 
 /// Validate a color string is exactly `#RRGGBB` — leading `#`, six ASCII
 /// hex digits. No alpha, no HSL, no named colors (matches the built-in
@@ -97,9 +97,7 @@ pub async fn set_active_theme(
     let _ = themes.get(theme_id).await?;
 
     let value = serde_json::Value::String(theme_id.as_str().to_owned());
-    settings
-        .set(ACTIVE_THEME_SETTING_KEY, value, now())
-        .await
+    settings.set(ACTIVE_THEME_SETTING_KEY, value, now()).await
 }
 
 // ---- Pass-through reads ------------------------------------------------------
@@ -358,13 +356,9 @@ mod tests {
     #[tokio::test]
     async fn set_active_theme_rejects_missing_theme() {
         let (_dir, themes, settings) = fixture().await;
-        let err = set_active_theme(
-            &*themes,
-            &*settings,
-            &ThemeId::from_raw("ghost-theme"),
-        )
-        .await
-        .unwrap_err();
+        let err = set_active_theme(&*themes, &*settings, &ThemeId::from_raw("ghost-theme"))
+            .await
+            .unwrap_err();
         assert!(matches!(err, AppDbError::ThemeNotFound(_)));
     }
 
@@ -588,11 +582,19 @@ mod tests {
         let id = create_custom_theme(&*themes, good_create_input())
             .await
             .unwrap();
-        delete_custom_theme(&*themes, &*settings, &id).await.unwrap();
+        delete_custom_theme(&*themes, &*settings, &id)
+            .await
+            .unwrap();
         let err = themes.get(&id).await.unwrap_err();
         assert!(matches!(err, AppDbError::ThemeNotFound(_)));
         // Setting never written in this flow.
-        assert!(settings.get(ACTIVE_THEME_SETTING_KEY).await.unwrap().is_none());
+        assert!(
+            settings
+                .get(ACTIVE_THEME_SETTING_KEY)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[tokio::test]
@@ -603,9 +605,17 @@ mod tests {
             .unwrap();
         set_active_theme(&*themes, &*settings, &id).await.unwrap();
 
-        delete_custom_theme(&*themes, &*settings, &id).await.unwrap();
+        delete_custom_theme(&*themes, &*settings, &id)
+            .await
+            .unwrap();
 
-        assert!(settings.get(ACTIVE_THEME_SETTING_KEY).await.unwrap().is_none());
+        assert!(
+            settings
+                .get(ACTIVE_THEME_SETTING_KEY)
+                .await
+                .unwrap()
+                .is_none()
+        );
         let resolved = resolve_active_theme(&*themes, &*settings).await.unwrap();
         assert_eq!(resolved.id.as_str(), DEFAULT_THEME_ID);
     }
@@ -613,13 +623,9 @@ mod tests {
     #[tokio::test]
     async fn delete_builtin_rejected() {
         let (_dir, themes, settings) = fixture().await;
-        let err = delete_custom_theme(
-            &*themes,
-            &*settings,
-            &ThemeId::from_raw("builtin-dark"),
-        )
-        .await
-        .unwrap_err();
+        let err = delete_custom_theme(&*themes, &*settings, &ThemeId::from_raw("builtin-dark"))
+            .await
+            .unwrap_err();
         assert!(matches!(err, AppDbError::BuiltInThemeImmutable));
         // Still present.
         assert!(themes.get(&ThemeId::from_raw("builtin-dark")).await.is_ok());

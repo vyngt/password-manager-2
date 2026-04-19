@@ -33,26 +33,24 @@ pub fn CalendarPanel(
     on_select_month: Callback<YearMonth>,
     on_close: Callback<()>,
 ) -> impl IntoView {
-    let handle_keydown = move |ev: web_sys::KeyboardEvent| {
-        match ev.key().as_str() {
-            "Escape" => {
-                ev.prevent_default();
-                ev.stop_propagation();
-                on_close.run(());
-            }
-            _ => {
-                if ctx.variant == DatePickerVariant::Month {
-                    handle_month_keydown(&ev, ctx, min_date, max_date, on_select_month);
-                } else {
-                    handle_day_keydown(
-                        &ev,
-                        ctx,
-                        min_date,
-                        max_date,
-                        &disabled_dates.get_untracked(),
-                        on_select_day,
-                    );
-                }
+    let handle_keydown = move |ev: web_sys::KeyboardEvent| match ev.key().as_str() {
+        "Escape" => {
+            ev.prevent_default();
+            ev.stop_propagation();
+            on_close.run(());
+        }
+        _ => {
+            if ctx.variant == DatePickerVariant::Month {
+                handle_month_keydown(&ev, ctx, min_date, max_date, on_select_month);
+            } else {
+                handle_day_keydown(
+                    &ev,
+                    ctx,
+                    min_date,
+                    max_date,
+                    &disabled_dates.get_untracked(),
+                    on_select_day,
+                );
             }
         }
     };
@@ -452,10 +450,7 @@ fn handle_day_keydown(
         return;
     }
     ev.prevent_default();
-    if matches!(
-        ev.key().as_str(),
-        "Enter" | " "
-    ) {
+    if matches!(ev.key().as_str(), "Enter" | " ") {
         return;
     }
     // Clamp to min/max bounds

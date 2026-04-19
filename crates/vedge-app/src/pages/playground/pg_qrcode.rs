@@ -5,8 +5,7 @@ use vedge_ui::primitives::tokens::Size;
 use super::common::Section;
 
 const URL: &str = "https://vedge.app";
-const TOTP: &str =
-    "otpauth://totp/Vedge:demo@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Vedge&algorithm=SHA1&digits=6&period=30";
+const TOTP: &str = "otpauth://totp/Vedge:demo@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Vedge&algorithm=SHA1&digits=6&period=30";
 
 #[component]
 pub fn QRCodePage() -> impl IntoView {

@@ -20,8 +20,8 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use vedge_core::application::app::ports::{
-    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository,
-    RecentVaultRepository, ThemeRepository,
+    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, RecentVaultRepository,
+    ThemeRepository,
 };
 use vedge_core::application::vault::ports::{
     BlobStoreFactory, ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
@@ -65,8 +65,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         Arc::new(SqliteRecentVaultRepository::new(app_conn.handle()));
     let app_settings: Arc<dyn AppSettingRepository> =
         Arc::new(SqliteAppSettingRepository::new(app_conn.handle()));
-    let themes: Arc<dyn ThemeRepository> =
-        Arc::new(SqliteThemeRepository::new(app_conn.handle()));
+    let themes: Arc<dyn ThemeRepository> = Arc::new(SqliteThemeRepository::new(app_conn.handle()));
     let known_devices: Arc<dyn KnownDeviceRepository> =
         Arc::new(SqliteKnownDeviceRepository::new(app_conn.handle()));
     let extension_sessions: Arc<dyn ExtensionSessionRepository> =
@@ -113,8 +112,8 @@ mod tests {
     )]
 
     use super::*;
-    use vedge_core::domain::shared::VaultId;
     use std::path::PathBuf;
+    use vedge_core::domain::shared::VaultId;
 
     /// Build an [`AppState`] using the tempdir-backed `app.db` and in-process
     /// providers, bypassing the [`tauri::App`] resolver. Mirrors [`compose`]
@@ -140,19 +139,16 @@ mod tests {
         let kdf: Arc<dyn KeyDerivationProvider> = Arc::new(Argon2idKdfProvider::new());
         // OS keychain would hit the real Windows credential vault in tests —
         // swap to the in-memory variant here.
-        let keychain: Arc<dyn KeychainProvider> = Arc::new(
-            vedge_core::infrastructure::keychain::MemoryKeychainProvider::new(),
-        );
+        let keychain: Arc<dyn KeychainProvider> =
+            Arc::new(vedge_core::infrastructure::keychain::MemoryKeychainProvider::new());
         // Clipboard can fail in CI / headless — use the in-memory variant.
-        let clipboard: Arc<dyn ClipboardProvider> = Arc::new(
-            vedge_core::infrastructure::clipboard::MemoryClipboardProvider::new(),
-        );
+        let clipboard: Arc<dyn ClipboardProvider> =
+            Arc::new(vedge_core::infrastructure::clipboard::MemoryClipboardProvider::new());
 
         let unlock_vault = UnlockVault {
             repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
                 as Arc<dyn VaultRepositoryFactory>,
-            blob_factory: Arc::new(FilesystemBlobStoreFactory::new())
-                as Arc<dyn BlobStoreFactory>,
+            blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
             crypto: Arc::clone(&crypto),
             clipboard: Arc::clone(&clipboard),
             kdf: Arc::clone(&kdf),

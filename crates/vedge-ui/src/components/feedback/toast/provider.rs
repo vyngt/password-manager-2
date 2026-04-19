@@ -9,9 +9,7 @@ impl ToastState {
     pub fn show(&self, input: ToastInput) -> Uuid {
         #[cfg(debug_assertions)]
         if input.dismiss_label.is_empty() {
-            web_sys::console::error_1(
-                &"Toast: `dismiss_label` is required for i18n.".into(),
-            );
+            web_sys::console::error_1(&"Toast: `dismiss_label` is required for i18n.".into());
         }
 
         let id = Uuid::new_v4();
@@ -38,7 +36,10 @@ impl ToastState {
 
         // Run on_dismiss callback
         if let Some(cb) = self.toasts.with_untracked(|toasts| {
-            toasts.iter().find(|t| t.id == id).and_then(|t| t.on_dismiss)
+            toasts
+                .iter()
+                .find(|t| t.id == id)
+                .and_then(|t| t.on_dismiss)
         }) {
             cb.run(());
         }

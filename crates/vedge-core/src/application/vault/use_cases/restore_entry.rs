@@ -3,7 +3,7 @@
 use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, EntryId};
+use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 

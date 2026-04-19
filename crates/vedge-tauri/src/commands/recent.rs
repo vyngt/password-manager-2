@@ -11,11 +11,12 @@ use std::path::PathBuf;
 use tracing::instrument;
 
 use vedge_core::{
-    add_recent_vault as add_recent_vault_core, list_recent_vaults as list_recent_vaults_core,
+    AddRecentVaultInput, add_recent_vault as add_recent_vault_core,
+    list_recent_vaults as list_recent_vaults_core,
     list_recent_vaults_with_status as list_recent_vaults_with_status_core,
-    remove_recent_vault as remove_recent_vault_core, remove_stale_recents as remove_stale_recents_core,
-    touch_on_unlock as touch_on_unlock_core, touch_recent_vault as touch_recent_vault_core,
-    AddRecentVaultInput,
+    remove_recent_vault as remove_recent_vault_core,
+    remove_stale_recents as remove_stale_recents_core, touch_on_unlock as touch_on_unlock_core,
+    touch_recent_vault as touch_recent_vault_core,
 };
 
 use crate::dto::settings::{RecentVaultDto, RecentVaultStatusDto};

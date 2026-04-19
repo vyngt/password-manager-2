@@ -9,7 +9,7 @@ use tracing::instrument;
 use crate::application::app::ports::ExtensionSessionRepository;
 use crate::domain::app::entities::ExtensionSession;
 use crate::domain::app::errors::AppDbError;
-use crate::domain::shared::{now, SessionId};
+use crate::domain::shared::{SessionId, now};
 
 #[instrument(skip_all)]
 pub async fn list_extension_sessions(

@@ -46,7 +46,11 @@ impl RecentVaultDto {
             id: self.id,
             path: PathBuf::from(self.path),
             display_name: self.display_name,
-            last_opened: self.last_opened.as_deref().map(ts_from_string).transpose()?,
+            last_opened: self
+                .last_opened
+                .as_deref()
+                .map(ts_from_string)
+                .transpose()?,
             sort_order: self.sort_order,
         })
     }
@@ -292,7 +296,10 @@ mod tests {
         assert_eq!(back.id, t.id);
         assert_eq!(back.name, t.name);
         assert_eq!(back.is_built_in, t.is_built_in);
-        assert_eq!(back.created_at.timestamp_millis(), t.created_at.timestamp_millis());
+        assert_eq!(
+            back.created_at.timestamp_millis(),
+            t.created_at.timestamp_millis()
+        );
     }
 
     #[test]

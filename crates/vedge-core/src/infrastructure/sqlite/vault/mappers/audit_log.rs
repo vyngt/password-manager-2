@@ -17,7 +17,7 @@ pub fn model_to_domain(model: Model) -> Result<AuditEvent, VaultError> {
     })
 }
 
-#[must_use] 
+#[must_use]
 pub fn domain_to_model(event: &AuditEvent) -> Model {
     Model {
         id: event.id.clone(),

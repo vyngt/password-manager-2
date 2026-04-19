@@ -2,28 +2,22 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
-use sea_orm::{
-    ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-};
+use sea_orm::{ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde_json::Value;
 
 use crate::application::app::ports::AppSettingRepository;
 use crate::domain::app::entities::AppSetting;
 use crate::domain::app::errors::AppDbError;
 use crate::domain::shared::{StorageError, Timestamp};
-use crate::infrastructure::sqlite::app::entities::app_setting::{
-    ActiveModel, Column, Entity,
-};
-use crate::infrastructure::sqlite::app::mappers::app_setting::{
-    domain_to_model, model_to_domain,
-};
+use crate::infrastructure::sqlite::app::entities::app_setting::{ActiveModel, Column, Entity};
+use crate::infrastructure::sqlite::app::mappers::app_setting::{domain_to_model, model_to_domain};
 
 pub struct SqliteAppSettingRepository {
     conn: Arc<DatabaseConnection>,
 }
 
 impl SqliteAppSettingRepository {
-    #[must_use] 
+    #[must_use]
     pub const fn new(conn: Arc<DatabaseConnection>) -> Self {
         Self { conn }
     }
@@ -93,4 +87,3 @@ impl AppSettingRepository for SqliteAppSettingRepository {
             .collect()
     }
 }
-

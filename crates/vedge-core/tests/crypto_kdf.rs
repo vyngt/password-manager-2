@@ -70,8 +70,12 @@ fn preprocess_2skd_differs_when_password_differs() {
 #[test]
 fn preprocess_2skd_differs_when_secret_key_differs() {
     let p = provider();
-    let a = p.preprocess_2skd(password(), &[0u8; SECRET_KEY_LEN]).unwrap();
-    let b = p.preprocess_2skd(password(), &[1u8; SECRET_KEY_LEN]).unwrap();
+    let a = p
+        .preprocess_2skd(password(), &[0u8; SECRET_KEY_LEN])
+        .unwrap();
+    let b = p
+        .preprocess_2skd(password(), &[1u8; SECRET_KEY_LEN])
+        .unwrap();
     assert_ne!(*a, *b);
 }
 
@@ -144,8 +148,7 @@ fn reveal_golden() {
 /// intentional change.
 #[test]
 fn golden_vector_verify_hash() {
-    const EXPECTED_HEX: &str =
-        "e5b0e4feade8298a7a45180a69f5ffe8fa2e2dae6a48be78a7793d4759b97b3c";
+    const EXPECTED_HEX: &str = "e5b0e4feade8298a7a45180a69f5ffe8fa2e2dae6a48be78a7793d4759b97b3c";
 
     let p = provider();
     let input = *p.preprocess_2skd(password(), &secret_key()).unwrap();

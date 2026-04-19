@@ -1,5 +1,5 @@
-mod common;
 mod color_picker;
+mod common;
 mod layout;
 mod pg_avatar;
 mod pg_badge;

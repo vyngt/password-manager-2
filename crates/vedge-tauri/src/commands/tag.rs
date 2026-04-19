@@ -16,8 +16,7 @@ use tracing::instrument;
 
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{
-    create_tag as create_tag_core, delete_tag as delete_tag_core,
-    rename_tag as rename_tag_core,
+    create_tag as create_tag_core, delete_tag as delete_tag_core, rename_tag as rename_tag_core,
 };
 
 use crate::dto::entry::tag_id_from_str;

@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use std::cmp::Ordering;
 use vedge_ui::components::data_display::{
-    cell_fn, string_fn, CellValue, ColumnDef, ColumnType, ColumnWidth, DataTable, SortState,
+    CellValue, ColumnDef, ColumnType, ColumnWidth, DataTable, SortState, cell_fn, string_fn,
 };
 use vedge_ui::components::foundation::badge::Badge;
 use vedge_ui::components::foundation::button::Button;
@@ -632,7 +632,13 @@ fn KitchenSinkSection() -> impl IntoView {
             width: ColumnWidth::Flexible,
             align: Align::Start,
             cell: cell_fn(|e: &Entry| {
-                let first = e.name.chars().next().unwrap_or('?').to_uppercase().to_string();
+                let first = e
+                    .name
+                    .chars()
+                    .next()
+                    .unwrap_or('?')
+                    .to_uppercase()
+                    .to_string();
                 let name = e.name.to_string();
                 CellValue::View(
                     view! {

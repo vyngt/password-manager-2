@@ -7,7 +7,7 @@
 use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, EntryId};
+use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
@@ -32,9 +32,10 @@ pub async fn move_entry(
         .crypto
         .unwrap_dek(&existing.dek_wrapped, session.kek.expose())?;
     let aad_old = entry_aad(entry_id, existing.version)?;
-    let plaintext = session
-        .crypto
-        .decrypt_entry(&dek, &existing.nonce, &existing.ciphertext, &aad_old)?;
+    let plaintext =
+        session
+            .crypto
+            .decrypt_entry(&dek, &existing.nonce, &existing.ciphertext, &aad_old)?;
     let mut payload = EntryPayload::from_decrypted_json(&plaintext)?;
     drop(plaintext);
 
@@ -51,7 +52,9 @@ pub async fn move_entry(
         .ok_or_else(|| VaultError::MalformedPayload("entry version overflow".into()))?;
     let aad_new = entry_aad(entry_id, new_version)?;
     let payload_bytes = payload.to_encryptable_json()?;
-    let (nonce, ciphertext) = session.crypto.encrypt_entry(&dek, &payload_bytes, &aad_new)?;
+    let (nonce, ciphertext) = session
+        .crypto
+        .encrypt_entry(&dek, &payload_bytes, &aad_new)?;
     drop(dek);
 
     let when = now();

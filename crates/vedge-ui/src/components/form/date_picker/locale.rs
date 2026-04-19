@@ -88,14 +88,13 @@ pub fn first_day_of_week(locale: &str) -> u32 {
         let region = region_from_tag(locale);
         let fdow = match region.as_deref() {
             // Sunday-first regions
-            Some("US") | Some("CA") | Some("MX") | Some("JP") | Some("IL")
-            | Some("KR") | Some("TW") | Some("HK") | Some("PH") | Some("ZA")
-            | Some("BR") | Some("CO") | Some("VE") | Some("PE") | Some("EC")
-            | Some("GT") | Some("DO") | Some("AR") => 0,
+            Some("US") | Some("CA") | Some("MX") | Some("JP") | Some("IL") | Some("KR")
+            | Some("TW") | Some("HK") | Some("PH") | Some("ZA") | Some("BR") | Some("CO")
+            | Some("VE") | Some("PE") | Some("EC") | Some("GT") | Some("DO") | Some("AR") => 0,
             // Saturday-first regions
-            Some("AE") | Some("AF") | Some("BH") | Some("EG") | Some("IQ")
-            | Some("IR") | Some("KW") | Some("LY") | Some("OM") | Some("QA")
-            | Some("SA") | Some("SD") | Some("SY") | Some("YE") => 6,
+            Some("AE") | Some("AF") | Some("BH") | Some("EG") | Some("IQ") | Some("IR")
+            | Some("KW") | Some("LY") | Some("OM") | Some("QA") | Some("SA") | Some("SD")
+            | Some("SY") | Some("YE") => 6,
             _ => 1,
         };
         cache.borrow_mut().insert(locale.to_string(), fdow);
@@ -105,9 +104,21 @@ pub fn first_day_of_week(locale: &str) -> u32 {
 
 pub fn format_trigger_date(date: NaiveDate, locale: &str) -> String {
     let opts = Object::new();
-    let _ = Reflect::set(&opts, &JsValue::from_str("year"), &JsValue::from_str("numeric"));
-    let _ = Reflect::set(&opts, &JsValue::from_str("month"), &JsValue::from_str("short"));
-    let _ = Reflect::set(&opts, &JsValue::from_str("day"), &JsValue::from_str("numeric"));
+    let _ = Reflect::set(
+        &opts,
+        &JsValue::from_str("year"),
+        &JsValue::from_str("numeric"),
+    );
+    let _ = Reflect::set(
+        &opts,
+        &JsValue::from_str("month"),
+        &JsValue::from_str("short"),
+    );
+    let _ = Reflect::set(
+        &opts,
+        &JsValue::from_str("day"),
+        &JsValue::from_str("numeric"),
+    );
     let locales = Array::of1(&JsValue::from_str(locale));
     let fmt = DateTimeFormat::new(&locales, &opts);
     let format_fn = fmt.format();
@@ -146,8 +157,18 @@ fn fallback_weekday_names() -> Vec<String> {
 
 fn fallback_month_names() -> Vec<String> {
     [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
     ]
     .iter()
     .map(|s| s.to_string())

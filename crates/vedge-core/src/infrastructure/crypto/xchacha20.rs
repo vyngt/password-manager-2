@@ -17,7 +17,7 @@ use crate::domain::vault::errors::VaultError;
 pub struct XChaCha20CryptoProvider;
 
 impl XChaCha20CryptoProvider {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -33,7 +33,11 @@ fn cipher(key: &[u8; 32]) -> XChaCha20Poly1305 {
     XChaCha20Poly1305::new(key.into())
 }
 
-fn aead_encrypt(key: &[u8; 32], payload: &[u8], aad: &[u8]) -> Result<(Nonce, Vec<u8>), VaultError> {
+fn aead_encrypt(
+    key: &[u8; 32],
+    payload: &[u8],
+    aad: &[u8],
+) -> Result<(Nonce, Vec<u8>), VaultError> {
     let mut nonce_bytes = [0u8; NONCE_LEN];
     rng().fill_bytes(&mut nonce_bytes);
     let nonce = XNonce::from_slice(&nonce_bytes);

@@ -5,7 +5,7 @@ use zeroize::Zeroizing;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::api_key::ApiKeyPayload;
 use crate::domain::vault::payloads::card::CardPayload;
-use crate::domain::vault::payloads::common_meta::{CommonMeta, CURRENT_PAYLOAD_SCHEMA};
+use crate::domain::vault::payloads::common_meta::{CURRENT_PAYLOAD_SCHEMA, CommonMeta};
 use crate::domain::vault::payloads::document::DocumentPayload;
 use crate::domain::vault::payloads::entry_type::EntryType;
 use crate::domain::vault::payloads::env_vars::EnvVarsPayload;
@@ -31,7 +31,7 @@ pub enum EntryPayload {
 }
 
 impl EntryPayload {
-    #[must_use] 
+    #[must_use]
     pub const fn meta(&self) -> &CommonMeta {
         match self {
             Self::Login(p) => &p.meta,
@@ -62,7 +62,7 @@ impl EntryPayload {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn entry_type(&self) -> &EntryType {
         &self.meta().entry_type
     }
@@ -178,4 +178,3 @@ impl<'de> Deserialize<'de> for EntryPayload {
         }
     }
 }
-

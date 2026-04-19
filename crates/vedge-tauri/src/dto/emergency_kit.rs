@@ -11,8 +11,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use vedge_core::domain::vault::emergency_kit::EmergencyKitContent;
 use vedge_core::RecoveryOutcome;
+use vedge_core::domain::vault::emergency_kit::EmergencyKitContent;
 
 use crate::dto::common::ts_to_string;
 

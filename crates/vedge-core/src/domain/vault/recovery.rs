@@ -23,7 +23,7 @@
 //!
 //! Error messages never echo the user's input.
 
-use hmac::{digest::KeyInit, Hmac, Mac};
+use hmac::{Hmac, Mac, digest::KeyInit};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroizing;
@@ -339,7 +339,13 @@ mod tests {
         let with_spaces = stripped
             .chars()
             .enumerate()
-            .flat_map(|(i, c)| if i > 0 && i % 5 == 0 { vec![' ', c] } else { vec![c] })
+            .flat_map(|(i, c)| {
+                if i > 0 && i % 5 == 0 {
+                    vec![' ', c]
+                } else {
+                    vec![c]
+                }
+            })
             .collect::<String>();
         let parsed = parse_secret_key(&with_spaces).expect("spaces tolerated");
         assert_eq!(*parsed, sample_key());

@@ -31,7 +31,7 @@ pub struct SqliteVaultRepository {
 }
 
 impl SqliteVaultRepository {
-    #[must_use] 
+    #[must_use]
     pub const fn new(conn: Arc<DatabaseConnection>) -> Self {
         Self { conn }
     }
@@ -145,11 +145,7 @@ impl VaultRepository for SqliteVaultRepository {
         rows.into_iter().map(entry_map::model_to_domain).collect()
     }
 
-    async fn soft_delete_entry(
-        &self,
-        id: &EntryId,
-        when: Timestamp,
-    ) -> Result<(), VaultError> {
+    async fn soft_delete_entry(&self, id: &EntryId, when: Timestamp) -> Result<(), VaultError> {
         let model = entry_entity::Entity::find_by_id(id.as_str().to_owned())
             .one(self.conn.as_ref())
             .await
@@ -163,11 +159,7 @@ impl VaultRepository for SqliteVaultRepository {
         Ok(())
     }
 
-    async fn restore_entry(
-        &self,
-        id: &EntryId,
-        when: Timestamp,
-    ) -> Result<(), VaultError> {
+    async fn restore_entry(&self, id: &EntryId, when: Timestamp) -> Result<(), VaultError> {
         let model = entry_entity::Entity::find_by_id(id.as_str().to_owned())
             .one(self.conn.as_ref())
             .await
@@ -192,10 +184,7 @@ impl VaultRepository for SqliteVaultRepository {
         Ok(())
     }
 
-    async fn hard_delete_trashed_before(
-        &self,
-        cutoff: Timestamp,
-    ) -> Result<u64, VaultError> {
+    async fn hard_delete_trashed_before(&self, cutoff: Timestamp) -> Result<u64, VaultError> {
         let cutoff_str = ts_to_string(&cutoff);
         let res = entry_entity::Entity::delete_many()
             .filter(EntryCol::IsTrashed.eq(1))
@@ -206,11 +195,7 @@ impl VaultRepository for SqliteVaultRepository {
         Ok(res.rows_affected)
     }
 
-    async fn update_accessed_at(
-        &self,
-        id: &EntryId,
-        when: Timestamp,
-    ) -> Result<(), VaultError> {
+    async fn update_accessed_at(&self, id: &EntryId, when: Timestamp) -> Result<(), VaultError> {
         let model = entry_entity::Entity::find_by_id(id.as_str().to_owned())
             .one(self.conn.as_ref())
             .await
@@ -314,10 +299,7 @@ impl VaultRepository for SqliteVaultRepository {
         rows.into_iter().map(audit_map::model_to_domain).collect()
     }
 
-    async fn delete_audit_before(
-        &self,
-        cutoff: Timestamp,
-    ) -> Result<u64, VaultError> {
+    async fn delete_audit_before(&self, cutoff: Timestamp) -> Result<u64, VaultError> {
         let cutoff_str = ts_to_string(&cutoff);
         let res = audit_entity::Entity::delete_many()
             .filter(AuditCol::OccurredAt.lt(cutoff_str))

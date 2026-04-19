@@ -40,16 +40,12 @@ pub fn NumberInput(
 ) -> impl IntoView {
     #[cfg(debug_assertions)]
     if decrement_label.get_untracked().is_empty() {
-        web_sys::console::error_1(
-            &"NumberInput: `decrement_label` is required for i18n.".into(),
-        );
+        web_sys::console::error_1(&"NumberInput: `decrement_label` is required for i18n.".into());
     }
 
     #[cfg(debug_assertions)]
     if increment_label.get_untracked().is_empty() {
-        web_sys::console::error_1(
-            &"NumberInput: `increment_label` is required for i18n.".into(),
-        );
+        web_sys::console::error_1(&"NumberInput: `increment_label` is required for i18n.".into());
     }
 
     let internal = RwSignal::new(default_value);
@@ -144,7 +140,11 @@ pub fn NumberInput(
         "number-input",
         size.number_input_class(),
         status.number_input_class(),
-        if disabled { "number-input--disabled" } else { "" },
+        if disabled {
+            "number-input--disabled"
+        } else {
+            ""
+        },
         class,
     ]
     .join(" ");

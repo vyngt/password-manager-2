@@ -235,17 +235,11 @@ pub fn FileUpload(
 
     let effective_len = move || effective_items().len() as u32;
 
-    let is_max_reached = move || {
-        is_multiple
-            && max_files
-                .map(|m| effective_len() >= m)
-                .unwrap_or(false)
-    };
+    let is_max_reached =
+        move || is_multiple && max_files.map(|m| effective_len() >= m).unwrap_or(false);
 
     // Compact zone = single mode with 1 file present
-    let is_compact = move || {
-        variant == FileUploadVariant::Single && !effective_items().is_empty()
-    };
+    let is_compact = move || variant == FileUploadVariant::Single && !effective_items().is_empty();
 
     // ---------- Validation & commit pipeline ----------
     let emit_validation_error = move |file: web_sys::File, reason: ValidationReason| {
@@ -307,11 +301,7 @@ pub fn FileUpload(
         }
 
         let announce = if accepted.len() == 1 {
-            format!(
-                "{} {}",
-                accepted[0].name(),
-                text_or(added_message, "added")
-            )
+            format!("{} {}", accepted[0].name(), text_or(added_message, "added"))
         } else {
             format!(
                 "{} {}",
@@ -323,8 +313,7 @@ pub fn FileUpload(
 
         // Uncontrolled: mutate internal state
         if items.is_none() {
-            let new_items: Vec<FileItem> =
-                accepted.iter().cloned().map(FileItem::new).collect();
+            let new_items: Vec<FileItem> = accepted.iter().cloned().map(FileItem::new).collect();
             if is_multiple {
                 internal_items.update(|v| v.extend(new_items));
             } else {
@@ -468,7 +457,11 @@ pub fn FileUpload(
             internal_items.update(|v| v.retain(|it| it.id != id));
         }
 
-        live_message.set(format!("{} {}", filename, text_or(removed_message, "removed")));
+        live_message.set(format!(
+            "{} {}",
+            filename,
+            text_or(removed_message, "removed")
+        ));
 
         if let Some(cb) = on_change {
             if was_uploading {
@@ -507,11 +500,7 @@ pub fn FileUpload(
     let input_disabled = move || disabled || is_max_reached();
 
     let aria_disabled_attr = move || {
-        if disabled {
-            Some("true")
-        } else {
-            None
-        }
+        if disabled { Some("true") } else { None }
     };
 
     // Resolved hint text — prefer explicit prop, else auto-generate from
@@ -655,9 +644,8 @@ fn FileRow(
         items_sig.with(|v| v.iter().find(|it| it.id == id).cloned())
     };
     let status = move || lookup().map(|it| it.status).unwrap_or(FileStatus::Idle);
-    let progress_sig: Signal<f64> = Signal::derive(move || {
-        lookup().and_then(|it| it.progress).unwrap_or(0) as f64
-    });
+    let progress_sig: Signal<f64> =
+        Signal::derive(move || lookup().and_then(|it| it.progress).unwrap_or(0) as f64);
     let error_text = move || lookup().and_then(|it| it.error.clone()).unwrap_or_default();
     let show_remove = move || !(status() == FileStatus::Uploading && !allow_cancel);
 
@@ -773,9 +761,8 @@ fn CompactItem(
         items_sig.with(|v| v.iter().find(|it| it.id == id).cloned())
     };
     let status = move || lookup().map(|it| it.status).unwrap_or(FileStatus::Idle);
-    let progress_sig: Signal<f64> = Signal::derive(move || {
-        lookup().and_then(|it| it.progress).unwrap_or(0) as f64
-    });
+    let progress_sig: Signal<f64> =
+        Signal::derive(move || lookup().and_then(|it| it.progress).unwrap_or(0) as f64);
     let error_text = move || lookup().and_then(|it| it.error.clone()).unwrap_or_default();
     let show_remove = move || !(status() == FileStatus::Uploading && !allow_cancel);
 

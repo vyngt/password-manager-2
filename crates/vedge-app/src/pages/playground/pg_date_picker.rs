@@ -60,10 +60,16 @@ pub fn DatePickerPage() -> impl IntoView {
         _ => "(none)".to_string(),
     };
     let range_readout = move || match range_val.get() {
-        DatePickerValue::Range(DateRange { start: Some(s), end: Some(e) }) => {
+        DatePickerValue::Range(DateRange {
+            start: Some(s),
+            end: Some(e),
+        }) => {
             format!("{} → {}", format_date(s), format_date(e))
         }
-        DatePickerValue::Range(DateRange { start: Some(s), end: None }) => {
+        DatePickerValue::Range(DateRange {
+            start: Some(s),
+            end: None,
+        }) => {
             format!("{} → …", format_date(s))
         }
         _ => "(none)".to_string(),
@@ -75,9 +81,8 @@ pub fn DatePickerPage() -> impl IntoView {
 
     let loc_sig = Signal::derive(move || locale_sig.get());
 
-    let set_locale = move |code: &'static str| {
-        move |_: web_sys::MouseEvent| locale_sig.set(code.to_string())
-    };
+    let set_locale =
+        move |code: &'static str| move |_: web_sys::MouseEvent| locale_sig.set(code.to_string());
 
     let locale_btn_cls = move |code: &'static str| {
         Signal::derive(move || {

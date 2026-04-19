@@ -31,7 +31,7 @@ use crate::application::vault::ports::factories::{BlobStoreFactory, VaultReposit
 use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, VaultId};
+use crate::domain::shared::{VaultId, now};
 use crate::domain::vault::aad::{entry_aad, tag_aad};
 use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
 use crate::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow};
@@ -63,10 +63,7 @@ pub struct UnlockVault {
 
 impl UnlockVault {
     #[instrument(skip_all, fields(vault_path = %input.vault_path.display()))]
-    pub async fn execute(
-        &self,
-        input: UnlockVaultInput,
-    ) -> Result<VaultSession, VaultError> {
+    pub async fn execute(&self, input: UnlockVaultInput) -> Result<VaultSession, VaultError> {
         // ---- 0. Per-vault infrastructure ------------------------------------
         // The repo + blob store are tied to this specific `.vdb`, so they're
         // constructed here via the factory ports and owned by the resulting
@@ -100,8 +97,7 @@ impl UnlockVault {
         let (kek_zeroizing, verify_hash) = tokio::task::spawn_blocking(
             move || -> Result<(Zeroizing<[u8; KEK_LEN]>, [u8; 32]), VaultError> {
                 let input_bytes = kdf.preprocess_2skd(master_password.as_bytes(), &secret_key)?;
-                let master_key =
-                    kdf.derive_master_key(&input_bytes, &vault_salt, &kdf_params)?;
+                let master_key = kdf.derive_master_key(&input_bytes, &vault_salt, &kdf_params)?;
                 let verify = kdf.derive_verify_hash(&master_key)?;
                 let kek = kdf.derive_kek(&master_key)?;
                 // master_password, secret_key, input_bytes, master_key all
@@ -197,11 +193,7 @@ impl UnlockVault {
 
     /// Decrypt one tag row → `TagMeta`. `payload_bytes` zeroizes via Drop.
     #[instrument(skip_all, fields(tag_id = %row.id))]
-    fn decrypt_tag_row(
-        &self,
-        row: &TagRow,
-        kek: &[u8; KEK_LEN],
-    ) -> Result<TagMeta, VaultError> {
+    fn decrypt_tag_row(&self, row: &TagRow, kek: &[u8; KEK_LEN]) -> Result<TagMeta, VaultError> {
         let aad = tag_aad(&row.id)?;
         let plaintext = self
             .crypto
@@ -218,4 +210,3 @@ impl UnlockVault {
         })
     }
 }
-

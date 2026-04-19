@@ -11,11 +11,11 @@ mod common;
 
 use std::sync::Arc;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 
 use vedge_core::application::vault::ports::{KeychainProvider, VaultRepository};
 use vedge_core::application::vault::use_cases::{
-    export_emergency_kit, ExportEmergencyKitInput, UnlockVaultInput,
+    ExportEmergencyKitInput, UnlockVaultInput, export_emergency_kit,
 };
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
@@ -46,7 +46,11 @@ async fn export_round_trips_through_recovery_format() {
     .unwrap();
 
     assert_eq!(content.vault_name, "work vault");
-    assert!(content.vault_path.ends_with("work.vdb"), "got {}", content.vault_path);
+    assert!(
+        content.vault_path.ends_with("work.vdb"),
+        "got {}",
+        content.vault_path
+    );
     assert!(content.secret_key_display.starts_with("A3-"));
     assert!(content.kdf_params_summary.contains("argon2id"));
 
@@ -117,5 +121,8 @@ async fn export_appends_audit_event() {
         .iter()
         .find(|e| matches!(e.action, AuditAction::Exported))
         .expect("export audit event present");
-    assert!(exported.entry_id.is_none(), "vault-level export must have no entry_id");
+    assert!(
+        exported.entry_id.is_none(),
+        "vault-level export must have no entry_id"
+    );
 }

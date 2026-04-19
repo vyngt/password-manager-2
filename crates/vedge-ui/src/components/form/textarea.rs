@@ -98,9 +98,7 @@ pub fn Textarea(
     };
     let aria_required_attr = if required { Some("true") } else { None };
 
-    let style_str = format!(
-        "min-height: {min_height}px; max-height: {max_height}px;"
-    );
+    let style_str = format!("min-height: {min_height}px; max-height: {max_height}px;");
 
     view! {
         <textarea

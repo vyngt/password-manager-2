@@ -44,7 +44,10 @@ impl ThemeState {
     }
 
     /// Validate a theme configuration against WCAG contrast requirements.
-    pub fn validate(&self, config: &ThemeConfig) -> Result<ThemeValidation, super::color_space::ColorError> {
+    pub fn validate(
+        &self,
+        config: &ThemeConfig,
+    ) -> Result<ThemeValidation, super::color_space::ColorError> {
         let tokens = derive_tokens(config)?;
         validate_tokens(&tokens)
     }
@@ -53,7 +56,7 @@ impl ThemeState {
     /// signal and injects CSS variables on `:root`.
     pub fn preview(&self, config: &ThemeConfig) {
         if let Ok(tokens) = derive_tokens(config) {
-                        super::inject::inject_css_vars(&tokens);
+            super::inject::inject_css_vars(&tokens);
             self.active_tokens.set(tokens);
         }
     }
@@ -62,7 +65,7 @@ impl ThemeState {
     /// application's commit callback.
     pub fn commit(&self, config: &ThemeConfig) {
         if let Ok(tokens) = derive_tokens(config) {
-                        super::inject::inject_css_vars(&tokens);
+            super::inject::inject_css_vars(&tokens);
             self.active_tokens.set(tokens.clone());
             self.saved_tokens.set(tokens);
             (self.commit_fn)(config.clone());

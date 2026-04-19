@@ -12,13 +12,11 @@ mod common;
 
 use std::sync::Arc;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use zeroize::Zeroizing;
 
 use vedge_core::application::vault::ports::{KeychainProvider, VaultRepository};
-use vedge_core::application::vault::use_cases::{
-    recover_vault, RecoverVaultInput,
-};
+use vedge_core::application::vault::use_cases::{RecoverVaultInput, recover_vault};
 use vedge_core::domain::shared::VaultId;
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::entities::AuditAction;
@@ -188,6 +186,8 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
         !outcome.keychain_restored,
         "keychain write failed, so restored should be false"
     );
-    assert!(outcome.keychain_error.is_some(), "error message must be surfaced");
+    assert!(
+        outcome.keychain_error.is_some(),
+        "error message must be surfaced"
+    );
 }
-

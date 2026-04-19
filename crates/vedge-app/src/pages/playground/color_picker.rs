@@ -8,16 +8,46 @@ pub fn ColorPickerPage() -> impl IntoView {
     let (last_change_end, set_last_change_end) = signal(String::new());
 
     let preset_swatches = vec![
-        SwatchItem { value: "#EF4444".into(), label: Some("Red".into()) },
-        SwatchItem { value: "#F97316".into(), label: Some("Orange".into()) },
-        SwatchItem { value: "#EAB308".into(), label: Some("Yellow".into()) },
-        SwatchItem { value: "#22C55E".into(), label: Some("Green".into()) },
-        SwatchItem { value: "#3B82F6".into(), label: Some("Blue".into()) },
-        SwatchItem { value: "#8B5CF6".into(), label: Some("Purple".into()) },
-        SwatchItem { value: "#EC4899".into(), label: Some("Pink".into()) },
-        SwatchItem { value: "#000000".into(), label: Some("Black".into()) },
-        SwatchItem { value: "#FFFFFF".into(), label: Some("White".into()) },
-        SwatchItem { value: "#6B7280".into(), label: Some("Gray".into()) },
+        SwatchItem {
+            value: "#EF4444".into(),
+            label: Some("Red".into()),
+        },
+        SwatchItem {
+            value: "#F97316".into(),
+            label: Some("Orange".into()),
+        },
+        SwatchItem {
+            value: "#EAB308".into(),
+            label: Some("Yellow".into()),
+        },
+        SwatchItem {
+            value: "#22C55E".into(),
+            label: Some("Green".into()),
+        },
+        SwatchItem {
+            value: "#3B82F6".into(),
+            label: Some("Blue".into()),
+        },
+        SwatchItem {
+            value: "#8B5CF6".into(),
+            label: Some("Purple".into()),
+        },
+        SwatchItem {
+            value: "#EC4899".into(),
+            label: Some("Pink".into()),
+        },
+        SwatchItem {
+            value: "#000000".into(),
+            label: Some("Black".into()),
+        },
+        SwatchItem {
+            value: "#FFFFFF".into(),
+            label: Some("White".into()),
+        },
+        SwatchItem {
+            value: "#6B7280".into(),
+            label: Some("Gray".into()),
+        },
     ];
     let swatches_1 = preset_swatches.clone();
     let swatches_2 = preset_swatches;

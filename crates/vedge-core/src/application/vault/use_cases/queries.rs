@@ -41,10 +41,7 @@ pub async fn entries_by_tag(index: &VaultIndex, tag_id: &TagId) -> Vec<IndexEntr
 
 /// Every entry in a folder. `None` = root (entries without a folder).
 #[instrument(skip_all)]
-pub async fn entries_by_folder(
-    index: &VaultIndex,
-    folder_id: Option<&EntryId>,
-) -> Vec<IndexEntry> {
+pub async fn entries_by_folder(index: &VaultIndex, folder_id: Option<&EntryId>) -> Vec<IndexEntry> {
     index.by_folder(folder_id).into_iter().cloned().collect()
 }
 
@@ -134,7 +131,11 @@ mod tests {
         // Active tagged login at example.com.
         let e_active = EntryId::new();
         idx.insert_entry(IndexEntry::from_payload(
-            &mk_login("GitHub", Some("https://example.com/login"), Some(tag.clone())),
+            &mk_login(
+                "GitHub",
+                Some("https://example.com/login"),
+                Some(tag.clone()),
+            ),
             &mk_row(e_active.clone(), false),
         ));
 

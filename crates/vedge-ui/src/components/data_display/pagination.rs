@@ -1,5 +1,5 @@
-use crate::components::foundation::button::Button;
 use crate::components::form::select::{Select, SelectItem};
+use crate::components::foundation::button::Button;
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Variant};
 use icondata as i;
@@ -83,26 +83,28 @@ pub fn Pagination(
     });
 
     // ---- Center zone: summary label (offset only, when total_items provided) ----
-    let summary = (model == PaginationModel::Offset).then(|| {
-        total_items.zip(page_size).map(|(items_sig, size_sig)| {
-            let p = page;
-            view! {
-                <span class="pagination__summary" aria-live="polite">
-                    {move || {
-                        let total = items_sig.get();
-                        if total == 0 {
-                            return String::from("0 of 0");
-                        }
-                        let size = size_sig.get().max(1);
-                        let current = p.get().max(1);
-                        let start = (current - 1) * size + 1;
-                        let end = (current * size).min(total);
-                        format!("{}\u{2013}{} of {}", start, end, total)
-                    }}
-                </span>
-            }
+    let summary = (model == PaginationModel::Offset)
+        .then(|| {
+            total_items.zip(page_size).map(|(items_sig, size_sig)| {
+                let p = page;
+                view! {
+                    <span class="pagination__summary" aria-live="polite">
+                        {move || {
+                            let total = items_sig.get();
+                            if total == 0 {
+                                return String::from("0 of 0");
+                            }
+                            let size = size_sig.get().max(1);
+                            let current = p.get().max(1);
+                            let start = (current - 1) * size + 1;
+                            let end = (current * size).min(total);
+                            format!("{}\u{2013}{} of {}", start, end, total)
+                        }}
+                    </span>
+                }
+            })
         })
-    }).flatten();
+        .flatten();
 
     // ---- Right zone: page controls ----
     let controls = match model {
@@ -275,11 +277,7 @@ pub fn Pagination(
 // buttons in a reactive closure when the disabled state needs to track a signal.
 
 #[component]
-fn PrevButton(
-    label: TextProp,
-    disabled: Signal<bool>,
-    on_click: Callback<()>,
-) -> impl IntoView {
+fn PrevButton(label: TextProp, disabled: Signal<bool>, on_click: Callback<()>) -> impl IntoView {
     view! {
         {move || {
             let is_disabled = disabled.get();
@@ -303,11 +301,7 @@ fn PrevButton(
 }
 
 #[component]
-fn NextButton(
-    label: TextProp,
-    disabled: Signal<bool>,
-    on_click: Callback<()>,
-) -> impl IntoView {
+fn NextButton(label: TextProp, disabled: Signal<bool>, on_click: Callback<()>) -> impl IntoView {
     view! {
         {move || {
             let is_disabled = disabled.get();
@@ -415,12 +409,18 @@ mod tests {
         // current = 2
         assert_eq!(pages(&build_page_window(2, 25)), vec![1, 2, 3, 4, -1, 25]);
         // current = 3
-        assert_eq!(pages(&build_page_window(3, 25)), vec![1, 2, 3, 4, 5, -1, 25]);
+        assert_eq!(
+            pages(&build_page_window(3, 25)),
+            vec![1, 2, 3, 4, 5, -1, 25]
+        );
     }
 
     #[test]
     fn middle() {
-        assert_eq!(pages(&build_page_window(10, 25)), vec![1, -1, 9, 10, 11, -1, 25]);
+        assert_eq!(
+            pages(&build_page_window(10, 25)),
+            vec![1, -1, 9, 10, 11, -1, 25]
+        );
     }
 
     #[test]

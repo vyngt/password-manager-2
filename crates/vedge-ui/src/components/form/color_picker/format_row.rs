@@ -1,4 +1,4 @@
-use super::types::{hsv_to_hsl, hsv_to_rgb, hsl_to_hsv, rgb_to_hsv, ColorFormat, HsvColor};
+use super::types::{ColorFormat, HsvColor, hsl_to_hsv, hsv_to_hsl, hsv_to_rgb, rgb_to_hsv};
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -134,11 +134,7 @@ fn FormatInputs(
 
 /// Single hex input field.
 #[component]
-fn HexInput(
-    hsv: RwSignal<HsvColor>,
-    alpha: bool,
-    on_commit: Callback<()>,
-) -> impl IntoView {
+fn HexInput(hsv: RwSignal<HsvColor>, alpha: bool, on_commit: Callback<()>) -> impl IntoView {
     let text = RwSignal::new(String::new());
     let has_error = RwSignal::new(false);
 
@@ -152,7 +148,11 @@ fn HexInput(
     let commit = move || {
         let val = text.get_untracked();
         if let Some(parsed) = HsvColor::from_hex(&val) {
-            hsv.set(if alpha { parsed } else { HsvColor { a: 100.0, ..parsed } });
+            hsv.set(if alpha {
+                parsed
+            } else {
+                HsvColor { a: 100.0, ..parsed }
+            });
             has_error.set(false);
             on_commit.run(());
         } else {
@@ -200,11 +200,7 @@ fn HexInput(
 
 /// RGB channel inputs.
 #[component]
-fn RgbInputs(
-    hsv: RwSignal<HsvColor>,
-    alpha: bool,
-    on_commit: Callback<()>,
-) -> impl IntoView {
+fn RgbInputs(hsv: RwSignal<HsvColor>, alpha: bool, on_commit: Callback<()>) -> impl IntoView {
     let r_text = RwSignal::new(String::new());
     let g_text = RwSignal::new(String::new());
     let b_text = RwSignal::new(String::new());
@@ -227,7 +223,11 @@ fn RgbInputs(
         if let (Some(r), Some(g), Some(b)) = (r, g, b) {
             let (h, s, v) = rgb_to_hsv(r, g, b);
             let a = if alpha {
-                a_text.get_untracked().parse::<f64>().unwrap_or(100.0).clamp(0.0, 100.0)
+                a_text
+                    .get_untracked()
+                    .parse::<f64>()
+                    .unwrap_or(100.0)
+                    .clamp(0.0, 100.0)
             } else {
                 100.0
             };
@@ -253,11 +253,7 @@ fn RgbInputs(
 
 /// HSL channel inputs.
 #[component]
-fn HslInputs(
-    hsv: RwSignal<HsvColor>,
-    alpha: bool,
-    on_commit: Callback<()>,
-) -> impl IntoView {
+fn HslInputs(hsv: RwSignal<HsvColor>, alpha: bool, on_commit: Callback<()>) -> impl IntoView {
     let h_text = RwSignal::new(String::new());
     let s_text = RwSignal::new(String::new());
     let l_text = RwSignal::new(String::new());
@@ -284,7 +280,11 @@ fn HslInputs(
                 l.clamp(0.0, 100.0),
             );
             let a = if alpha {
-                a_text.get_untracked().parse::<f64>().unwrap_or(100.0).clamp(0.0, 100.0)
+                a_text
+                    .get_untracked()
+                    .parse::<f64>()
+                    .unwrap_or(100.0)
+                    .clamp(0.0, 100.0)
             } else {
                 100.0
             };
@@ -363,8 +363,10 @@ async fn pick_from_screen() -> Option<String> {
     let constructor = js_sys::Reflect::get(&window, &"EyeDropper".into()).ok()?;
     let constructor_fn: &js_sys::Function = constructor.dyn_ref()?;
     let instance = js_sys::Reflect::construct(constructor_fn, &js_sys::Array::new()).ok()?;
-    let open_fn: js_sys::Function =
-        js_sys::Reflect::get(&instance, &"open".into()).ok()?.dyn_into().ok()?;
+    let open_fn: js_sys::Function = js_sys::Reflect::get(&instance, &"open".into())
+        .ok()?
+        .dyn_into()
+        .ok()?;
     let promise: js_sys::Promise = open_fn.call0(&instance).ok()?.dyn_into().ok()?;
     let result = wasm_bindgen_futures::JsFuture::from(promise).await.ok()?;
     js_sys::Reflect::get(&result, &"sRGBHex".into())

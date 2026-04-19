@@ -10,7 +10,7 @@
 use tempfile::tempdir;
 
 use vedge_core::application::vault::ports::VaultRepository;
-use vedge_core::domain::shared::{now, DeviceId, EntryId, TagId};
+use vedge_core::domain::shared::{DeviceId, EntryId, TagId, now};
 use vedge_core::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::kdf_params::KdfParams;
@@ -146,11 +146,12 @@ async fn hard_delete_trashed_before_cutoff() {
     repo.insert_entry(&sample_entry(&id_old)).await.unwrap();
     repo.insert_entry(&sample_entry(&id_fresh)).await.unwrap();
 
-    let old_trashed_at =
-        chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00+00:00")
-            .unwrap()
-            .with_timezone(&chrono::Utc);
-    repo.soft_delete_entry(&id_old, old_trashed_at).await.unwrap();
+    let old_trashed_at = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00+00:00")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    repo.soft_delete_entry(&id_old, old_trashed_at)
+        .await
+        .unwrap();
     repo.soft_delete_entry(&id_fresh, now()).await.unwrap();
 
     let cutoff = chrono::DateTime::parse_from_rfc3339("2026-02-01T00:00:00+00:00")
@@ -230,9 +231,11 @@ async fn audit_log_append_and_filter() {
 
     let by_entry = repo.audit_by_entry(&entry_id, 10).await.unwrap();
     assert_eq!(by_entry.len(), 2);
-    assert!(by_entry
-        .iter()
-        .all(|e| e.entry_id.as_ref() == Some(&entry_id)));
+    assert!(
+        by_entry
+            .iter()
+            .all(|e| e.entry_id.as_ref() == Some(&entry_id))
+    );
 
     let cutoff = chrono::DateTime::parse_from_rfc3339("2099-01-01T00:00:00+00:00")
         .unwrap()

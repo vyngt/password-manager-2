@@ -67,12 +67,12 @@ impl VaultId {
         Self(path.into())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn path(&self) -> &std::path::Path {
         &self.0
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn into_path(self) -> PathBuf {
         self.0
     }

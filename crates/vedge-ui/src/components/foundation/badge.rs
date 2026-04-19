@@ -17,7 +17,11 @@ pub fn Badge(
         variant.badge_class(),
         size.badge_class(),
         shape.badge_class(),
-        if is_dot { "badge--solid" } else { appearance.badge_class() },
+        if is_dot {
+            "badge--solid"
+        } else {
+            appearance.badge_class()
+        },
         class,
     ]
     .join(" ");

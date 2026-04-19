@@ -4,9 +4,9 @@ use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
+use vedge_ui::components::Tooltip;
 use vedge_ui::components::icon::VEdge;
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::components::Tooltip;
 use vedge_ui::primitives::tokens::{Placement, Shape, Size, Variant};
 use vedge_ui::theme::{ThemeState, compute_primary_foreground};
 

@@ -18,7 +18,7 @@
 use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, EntryId};
+use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::crypto_constants::NONCE_LEN;
 use crate::domain::vault::entities::{AuditAction, EntryRow};

@@ -7,7 +7,7 @@ use tracing::instrument;
 use crate::application::app::ports::KnownDeviceRepository;
 use crate::domain::app::entities::KnownDevice;
 use crate::domain::app::errors::AppDbError;
-use crate::domain::shared::{now, DeviceId};
+use crate::domain::shared::{DeviceId, now};
 
 #[instrument(skip_all)]
 pub async fn list_known_devices(

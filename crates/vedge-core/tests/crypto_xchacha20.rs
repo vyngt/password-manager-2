@@ -52,7 +52,9 @@ fn decrypt_with_wrong_dek_fails() {
 fn decrypt_with_wrong_aad_fails() {
     let p = provider();
     let (nonce, ct) = p.encrypt_entry(&dek_a(), b"secret", b"aad-a").unwrap();
-    let err = p.decrypt_entry(&dek_a(), &nonce, &ct, b"aad-b").unwrap_err();
+    let err = p
+        .decrypt_entry(&dek_a(), &nonce, &ct, b"aad-b")
+        .unwrap_err();
     assert!(matches!(err, VaultError::DecryptionFailed));
 }
 
@@ -68,7 +70,9 @@ fn decrypt_with_tampered_ciphertext_fails() {
 #[test]
 fn tag_round_trip_under_kek() {
     let p = provider();
-    let (nonce, ct) = p.encrypt_tag(&kek_a(), b"{\"name\":\"aws\"}", b"tag-aad").unwrap();
+    let (nonce, ct) = p
+        .encrypt_tag(&kek_a(), b"{\"name\":\"aws\"}", b"tag-aad")
+        .unwrap();
     let pt = p.decrypt_tag(&kek_a(), &nonce, &ct, b"tag-aad").unwrap();
     assert_eq!(&*pt, b"{\"name\":\"aws\"}");
 }

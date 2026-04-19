@@ -23,7 +23,7 @@ use vedge_core::domain::vault::payloads::{
     EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload, NotePayload, SshKeyPayload,
 };
 
-use crate::dto::common::{b64_decode_fixed, b64_encode, ts_to_string, CommonMetaDto, EntryTypeDto};
+use crate::dto::common::{CommonMetaDto, EntryTypeDto, b64_decode_fixed, b64_encode, ts_to_string};
 use crate::error::CommandError;
 
 // ---- IndexEntryDto -----------------------------------------------------------
@@ -477,7 +477,9 @@ mod tests {
         });
         let dto = PayloadDto::from_domain(&p).unwrap();
         let back = dto.into_domain().unwrap();
-        let EntryPayload::Login(b) = back else { panic!("wrong variant") };
+        let EntryPayload::Login(b) = back else {
+            panic!("wrong variant")
+        };
         assert_eq!(b.username, "alice");
         assert_eq!(b.password.expose_secret(), "hunter2");
         assert_eq!(b.totp_secret.unwrap().expose_secret(), "JBSWY3DPEHPK3PXP");
@@ -496,7 +498,9 @@ mod tests {
         });
         let dto = PayloadDto::from_domain(&p).unwrap();
         let back = dto.into_domain().unwrap();
-        let EntryPayload::Document(b) = back else { panic!("wrong variant") };
+        let EntryPayload::Document(b) = back else {
+            panic!("wrong variant")
+        };
         assert_eq!(b.blob_nonce, nonce);
         assert_eq!(b.filename, "a.pdf");
         assert_eq!(b.size_bytes, 12_345);

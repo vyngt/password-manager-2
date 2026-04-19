@@ -17,7 +17,7 @@ use tracing::instrument;
 
 use vedge_core::application::vault::ports::KeychainProvider;
 use vedge_core::domain::shared::VaultId;
-use vedge_core::{export_emergency_kit as core_export, ExportEmergencyKitInput};
+use vedge_core::{ExportEmergencyKitInput, export_emergency_kit as core_export};
 
 use crate::dto::emergency_kit::EmergencyKitDto;
 use crate::error::CommandError;
@@ -28,10 +28,7 @@ fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
 }
 
-async fn resolve_display_name(
-    state: &AppState,
-    vault_path: &str,
-) -> Option<String> {
+async fn resolve_display_name(state: &AppState, vault_path: &str) -> Option<String> {
     // `list_recent_vaults` is cheap; the recent-vault table is tiny.
     let recents = state.recent_vaults.list().await.ok()?;
     recents

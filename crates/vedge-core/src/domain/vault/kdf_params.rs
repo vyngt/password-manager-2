@@ -10,7 +10,7 @@ pub struct KdfParams {
 }
 
 impl KdfParams {
-    #[must_use] 
+    #[must_use]
     pub fn argon2id_default() -> Self {
         Self {
             alg: "argon2id".to_owned(),

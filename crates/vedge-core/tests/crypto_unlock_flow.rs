@@ -74,7 +74,9 @@ fn wrong_password_produces_different_verify_hash() {
     let secret_key = [0u8; SECRET_KEY_LEN];
     let vault_salt = [0u8; VAULT_SALT_LEN];
 
-    let input_ok = *kdf.preprocess_2skd(b"correct password", &secret_key).unwrap();
+    let input_ok = *kdf
+        .preprocess_2skd(b"correct password", &secret_key)
+        .unwrap();
     let mk_ok = kdf
         .derive_master_key(&input_ok, &vault_salt, &fast_params())
         .unwrap();
@@ -127,6 +129,8 @@ fn version_bump_invalidates_old_ciphertext() {
     let aad_v2 = entry_aad(&id, 2).unwrap();
 
     let (nonce, ct) = crypto.encrypt_entry(&dek, b"v1", &aad_v1).unwrap();
-    let err = crypto.decrypt_entry(&dek, &nonce, &ct, &aad_v2).unwrap_err();
+    let err = crypto
+        .decrypt_entry(&dek, &nonce, &ct, &aad_v2)
+        .unwrap_err();
     assert!(matches!(err, VaultError::DecryptionFailed));
 }

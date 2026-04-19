@@ -1,3 +1,4 @@
+use super::color_picker::ColorPickerPage;
 use super::layout::PlaygroundLayout;
 use super::pg_avatar::AvatarPage;
 use super::pg_badge::BadgePage;
@@ -22,15 +23,14 @@ use super::pg_segmented_control::SegmentedControlPage;
 use super::pg_select::SelectPage;
 use super::pg_separator::SeparatorPage;
 use super::pg_slider::SliderPage;
+use super::pg_spinner::SpinnerPage;
+use super::pg_step_indicator::StepIndicatorPage;
 use super::pg_textarea::TextareaPage;
 use super::pg_time_picker::TimePickerPage;
 use super::pg_toast::ToastPage;
-use super::pg_spinner::SpinnerPage;
-use super::pg_step_indicator::StepIndicatorPage;
 use super::pg_toggle::TogglePage;
 use super::pg_tooltip::TooltipPage;
 use super::theme::ThemePage;
-use super::color_picker::ColorPickerPage;
 use leptos::prelude::*;
 use leptos_router::{MatchNestedRoutes, components::*, path};
 

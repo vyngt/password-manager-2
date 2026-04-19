@@ -53,7 +53,10 @@ fn login_round_trip() {
     };
     assert_eq!(l.username, "alice");
     assert_eq!(l.password.expose_secret(), "hunter2");
-    assert_eq!(l.totp_secret.as_ref().unwrap().expose_secret(), "JBSWY3DPEHPK3PXP");
+    assert_eq!(
+        l.totp_secret.as_ref().unwrap().expose_secret(),
+        "JBSWY3DPEHPK3PXP"
+    );
     assert_eq!(l.recovery_codes.len(), 2);
     assert_eq!(l.recovery_codes[0].expose_secret(), "code-1");
 }
@@ -86,8 +89,13 @@ fn ssh_key_round_trip() {
         fingerprint: "SHA256:...".into(),
         key_type: "ed25519".into(),
     }));
-    let EntryPayload::SshKey(k) = out else { panic!() };
-    assert_eq!(k.private_key_pem.expose_secret(), "-----BEGIN KEY-----\nabc\n-----END KEY-----");
+    let EntryPayload::SshKey(k) = out else {
+        panic!()
+    };
+    assert_eq!(
+        k.private_key_pem.expose_secret(),
+        "-----BEGIN KEY-----\nabc\n-----END KEY-----"
+    );
     assert_eq!(k.passphrase.as_ref().unwrap().expose_secret(), "phrase");
     assert_eq!(k.public_key, "ssh-ed25519 AAAA");
 }
@@ -102,7 +110,9 @@ fn api_key_round_trip() {
         expiry: None,
         key_type: Some("Bearer".into()),
     }));
-    let EntryPayload::ApiKey(a) = out else { panic!() };
+    let EntryPayload::ApiKey(a) = out else {
+        panic!()
+    };
     assert_eq!(a.key.expose_secret(), "AKIA...");
     assert_eq!(a.secret.as_ref().unwrap().expose_secret(), "secret...");
     assert_eq!(a.key_type.as_deref(), Some("Bearer"));
@@ -113,11 +123,19 @@ fn env_vars_round_trip() {
     let out = roundtrip_entry(EntryPayload::EnvVars(EnvVarsPayload {
         meta: simple_meta("staging", EntryType::EnvVars),
         vars: vec![
-            EnvVar { key: "A".into(), value: SecretString::from("1") },
-            EnvVar { key: "B".into(), value: SecretString::from("2") },
+            EnvVar {
+                key: "A".into(),
+                value: SecretString::from("1"),
+            },
+            EnvVar {
+                key: "B".into(),
+                value: SecretString::from("2"),
+            },
         ],
     }));
-    let EntryPayload::EnvVars(e) = out else { panic!() };
+    let EntryPayload::EnvVars(e) = out else {
+        panic!()
+    };
     assert_eq!(e.vars.len(), 2);
     assert_eq!(e.vars[0].key, "A");
     assert_eq!(e.vars[0].value.expose_secret(), "1");
@@ -144,7 +162,9 @@ fn document_round_trip_preserves_blob_nonce_bytes() {
         size_bytes: 102_400,
         blob_nonce: nonce,
     }));
-    let EntryPayload::Document(d) = out else { panic!() };
+    let EntryPayload::Document(d) = out else {
+        panic!()
+    };
     assert_eq!(d.blob_nonce, nonce);
     assert_eq!(d.size_bytes, 102_400);
 }
@@ -168,7 +188,9 @@ fn identity_round_trip() {
         date_of_birth: Some("1990-01-15".into()),
         national_id: Some(SecretString::from("CCCD-1234")),
     }));
-    let EntryPayload::Identity(i) = out else { panic!() };
+    let EntryPayload::Identity(i) = out else {
+        panic!()
+    };
     assert_eq!(i.first_name, "Alice");
     assert_eq!(i.address.as_ref().unwrap().country, "VN");
     assert_eq!(i.national_id.as_ref().unwrap().expose_secret(), "CCCD-1234");
@@ -179,7 +201,9 @@ fn folder_round_trip() {
     let out = roundtrip_entry(EntryPayload::Folder(FolderPayload {
         meta: simple_meta("Work", EntryType::Folder),
     }));
-    let EntryPayload::Folder(f) = out else { panic!() };
+    let EntryPayload::Folder(f) = out else {
+        panic!()
+    };
     assert_eq!(f.meta.name, "Work");
 }
 
@@ -191,7 +215,11 @@ fn tag_round_trip_under_kek() {
     let id = TagId::new();
     let aad = tag_aad(&id).unwrap();
 
-    let tag = TagPayload { name: "github".into(), color: Some("#1D9E75".into()), sort_order: 3 };
+    let tag = TagPayload {
+        name: "github".into(),
+        color: Some("#1D9E75".into()),
+        sort_order: 3,
+    };
     let bytes = serde_json::to_vec(&tag).unwrap();
     let (nonce, ct) = crypto.encrypt_tag(&kek, &bytes, &aad).unwrap();
     let pt = crypto.decrypt_tag(&kek, &nonce, &ct, &aad).unwrap();

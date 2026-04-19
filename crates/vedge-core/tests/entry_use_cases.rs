@@ -9,14 +9,14 @@
 
 mod common;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use secrecy::SecretString;
 
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    create_entry, hard_delete_entry, restore_entry, soft_delete_entry, update_entry,
-    CreateEntryInput, UnlockVaultInput, UpdateEntryInput,
+    CreateEntryInput, UnlockVaultInput, UpdateEntryInput, create_entry, hard_delete_entry,
+    restore_entry, soft_delete_entry, update_entry,
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::errors::VaultError;
@@ -65,9 +65,14 @@ async fn create_then_index_reflects() {
     let h = Harness::fresh().await;
     let mut session = unlock(&h).await;
 
-    let out = create_entry(&mut session, CreateEntryInput { payload: login_payload("gh", "pw") })
-        .await
-        .unwrap();
+    let out = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login_payload("gh", "pw"),
+        },
+    )
+    .await
+    .unwrap();
 
     let fetched = session.index().entries.get(&out.entry_id).unwrap();
     assert_eq!(fetched.name, "gh");
@@ -102,7 +107,10 @@ async fn update_bumps_version_and_refreshes_nonce() {
 
     let row_v2 = h.repo.get_entry(&id).await.unwrap();
     assert_eq!(row_v2.version, 2);
-    assert_ne!(row_v1.nonce, row_v2.nonce, "nonce must rotate on every write");
+    assert_ne!(
+        row_v1.nonce, row_v2.nonce,
+        "nonce must rotate on every write"
+    );
     assert_ne!(row_v1.ciphertext, row_v2.ciphertext);
     // DEK is stable across updates — the wrapped blob is the same.
     assert_eq!(row_v1.dek_wrapped, row_v2.dek_wrapped);
@@ -155,11 +163,15 @@ async fn hard_delete_removes_from_db_and_index() {
 async fn hard_delete_folder_with_children_is_refused() {
     let h = Harness::fresh().await;
     let mut session = unlock(&h).await;
-    let folder_id =
-        create_entry(&mut session, CreateEntryInput { payload: folder_payload("Work") })
-            .await
-            .unwrap()
-            .entry_id;
+    let folder_id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: folder_payload("Work"),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
     let _ = create_entry(
         &mut session,
         CreateEntryInput {
@@ -169,7 +181,9 @@ async fn hard_delete_folder_with_children_is_refused() {
     .await
     .unwrap();
 
-    let err = hard_delete_entry(&mut session, &folder_id).await.unwrap_err();
+    let err = hard_delete_entry(&mut session, &folder_id)
+        .await
+        .unwrap_err();
     assert!(matches!(err, VaultError::FolderNotEmpty));
 }
 

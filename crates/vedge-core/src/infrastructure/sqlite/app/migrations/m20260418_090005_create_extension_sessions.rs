@@ -24,7 +24,11 @@ impl MigrationTrait for Migration {
                             .blob()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ExtensionSessions::CreatedAt).text().not_null())
+                    .col(
+                        ColumnDef::new(ExtensionSessions::CreatedAt)
+                            .text()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ExtensionSessions::LastActiveAt).text())
                     .to_owned(),
             )

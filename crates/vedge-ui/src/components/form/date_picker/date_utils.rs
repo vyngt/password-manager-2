@@ -25,9 +25,7 @@ pub fn build_month_grid(year: i32, month: u32, first_dow: u32) -> Vec<NaiveDate>
     let lead = (first_weekday + 7 - first_dow) % 7;
     let start = first_of_month - chrono::Duration::days(lead as i64);
 
-    (0..42)
-        .map(|i| start + chrono::Duration::days(i))
-        .collect()
+    (0..42).map(|i| start + chrono::Duration::days(i)).collect()
 }
 
 pub fn is_disabled(

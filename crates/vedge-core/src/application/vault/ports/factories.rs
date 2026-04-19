@@ -24,10 +24,7 @@ use crate::domain::vault::errors::VaultError;
 /// DB connection; dropping it closes the connection.
 #[async_trait]
 pub trait VaultRepositoryFactory: Send + Sync {
-    async fn open(
-        &self,
-        vault_path: &Path,
-    ) -> Result<Arc<dyn VaultRepository>, VaultError>;
+    async fn open(&self, vault_path: &Path) -> Result<Arc<dyn VaultRepository>, VaultError>;
 }
 
 /// Construct the blob-store sidecar for a vault file. Infallible at

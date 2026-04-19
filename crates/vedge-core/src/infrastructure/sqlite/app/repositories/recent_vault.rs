@@ -8,12 +8,8 @@ use crate::application::app::ports::RecentVaultRepository;
 use crate::domain::app::entities::RecentVault;
 use crate::domain::app::errors::AppDbError;
 use crate::domain::shared::{StorageError, Timestamp};
-use crate::infrastructure::sqlite::app::entities::recent_vault::{
-    ActiveModel, Column, Entity,
-};
-use crate::infrastructure::sqlite::app::mappers::recent_vault::{
-    domain_to_model, model_to_domain,
-};
+use crate::infrastructure::sqlite::app::entities::recent_vault::{ActiveModel, Column, Entity};
+use crate::infrastructure::sqlite::app::mappers::recent_vault::{domain_to_model, model_to_domain};
 use crate::infrastructure::sqlite::app::mappers::ts_to_string;
 
 pub struct SqliteRecentVaultRepository {
@@ -21,7 +17,7 @@ pub struct SqliteRecentVaultRepository {
 }
 
 impl SqliteRecentVaultRepository {
-    #[must_use] 
+    #[must_use]
     pub const fn new(conn: Arc<DatabaseConnection>) -> Self {
         Self { conn }
     }
@@ -35,7 +31,10 @@ fn db_err(e: sea_orm::DbErr) -> AppDbError {
 #[async_trait]
 impl RecentVaultRepository for SqliteRecentVaultRepository {
     async fn list(&self) -> Result<Vec<RecentVault>, AppDbError> {
-        let rows = Entity::find().all(self.conn.as_ref()).await.map_err(db_err)?;
+        let rows = Entity::find()
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
         rows.into_iter()
             .map(|m| model_to_domain(m).map_err(AppDbError::from))
             .collect()
@@ -99,4 +98,3 @@ impl RecentVaultRepository for SqliteRecentVaultRepository {
         Ok(())
     }
 }
-

@@ -13,13 +13,11 @@ use serde_json::json;
 use tempfile::tempdir;
 
 use vedge_core::application::app::ports::{
-    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository,
-    RecentVaultRepository, ThemeRepository,
+    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, RecentVaultRepository,
+    ThemeRepository,
 };
-use vedge_core::domain::app::entities::{
-    ExtensionSession, KnownDevice, RecentVault, Theme,
-};
-use vedge_core::domain::shared::{now, DeviceId, SessionId, ThemeId};
+use vedge_core::domain::app::entities::{ExtensionSession, KnownDevice, RecentVault, Theme};
+use vedge_core::domain::shared::{DeviceId, SessionId, ThemeId, now};
 use vedge_core::infrastructure::sqlite::app::{
     AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
     SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
@@ -84,13 +82,9 @@ async fn app_settings_store_json_round_trip() {
     repo.set("ui.theme_id", json!("builtin-light"), now())
         .await
         .unwrap();
-    repo.set(
-        "clipboard.clear_seconds",
-        json!(30),
-        now(),
-    )
-    .await
-    .unwrap();
+    repo.set("clipboard.clear_seconds", json!(30), now())
+        .await
+        .unwrap();
 
     let theme = repo.get("ui.theme_id").await.unwrap().unwrap();
     assert_eq!(theme.value, json!("builtin-light"));
@@ -124,7 +118,9 @@ async fn known_device_blob_round_trip() {
     assert_eq!(fetched.public_key, [7u8; 32]);
     assert_eq!(fetched.display_name, "Laptop");
 
-    repo.touch_last_seen(&device.device_id, now()).await.unwrap();
+    repo.touch_last_seen(&device.device_id, now())
+        .await
+        .unwrap();
     let fetched = &repo.list().await.unwrap()[0];
     assert!(fetched.last_seen.is_some());
 }

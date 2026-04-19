@@ -1,10 +1,10 @@
 use leptos::prelude::*;
+use vedge_ui::components::Input;
 use vedge_ui::components::button::Button;
 use vedge_ui::components::feedback::dialog::{
     Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle,
 };
 use vedge_ui::components::form::label::Label;
-use vedge_ui::components::Input;
 use vedge_ui::primitives::tokens::{DialogSize, Variant};
 
 use super::common::Section;

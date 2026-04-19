@@ -3,4 +3,4 @@
 
 pub mod services;
 
-pub use services::{compose, ComposeError};
+pub use services::{ComposeError, compose};

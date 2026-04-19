@@ -25,7 +25,11 @@ impl SegmentOption {
         }
     }
 
-    pub fn icon(value: impl Into<String>, icon: icondata_core::Icon, aria_label: impl Into<String>) -> Self {
+    pub fn icon(
+        value: impl Into<String>,
+        icon: icondata_core::Icon,
+        aria_label: impl Into<String>,
+    ) -> Self {
         Self {
             value: value.into(),
             label: None,
@@ -62,9 +66,7 @@ pub fn SegmentedControl(
 ) -> impl IntoView {
     #[cfg(debug_assertions)]
     if size == Size::Lg {
-        web_sys::console::warn_1(
-            &"SegmentedControl: Size::Lg is not supported. Using Md.".into(),
-        );
+        web_sys::console::warn_1(&"SegmentedControl: Size::Lg is not supported. Using Md.".into());
     }
 
     let option_count = options.len();

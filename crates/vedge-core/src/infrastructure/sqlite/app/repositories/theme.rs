@@ -16,7 +16,7 @@ pub struct SqliteThemeRepository {
 }
 
 impl SqliteThemeRepository {
-    #[must_use] 
+    #[must_use]
     pub const fn new(conn: Arc<DatabaseConnection>) -> Self {
         Self { conn }
     }
@@ -30,7 +30,10 @@ fn db_err(e: sea_orm::DbErr) -> AppDbError {
 #[async_trait]
 impl ThemeRepository for SqliteThemeRepository {
     async fn list(&self) -> Result<Vec<Theme>, AppDbError> {
-        let rows = Entity::find().all(self.conn.as_ref()).await.map_err(db_err)?;
+        let rows = Entity::find()
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
         rows.into_iter()
             .map(|m| model_to_domain(m).map_err(AppDbError::from))
             .collect()

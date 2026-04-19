@@ -6,7 +6,6 @@ use leptos::prelude::*;
 use leptos_icons::Icon;
 use std::time::Duration;
 
-
 #[component]
 pub fn ToastItem(toast: ToastData) -> impl IntoView {
     let state = expect_context::<ToastState>();

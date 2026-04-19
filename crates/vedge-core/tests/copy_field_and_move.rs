@@ -11,14 +11,14 @@ mod common;
 
 use std::time::Duration;
 
-use common::{build_unlock, Harness};
+use common::{Harness, build_unlock};
 use secrecy::SecretString;
 
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    copy_field, create_entry, move_entry, CopyFieldInput, CreateEntryInput, FieldSelector,
-    UnlockVaultInput,
+    CopyFieldInput, CreateEntryInput, FieldSelector, UnlockVaultInput, copy_field, create_entry,
+    move_entry,
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::errors::VaultError;
@@ -197,19 +197,15 @@ async fn move_entry_updates_folder_and_bumps_version() {
     let v1 = h.repo.get_entry(&id).await.unwrap();
     assert_eq!(v1.version, 1);
 
-    move_entry(&mut session, &id, Some(&folder_id)).await.unwrap();
+    move_entry(&mut session, &id, Some(&folder_id))
+        .await
+        .unwrap();
 
     let v2 = h.repo.get_entry(&id).await.unwrap();
     assert_eq!(v2.version, 2);
     assert_ne!(v1.nonce, v2.nonce);
     assert_eq!(
-        session
-            .index()
-            .entries
-            .get(&id)
-            .unwrap()
-            .folder_id
-            .as_ref(),
+        session.index().entries.get(&id).unwrap().folder_id.as_ref(),
         Some(&folder_id)
     );
 }
@@ -259,7 +255,17 @@ async fn move_entry_to_root_clears_folder() {
     .await
     .unwrap()
     .entry_id;
-    move_entry(&mut session, &id, Some(&folder_id)).await.unwrap();
+    move_entry(&mut session, &id, Some(&folder_id))
+        .await
+        .unwrap();
     move_entry(&mut session, &id, None).await.unwrap();
-    assert!(session.index().entries.get(&id).unwrap().folder_id.is_none());
+    assert!(
+        session
+            .index()
+            .entries
+            .get(&id)
+            .unwrap()
+            .folder_id
+            .is_none()
+    );
 }

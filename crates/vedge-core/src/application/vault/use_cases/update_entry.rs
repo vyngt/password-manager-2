@@ -16,7 +16,7 @@
 use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, EntryId};
+use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
@@ -73,8 +73,7 @@ pub async fn update_entry(
     row.updated_at = when;
     session.repo.update_entry(&row).await?;
 
-    super::create_entry::append_audit(session, AuditAction::Updated, Some(&input.entry_id))
-        .await?;
+    super::create_entry::append_audit(session, AuditAction::Updated, Some(&input.entry_id)).await?;
 
     let index_entry = IndexEntry::from_payload(&new_payload, &row);
     session.index.update_entry(index_entry);

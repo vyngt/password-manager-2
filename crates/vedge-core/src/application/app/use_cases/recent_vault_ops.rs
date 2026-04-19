@@ -14,7 +14,7 @@ use tracing::instrument;
 use crate::application::app::ports::RecentVaultRepository;
 use crate::domain::app::entities::RecentVault;
 use crate::domain::app::errors::AppDbError;
-use crate::domain::shared::{now, StorageError};
+use crate::domain::shared::{StorageError, now};
 
 /// First 16 bytes of every `SQLite` 3 database. Used as a cheap
 /// pre-flight check when adding a vault to the recents list — full
@@ -169,10 +169,7 @@ pub async fn add_recent_vault(
 /// `upsert` one at a time — if the process crashes mid-flow the
 /// ordering may be non-contiguous but no data is lost.
 #[instrument(skip_all, fields(id = %id))]
-pub async fn touch_on_unlock(
-    repo: &dyn RecentVaultRepository,
-    id: &str,
-) -> Result<(), AppDbError> {
+pub async fn touch_on_unlock(repo: &dyn RecentVaultRepository, id: &str) -> Result<(), AppDbError> {
     let mut rows = repo.list().await?;
 
     // Locate target + confirm it exists.
@@ -188,9 +185,7 @@ pub async fn touch_on_unlock(
     // 2. Resort: target → 0; everyone else gets shifted in their
     // existing relative order. Skip the reshuffle if target already has
     // sort_order == 0 AND no other row shares that slot.
-    let already_top = rows
-        .get(target_idx)
-        .is_some_and(|r| r.sort_order == 0)
+    let already_top = rows.get(target_idx).is_some_and(|r| r.sort_order == 0)
         && rows.iter().filter(|r| r.sort_order == 0).count() == 1;
     if already_top {
         return Ok(());
@@ -220,9 +215,7 @@ pub async fn touch_on_unlock(
 /// regular file. Returns the count of removed rows so the UI can show a
 /// "cleaned up N entries" toast.
 #[instrument(skip_all)]
-pub async fn remove_stale_recents(
-    repo: &dyn RecentVaultRepository,
-) -> Result<u64, AppDbError> {
+pub async fn remove_stale_recents(repo: &dyn RecentVaultRepository) -> Result<u64, AppDbError> {
     let rows = repo.list().await?;
     let mut removed: u64 = 0;
     for row in rows {
@@ -490,13 +483,7 @@ mod tests {
         let real = dir.path().join("real.vdb");
         std::fs::write(&real, b"x").unwrap();
         seed(&*repo, "real", real, 0).await;
-        seed(
-            &*repo,
-            "ghost",
-            std::path::PathBuf::from("/nope.vdb"),
-            1,
-        )
-        .await;
+        seed(&*repo, "ghost", std::path::PathBuf::from("/nope.vdb"), 1).await;
 
         let n = remove_stale_recents(&*repo).await.unwrap();
         assert_eq!(n, 1);

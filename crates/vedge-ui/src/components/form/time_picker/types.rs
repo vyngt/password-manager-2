@@ -52,11 +52,7 @@ pub fn to_12h(hours: u8) -> (u8, bool) {
 
 pub fn from_12h(hours_12: u8, is_pm: bool) -> u8 {
     let base = if hours_12 == 12 { 0 } else { hours_12 };
-    if is_pm {
-        base + 12
-    } else {
-        base
-    }
+    if is_pm { base + 12 } else { base }
 }
 
 pub fn is_before(a: TimeValue, b: TimeValue) -> bool {
@@ -80,11 +76,7 @@ pub fn h24_hours_first_digit(d: u8) -> DigitOutcome {
 
 pub fn h24_hours_second_digit(first: u8, d: u8) -> u8 {
     let combined = first * 10 + d;
-    if combined <= 23 {
-        combined
-    } else {
-        d
-    }
+    if combined <= 23 { combined } else { d }
 }
 
 pub fn h12_hours_first_digit(d: u8) -> DigitOutcome {
@@ -116,9 +108,5 @@ pub fn minutes_first_digit(d: u8) -> DigitOutcome {
 
 pub fn minutes_second_digit(first: u8, d: u8) -> u8 {
     let combined = first * 10 + d;
-    if combined <= 59 {
-        combined
-    } else {
-        d
-    }
+    if combined <= 59 { combined } else { d }
 }

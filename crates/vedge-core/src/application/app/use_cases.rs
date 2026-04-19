@@ -22,12 +22,12 @@ pub use known_device_ops::{
     delete_known_device, list_known_devices, touch_known_device_last_seen, upsert_known_device,
 };
 pub use recent_vault_ops::{
-    add_recent_vault, list_recent_vaults, list_recent_vaults_with_status,
-    remove_recent_vault, remove_stale_recents, touch_on_unlock, touch_recent_vault,
-    AddRecentVaultInput, RecentVaultStatus, SQLITE_MAGIC,
+    AddRecentVaultInput, RecentVaultStatus, SQLITE_MAGIC, add_recent_vault, list_recent_vaults,
+    list_recent_vaults_with_status, remove_recent_vault, remove_stale_recents, touch_on_unlock,
+    touch_recent_vault,
 };
 pub use theme_ops::{
+    ACTIVE_THEME_SETTING_KEY, CreateCustomThemeInput, DEFAULT_THEME_ID, UpdateCustomThemeInput,
     create_custom_theme, delete_custom_theme, duplicate_theme, get_theme, list_themes,
     resolve_active_theme, set_active_theme, update_custom_theme, validate_hex_color,
-    CreateCustomThemeInput, UpdateCustomThemeInput, ACTIVE_THEME_SETTING_KEY, DEFAULT_THEME_ID,
 };

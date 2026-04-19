@@ -13,7 +13,7 @@ pub struct OsKeychainProvider {
 }
 
 impl OsKeychainProvider {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             service: DEFAULT_SERVICE.to_owned(),

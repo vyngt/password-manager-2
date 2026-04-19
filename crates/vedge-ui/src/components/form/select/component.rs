@@ -1,9 +1,9 @@
-use super::types::{flatten_options, SelectItem};
+use super::types::{SelectItem, flatten_options};
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Status};
 use leptos::prelude::*;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 use wasm_bindgen::JsCast;
 
@@ -158,7 +158,9 @@ pub fn Select(
             return None;
         }
         let flat = flat_options.get_value();
-        flat.iter().find(|o| o.value == sel).map(|o| o.label.clone())
+        flat.iter()
+            .find(|o| o.value == sel)
+            .map(|o| o.label.clone())
     };
 
     let is_open = move || mounted.get();
@@ -169,7 +171,11 @@ pub fn Select(
             "select-trigger",
             size.select_trigger_class(),
             status.select_trigger_class(),
-            if is_open() { "select-trigger--open" } else { "" },
+            if is_open() {
+                "select-trigger--open"
+            } else {
+                ""
+            },
             if disabled {
                 "select-trigger--disabled"
             } else {
@@ -181,16 +187,14 @@ pub fn Select(
     };
 
     // ---- Trigger keyboard ----
-    let handle_trigger_keydown = move |ev: web_sys::KeyboardEvent| {
-        match ev.key().as_str() {
-            "Enter" | " " | "ArrowDown" | "ArrowUp" => {
-                ev.prevent_default();
-                if !mounted.get_untracked() {
-                    do_open.run(());
-                }
+    let handle_trigger_keydown = move |ev: web_sys::KeyboardEvent| match ev.key().as_str() {
+        "Enter" | " " | "ArrowDown" | "ArrowUp" => {
+            ev.prevent_default();
+            if !mounted.get_untracked() {
+                do_open.run(());
             }
-            _ => {}
         }
+        _ => {}
     };
 
     // ---- Panel keyboard ----
@@ -493,10 +497,7 @@ fn render_option(
     }
 }
 
-fn scroll_option_into_view(
-    panel_ref: NodeRef<leptos::html::Div>,
-    idx: usize,
-) {
+fn scroll_option_into_view(panel_ref: NodeRef<leptos::html::Div>, idx: usize) {
     if let Some(panel) = panel_ref.get() {
         let raw: &web_sys::HtmlElement = &panel;
         if let Ok(list) = raw.query_selector_all("[role=\"option\"]") {

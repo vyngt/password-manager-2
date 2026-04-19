@@ -85,7 +85,7 @@ impl<T: Copy + Default + Zeroize + Unpin> SecretMem<T> {
     }
 
     /// Borrow the protected value.
-    #[must_use] 
+    #[must_use]
     pub fn expose(&self) -> &T {
         &self.inner.value
     }

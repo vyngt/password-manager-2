@@ -7,8 +7,8 @@ use chrono::{Datelike, NaiveDate};
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
 #[component]
@@ -180,8 +180,10 @@ pub fn DatePicker(
                 let interim = interim_start.get_untracked();
                 match interim {
                     None => {
-                        let new_val =
-                            DatePickerValue::Range(DateRange { start: Some(date), end: None });
+                        let new_val = DatePickerValue::Range(DateRange {
+                            start: Some(date),
+                            end: None,
+                        });
                         interim_start.set(Some(date));
                         internal.set(new_val);
                         if let Some(cb) = on_change {
@@ -225,8 +227,16 @@ pub fn DatePicker(
             "datepicker-trigger",
             size.date_picker_trigger_class(),
             status.date_picker_trigger_class(),
-            if is_open() { "datepicker-trigger--open" } else { "" },
-            if disabled { "datepicker-trigger--disabled" } else { "" },
+            if is_open() {
+                "datepicker-trigger--open"
+            } else {
+                ""
+            },
+            if disabled {
+                "datepicker-trigger--disabled"
+            } else {
+                ""
+            },
             class,
         ]
         .join(" ")
@@ -237,15 +247,17 @@ pub fn DatePicker(
         match effective.get() {
             DatePickerValue::Single(Some(d)) => Some(format_trigger_date(d, &loc)),
             DatePickerValue::Range(DateRange {
-                start: Some(s), end: Some(e),
+                start: Some(s),
+                end: Some(e),
             }) => Some(format!(
                 "{} – {}",
                 format_trigger_date(s, &loc),
                 format_trigger_date(e, &loc)
             )),
-            DatePickerValue::Range(DateRange { start: Some(s), end: None }) => {
-                Some(format_trigger_date(s, &loc))
-            }
+            DatePickerValue::Range(DateRange {
+                start: Some(s),
+                end: None,
+            }) => Some(format_trigger_date(s, &loc)),
             DatePickerValue::Month(Some(ym)) => {
                 Some(super::locale::format_month_year(ym.year, ym.month, &loc))
             }
@@ -259,21 +271,26 @@ pub fn DatePicker(
             .unwrap_or_else(|| "Select date".to_string())
     };
 
-    let handle_trigger_keydown = move |ev: web_sys::KeyboardEvent| {
-        match ev.key().as_str() {
-            "Enter" | " " | "ArrowDown" => {
-                ev.prevent_default();
-                if !mounted.get_untracked() {
-                    do_open.run(());
-                }
+    let handle_trigger_keydown = move |ev: web_sys::KeyboardEvent| match ev.key().as_str() {
+        "Enter" | " " | "ArrowDown" => {
+            ev.prevent_default();
+            if !mounted.get_untracked() {
+                do_open.run(());
             }
-            _ => {}
         }
+        _ => {}
     };
 
-    let aria_invalid = if status == Status::Error { Some("true") } else { None };
-    let aria_describedby_attr =
-        if aria_describedby.is_empty() { None } else { Some(aria_describedby) };
+    let aria_invalid = if status == Status::Error {
+        Some("true")
+    } else {
+        None
+    };
+    let aria_describedby_attr = if aria_describedby.is_empty() {
+        None
+    } else {
+        Some(aria_describedby)
+    };
 
     view! {
         <div style="position: relative; display: inline-block; width: 100%;">

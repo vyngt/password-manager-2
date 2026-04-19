@@ -22,7 +22,7 @@ use tauri::Manager;
 #[allow(
     clippy::too_many_lines,
     clippy::expect_used,
-    clippy::large_stack_frames,
+    clippy::large_stack_frames
 )]
 pub fn run() {
     let mut builder = tauri::Builder::default()

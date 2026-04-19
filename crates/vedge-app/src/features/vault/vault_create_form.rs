@@ -10,10 +10,7 @@ use vedge_ui::components::Input;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
 #[component]
-pub fn VaultCreateForm(
-    show: RwSignal<bool>,
-    on_created: Callback<VaultItem>,
-) -> impl IntoView {
+pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) -> impl IntoView {
     let i18n = use_i18n();
 
     let form_title = RwSignal::new(String::new());

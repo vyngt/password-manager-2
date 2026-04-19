@@ -83,12 +83,7 @@ pub fn StepIndicator(
 
     let is_vertical = variant == Orientation::Vertical;
 
-    let root_cls = [
-        "step-indicator",
-        variant.step_indicator_class(),
-        class,
-    ]
-    .join(" ");
+    let root_cls = ["step-indicator", variant.step_indicator_class(), class].join(" ");
 
     view! {
         <ol class=root_cls aria-label=move || text_or(aria_label, "Progress")>
@@ -197,8 +192,9 @@ fn StepItem(
             </span>
         }
         .into_any(),
-        StepState::Current | StepState::Upcoming => view! { <span aria-hidden="true">{step_number}</span> }
-        .into_any(),
+        StepState::Current | StepState::Upcoming => {
+            view! { <span aria-hidden="true">{step_number}</span> }.into_any()
+        }
     };
 
     // Horizontal: body = node + content below (label). Connector is sibling of body.

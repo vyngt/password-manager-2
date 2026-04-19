@@ -20,7 +20,7 @@ pub fn model_to_domain(model: Model) -> Result<Theme, StorageError> {
     })
 }
 
-#[must_use] 
+#[must_use]
 pub fn domain_to_model(theme: &Theme) -> Model {
     Model {
         id: theme.id.as_str().to_owned(),

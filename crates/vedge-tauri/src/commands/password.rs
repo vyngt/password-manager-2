@@ -16,7 +16,7 @@ use tracing::instrument;
 use zeroize::Zeroizing;
 
 use vedge_core::domain::shared::VaultId;
-use vedge_core::{change_password as change_password_core, ChangePasswordInput};
+use vedge_core::{ChangePasswordInput, change_password as change_password_core};
 
 use crate::dto::misc::ChangePasswordInputDto;
 use crate::error::CommandError;

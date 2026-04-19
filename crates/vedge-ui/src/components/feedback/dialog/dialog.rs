@@ -1,8 +1,8 @@
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::DialogSize;
 use leptos::prelude::*;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 use wasm_bindgen::JsCast;
 
@@ -40,8 +40,7 @@ pub fn Dialog(
     let enter_ver = Arc::new(AtomicU32::new(0));
     let exit_ver = Arc::new(AtomicU32::new(0));
 
-    let previously_focused: StoredValue<Option<web_sys::HtmlElement>> =
-        StoredValue::new(None);
+    let previously_focused: StoredValue<Option<web_sys::HtmlElement>> = StoredValue::new(None);
     let dialog_ref = NodeRef::<leptos::html::Div>::new();
     let children_stored = StoredValue::new(children);
 
@@ -230,7 +229,9 @@ fn trap_tab(ev: &web_sys::KeyboardEvent, dialog_ref: NodeRef<leptos::html::Div>)
         return;
     }
 
-    let first = list.item(0).and_then(|n| n.dyn_into::<web_sys::HtmlElement>().ok());
+    let first = list
+        .item(0)
+        .and_then(|n| n.dyn_into::<web_sys::HtmlElement>().ok());
     let last = list
         .item(len - 1)
         .and_then(|n| n.dyn_into::<web_sys::HtmlElement>().ok());
@@ -243,8 +244,10 @@ fn trap_tab(ev: &web_sys::KeyboardEvent, dialog_ref: NodeRef<leptos::html::Div>)
         js_sys::Object::is(a.as_ref(), b.as_ref())
     };
 
-    let is_first = matches!((active.as_ref(), first.as_ref()), (Some(a), Some(f)) if same_identity(a, f));
-    let is_last = matches!((active.as_ref(), last.as_ref()), (Some(a), Some(l)) if same_identity(a, l));
+    let is_first =
+        matches!((active.as_ref(), first.as_ref()), (Some(a), Some(f)) if same_identity(a, f));
+    let is_last =
+        matches!((active.as_ref(), last.as_ref()), (Some(a), Some(l)) if same_identity(a, l));
     let is_root = active
         .as_ref()
         .map(|a| js_sys::Object::is(a.as_ref(), el.as_ref()))

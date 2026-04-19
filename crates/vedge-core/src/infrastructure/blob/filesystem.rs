@@ -102,9 +102,7 @@ impl BlobStore for FilesystemBlobStore {
             f.write_all(&ciphertext)
                 .await
                 .map_err(|e| storage_io("write ciphertext", &e))?;
-            f.flush()
-                .await
-                .map_err(|e| storage_io("flush blob", &e))?;
+            f.flush().await.map_err(|e| storage_io("flush blob", &e))?;
             // `f` dropped here — handle closed before rename.
         }
 
@@ -145,7 +143,8 @@ impl BlobStore for FilesystemBlobStore {
             .map_err(|e| storage_io("read blob", &e))?;
 
         let aad = blob_aad(entry_id)?;
-        self.crypto.decrypt_entry(dek, blob_nonce, &ciphertext, &aad)
+        self.crypto
+            .decrypt_entry(dek, blob_nonce, &ciphertext, &aad)
     }
 
     #[instrument(skip_all, fields(entry_id = %entry_id))]

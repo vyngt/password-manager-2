@@ -15,8 +15,8 @@ use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::Mutex as AsyncMutex;
 
 use vedge_core::application::app::ports::{
-    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository,
-    RecentVaultRepository, ThemeRepository,
+    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, RecentVaultRepository,
+    ThemeRepository,
 };
 use vedge_core::application::vault::ports::{
     ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
@@ -178,8 +178,7 @@ mod tests {
         let unlock_vault = UnlockVault {
             repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
                 as Arc<dyn VaultRepositoryFactory>,
-            blob_factory: Arc::new(FilesystemBlobStoreFactory::new())
-                as Arc<dyn BlobStoreFactory>,
+            blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
             crypto: Arc::clone(&crypto),
             clipboard: Arc::clone(&clipboard),
             kdf: Arc::clone(&kdf),

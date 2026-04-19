@@ -101,12 +101,11 @@ pub async fn recover_vault(
     // 4. Attempt to re-populate the keychain. Failure here doesn't void the
     //    session — the user can still operate the vault this session, and
     //    they'll re-enter the kit next time until the keychain is fixed.
-    let (keychain_restored, keychain_error) = match keychain
-        .store_secret_key(session.vault_id(), &sk_bytes)
-    {
-        Ok(()) => (true, None),
-        Err(e) => (false, Some(e.to_string())),
-    };
+    let (keychain_restored, keychain_error) =
+        match keychain.store_secret_key(session.vault_id(), &sk_bytes) {
+            Ok(()) => (true, None),
+            Err(e) => (false, Some(e.to_string())),
+        };
 
     // `sk_bytes` is a plain array; manually zeroize.
     let mut sk_bytes = sk_bytes;

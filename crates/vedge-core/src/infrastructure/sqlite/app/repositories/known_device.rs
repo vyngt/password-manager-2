@@ -8,12 +8,8 @@ use crate::application::app::ports::KnownDeviceRepository;
 use crate::domain::app::entities::KnownDevice;
 use crate::domain::app::errors::AppDbError;
 use crate::domain::shared::{DeviceId, StorageError, Timestamp};
-use crate::infrastructure::sqlite::app::entities::known_device::{
-    ActiveModel, Column, Entity,
-};
-use crate::infrastructure::sqlite::app::mappers::known_device::{
-    domain_to_model, model_to_domain,
-};
+use crate::infrastructure::sqlite::app::entities::known_device::{ActiveModel, Column, Entity};
+use crate::infrastructure::sqlite::app::mappers::known_device::{domain_to_model, model_to_domain};
 use crate::infrastructure::sqlite::app::mappers::ts_to_string;
 
 pub struct SqliteKnownDeviceRepository {
@@ -21,7 +17,7 @@ pub struct SqliteKnownDeviceRepository {
 }
 
 impl SqliteKnownDeviceRepository {
-    #[must_use] 
+    #[must_use]
     pub const fn new(conn: Arc<DatabaseConnection>) -> Self {
         Self { conn }
     }
@@ -35,7 +31,10 @@ fn db_err(e: sea_orm::DbErr) -> AppDbError {
 #[async_trait]
 impl KnownDeviceRepository for SqliteKnownDeviceRepository {
     async fn list(&self) -> Result<Vec<KnownDevice>, AppDbError> {
-        let rows = Entity::find().all(self.conn.as_ref()).await.map_err(db_err)?;
+        let rows = Entity::find()
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
         rows.into_iter()
             .map(|m| model_to_domain(m).map_err(AppDbError::from))
             .collect()
@@ -53,11 +52,7 @@ impl KnownDeviceRepository for SqliteKnownDeviceRepository {
         Entity::insert(active)
             .on_conflict(
                 OnConflict::column(Column::DeviceId)
-                    .update_columns([
-                        Column::DisplayName,
-                        Column::PublicKey,
-                        Column::LastSeen,
-                    ])
+                    .update_columns([Column::DisplayName, Column::PublicKey, Column::LastSeen])
                     .to_owned(),
             )
             .exec(self.conn.as_ref())
@@ -66,11 +61,7 @@ impl KnownDeviceRepository for SqliteKnownDeviceRepository {
         Ok(())
     }
 
-    async fn touch_last_seen(
-        &self,
-        id: &DeviceId,
-        when: Timestamp,
-    ) -> Result<(), AppDbError> {
+    async fn touch_last_seen(&self, id: &DeviceId, when: Timestamp) -> Result<(), AppDbError> {
         let model = Entity::find_by_id(id.as_str().to_owned())
             .one(self.conn.as_ref())
             .await

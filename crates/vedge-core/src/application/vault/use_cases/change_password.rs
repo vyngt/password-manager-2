@@ -66,8 +66,7 @@ pub async fn change_password(
     let (new_kek_z, new_verify_hash) = tokio::task::spawn_blocking(
         move || -> Result<(Zeroizing<[u8; KEK_LEN]>, [u8; 32]), VaultError> {
             let input_bytes = kdf_job.preprocess_2skd(password.as_bytes(), &secret_key)?;
-            let master_key =
-                kdf_job.derive_master_key(&input_bytes, &vault_salt, &kdf_params)?;
+            let master_key = kdf_job.derive_master_key(&input_bytes, &vault_salt, &kdf_params)?;
             let verify = kdf_job.derive_verify_hash(&master_key)?;
             let kek = kdf_job.derive_kek(&master_key)?;
             Ok((kek, verify))

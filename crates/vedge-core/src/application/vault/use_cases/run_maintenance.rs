@@ -7,7 +7,7 @@ use chrono::Duration;
 use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, EntryId};
+use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::errors::VaultError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,9 +19,7 @@ pub struct MaintenanceReport {
 }
 
 #[instrument(skip_all, fields(vault_id = %session.vault_id()))]
-pub async fn run_maintenance(
-    session: &VaultSession,
-) -> Result<MaintenanceReport, VaultError> {
+pub async fn run_maintenance(session: &VaultSession) -> Result<MaintenanceReport, VaultError> {
     let today = now();
     let trash_days = i64::from(session.config.trash_retention_days.max(0));
     let audit_days = i64::from(session.config.audit_retention_days.max(0));
@@ -29,17 +27,16 @@ pub async fn run_maintenance(
     // ---- 1. Trashed entries past retention ---------------------------------
     let trash_cutoff = today
         .checked_sub_signed(Duration::days(trash_days))
-        .ok_or_else(|| {
-            VaultError::MalformedPayload("trash retention cutoff overflow".into())
-        })?;
-    let trashed_entries_deleted = session.repo.hard_delete_trashed_before(trash_cutoff).await?;
+        .ok_or_else(|| VaultError::MalformedPayload("trash retention cutoff overflow".into()))?;
+    let trashed_entries_deleted = session
+        .repo
+        .hard_delete_trashed_before(trash_cutoff)
+        .await?;
 
     // ---- 2. Audit rows past retention ---------------------------------------
     let audit_cutoff = today
         .checked_sub_signed(Duration::days(audit_days))
-        .ok_or_else(|| {
-            VaultError::MalformedPayload("audit retention cutoff overflow".into())
-        })?;
+        .ok_or_else(|| VaultError::MalformedPayload("audit retention cutoff overflow".into()))?;
     let audit_events_deleted = session.repo.delete_audit_before(audit_cutoff).await?;
 
     // ---- 3. Orphaned blob files --------------------------------------------
@@ -52,8 +49,7 @@ pub async fn run_maintenance(
             // Best-effort delete — a failure here just means the orphan
             // survives until next run.
             if session.blob.delete_blob(&id).await.is_ok() {
-                orphaned_blobs_deleted =
-                    orphaned_blobs_deleted.saturating_add(1);
+                orphaned_blobs_deleted = orphaned_blobs_deleted.saturating_add(1);
             }
         }
     }

@@ -14,12 +14,12 @@ use secrecy::{ExposeSecret, SecretString};
 use serde_json::{Value, json};
 
 use vedge_core::domain::shared::{EntryId, TagId};
+use vedge_core::domain::vault::payloads::identity::Address;
 use vedge_core::domain::vault::payloads::{
     ApiKeyPayload, CardPayload, CommonMeta, DocumentPayload, EntryPayload, EntryType, EnvVar,
     EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload, NotePayload, SshKeyPayload,
     TagPayload,
 };
-use vedge_core::domain::vault::payloads::identity::Address;
 
 fn meta(name: &str, ty: EntryType) -> CommonMeta {
     CommonMeta {
@@ -146,8 +146,14 @@ fn env_vars_wire_format() {
     let p = EntryPayload::EnvVars(EnvVarsPayload {
         meta: meta("staging", EntryType::EnvVars),
         vars: vec![
-            EnvVar { key: "DATABASE_URL".into(), value: SecretString::from("postgres://...") },
-            EnvVar { key: "API_KEY".into(), value: SecretString::from("xyz") },
+            EnvVar {
+                key: "DATABASE_URL".into(),
+                value: SecretString::from("postgres://..."),
+            },
+            EnvVar {
+                key: "API_KEY".into(),
+                value: SecretString::from("xyz"),
+            },
         ],
     });
     let expected = json!({

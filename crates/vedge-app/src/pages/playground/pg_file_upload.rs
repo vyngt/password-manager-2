@@ -217,10 +217,7 @@ fn ControlledSection() -> impl IntoView {
 
             if should_continue {
                 let id_next = id.clone();
-                set_timeout(
-                    move || tick(id_next, items),
-                    Duration::from_millis(220),
-                );
+                set_timeout(move || tick(id_next, items), Duration::from_millis(220));
             }
         }
 

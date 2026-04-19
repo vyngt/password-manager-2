@@ -24,7 +24,7 @@ use zeroize::{Zeroize, Zeroizing};
 
 use crate::application::vault::ports::clipboard::ClipboardProvider;
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{now, EntryId};
+use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
@@ -142,9 +142,7 @@ fn extract_field(
     field: &FieldSelector,
 ) -> Result<Zeroizing<String>, VaultError> {
     match (payload, field) {
-        (EntryPayload::Login(p), FieldSelector::Username) => {
-            Ok(Zeroizing::new(p.username.clone()))
-        }
+        (EntryPayload::Login(p), FieldSelector::Username) => Ok(Zeroizing::new(p.username.clone())),
         (EntryPayload::Login(p), FieldSelector::Password) => {
             Ok(Zeroizing::new(p.password.expose_secret().to_owned()))
         }
@@ -164,9 +162,11 @@ fn extract_field(
             Ok(Zeroizing::new(p.key.expose_secret().to_owned()))
         }
         (EntryPayload::EnvVars(p), FieldSelector::EnvVar(name)) => {
-            let found = p.vars.iter().find(|v| &v.key == name).ok_or(
-                VaultError::FieldNotApplicable,
-            )?;
+            let found = p
+                .vars
+                .iter()
+                .find(|v| &v.key == name)
+                .ok_or(VaultError::FieldNotApplicable)?;
             Ok(Zeroizing::new(found.value.expose_secret().to_owned()))
         }
         _ => Err(VaultError::FieldNotApplicable),

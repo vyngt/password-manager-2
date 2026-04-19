@@ -38,12 +38,12 @@ use zeroize::Zeroizing;
 
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{
-    entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries,
+    UnlockVaultInput, entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries,
     list_tags as list_tags_core, list_trashed_entries, lock_vault as lock_vault_core,
-    search_entries, UnlockVaultInput,
+    search_entries,
 };
 
-use crate::dto::entry::{entry_id_from_str, tag_id_from_str, IndexEntryDto};
+use crate::dto::entry::{IndexEntryDto, entry_id_from_str, tag_id_from_str};
 use crate::dto::misc::UnlockVaultInputDto;
 use crate::dto::tag::TagMetaDto;
 use crate::error::CommandError;
