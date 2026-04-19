@@ -105,6 +105,12 @@ pub fn Popover(
     #[prop(into)] open: Signal<bool>,
     #[prop(into)] on_close: Callback<()>,
     #[prop(into)] anchor: Signal<Option<web_sys::HtmlElement>>,
+    /// Alternative anchor: a fixed point in viewport coordinates `(x, y)`.
+    /// Used by Context Menu and similar pointer-triggered floating UI where
+    /// there is no trigger element. When both `anchor` and `anchor_point` are
+    /// Some, `anchor_point` wins.
+    #[prop(into, default = Signal::stored(None))]
+    anchor_point: Signal<Option<(f64, f64)>>,
     #[prop(optional)] placement: PopoverPlacement,
     #[prop(optional, default = 8.0)] offset: f64,
     #[prop(optional)] close_on_scroll: bool,
@@ -130,14 +136,20 @@ pub fn Popover(
     let exit_ver = Arc::new(AtomicU32::new(0));
 
     let do_reposition = Callback::new(move |_: ()| {
-        let Some(anchor_el) = anchor.get_untracked() else {
+        // Resolve anchor rect: `anchor_point` wins when present, else fall
+        // back to element anchor.
+        let anchor_rl = if let Some((x, y)) = anchor_point.get_untracked() {
+            RectLike::from_point(x, y)
+        } else if let Some(anchor_el) = anchor.get_untracked() {
+            RectLike::from_dom(&anchor_el.get_bounding_client_rect())
+        } else {
             return;
         };
+
         let Some(panel_div) = panel_ref.get_untracked() else {
             return;
         };
         let panel_el: &web_sys::HtmlElement = panel_div.unchecked_ref();
-        let anchor_rect = anchor_el.get_bounding_client_rect();
         let panel_rect = panel_el.get_bounding_client_rect();
         let Some(window) = web_sys::window() else {
             return;
@@ -154,7 +166,7 @@ pub fn Popover(
             .unwrap_or(0.0);
 
         let (resolved, top, left, mw) = calc_position(
-            &anchor_rect,
+            &anchor_rl,
             &panel_rect,
             (vw, vh),
             placement,
@@ -465,9 +477,46 @@ fn handle_tab(
     // Otherwise, Tab moves between items inside the panel — default behavior.
 }
 
+/// Positioning-agnostic rectangle. Used so both real DOM rects (from
+/// `get_bounding_client_rect()`) and synthetic rects from pointer coordinates
+/// (Context Menu) flow through the same positioning pipeline.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct RectLike {
+    pub top: f64,
+    pub bottom: f64,
+    pub left: f64,
+    pub right: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+impl RectLike {
+    fn from_dom(rect: &web_sys::DomRect) -> Self {
+        Self {
+            top: rect.top(),
+            bottom: rect.bottom(),
+            left: rect.left(),
+            right: rect.right(),
+            width: rect.width(),
+            height: rect.height(),
+        }
+    }
+
+    fn from_point(x: f64, y: f64) -> Self {
+        Self {
+            top: y,
+            bottom: y,
+            left: x,
+            right: x,
+            width: 0.0,
+            height: 0.0,
+        }
+    }
+}
+
 /// Pure position calculation: primary-axis auto-flip + cross-axis clamp.
 fn calc_position(
-    anchor_rect: &web_sys::DomRect,
+    anchor_rect: &RectLike,
     panel_rect: &web_sys::DomRect,
     viewport: (f64, f64),
     placement: PopoverPlacement,
@@ -475,12 +524,12 @@ fn calc_position(
     match_trigger_width: bool,
 ) -> (PopoverPlacement, f64, f64, Option<f64>) {
     let (vw, vh) = viewport;
-    let ar_top = anchor_rect.top();
-    let ar_bottom = anchor_rect.bottom();
-    let ar_left = anchor_rect.left();
-    let ar_right = anchor_rect.right();
-    let ar_width = anchor_rect.width();
-    let ar_height = anchor_rect.height();
+    let ar_top = anchor_rect.top;
+    let ar_bottom = anchor_rect.bottom;
+    let ar_left = anchor_rect.left;
+    let ar_right = anchor_rect.right;
+    let ar_width = anchor_rect.width;
+    let ar_height = anchor_rect.height;
     let pw = panel_rect.width();
     let ph = panel_rect.height();
 

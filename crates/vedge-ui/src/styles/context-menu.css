@@ -1,0 +1,9 @@
+@layer components {
+  /* ============================================================
+     Context Menu — transparent event-capture wrapper. Panel and items
+     are styled by the dropdown-menu stylesheet.
+     ============================================================ */
+  .context-menu-target {
+    display: contents;
+  }
+}

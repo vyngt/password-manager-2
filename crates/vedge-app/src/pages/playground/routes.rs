@@ -5,11 +5,13 @@ use super::pg_avatar::AvatarPage;
 use super::pg_badge::BadgePage;
 use super::pg_button::ButtonPage;
 use super::pg_checkbox::CheckboxPage;
+use super::pg_context_menu::ContextMenuPage;
 use super::pg_copy_button::CopyButtonPage;
 use super::pg_data_table::DataTablePage;
 use super::pg_date_picker::DatePickerPage;
 use super::pg_date_time_picker::DateTimePickerPage;
 use super::pg_dialog::DialogPage;
+use super::pg_dropdown_menu::DropdownMenuPage;
 use super::pg_file_upload::FileUploadPage;
 use super::pg_form_field::FormFieldPage;
 use super::pg_helper_text::HelperTextPage;
@@ -88,7 +90,9 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/data-table") view=DataTablePage />
             <Route path=path!("/pagination") view=PaginationPage />
             // Feedback
+            <Route path=path!("/context-menu") view=ContextMenuPage />
             <Route path=path!("/dialog") view=DialogPage />
+            <Route path=path!("/dropdown-menu") view=DropdownMenuPage />
             <Route path=path!("/popover") view=PopoverPage />
             <Route path=path!("/toast") view=ToastPage />
             <Route path=path!("/tooltip") view=TooltipPage />

@@ -163,8 +163,16 @@ const GROUPS: &[SidebarGroup] = &[
         label: "Feedback",
         items: &[
             SidebarItem {
+                name: "Context Menu",
+                path: "/playground/context-menu",
+            },
+            SidebarItem {
                 name: "Dialog",
                 path: "/playground/dialog",
+            },
+            SidebarItem {
+                name: "Dropdown Menu",
+                path: "/playground/dropdown-menu",
             },
             SidebarItem {
                 name: "Popover",
