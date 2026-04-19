@@ -81,6 +81,9 @@ pub enum VaultError {
     #[error("mlock() failed — cannot pin key material to RAM")]
     MlockFailed,
 
+    #[error("invalid recovery key: {0}")]
+    InvalidRecoveryKey(String),
+
     // --- keychain ---
     #[error("OS keychain is unavailable")]
     KeychainUnavailable,

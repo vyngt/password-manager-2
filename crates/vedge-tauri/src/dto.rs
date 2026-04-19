@@ -17,6 +17,7 @@
 //!   preferred.
 
 pub mod common;
+pub mod emergency_kit;
 pub mod entry;
 pub mod misc;
 pub mod settings;

@@ -3,6 +3,7 @@
 pub mod commands;
 pub mod dto;
 pub mod error;
+pub mod pdf;
 pub mod setup;
 pub mod state;
 
@@ -82,6 +83,10 @@ pub fn run() {
             // ---- password + maintenance ----
             commands::password::change_password,
             commands::maintenance::run_maintenance,
+            // ---- emergency kit + recovery ----
+            commands::emergency_kit::export_emergency_kit,
+            commands::emergency_kit::emergency_kit_pdf,
+            commands::recovery::unlock_with_recovery_key,
             // ---- app.db: recent vaults ----
             commands::recent::list_recent_vaults,
             commands::recent::list_recent_vaults_with_status,

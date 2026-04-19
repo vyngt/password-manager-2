@@ -41,6 +41,10 @@ chrono      = { version = "0.4", default-features = false, features = ["std", "s
 secrecy     = "0.10"
 zeroize     = "1"
 
+# Emergency Kit PDF rendering. Both crates are pure-Rust and pull in no C deps.
+printpdf    = { version = "0.7", features = ["embedded_images"] }
+qrcodegen   = "1.8"
+
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"

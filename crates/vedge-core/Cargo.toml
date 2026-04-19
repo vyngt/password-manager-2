@@ -17,6 +17,7 @@ chacha20poly1305 = { version = "0.10", default-features = false, features = ["al
 aes = "0.9"
 aes-kw = "0.3"
 hkdf = "0.13"
+hmac = "0.13"
 sha2 = "0.11"
 argon2 = "0.5"
 zeroize = { version = "1", features = ["zeroize_derive"] }

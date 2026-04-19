@@ -18,10 +18,14 @@ pub enum AuditAction {
     TagCreated,
     TagRenamed,
     TagDeleted,
+    /// Vault was unlocked via the Emergency Kit recovery path instead of
+    /// the keychain-stored Secret Key. Distinguishes recovery from normal
+    /// unlocks in the audit timeline.
+    RecoveryUsed,
 }
 
 impl AuditAction {
-    #[must_use] 
+    #[must_use]
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Unlocked => "Unlocked",
@@ -37,10 +41,11 @@ impl AuditAction {
             Self::TagCreated => "TagCreated",
             Self::TagRenamed => "TagRenamed",
             Self::TagDeleted => "TagDeleted",
+            Self::RecoveryUsed => "RecoveryUsed",
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn parse(raw: &str) -> Option<Self> {
         Some(match raw {
             "Unlocked" => Self::Unlocked,
@@ -56,6 +61,7 @@ impl AuditAction {
             "TagCreated" => Self::TagCreated,
             "TagRenamed" => Self::TagRenamed,
             "TagDeleted" => Self::TagDeleted,
+            "RecoveryUsed" => Self::RecoveryUsed,
             _ => return None,
         })
     }

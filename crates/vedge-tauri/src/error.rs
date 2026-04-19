@@ -92,7 +92,8 @@ impl From<VaultError> for CommandError {
             | VaultError::FolderNotEmpty
             | VaultError::DocumentTooLarge { .. }
             | VaultError::FieldNotApplicable
-            | VaultError::KeyDerivationFailed(_) => Self::Invalid(e.to_string()),
+            | VaultError::KeyDerivationFailed(_)
+            | VaultError::InvalidRecoveryKey(_) => Self::Invalid(e.to_string()),
         }
     }
 }

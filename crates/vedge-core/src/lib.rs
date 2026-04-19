@@ -31,11 +31,14 @@ pub use application::app::use_cases::{
 pub use application::vault::session::VaultSession;
 pub use application::vault::use_cases::{
     change_password, copy_field, create_entry, create_tag, delete_tag, entries_by_domain,
-    entries_by_folder, entries_by_tag, export_document, hard_delete_entry, import_document,
-    list_active_entries, list_tags, list_trashed_entries, lock_vault, move_entry,
-    normalize_tag_name, rename_tag, restore_entry, run_maintenance, search_entries,
-    soft_delete_entry, update_entry, ChangePasswordInput, CopyFieldInput, CreateEntryInput,
-    CreateEntryOutput, FieldSelector, ImportDocumentInput, MaintenanceReport, UnlockVault,
+    entries_by_folder, entries_by_tag, export_document, export_emergency_kit, hard_delete_entry,
+    import_document, list_active_entries, list_tags, list_trashed_entries, lock_vault,
+    move_entry, normalize_tag_name, recover_vault, rename_tag, restore_entry, run_maintenance,
+    search_entries, soft_delete_entry, update_entry, ChangePasswordInput, CopyFieldInput,
+    CreateEntryInput, CreateEntryOutput, ExportEmergencyKitInput, FieldSelector,
+    ImportDocumentInput, MaintenanceReport, RecoverVaultInput, RecoveryOutcome, UnlockVault,
     UnlockVaultInput, UpdateEntryInput, DOCUMENT_SIZE_LIMIT_BYTES,
 };
+pub use domain::vault::emergency_kit::EmergencyKitContent;
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
+pub use domain::vault::recovery::{format_secret_key, parse_secret_key, RECOVERY_FORMAT_PREFIX};
