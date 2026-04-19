@@ -4,6 +4,7 @@
 
 @import "./accordion.css";
 @import "./button.css";
+@import "./copy-button.css";
 @import "./icon-button.css";
 @import "./avatar.css";
 @import "./badge.css";
@@ -14,6 +15,7 @@
 @import "./sidebar-item.css";
 @import "./spinner.css";
 @import "./step-indicator.css";
+@import "./tooltip-icon-button.css";
 @import "./input.css";
 @import "./label.css";
 @import "./helper-text.css";
@@ -28,6 +30,7 @@
 @import "./segmented-control.css";
 @import "./select.css";
 @import "./slider.css";
+@import "./tag-input.css";
 
 @import "./color-picker.css";
 @import "./date-picker.css";

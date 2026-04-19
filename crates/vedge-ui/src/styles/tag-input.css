@@ -1,0 +1,145 @@
+@layer components {
+  /* ============================================================
+     TagInput — Tier 2: Input-styled container with Badge chips
+     ============================================================ */
+  .tag-input {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: var(--height-md);
+    padding: 4px 8px;
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: text;
+    transition: border-color var(--duration-fast) var(--ease-out);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    /* Allow this flex item to shrink below its intrinsic content size so a
+       very long chip doesn't force the whole page to scroll horizontally. */
+    min-width: 0;
+    max-width: 100%;
+    /* Contain the absolutely-positioned sr-announce region so its static
+       position (computed from a flex-wrap layout) can't push the page's
+       scroll area outward. */
+    position: relative;
+  }
+
+  .tag-input:hover:not(.tag-input--disabled) {
+    border-color: var(--color-border-strong);
+  }
+
+  .tag-input:focus-within:not(.tag-input--disabled) {
+    border-color: var(--color-primary);
+    outline-color: var(--color-focus-ring);
+  }
+
+  .tag-input--error {
+    border-color: var(--color-danger);
+    transition-duration: var(--duration-instant);
+  }
+  .tag-input--error:focus-within { border-color: var(--color-danger); }
+
+  .tag-input--success { border-color: var(--color-success); }
+  .tag-input--warning { border-color: var(--color-warning); }
+
+  .tag-input--disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Chip list — display:contents flattens <ul> so chips participate in
+     the root's flex layout directly, while preserving list semantics. */
+  .tag-input__chips {
+    display: contents;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .tag-input__chip-item {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tag-input__chip-text {
+    line-height: 1;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+  }
+
+  .tag-input__chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin-left: 2px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .tag-input__chip-remove:hover { opacity: 1; }
+  .tag-input__chip-remove:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
+    opacity: 1;
+  }
+  .tag-input__chip-remove:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  /* Native input — transparent, borrows root's border/background */
+  .tag-input__native {
+    flex: 1;
+    min-width: 80px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    caret-color: var(--color-primary);
+    padding: 0;
+  }
+  .tag-input__native::placeholder { color: var(--color-text-tertiary); }
+
+  .tag-input__max-hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    padding: 0 4px;
+  }
+
+  /* Visually-hidden aria-live announcement region — anchored to the tag-input
+     root (position:relative) so its content can't extend the page scroll size. */
+  .tag-input__sr-announce {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tag-input { transition-duration: 0.01ms !important; }
+  }
+}

@@ -33,6 +33,10 @@ const GROUPS: &[SidebarGroup] = &[
                 path: "/playground/button",
             },
             SidebarItem {
+                name: "Copy Button",
+                path: "/playground/copy-button",
+            },
+            SidebarItem {
                 name: "Icon Button",
                 path: "/playground/icon-button",
             },
@@ -63,6 +67,10 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem {
                 name: "Step Indicator",
                 path: "/playground/step-indicator",
+            },
+            SidebarItem {
+                name: "Tooltip Icon Button",
+                path: "/playground/tooltip-icon-button",
             },
         ],
     },
@@ -124,6 +132,10 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem {
                 name: "Slider",
                 path: "/playground/slider",
+            },
+            SidebarItem {
+                name: "Tag Input",
+                path: "/playground/tag-input",
             },
             SidebarItem {
                 name: "Textarea",

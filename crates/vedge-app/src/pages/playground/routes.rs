@@ -5,6 +5,7 @@ use super::pg_avatar::AvatarPage;
 use super::pg_badge::BadgePage;
 use super::pg_button::ButtonPage;
 use super::pg_checkbox::CheckboxPage;
+use super::pg_copy_button::CopyButtonPage;
 use super::pg_data_table::DataTablePage;
 use super::pg_date_picker::DatePickerPage;
 use super::pg_dialog::DialogPage;
@@ -29,11 +30,13 @@ use super::pg_sidebar_item::SidebarItemPage;
 use super::pg_slider::SliderPage;
 use super::pg_spinner::SpinnerPage;
 use super::pg_step_indicator::StepIndicatorPage;
+use super::pg_tag_input::TagInputPage;
 use super::pg_textarea::TextareaPage;
 use super::pg_time_picker::TimePickerPage;
 use super::pg_toast::ToastPage;
 use super::pg_toggle::TogglePage;
 use super::pg_tooltip::TooltipPage;
+use super::pg_tooltip_icon_button::TooltipIconButtonPage;
 use super::theme::ThemePage;
 use leptos::prelude::*;
 use leptos_router::{MatchNestedRoutes, components::*, path};
@@ -48,6 +51,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/avatar") view=AvatarPage />
             <Route path=path!("/badge") view=BadgePage />
             <Route path=path!("/button") view=ButtonPage />
+            <Route path=path!("/copy-button") view=CopyButtonPage />
             <Route path=path!("/icon-button") view=IconButtonPage />
             <Route path=path!("/kbd") view=KbdPage />
             <Route path=path!("/progress-bar") view=ProgressBarPage />
@@ -56,6 +60,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/sidebar-item") view=SidebarItemPage />
             <Route path=path!("/spinner") view=SpinnerPage />
             <Route path=path!("/step-indicator") view=StepIndicatorPage />
+            <Route path=path!("/tooltip-icon-button") view=TooltipIconButtonPage />
             // Form
             <Route path=path!("/checkbox") view=CheckboxPage />
             <Route path=path!("/color-picker") view=ColorPickerPage />
@@ -71,6 +76,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/segmented-control") view=SegmentedControlPage />
             <Route path=path!("/select") view=SelectPage />
             <Route path=path!("/slider") view=SliderPage />
+            <Route path=path!("/tag-input") view=TagInputPage />
             <Route path=path!("/textarea") view=TextareaPage />
             <Route path=path!("/time-picker") view=TimePickerPage />
             <Route path=path!("/toggle") view=TogglePage />

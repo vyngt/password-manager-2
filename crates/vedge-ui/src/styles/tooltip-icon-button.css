@@ -1,0 +1,12 @@
+@layer components {
+  /* ============================================================
+     TooltipIconButton — Tier 2: IconButton + Tooltip wrapper
+     All visuals delegated to IconButton / Tooltip; this wrapper
+     exists only to host `class` overrides and ensure the layout
+     doesn't stretch to block width.
+     ============================================================ */
+  .tooltip-icon-btn {
+    display: inline-flex;
+    position: relative;
+  }
+}

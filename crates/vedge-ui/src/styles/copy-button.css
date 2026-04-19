@@ -1,0 +1,32 @@
+@layer components {
+  /* ============================================================
+     CopyButton — Tier 2: clipboard copy with success pulse
+     ============================================================ */
+  .copy-btn {
+    display: inline-flex;
+    position: relative;
+  }
+
+  .copy-btn__icon-check {
+    display: inline-flex;
+    color: var(--color-success-text);
+  }
+
+  /* Copied state: success-tinted background. Higher specificity overrides
+     IconButton's hover background for the 2s copied window. */
+  .copy-btn--copied .icon-btn {
+    background: var(--color-success-muted);
+    transition: background 150ms var(--ease-out);
+  }
+
+  .copy-btn--idle .icon-btn {
+    transition: background 300ms var(--ease-in);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .copy-btn--copied .icon-btn,
+    .copy-btn--idle .icon-btn {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
