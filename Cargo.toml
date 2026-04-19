@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/vedge-codegen",
     "crates/vedge-core",
+    "crates/vedge-ipc",
     "crates/vedge-tauri",
     "crates/vedge-ui",
     "crates/vedge-app",

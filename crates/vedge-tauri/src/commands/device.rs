@@ -19,7 +19,10 @@ use vedge_core::{
     upsert_known_device as upsert_known_device_core,
 };
 
-use crate::dto::settings::{ExtensionSessionDto, KnownDeviceDto};
+use crate::dto::settings::{
+    ExtensionSessionDto, KnownDeviceDto, extension_session_from_dto, extension_session_to_dto,
+    known_device_from_dto, known_device_to_dto,
+};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -31,7 +34,7 @@ pub async fn list_known_devices(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<KnownDeviceDto>, CommandError> {
     let rows = list_known_devices_core(&*state.known_devices).await?;
-    Ok(rows.iter().map(KnownDeviceDto::from).collect())
+    Ok(rows.iter().map(known_device_to_dto).collect())
 }
 
 #[tauri::command]
@@ -40,7 +43,7 @@ pub async fn upsert_known_device(
     device: KnownDeviceDto,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
-    let domain = device.into_domain()?;
+    let domain = known_device_from_dto(device)?;
     upsert_known_device_core(&*state.known_devices, &domain).await?;
     Ok(())
 }
@@ -75,7 +78,7 @@ pub async fn list_extension_sessions(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<ExtensionSessionDto>, CommandError> {
     let rows = list_extension_sessions_core(&*state.extension_sessions).await?;
-    Ok(rows.iter().map(ExtensionSessionDto::from).collect())
+    Ok(rows.iter().map(extension_session_to_dto).collect())
 }
 
 #[tauri::command]
@@ -84,7 +87,7 @@ pub async fn upsert_extension_session(
     session: ExtensionSessionDto,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
-    let domain = session.into_domain()?;
+    let domain = extension_session_from_dto(session)?;
     upsert_extension_session_core(&*state.extension_sessions, &domain).await?;
     Ok(())
 }

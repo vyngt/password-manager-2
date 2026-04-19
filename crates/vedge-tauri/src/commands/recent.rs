@@ -19,7 +19,9 @@ use vedge_core::{
     touch_recent_vault as touch_recent_vault_core,
 };
 
-use crate::dto::settings::{RecentVaultDto, RecentVaultStatusDto};
+use crate::dto::settings::{
+    RecentVaultDto, RecentVaultStatusDto, recent_vault_status_to_dto, recent_vault_to_dto,
+};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -29,7 +31,7 @@ pub async fn list_recent_vaults(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<RecentVaultDto>, CommandError> {
     let vaults = list_recent_vaults_core(&*state.recent_vaults).await?;
-    Ok(vaults.iter().map(RecentVaultDto::from).collect())
+    Ok(vaults.iter().map(recent_vault_to_dto).collect())
 }
 
 /// Onboarding variant: list + per-row filesystem existence check.
@@ -39,7 +41,7 @@ pub async fn list_recent_vaults_with_status(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<RecentVaultStatusDto>, CommandError> {
     let rows = list_recent_vaults_with_status_core(&*state.recent_vaults).await?;
-    Ok(rows.iter().map(RecentVaultStatusDto::from).collect())
+    Ok(rows.iter().map(recent_vault_status_to_dto).collect())
 }
 
 /// Strict add: validates the file exists and has a `SQLite` header

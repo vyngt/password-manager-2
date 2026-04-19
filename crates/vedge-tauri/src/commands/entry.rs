@@ -29,8 +29,8 @@ use vedge_core::{
     soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
 };
 
-use crate::dto::entry::{PayloadDto, entry_id_from_str};
-use crate::dto::misc::FieldSelectorDto;
+use crate::dto::entry::{PayloadDto, entry_id_from_str, payload_from_dto};
+use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -49,7 +49,7 @@ pub async fn create_entry(
     let handle = state.get_session(&vault_id)?;
     let mut guard = handle.lock().await;
 
-    let domain_payload = payload.into_domain()?;
+    let domain_payload = payload_from_dto(payload)?;
     let out = create_entry_core(
         &mut guard,
         CreateEntryInput {
@@ -73,7 +73,7 @@ pub async fn update_entry(
     let mut guard = handle.lock().await;
 
     let id = entry_id_from_str(&entry_id);
-    let domain_payload = payload.into_domain()?;
+    let domain_payload = payload_from_dto(payload)?;
     update_entry_core(
         &mut guard,
         UpdateEntryInput {
@@ -152,7 +152,7 @@ pub async fn copy_field(
         &mut guard,
         CopyFieldInput {
             entry_id: entry_id_from_str(&entry_id),
-            field: field.into(),
+            field: field_selector_from_dto(field),
             clear_after_secs: clear_after_secs.unwrap_or(30),
         },
     )

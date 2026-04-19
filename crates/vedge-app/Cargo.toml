@@ -19,6 +19,8 @@ uuid = { version = "1.23.1", features = ["v4", "js"] }
 vedge-ui = {path = "../vedge-ui"}
 leptos_i18n = { version = "0.6.2", features = ["csr"] }
 chrono = { version = "0.4.44", default-features = false, features = ["clock", "wasmbind"] }
+thiserror = "2"
+vedge-ipc = { path = "../vedge-ipc" }
 
 [build-dependencies]
 leptos_i18n_build = { version = "0.6.2", features = ["csr"] }

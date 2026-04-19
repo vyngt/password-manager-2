@@ -43,6 +43,32 @@ use crate::state::AppState;
 /// Error type returned by the tauri `.setup(…)` hook.
 pub type ComposeError = Box<dyn std::error::Error + Send + Sync>;
 
+/// Resolve the directory that holds `app.db` and user-writable files.
+///
+/// - **Debug builds** (`cargo run`, `cargo tauri dev`): `<workspace>/local/`.
+///   Keeps dev data out of `%APPDATA%` / `~/.config` so wiping state is a
+///   simple `rm -rf local/`, and multiple checkouts don't clobber each
+///   other. The folder is gitignored.
+/// - **Release builds** (`cargo build --release`, `cargo tauri build`):
+///   Tauri's platform-resolved `app_data_dir()` — `%APPDATA%\com.vedge.app`
+///   on Windows, `~/Library/Application Support/...` on macOS,
+///   `~/.local/share/...` on Linux.
+///
+/// The switch is compile-time (`cfg!(debug_assertions)`) so release binaries
+/// never accidentally read/write the dev folder.
+fn resolve_app_dir(app: &tauri::App) -> Result<std::path::PathBuf, ComposeError> {
+    if cfg!(debug_assertions) {
+        // `env!("CARGO_MANIFEST_DIR")` resolves at compile time to this
+        // crate's absolute path. `ancestors().nth(2)` walks up
+        // `crates/vedge-tauri` → `crates/` → `<workspace>`.
+        let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let workspace = manifest.ancestors().nth(2).unwrap_or(manifest);
+        Ok(workspace.join("local"))
+    } else {
+        Ok(app.path().app_data_dir()?)
+    }
+}
+
 /// Build an [`AppState`] from the running `tauri::App`.
 ///
 /// Runs once at startup. The `app.db` connection, the migrations, and the
@@ -55,7 +81,7 @@ pub type ComposeError = Box<dyn std::error::Error + Send + Sync>;
 /// `.setup(|app| …)` closure, never across threads.
 #[allow(clippy::future_not_send)]
 pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
-    let app_dir = app.path().app_data_dir()?;
+    let app_dir = resolve_app_dir(app)?;
     std::fs::create_dir_all(&app_dir)?;
 
     let app_db_path = app_dir.join("app.db");

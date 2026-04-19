@@ -21,6 +21,7 @@ use vedge_core::{
 
 use crate::dto::settings::{
     AppSettingDto, CreateCustomThemeInputDto, ThemeDto, UpdateCustomThemeInputDto,
+    app_setting_to_dto, theme_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -34,7 +35,7 @@ pub async fn get_app_setting(
     state: tauri::State<'_, AppState>,
 ) -> Result<Option<AppSettingDto>, CommandError> {
     let row = get_app_setting_core(&*state.app_settings, &key).await?;
-    Ok(row.as_ref().map(AppSettingDto::from))
+    Ok(row.as_ref().map(app_setting_to_dto))
 }
 
 #[tauri::command]
@@ -65,7 +66,7 @@ pub async fn list_app_settings(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<AppSettingDto>, CommandError> {
     let rows = list_app_settings_core(&*state.app_settings, &prefix).await?;
-    Ok(rows.iter().map(AppSettingDto::from).collect())
+    Ok(rows.iter().map(app_setting_to_dto).collect())
 }
 
 // ---- themes ------------------------------------------------------------------
@@ -74,7 +75,7 @@ pub async fn list_app_settings(
 #[instrument(skip_all)]
 pub async fn list_themes(state: tauri::State<'_, AppState>) -> Result<Vec<ThemeDto>, CommandError> {
     let rows = list_themes_core(&*state.themes).await?;
-    Ok(rows.iter().map(ThemeDto::from).collect())
+    Ok(rows.iter().map(theme_to_dto).collect())
 }
 
 #[tauri::command]
@@ -85,7 +86,7 @@ pub async fn get_theme(
 ) -> Result<ThemeDto, CommandError> {
     let tid = ThemeId::from_raw(id);
     let row = get_theme_core(&*state.themes, &tid).await?;
-    Ok(ThemeDto::from(&row))
+    Ok(theme_to_dto(&row))
 }
 
 /// Resolve the active theme, falling back to the built-in default if the
@@ -94,7 +95,7 @@ pub async fn get_theme(
 #[instrument(skip_all)]
 pub async fn get_active_theme(state: tauri::State<'_, AppState>) -> Result<ThemeDto, CommandError> {
     let theme = resolve_active_theme_core(&*state.themes, &*state.app_settings).await?;
-    Ok(ThemeDto::from(&theme))
+    Ok(theme_to_dto(&theme))
 }
 
 /// Set the active theme. Validates the target exists before writing.

@@ -18,7 +18,7 @@ use zeroize::Zeroizing;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{ChangePasswordInput, change_password as change_password_core};
 
-use crate::dto::misc::ChangePasswordInputDto;
+use crate::dto::misc::{ChangePasswordInputDto, decode_change_password_secret_key};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -37,7 +37,7 @@ pub async fn change_password(
     let handle = state.get_session(&vault_id)?;
     let mut guard = handle.lock().await;
 
-    let new_secret_key = input.decode_secret_key()?;
+    let new_secret_key = decode_change_password_secret_key(&input)?;
     let new_password = Zeroizing::new(input.new_password.clone());
 
     change_password_core(

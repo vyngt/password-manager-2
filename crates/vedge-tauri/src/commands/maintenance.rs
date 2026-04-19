@@ -16,7 +16,7 @@ use tracing::instrument;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::run_maintenance as run_maintenance_core;
 
-use crate::dto::misc::MaintenanceReportDto;
+use crate::dto::misc::{MaintenanceReportDto, maintenance_report_to_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -35,5 +35,5 @@ pub async fn run_maintenance(
     let guard = handle.lock().await;
 
     let report = run_maintenance_core(&guard).await?;
-    Ok(report.into())
+    Ok(maintenance_report_to_dto(report))
 }

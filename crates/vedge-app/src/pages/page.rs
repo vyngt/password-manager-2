@@ -1,10 +1,9 @@
-use crate::api::tauri;
+use crate::api;
 use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
-use serde_json::json;
-use serde_wasm_bindgen::to_value as to_js_value;
+use vedge_ipc::UnlockVaultInputDto;
 use vedge_ui::components::Tooltip;
 use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
@@ -12,6 +11,12 @@ use vedge_ui::primitives::tokens::{Size, Variant};
 use leptos_icons::Icon;
 use vedge_ui::components::Input;
 use vedge_ui::components::icon::Decrypt;
+
+// TODO(UI adaptation): the unlock screen still needs a vault picker (from
+// `api::recent::list_recent_vaults_with_status`) and optional recovery-kit
+// input. For now this submits with an empty vault_path, which the shell
+// rejects with a typed `Invalid` / `NotFound` — surfaced via
+// `ApiError` in the console so it's visible what's missing next.
 
 #[component]
 pub fn Page() -> impl IntoView {
@@ -22,19 +27,18 @@ pub fn Page() -> impl IntoView {
     let handle_submit = |value: String| {
         let nav = use_navigate();
         spawn_local(async move {
-            let res = tauri::invoke(
-                "unlock_vault",
-                to_js_value(&json!({"request": {"key": value}})).unwrap(),
-            )
-            .await;
-
-            match res.as_bool() {
-                Some(res) => {
-                    if res {
-                        nav("/v", Default::default());
-                    }
+            let input = UnlockVaultInputDto {
+                vault_path: String::new(),
+                master_password: value,
+                secret_key_b64: None,
+            };
+            match api::vault::unlock(&input).await {
+                Ok(()) => {
+                    nav("/v", Default::default());
                 }
-                None => {}
+                Err(e) => {
+                    web_sys::console::error_1(&format!("unlock failed: {e:?}").into());
+                }
             }
         });
     };

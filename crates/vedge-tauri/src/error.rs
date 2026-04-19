@@ -12,6 +12,7 @@
 use vedge_core::domain::app::errors::AppDbError;
 use vedge_core::domain::shared::StorageError;
 use vedge_core::domain::vault::errors::VaultError;
+use vedge_ipc::IpcError;
 
 #[derive(Debug, serde::Serialize, thiserror::Error)]
 #[serde(tag = "kind", content = "message")]
@@ -128,4 +129,13 @@ impl From<AppDbError> for CommandError {
 fn storage_detail(e: &StorageError) -> String {
     // `StorageError::Display` is already safe — never echoes user data.
     e.to_string()
+}
+
+impl From<IpcError> for CommandError {
+    fn from(e: IpcError) -> Self {
+        // All IPC wire-format errors — bad timestamps, malformed base64,
+        // wrong byte length — are caller-input errors from the frontend's
+        // perspective.
+        Self::Invalid(e.to_string())
+    }
 }

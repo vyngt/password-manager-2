@@ -19,7 +19,7 @@ use vedge_core::application::vault::ports::KeychainProvider;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{ExportEmergencyKitInput, export_emergency_kit as core_export};
 
-use crate::dto::emergency_kit::EmergencyKitDto;
+use crate::dto::emergency_kit::{EmergencyKitDto, emergency_kit_to_dto};
 use crate::error::CommandError;
 use crate::pdf;
 use crate::state::AppState;
@@ -58,7 +58,7 @@ pub async fn export_emergency_kit(
     )
     .await?;
 
-    Ok(content.into())
+    Ok(emergency_kit_to_dto(content))
 }
 
 #[tauri::command]

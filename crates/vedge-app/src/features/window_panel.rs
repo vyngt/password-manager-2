@@ -1,4 +1,4 @@
-use crate::api::tauri::get_current_window;
+use crate::api::window;
 use crate::i18n::*;
 use icondata as i;
 use leptos::prelude::*;
@@ -25,7 +25,7 @@ pub fn WindowPanel() -> impl IntoView {
     };
 
     let maximized_state = LocalResource::new(async move || {
-        get_current_window()
+        window::current()
             .is_maximized()
             .await
             .as_bool()
@@ -83,8 +83,8 @@ pub fn WindowPanel() -> impl IntoView {
                         shape=Shape::Square
                         on:click=move |_ev| {
                             spawn_local(async move {
-                                let app_window = get_current_window();
-                                app_window.minimize().await;
+                                let app_window = window::current();
+                                window::minimize(&app_window).await;
                             });
                         }
                     >
@@ -101,13 +101,13 @@ pub fn WindowPanel() -> impl IntoView {
                         shape=Shape::Square
                         on:click=move |_ev| {
                             spawn_local(async move {
-                                let app_window = get_current_window();
-                                let is_maximized = app_window.is_maximized().await;
-                                if is_maximized.as_bool().unwrap_or(false) {
-                                    app_window.unmaximize().await;
+                                let app_window = window::current();
+                                let is_maximized = window::is_maximized(&app_window).await;
+                                if is_maximized {
+                                    window::unmaximize(&app_window).await;
                                     set_is_maximized.set(false);
                                 } else {
-                                    app_window.maximize().await;
+                                    window::maximize(&app_window).await;
                                     set_is_maximized.set(true);
                                 }
                             });
@@ -132,8 +132,8 @@ pub fn WindowPanel() -> impl IntoView {
                         shape=Shape::Square
                         on:click=move |_ev| {
                             spawn_local(async move {
-                                let app_window = get_current_window();
-                                app_window.close().await;
+                                let app_window = window::current();
+                                window::close(&app_window).await;
                             });
                         }
                     >

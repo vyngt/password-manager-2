@@ -8855,7 +8855,9 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "thiserror 2.0.18",
  "uuid",
+ "vedge-ipc",
  "vedge-ui",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -8908,6 +8910,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vedge-ipc"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "vedge-tauri"
 version = "3.0.0"
 dependencies = [
@@ -8936,6 +8949,7 @@ dependencies = [
  "tokio",
  "tracing",
  "vedge-core",
+ "vedge-ipc",
  "zeroize",
 ]
 

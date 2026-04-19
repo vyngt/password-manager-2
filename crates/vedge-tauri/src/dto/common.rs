@@ -1,162 +1,106 @@
-//! Shared DTOs: entry type, common metadata, and small conversion helpers
-//! (timestamps, base64).
+//! Conversion layer between `vedge_ipc` wire types and `vedge-core`
+//! domain types.
+//!
+//! The wire types live in `vedge-ipc`; this module adds the domain-aware
+//! helpers the orphan rule prevents us from hanging on the foreign DTO
+//! types directly.
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+pub use vedge_ipc::{CommonMetaDto, EntryTypeDto, Timestamp, ts_to_string};
 
-use vedge_core::domain::shared::{EntryId, TagId, Timestamp};
+use vedge_core::domain::shared::{EntryId, TagId};
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryType};
 
 use crate::error::CommandError;
 
-/// `PascalCase` mirror of `vedge_core::EntryType`. Serializes identically to
-/// the on-disk form so payload JSON stays interchangeable across layers.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum EntryTypeDto {
-    Login,
-    Card,
-    SshKey,
-    ApiKey,
-    EnvVars,
-    Note,
-    Document,
-    Identity,
-    Folder,
-    #[serde(untagged)]
-    Unknown(String),
-}
+// ---- EntryTypeDto ↔ EntryType -----------------------------------------------
 
-impl From<&EntryType> for EntryTypeDto {
-    fn from(v: &EntryType) -> Self {
-        match v {
-            EntryType::Login => Self::Login,
-            EntryType::Card => Self::Card,
-            EntryType::SshKey => Self::SshKey,
-            EntryType::ApiKey => Self::ApiKey,
-            EntryType::EnvVars => Self::EnvVars,
-            EntryType::Note => Self::Note,
-            EntryType::Document => Self::Document,
-            EntryType::Identity => Self::Identity,
-            EntryType::Folder => Self::Folder,
-            EntryType::Unknown(s) => Self::Unknown(s.clone()),
-        }
-    }
-}
-
-impl From<EntryTypeDto> for EntryType {
-    fn from(v: EntryTypeDto) -> Self {
-        match v {
-            EntryTypeDto::Login => Self::Login,
-            EntryTypeDto::Card => Self::Card,
-            EntryTypeDto::SshKey => Self::SshKey,
-            EntryTypeDto::ApiKey => Self::ApiKey,
-            EntryTypeDto::EnvVars => Self::EnvVars,
-            EntryTypeDto::Note => Self::Note,
-            EntryTypeDto::Document => Self::Document,
-            EntryTypeDto::Identity => Self::Identity,
-            EntryTypeDto::Folder => Self::Folder,
-            EntryTypeDto::Unknown(s) => Self::Unknown(s),
-        }
-    }
-}
-
-/// Mirror of `vedge_core::CommonMeta` with IDs as strings.
-///
-/// The `notes` field is *not* a secret in the domain (it's stored in the
-/// encrypted payload but is considered general metadata), so it crosses
-/// as plain `String`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CommonMetaDto {
-    pub name: String,
-    pub entry_type: EntryTypeDto,
-    #[serde(default)]
-    pub url: Option<String>,
-    #[serde(default)]
-    pub favicon_url: Option<String>,
-    #[serde(default)]
-    pub tag_ids: Vec<String>,
-    #[serde(default)]
-    pub folder_id: Option<String>,
-    #[serde(default)]
-    pub is_favorite: bool,
-    #[serde(default)]
-    pub notes: Option<String>,
-}
-
-impl From<&CommonMeta> for CommonMetaDto {
-    fn from(m: &CommonMeta) -> Self {
-        Self {
-            name: m.name.clone(),
-            entry_type: (&m.entry_type).into(),
-            url: m.url.clone(),
-            favicon_url: m.favicon_url.clone(),
-            tag_ids: m.tag_ids.iter().map(|t| t.as_str().to_owned()).collect(),
-            folder_id: m.folder_id.as_ref().map(|f| f.as_str().to_owned()),
-            is_favorite: m.is_favorite,
-            notes: m.notes.clone(),
-        }
-    }
-}
-
-impl CommonMetaDto {
-    /// Convert to a domain `CommonMeta`. `payload_schema` is always set to
-    /// the current constant — the frontend does not choose schema versions.
-    pub fn into_domain(self) -> CommonMeta {
-        CommonMeta {
-            name: self.name,
-            entry_type: self.entry_type.into(),
-            url: self.url,
-            favicon_url: self.favicon_url,
-            tag_ids: self.tag_ids.into_iter().map(TagId::from_raw).collect(),
-            folder_id: self.folder_id.map(EntryId::from_raw),
-            is_favorite: self.is_favorite,
-            notes: self.notes,
-            payload_schema: vedge_core::domain::vault::payloads::CURRENT_PAYLOAD_SCHEMA,
-        }
-    }
-}
-
-// ---- helpers -----------------------------------------------------------------
-
-/// Convert a domain `Timestamp` to an RFC-3339 string with millisecond
-/// precision — the format the JS `Date` constructor accepts losslessly.
 #[must_use]
-pub fn ts_to_string(ts: Timestamp) -> String {
-    ts.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+pub fn entry_type_to_dto(v: &EntryType) -> EntryTypeDto {
+    match v {
+        EntryType::Login => EntryTypeDto::Login,
+        EntryType::Card => EntryTypeDto::Card,
+        EntryType::SshKey => EntryTypeDto::SshKey,
+        EntryType::ApiKey => EntryTypeDto::ApiKey,
+        EntryType::EnvVars => EntryTypeDto::EnvVars,
+        EntryType::Note => EntryTypeDto::Note,
+        EntryType::Document => EntryTypeDto::Document,
+        EntryType::Identity => EntryTypeDto::Identity,
+        EntryType::Folder => EntryTypeDto::Folder,
+        EntryType::Unknown(s) => EntryTypeDto::Unknown(s.clone()),
+    }
 }
 
-/// Parse an RFC-3339 string into a domain `Timestamp` (UTC). Returns
-/// `Invalid` on malformed input.
-pub fn ts_from_string(s: &str) -> Result<Timestamp, CommandError> {
-    DateTime::parse_from_rfc3339(s)
-        .map(|dt| dt.with_timezone(&Utc))
-        .map_err(|e| CommandError::Invalid(format!("bad timestamp: {e}")))
+#[must_use]
+pub fn entry_type_from_dto(v: EntryTypeDto) -> EntryType {
+    match v {
+        EntryTypeDto::Login => EntryType::Login,
+        EntryTypeDto::Card => EntryType::Card,
+        EntryTypeDto::SshKey => EntryType::SshKey,
+        EntryTypeDto::ApiKey => EntryType::ApiKey,
+        EntryTypeDto::EnvVars => EntryType::EnvVars,
+        EntryTypeDto::Note => EntryType::Note,
+        EntryTypeDto::Document => EntryType::Document,
+        EntryTypeDto::Identity => EntryType::Identity,
+        EntryTypeDto::Folder => EntryType::Folder,
+        EntryTypeDto::Unknown(s) => EntryType::Unknown(s),
+    }
 }
 
-/// Base64-encode a byte slice using the standard alphabet with padding.
+// ---- CommonMetaDto ↔ CommonMeta ---------------------------------------------
+
+#[must_use]
+pub fn common_meta_to_dto(m: &CommonMeta) -> CommonMetaDto {
+    CommonMetaDto {
+        name: m.name.clone(),
+        entry_type: entry_type_to_dto(&m.entry_type),
+        url: m.url.clone(),
+        favicon_url: m.favicon_url.clone(),
+        tag_ids: m.tag_ids.iter().map(|t| t.as_str().to_owned()).collect(),
+        folder_id: m.folder_id.as_ref().map(|f| f.as_str().to_owned()),
+        is_favorite: m.is_favorite,
+        notes: m.notes.clone(),
+    }
+}
+
+/// Convert a `CommonMetaDto` to a domain `CommonMeta`. `payload_schema` is
+/// always set to the current constant — the frontend does not choose
+/// schema versions.
+#[must_use]
+pub fn common_meta_from_dto(dto: CommonMetaDto) -> CommonMeta {
+    CommonMeta {
+        name: dto.name,
+        entry_type: entry_type_from_dto(dto.entry_type),
+        url: dto.url,
+        favicon_url: dto.favicon_url,
+        tag_ids: dto.tag_ids.into_iter().map(TagId::from_raw).collect(),
+        folder_id: dto.folder_id.map(EntryId::from_raw),
+        is_favorite: dto.is_favorite,
+        notes: dto.notes,
+        payload_schema: vedge_core::domain::vault::payloads::CURRENT_PAYLOAD_SCHEMA,
+    }
+}
+
+// ---- Base64 / timestamp re-exports with CommandError mapping -----------------
+
+/// Base64-encode a byte slice.
 #[must_use]
 pub fn b64_encode(bytes: &[u8]) -> String {
-    use base64::Engine as _;
-    use base64::engine::general_purpose::STANDARD;
-    STANDARD.encode(bytes)
+    vedge_ipc::b64_encode(bytes)
 }
 
-/// Decode a base64 string into bytes. Accepts both standard and URL-safe
-/// alphabets with or without padding.
+/// Decode base64 → bytes. Wire errors map to `CommandError::Invalid`.
 pub fn b64_decode(s: &str) -> Result<Vec<u8>, CommandError> {
-    use base64::Engine as _;
-    use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
-    STANDARD
-        .decode(s)
-        .or_else(|_| URL_SAFE_NO_PAD.decode(s))
-        .map_err(|e| CommandError::Invalid(format!("bad base64: {e}")))
+    vedge_ipc::b64_decode(s).map_err(Into::into)
 }
 
-/// Decode a base64 string and coerce into a fixed-length array.
+/// Decode base64 → fixed-length array.
 pub fn b64_decode_fixed<const N: usize>(s: &str) -> Result<[u8; N], CommandError> {
-    let v = b64_decode(s)?;
-    <[u8; N]>::try_from(v.as_slice())
-        .map_err(|_| CommandError::Invalid(format!("base64 payload must decode to {N} bytes")))
+    vedge_ipc::b64_decode_fixed::<N>(s).map_err(Into::into)
+}
+
+/// Parse RFC-3339 → `Timestamp`.
+pub fn ts_from_string(s: &str) -> Result<Timestamp, CommandError> {
+    vedge_ipc::ts_from_string(s).map_err(Into::into)
 }
 
 #[cfg(test)]
@@ -178,8 +122,8 @@ mod tests {
             EntryType::Identity,
             EntryType::Folder,
         ] {
-            let dto: EntryTypeDto = (&v).into();
-            let back: EntryType = dto.into();
+            let dto = entry_type_to_dto(&v);
+            let back = entry_type_from_dto(dto);
             assert_eq!(back, v);
         }
     }
@@ -187,8 +131,8 @@ mod tests {
     #[test]
     fn entry_type_preserves_unknown() {
         let v = EntryType::Unknown("Passkey".into());
-        let dto: EntryTypeDto = (&v).into();
-        let back: EntryType = dto.into();
+        let dto = entry_type_to_dto(&v);
+        let back = entry_type_from_dto(dto);
         assert_eq!(back, v);
     }
 
@@ -205,8 +149,8 @@ mod tests {
             notes: Some("ok".into()),
             payload_schema: 1,
         };
-        let dto: CommonMetaDto = (&m).into();
-        let back = dto.into_domain();
+        let dto = common_meta_to_dto(&m);
+        let back = common_meta_from_dto(dto);
         assert_eq!(back.name, m.name);
         assert_eq!(back.entry_type, m.entry_type);
         assert_eq!(back.url, m.url);
@@ -214,15 +158,6 @@ mod tests {
         assert_eq!(back.folder_id, m.folder_id);
         assert_eq!(back.is_favorite, m.is_favorite);
         assert_eq!(back.notes, m.notes);
-    }
-
-    #[test]
-    fn timestamp_round_trips() {
-        let ts = Utc::now();
-        let s = ts_to_string(ts);
-        let back = ts_from_string(&s).unwrap();
-        // Millisecond precision — equal at that resolution.
-        assert_eq!(back.timestamp_millis(), ts.timestamp_millis(),);
     }
 
     #[test]

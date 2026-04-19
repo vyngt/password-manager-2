@@ -1,42 +1,23 @@
-use crate::api::tauri;
-use crate::features::vault::types::{PaginationOutput, VaultItem, VaultItemData};
+use crate::features::vault::types::{VaultItem, VaultItemData};
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_search::VaultSearch;
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::*;
 use leptos::prelude::*;
-use leptos::task::spawn_local;
-use serde_json::json;
-use serde_wasm_bindgen::{from_value, to_value as to_js_value};
 use vedge_ui::components::Button;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
+// TODO(UI adaptation): this page still uses the legacy `VaultItem` /
+// `VaultItemData::Credential` shape. The real data source is
+// `api::vault::list_entries(vault_path).await` returning
+// `Vec<IndexEntryDto>`; delete goes through `api::entry::soft_delete_entry`.
+// Component tree needs to be rebuilt around the new DTOs before this page
+// can talk to the live shell. See docs/ImplementAppBridge.md "What comes
+// after this plan".
 fn load_items(items: RwSignal<Vec<VaultItem>>, loading: RwSignal<bool>) {
     loading.set(true);
-    spawn_local(async move {
-        let Some(args) = to_js_value(&json!({
-            "request": {
-                "pagination": { "limit": 100, "offset": 0 }
-            }
-        }))
-        .ok() else {
-            loading.set(false);
-            return;
-        };
-
-        let res = tauri::invoke("list_vault_items", args).await;
-
-        match from_value::<PaginationOutput<VaultItem>>(res) {
-            Ok(output) => {
-                items.set(output.data);
-            }
-            Err(e) => {
-                web_sys::console::error_1(&format!("Failed to load vault items: {:?}", e).into());
-            }
-        }
-
-        loading.set(false);
-    });
+    items.set(Vec::new());
+    loading.set(false);
 }
 
 #[component]
@@ -48,12 +29,10 @@ pub fn VaultPage() -> impl IntoView {
     let search_query = RwSignal::new(String::new());
     let show_create_form = RwSignal::new(false);
 
-    // Load items on mount
     Effect::new(move |_| {
         load_items(items, loading);
     });
 
-    // Client-side search filter
     let filtered_items = Memo::new(move |_| {
         let query = search_query.get().to_lowercase();
         if query.is_empty() {
@@ -75,41 +54,17 @@ pub fn VaultPage() -> impl IntoView {
             .collect::<Vec<_>>()
     });
 
-    // Delete handler
+    // TODO(UI adaptation): wire to `api::entry::soft_delete_entry`.
     let on_delete = Callback::new(move |id: String| {
-        spawn_local(async move {
-            let Some(args) = to_js_value(&json!({
-                "request": { "id": id }
-            }))
-            .ok() else {
-                return;
-            };
-
-            let res = tauri::invoke("delete_vault_item", args).await;
-
-            match from_value::<VaultItem>(res) {
-                Ok(deleted) => {
-                    items.update(|list| {
-                        list.retain(|item| item.id != deleted.id);
-                    });
-                }
-                Err(e) => {
-                    web_sys::console::error_1(
-                        &format!("Failed to delete vault item: {:?}", e).into(),
-                    );
-                }
-            }
-        });
+        items.update(|list| list.retain(|item| item.id != id));
     });
 
-    // Create handler
     let on_created = Callback::new(move |item: VaultItem| {
         items.update(|list| list.push(item));
     });
 
     view! {
         <div class="h-full flex flex-col gap-4 p-4">
-            // Toolbar
             <div class="flex items-center gap-3">
                 <VaultSearch search_query=search_query />
                 <Button
@@ -122,12 +77,10 @@ pub fn VaultPage() -> impl IntoView {
                 </Button>
             </div>
 
-            // Create form
             <Show when=move || show_create_form.get()>
                 <VaultCreateForm show=show_create_form on_created=on_created />
             </Show>
 
-            // Table
             <Show
                 when=move || !loading.get()
                 fallback=|| {

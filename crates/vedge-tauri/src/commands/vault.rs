@@ -43,9 +43,9 @@ use vedge_core::{
     search_entries,
 };
 
-use crate::dto::entry::{IndexEntryDto, entry_id_from_str, tag_id_from_str};
-use crate::dto::misc::UnlockVaultInputDto;
-use crate::dto::tag::TagMetaDto;
+use crate::dto::entry::{IndexEntryDto, entry_id_from_str, index_entry_to_dto, tag_id_from_str};
+use crate::dto::misc::{UnlockVaultInputDto, decode_unlock_secret_key};
+use crate::dto::tag::{TagMetaDto, tag_meta_to_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -74,7 +74,7 @@ pub async fn unlock_vault(
         )));
     }
 
-    let secret_key = input.decode_secret_key()?;
+    let secret_key = decode_unlock_secret_key(&input)?;
     let master_password = Zeroizing::new(input.master_password.clone());
 
     // The use case constructs the per-vault repo + blob store via its
@@ -154,7 +154,7 @@ pub async fn list_entries(
     Ok(list_active_entries(guard.index())
         .await
         .iter()
-        .map(IndexEntryDto::from)
+        .map(index_entry_to_dto)
         .collect())
 }
 
@@ -169,7 +169,7 @@ pub async fn list_trashed(
     Ok(list_trashed_entries(guard.index())
         .await
         .iter()
-        .map(IndexEntryDto::from)
+        .map(index_entry_to_dto)
         .collect())
 }
 
@@ -185,7 +185,7 @@ pub async fn search(
     Ok(search_entries(guard.index(), &query)
         .await
         .iter()
-        .map(IndexEntryDto::from)
+        .map(index_entry_to_dto)
         .collect())
 }
 
@@ -202,7 +202,7 @@ pub async fn by_tag(
     Ok(entries_by_tag(guard.index(), &tid)
         .await
         .iter()
-        .map(IndexEntryDto::from)
+        .map(index_entry_to_dto)
         .collect())
 }
 
@@ -219,7 +219,7 @@ pub async fn by_folder(
     Ok(entries_by_folder(guard.index(), folder.as_ref())
         .await
         .iter()
-        .map(IndexEntryDto::from)
+        .map(index_entry_to_dto)
         .collect())
 }
 
@@ -235,7 +235,7 @@ pub async fn by_domain(
     Ok(entries_by_domain(guard.index(), &domain)
         .await
         .iter()
-        .map(IndexEntryDto::from)
+        .map(index_entry_to_dto)
         .collect())
 }
 
@@ -250,6 +250,6 @@ pub async fn list_tags(
     Ok(list_tags_core(guard.index())
         .await
         .iter()
-        .map(TagMetaDto::from)
+        .map(tag_meta_to_dto)
         .collect())
 }

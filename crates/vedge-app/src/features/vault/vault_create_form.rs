@@ -1,13 +1,16 @@
-use super::types::VaultItem;
-use crate::api::tauri;
+use super::types::{VaultItem, VaultItemData, VaultItemDataCredential};
 use crate::i18n::*;
 use leptos::prelude::*;
-use leptos::task::spawn_local;
-use serde_json::json;
-use serde_wasm_bindgen::{from_value, to_value as to_js_value};
+use uuid::Uuid;
 use vedge_ui::components::Button;
 use vedge_ui::components::Input;
 use vedge_ui::primitives::tokens::{Size, Variant};
+
+// TODO(UI adaptation): this form currently produces a local-only
+// `VaultItem` without calling the shell. The real save path is
+// `api::entry::create_entry(vault_path, &PayloadDto::Login(...))` returning
+// the new entry id. Component tree needs a vault_path context before
+// wiring; see docs/ImplementAppBridge.md "What comes after this plan".
 
 #[component]
 pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) -> impl IntoView {
@@ -35,7 +38,6 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) ->
         if submitting.get() {
             return;
         }
-
         let title = form_title.get();
         if title.is_empty() {
             return;
@@ -43,45 +45,22 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) ->
 
         submitting.set(true);
 
-        let identifier = form_identifier.get();
-        let password = form_password.get();
-        let url = form_url.get();
-
-        spawn_local(async move {
-            let Some(args) = to_js_value(&json!({
-                "request": {
-                    "title": title,
-                    "kind": "Credential",
-                    "data": {
-                        "kind": "Credential",
-                        "identifier": identifier,
-                        "password": password,
-                        "url": url
-                    }
-                }
-            }))
-            .ok() else {
-                submitting.set(false);
-                return;
-            };
-
-            let res = tauri::invoke("create_vault_item", args).await;
-
-            match from_value::<VaultItem>(res) {
-                Ok(new_item) => {
-                    on_created.run(new_item);
-                    reset_form();
-                    show.set(false);
-                }
-                Err(e) => {
-                    web_sys::console::error_1(
-                        &format!("Failed to create vault item: {:?}", e).into(),
-                    );
-                }
-            }
-
-            submitting.set(false);
-        });
+        let item = VaultItem {
+            id: Uuid::new_v4().to_string(),
+            title,
+            kind: "Credential".to_owned(),
+            data: VaultItemData::Credential(VaultItemDataCredential {
+                identifier: form_identifier.get(),
+                password: form_password.get(),
+                url: form_url.get(),
+            }),
+            created_at: None,
+            updated_at: None,
+        };
+        on_created.run(item);
+        reset_form();
+        show.set(false);
+        submitting.set(false);
     };
 
     view! {

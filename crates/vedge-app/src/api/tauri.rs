@@ -2,8 +2,12 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
-    pub async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+    // `catch` translates Tauri's promise rejections (which carry the
+    // shell's `CommandError` envelope) into `Err(JsValue)` instead of
+    // panicking the WASM module. Every typed wrapper in `api/call.rs`
+    // relies on this.
+    #[wasm_bindgen(catch, js_namespace = ["window", "__TAURI__", "core"])]
+    pub async fn invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
 }
 
 /// Window APIs

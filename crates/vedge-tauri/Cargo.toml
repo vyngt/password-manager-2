@@ -19,6 +19,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 vedge-core = { path = "../vedge-core" }
+vedge-ipc  = { path = "../vedge-ipc" }
 
 tauri                             = { version = "2", features = [] }
 tauri-plugin-shell                = "2"

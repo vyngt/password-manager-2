@@ -1,20 +1,12 @@
-//! Entry-related DTOs: the read-side `IndexEntryDto`, the write-side
-//! `PayloadDto` family, and the converters that shuttle them in and out of
-//! `vedge-core` domain types.
-//!
-//! ## Secret handling
-//!
-//! Secrets cross as plain `String` / `Vec<String>`. The `into_domain`
-//! converters wrap each one in `SecretString` on its way into the domain
-//! layer; the DTO value drops immediately after, along with the raw bytes.
-//!
-//! The reverse direction (`from_domain`) exists only for `export_entry`
-//! flows that need to surface plaintext to the JS side — it materializes
-//! secret strings via `ExposeSecret` one last time, which is acceptable
-//! because the JS layer is the intended consumer.
+//! Entry DTO conversion layer (wire types from `vedge_ipc`).
+
+pub use vedge_ipc::{
+    AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarDto, EnvVarsPayloadDto,
+    FolderPayloadDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto, NotePayloadDto,
+    PayloadDto, SshKeyPayloadDto,
+};
 
 use secrecy::{ExposeSecret, SecretString};
-use serde::{Deserialize, Serialize};
 
 use vedge_core::domain::shared::{EntryId, TagId};
 use vedge_core::domain::vault::index::IndexEntry;
@@ -23,433 +15,264 @@ use vedge_core::domain::vault::payloads::{
     EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload, NotePayload, SshKeyPayload,
 };
 
-use crate::dto::common::{CommonMetaDto, EntryTypeDto, b64_decode_fixed, b64_encode, ts_to_string};
+use crate::dto::common::{
+    b64_decode_fixed, b64_encode, common_meta_from_dto, common_meta_to_dto, entry_type_to_dto,
+    ts_to_string,
+};
 use crate::error::CommandError;
 
-// ---- IndexEntryDto -----------------------------------------------------------
+// ---- IndexEntry → DTO --------------------------------------------------------
 
-/// Read-side projection of an entry, safe to hand to the UI. Non-secret
-/// fields only.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IndexEntryDto {
-    pub id: String,
-    pub name: String,
-    pub entry_type: EntryTypeDto,
-    #[serde(default)]
-    pub url: Option<String>,
-    #[serde(default)]
-    pub favicon_url: Option<String>,
-    #[serde(default)]
-    pub tag_ids: Vec<String>,
-    #[serde(default)]
-    pub folder_id: Option<String>,
-    pub is_favorite: bool,
-    pub is_trashed: bool,
-    pub cipher_suite: i32,
-    pub created_at: String,
-    pub updated_at: String,
-    #[serde(default)]
-    pub accessed_at: Option<String>,
+#[must_use]
+pub fn index_entry_to_dto(e: &IndexEntry) -> IndexEntryDto {
+    IndexEntryDto {
+        id: e.id.as_str().to_owned(),
+        name: e.name.clone(),
+        entry_type: entry_type_to_dto(&e.entry_type),
+        url: e.url.clone(),
+        favicon_url: e.favicon_url.clone(),
+        tag_ids: e.tag_ids.iter().map(|t| t.as_str().to_owned()).collect(),
+        folder_id: e.folder_id.as_ref().map(|f| f.as_str().to_owned()),
+        is_favorite: e.is_favorite,
+        is_trashed: e.is_trashed,
+        cipher_suite: e.cipher_suite,
+        created_at: ts_to_string(e.created_at),
+        updated_at: ts_to_string(e.updated_at),
+        accessed_at: e.accessed_at.map(ts_to_string),
+    }
 }
 
-impl From<&IndexEntry> for IndexEntryDto {
-    fn from(e: &IndexEntry) -> Self {
-        Self {
-            id: e.id.as_str().to_owned(),
-            name: e.name.clone(),
-            entry_type: (&e.entry_type).into(),
-            url: e.url.clone(),
-            favicon_url: e.favicon_url.clone(),
-            tag_ids: e.tag_ids.iter().map(|t| t.as_str().to_owned()).collect(),
-            folder_id: e.folder_id.as_ref().map(|f| f.as_str().to_owned()),
-            is_favorite: e.is_favorite,
-            is_trashed: e.is_trashed,
-            cipher_suite: e.cipher_suite,
-            created_at: ts_to_string(e.created_at),
-            updated_at: ts_to_string(e.updated_at),
-            accessed_at: e.accessed_at.map(ts_to_string),
+// ---- Address -----------------------------------------------------------------
+
+#[must_use]
+pub fn address_to_dto(a: &Address) -> AddressDto {
+    AddressDto {
+        line1: a.line1.clone(),
+        line2: a.line2.clone(),
+        city: a.city.clone(),
+        state: a.state.clone(),
+        postal_code: a.postal_code.clone(),
+        country: a.country.clone(),
+    }
+}
+
+#[must_use]
+pub fn address_from_dto(a: AddressDto) -> Address {
+    Address {
+        line1: a.line1,
+        line2: a.line2,
+        city: a.city,
+        state: a.state,
+        postal_code: a.postal_code,
+        country: a.country,
+    }
+}
+
+// ---- EnvVar ------------------------------------------------------------------
+
+fn env_var_from_dto(v: EnvVarDto) -> EnvVar {
+    EnvVar {
+        key: v.key,
+        value: SecretString::from(v.value),
+    }
+}
+
+fn env_var_to_dto(v: &EnvVar) -> EnvVarDto {
+    EnvVarDto {
+        key: v.key.clone(),
+        value: v.value.expose_secret().to_owned(),
+    }
+}
+
+// ---- Payload round-trip ------------------------------------------------------
+
+/// Convert a write-side DTO into a domain `EntryPayload`, forcing
+/// `meta.entry_type` to match the variant so a buggy frontend can't smuggle
+/// a mismatched pair.
+#[allow(clippy::too_many_lines)]
+pub fn payload_from_dto(dto: PayloadDto) -> Result<EntryPayload, CommandError> {
+    Ok(match dto {
+        PayloadDto::Login(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::Login;
+            EntryPayload::Login(LoginPayload {
+                meta,
+                username: d.username,
+                password: SecretString::from(d.password),
+                totp_secret: d.totp_secret.map(SecretString::from),
+                recovery_codes: d.recovery_codes.into_iter().map(SecretString::from).collect(),
+            })
         }
-    }
-}
-
-// ---- AddressDto --------------------------------------------------------------
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AddressDto {
-    pub line1: String,
-    #[serde(default)]
-    pub line2: Option<String>,
-    pub city: String,
-    #[serde(default)]
-    pub state: Option<String>,
-    pub postal_code: String,
-    pub country: String,
-}
-
-impl From<&Address> for AddressDto {
-    fn from(a: &Address) -> Self {
-        Self {
-            line1: a.line1.clone(),
-            line2: a.line2.clone(),
-            city: a.city.clone(),
-            state: a.state.clone(),
-            postal_code: a.postal_code.clone(),
-            country: a.country.clone(),
+        PayloadDto::Card(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::Card;
+            EntryPayload::Card(CardPayload {
+                meta,
+                cardholder_name: d.cardholder_name,
+                number: SecretString::from(d.number),
+                expiry_month: d.expiry_month,
+                expiry_year: d.expiry_year,
+                cvv: SecretString::from(d.cvv),
+                pin: d.pin.map(SecretString::from),
+            })
         }
-    }
-}
-
-impl From<AddressDto> for Address {
-    fn from(a: AddressDto) -> Self {
-        Self {
-            line1: a.line1,
-            line2: a.line2,
-            city: a.city,
-            state: a.state,
-            postal_code: a.postal_code,
-            country: a.country,
+        PayloadDto::SshKey(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::SshKey;
+            EntryPayload::SshKey(SshKeyPayload {
+                meta,
+                private_key_pem: SecretString::from(d.private_key_pem),
+                passphrase: d.passphrase.map(SecretString::from),
+                public_key: d.public_key,
+                fingerprint: d.fingerprint,
+                key_type: d.key_type,
+            })
         }
-    }
-}
-
-// ---- EnvVarDto ---------------------------------------------------------------
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvVarDto {
-    pub key: String,
-    pub value: String,
-}
-
-impl EnvVarDto {
-    fn into_domain(self) -> EnvVar {
-        EnvVar {
-            key: self.key,
-            value: SecretString::from(self.value),
+        PayloadDto::ApiKey(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::ApiKey;
+            EntryPayload::ApiKey(ApiKeyPayload {
+                meta,
+                key: SecretString::from(d.key),
+                secret: d.secret.map(SecretString::from),
+                endpoint: d.endpoint,
+                expiry: d.expiry,
+                key_type: d.key_type,
+            })
         }
-    }
-
-    fn from_domain(v: &EnvVar) -> Self {
-        Self {
-            key: v.key.clone(),
-            value: v.value.expose_secret().to_owned(),
+        PayloadDto::EnvVars(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::EnvVars;
+            EntryPayload::EnvVars(EnvVarsPayload {
+                meta,
+                vars: d.vars.into_iter().map(env_var_from_dto).collect(),
+            })
         }
-    }
-}
-
-// ---- Per-variant payload DTOs -----------------------------------------------
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoginPayloadDto {
-    pub meta: CommonMetaDto,
-    pub username: String,
-    pub password: String,
-    #[serde(default)]
-    pub totp_secret: Option<String>,
-    #[serde(default)]
-    pub recovery_codes: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CardPayloadDto {
-    pub meta: CommonMetaDto,
-    pub cardholder_name: String,
-    pub number: String,
-    pub expiry_month: u8,
-    pub expiry_year: u16,
-    pub cvv: String,
-    #[serde(default)]
-    pub pin: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SshKeyPayloadDto {
-    pub meta: CommonMetaDto,
-    pub private_key_pem: String,
-    #[serde(default)]
-    pub passphrase: Option<String>,
-    pub public_key: String,
-    pub fingerprint: String,
-    pub key_type: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApiKeyPayloadDto {
-    pub meta: CommonMetaDto,
-    pub key: String,
-    #[serde(default)]
-    pub secret: Option<String>,
-    #[serde(default)]
-    pub endpoint: Option<String>,
-    #[serde(default)]
-    pub expiry: Option<String>,
-    #[serde(default)]
-    pub key_type: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvVarsPayloadDto {
-    pub meta: CommonMetaDto,
-    #[serde(default)]
-    pub vars: Vec<EnvVarDto>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NotePayloadDto {
-    pub meta: CommonMetaDto,
-    pub content: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DocumentPayloadDto {
-    pub meta: CommonMetaDto,
-    pub filename: String,
-    pub mime_type: String,
-    pub size_bytes: u64,
-    /// Base64 of the 24-byte nonce used to encrypt the sidecar blob.
-    pub blob_nonce_b64: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IdentityPayloadDto {
-    pub meta: CommonMetaDto,
-    pub first_name: String,
-    pub last_name: String,
-    pub email: String,
-    #[serde(default)]
-    pub phone: Option<String>,
-    #[serde(default)]
-    pub address: Option<AddressDto>,
-    #[serde(default)]
-    pub date_of_birth: Option<String>,
-    #[serde(default)]
-    pub national_id: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FolderPayloadDto {
-    pub meta: CommonMetaDto,
-}
-
-// ---- PayloadDto (adjacently tagged union) -----------------------------------
-
-/// Tagged union over every writable payload variant. JS shape:
-/// `{ "entry_type": "Login", "data": { ... } }`.
-///
-/// `Unknown` has no DTO — it's a read-side-only domain variant that
-/// represents an entry whose schema we don't recognise. `create_entry` /
-/// `update_entry` can't produce one.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "entry_type", content = "data")]
-pub enum PayloadDto {
-    Login(LoginPayloadDto),
-    Card(CardPayloadDto),
-    SshKey(SshKeyPayloadDto),
-    ApiKey(ApiKeyPayloadDto),
-    EnvVars(EnvVarsPayloadDto),
-    Note(NotePayloadDto),
-    Document(DocumentPayloadDto),
-    Identity(IdentityPayloadDto),
-    Folder(FolderPayloadDto),
-}
-
-impl PayloadDto {
-    /// Convert to a domain `EntryPayload`, forcing `meta.entry_type` to
-    /// match the variant so a buggy / tampering frontend can't smuggle a
-    /// mismatched pair.
-    #[allow(clippy::too_many_lines)] // one arm per variant — each arm is short
-    pub fn into_domain(self) -> Result<EntryPayload, CommandError> {
-        match self {
-            Self::Login(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::Login;
-                Ok(EntryPayload::Login(LoginPayload {
-                    meta,
-                    username: dto.username,
-                    password: SecretString::from(dto.password),
-                    totp_secret: dto.totp_secret.map(SecretString::from),
-                    recovery_codes: dto
-                        .recovery_codes
-                        .into_iter()
-                        .map(SecretString::from)
-                        .collect(),
-                }))
-            }
-            Self::Card(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::Card;
-                Ok(EntryPayload::Card(CardPayload {
-                    meta,
-                    cardholder_name: dto.cardholder_name,
-                    number: SecretString::from(dto.number),
-                    expiry_month: dto.expiry_month,
-                    expiry_year: dto.expiry_year,
-                    cvv: SecretString::from(dto.cvv),
-                    pin: dto.pin.map(SecretString::from),
-                }))
-            }
-            Self::SshKey(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::SshKey;
-                Ok(EntryPayload::SshKey(SshKeyPayload {
-                    meta,
-                    private_key_pem: SecretString::from(dto.private_key_pem),
-                    passphrase: dto.passphrase.map(SecretString::from),
-                    public_key: dto.public_key,
-                    fingerprint: dto.fingerprint,
-                    key_type: dto.key_type,
-                }))
-            }
-            Self::ApiKey(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::ApiKey;
-                Ok(EntryPayload::ApiKey(ApiKeyPayload {
-                    meta,
-                    key: SecretString::from(dto.key),
-                    secret: dto.secret.map(SecretString::from),
-                    endpoint: dto.endpoint,
-                    expiry: dto.expiry,
-                    key_type: dto.key_type,
-                }))
-            }
-            Self::EnvVars(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::EnvVars;
-                Ok(EntryPayload::EnvVars(EnvVarsPayload {
-                    meta,
-                    vars: dto.vars.into_iter().map(EnvVarDto::into_domain).collect(),
-                }))
-            }
-            Self::Note(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::Note;
-                Ok(EntryPayload::Note(NotePayload {
-                    meta,
-                    content: SecretString::from(dto.content),
-                }))
-            }
-            Self::Document(dto) => {
-                let blob_nonce = b64_decode_fixed::<24>(&dto.blob_nonce_b64)?;
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::Document;
-                Ok(EntryPayload::Document(DocumentPayload {
-                    meta,
-                    filename: dto.filename,
-                    mime_type: dto.mime_type,
-                    size_bytes: dto.size_bytes,
-                    blob_nonce,
-                }))
-            }
-            Self::Identity(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::Identity;
-                Ok(EntryPayload::Identity(IdentityPayload {
-                    meta,
-                    first_name: dto.first_name,
-                    last_name: dto.last_name,
-                    email: dto.email,
-                    phone: dto.phone,
-                    address: dto.address.map(Into::into),
-                    date_of_birth: dto.date_of_birth,
-                    national_id: dto.national_id.map(SecretString::from),
-                }))
-            }
-            Self::Folder(dto) => {
-                let mut meta = dto.meta.into_domain();
-                meta.entry_type = EntryType::Folder;
-                Ok(EntryPayload::Folder(FolderPayload { meta }))
-            }
+        PayloadDto::Note(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::Note;
+            EntryPayload::Note(NotePayload {
+                meta,
+                content: SecretString::from(d.content),
+            })
         }
-    }
+        PayloadDto::Document(d) => {
+            let blob_nonce = b64_decode_fixed::<24>(&d.blob_nonce_b64)?;
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::Document;
+            EntryPayload::Document(DocumentPayload {
+                meta,
+                filename: d.filename,
+                mime_type: d.mime_type,
+                size_bytes: d.size_bytes,
+                blob_nonce,
+            })
+        }
+        PayloadDto::Identity(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::Identity;
+            EntryPayload::Identity(IdentityPayload {
+                meta,
+                first_name: d.first_name,
+                last_name: d.last_name,
+                email: d.email,
+                phone: d.phone,
+                address: d.address.map(address_from_dto),
+                date_of_birth: d.date_of_birth,
+                national_id: d.national_id.map(SecretString::from),
+            })
+        }
+        PayloadDto::Folder(d) => {
+            let mut meta = common_meta_from_dto(d.meta);
+            meta.entry_type = EntryType::Folder;
+            EntryPayload::Folder(FolderPayload { meta })
+        }
+    })
+}
 
-    /// Build a DTO from a domain payload. Returns `Invalid` for `Unknown`
-    /// variants — the shell has no stable wire-shape for unrecognised
-    /// entry types; callers should surface the underlying entry rather
-    /// than trying to convert it.
-    pub fn from_domain(p: &EntryPayload) -> Result<Self, CommandError> {
-        Ok(match p {
-            EntryPayload::Login(x) => Self::Login(LoginPayloadDto {
-                meta: (&x.meta).into(),
-                username: x.username.clone(),
-                password: x.password.expose_secret().to_owned(),
-                totp_secret: x.totp_secret.as_ref().map(|s| s.expose_secret().to_owned()),
-                recovery_codes: x
-                    .recovery_codes
-                    .iter()
-                    .map(|s| s.expose_secret().to_owned())
-                    .collect(),
-            }),
-            EntryPayload::Card(x) => Self::Card(CardPayloadDto {
-                meta: (&x.meta).into(),
-                cardholder_name: x.cardholder_name.clone(),
-                number: x.number.expose_secret().to_owned(),
-                expiry_month: x.expiry_month,
-                expiry_year: x.expiry_year,
-                cvv: x.cvv.expose_secret().to_owned(),
-                pin: x.pin.as_ref().map(|s| s.expose_secret().to_owned()),
-            }),
-            EntryPayload::SshKey(x) => Self::SshKey(SshKeyPayloadDto {
-                meta: (&x.meta).into(),
-                private_key_pem: x.private_key_pem.expose_secret().to_owned(),
-                passphrase: x.passphrase.as_ref().map(|s| s.expose_secret().to_owned()),
-                public_key: x.public_key.clone(),
-                fingerprint: x.fingerprint.clone(),
-                key_type: x.key_type.clone(),
-            }),
-            EntryPayload::ApiKey(x) => Self::ApiKey(ApiKeyPayloadDto {
-                meta: (&x.meta).into(),
-                key: x.key.expose_secret().to_owned(),
-                secret: x.secret.as_ref().map(|s| s.expose_secret().to_owned()),
-                endpoint: x.endpoint.clone(),
-                expiry: x.expiry.clone(),
-                key_type: x.key_type.clone(),
-            }),
-            EntryPayload::EnvVars(x) => Self::EnvVars(EnvVarsPayloadDto {
-                meta: (&x.meta).into(),
-                vars: x.vars.iter().map(EnvVarDto::from_domain).collect(),
-            }),
-            EntryPayload::Note(x) => Self::Note(NotePayloadDto {
-                meta: (&x.meta).into(),
-                content: x.content.expose_secret().to_owned(),
-            }),
-            EntryPayload::Document(x) => Self::Document(DocumentPayloadDto {
-                meta: (&x.meta).into(),
-                filename: x.filename.clone(),
-                mime_type: x.mime_type.clone(),
-                size_bytes: x.size_bytes,
-                blob_nonce_b64: b64_encode(&x.blob_nonce),
-            }),
-            EntryPayload::Identity(x) => Self::Identity(IdentityPayloadDto {
-                meta: (&x.meta).into(),
-                first_name: x.first_name.clone(),
-                last_name: x.last_name.clone(),
-                email: x.email.clone(),
-                phone: x.phone.clone(),
-                address: x.address.as_ref().map(AddressDto::from),
-                date_of_birth: x.date_of_birth.clone(),
-                national_id: x.national_id.as_ref().map(|s| s.expose_secret().to_owned()),
-            }),
-            EntryPayload::Folder(x) => Self::Folder(FolderPayloadDto {
-                meta: (&x.meta).into(),
-            }),
-            EntryPayload::Unknown(_) => {
-                return Err(CommandError::Invalid(
-                    "cannot convert Unknown entry payload to DTO".into(),
-                ));
-            }
-        })
-    }
+/// Build a DTO from a domain payload. Returns `Invalid` for `Unknown`
+/// variants — no stable wire-shape for unrecognized entry types.
+pub fn payload_to_dto(p: &EntryPayload) -> Result<PayloadDto, CommandError> {
+    Ok(match p {
+        EntryPayload::Login(x) => PayloadDto::Login(LoginPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            username: x.username.clone(),
+            password: x.password.expose_secret().to_owned(),
+            totp_secret: x.totp_secret.as_ref().map(|s| s.expose_secret().to_owned()),
+            recovery_codes: x
+                .recovery_codes
+                .iter()
+                .map(|s| s.expose_secret().to_owned())
+                .collect(),
+        }),
+        EntryPayload::Card(x) => PayloadDto::Card(CardPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            cardholder_name: x.cardholder_name.clone(),
+            number: x.number.expose_secret().to_owned(),
+            expiry_month: x.expiry_month,
+            expiry_year: x.expiry_year,
+            cvv: x.cvv.expose_secret().to_owned(),
+            pin: x.pin.as_ref().map(|s| s.expose_secret().to_owned()),
+        }),
+        EntryPayload::SshKey(x) => PayloadDto::SshKey(SshKeyPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            private_key_pem: x.private_key_pem.expose_secret().to_owned(),
+            passphrase: x.passphrase.as_ref().map(|s| s.expose_secret().to_owned()),
+            public_key: x.public_key.clone(),
+            fingerprint: x.fingerprint.clone(),
+            key_type: x.key_type.clone(),
+        }),
+        EntryPayload::ApiKey(x) => PayloadDto::ApiKey(ApiKeyPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            key: x.key.expose_secret().to_owned(),
+            secret: x.secret.as_ref().map(|s| s.expose_secret().to_owned()),
+            endpoint: x.endpoint.clone(),
+            expiry: x.expiry.clone(),
+            key_type: x.key_type.clone(),
+        }),
+        EntryPayload::EnvVars(x) => PayloadDto::EnvVars(EnvVarsPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            vars: x.vars.iter().map(env_var_to_dto).collect(),
+        }),
+        EntryPayload::Note(x) => PayloadDto::Note(NotePayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            content: x.content.expose_secret().to_owned(),
+        }),
+        EntryPayload::Document(x) => PayloadDto::Document(DocumentPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            filename: x.filename.clone(),
+            mime_type: x.mime_type.clone(),
+            size_bytes: x.size_bytes,
+            blob_nonce_b64: b64_encode(&x.blob_nonce),
+        }),
+        EntryPayload::Identity(x) => PayloadDto::Identity(IdentityPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+            first_name: x.first_name.clone(),
+            last_name: x.last_name.clone(),
+            email: x.email.clone(),
+            phone: x.phone.clone(),
+            address: x.address.as_ref().map(address_to_dto),
+            date_of_birth: x.date_of_birth.clone(),
+            national_id: x.national_id.as_ref().map(|s| s.expose_secret().to_owned()),
+        }),
+        EntryPayload::Folder(x) => PayloadDto::Folder(FolderPayloadDto {
+            meta: common_meta_to_dto(&x.meta),
+        }),
+        EntryPayload::Unknown(_) => {
+            return Err(CommandError::Invalid(
+                "cannot convert Unknown entry payload to DTO".into(),
+            ));
+        }
+    })
 }
 
 // ---- id helpers --------------------------------------------------------------
 
-/// Wrap a string as an `EntryId`. The shell never validates ULID format —
-/// `VaultRepository` does that on lookup.
 #[must_use]
 pub fn entry_id_from_str(s: &str) -> EntryId {
     EntryId::from_raw(s.to_owned())
 }
 
-/// Wrap a string as a `TagId`. Same as `entry_id_from_str` for tags.
 #[must_use]
 pub fn tag_id_from_str(s: &str) -> TagId {
     TagId::from_raw(s.to_owned())
@@ -460,7 +283,9 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
     use super::*;
+    use crate::dto::common::CommonMetaDto;
     use vedge_core::domain::vault::payloads::CommonMeta;
+    use vedge_ipc::EntryTypeDto;
 
     fn minimal_meta(ty: EntryType) -> CommonMeta {
         CommonMeta::new("demo", ty)
@@ -475,8 +300,8 @@ mod tests {
             totp_secret: Some(SecretString::from("JBSWY3DPEHPK3PXP")),
             recovery_codes: vec![SecretString::from("code-1")],
         });
-        let dto = PayloadDto::from_domain(&p).unwrap();
-        let back = dto.into_domain().unwrap();
+        let dto = payload_to_dto(&p).unwrap();
+        let back = payload_from_dto(dto).unwrap();
         let EntryPayload::Login(b) = back else {
             panic!("wrong variant")
         };
@@ -496,8 +321,8 @@ mod tests {
             size_bytes: 12_345,
             blob_nonce: nonce,
         });
-        let dto = PayloadDto::from_domain(&p).unwrap();
-        let back = dto.into_domain().unwrap();
+        let dto = payload_to_dto(&p).unwrap();
+        let back = payload_from_dto(dto).unwrap();
         let EntryPayload::Document(b) = back else {
             panic!("wrong variant")
         };
@@ -508,8 +333,6 @@ mod tests {
 
     #[test]
     fn payload_dto_forces_entry_type_match() {
-        // Frontend sends Note DTO but meta claims Login — shell rewrites
-        // meta.entry_type to Note on conversion.
         let wrong_meta = CommonMetaDto {
             name: "x".into(),
             entry_type: EntryTypeDto::Login, // wrong
@@ -524,7 +347,7 @@ mod tests {
             meta: wrong_meta,
             content: "body".into(),
         });
-        let back = dto.into_domain().unwrap();
+        let back = payload_from_dto(dto).unwrap();
         assert_eq!(back.meta().entry_type, EntryType::Note);
     }
 
@@ -535,7 +358,7 @@ mod tests {
             meta: minimal_meta(EntryType::Unknown("Passkey".into())),
             unknown_fields: serde_json::json!({"foo":"bar"}),
         });
-        assert!(PayloadDto::from_domain(&p).is_err());
+        assert!(payload_to_dto(&p).is_err());
     }
 
     #[test]

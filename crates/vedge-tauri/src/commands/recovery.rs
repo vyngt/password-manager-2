@@ -22,7 +22,9 @@ use vedge_core::application::vault::ports::KeychainProvider;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{RecoverVaultInput, recover_vault as core_recover};
 
-use crate::dto::emergency_kit::{RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
+use crate::dto::emergency_kit::{
+    RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto, recovery_outcome_to_dto,
+};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -54,7 +56,7 @@ pub async fn unlock_with_recovery_key(
     )
     .await?;
 
-    let dto = RecoveryOutcomeDto::from(&outcome);
+    let dto = recovery_outcome_to_dto(&outcome);
     state.insert_session(vault_id, outcome.session)?;
     Ok(dto)
 }

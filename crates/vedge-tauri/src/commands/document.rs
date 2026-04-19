@@ -20,7 +20,7 @@ use vedge_core::{
     import_document as import_document_core,
 };
 
-use crate::dto::common::{CommonMetaDto, b64_encode};
+use crate::dto::common::{CommonMetaDto, b64_encode, common_meta_from_dto};
 use crate::dto::entry::entry_id_from_str;
 use crate::dto::misc::ExportedDocumentDto;
 use crate::error::CommandError;
@@ -50,7 +50,7 @@ pub async fn import_document(
             filename,
             mime_type,
             content,
-            meta: meta.into_domain(),
+            meta: common_meta_from_dto(meta),
         },
     )
     .await?;

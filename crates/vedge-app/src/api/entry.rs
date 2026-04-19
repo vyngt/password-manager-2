@@ -1,0 +1,144 @@
+//! Entry CRUD + `copy_field` + `move_entry`. Mirrors
+//! `vedge-tauri/src/commands/entry.rs`.
+
+use serde::Serialize;
+
+use vedge_ipc::{FieldSelectorDto, PayloadDto};
+
+use crate::api::call::{call, call_void};
+use crate::api::error::ApiError;
+
+pub async fn create_entry(vault_path: &str, payload: &PayloadDto) -> Result<String, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        payload: &'a PayloadDto,
+    }
+    call(
+        "create_entry",
+        &Args {
+            vault_path,
+            payload,
+        },
+    )
+    .await
+}
+
+pub async fn update_entry(
+    vault_path: &str,
+    entry_id: &str,
+    payload: &PayloadDto,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        payload: &'a PayloadDto,
+    }
+    call_void(
+        "update_entry",
+        &Args {
+            vault_path,
+            entry_id,
+            payload,
+        },
+    )
+    .await
+}
+
+pub async fn soft_delete_entry(vault_path: &str, entry_id: &str) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+    }
+    call_void(
+        "soft_delete_entry",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
+}
+
+pub async fn restore_entry(vault_path: &str, entry_id: &str) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+    }
+    call_void(
+        "restore_entry",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
+}
+
+pub async fn hard_delete_entry(vault_path: &str, entry_id: &str) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+    }
+    call_void(
+        "hard_delete_entry",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
+}
+
+pub async fn copy_field(
+    vault_path: &str,
+    entry_id: &str,
+    field: &FieldSelectorDto,
+    clear_after_secs: Option<u32>,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        field: &'a FieldSelectorDto,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        clear_after_secs: Option<u32>,
+    }
+    call_void(
+        "copy_field",
+        &Args {
+            vault_path,
+            entry_id,
+            field,
+            clear_after_secs,
+        },
+    )
+    .await
+}
+
+pub async fn move_entry(
+    vault_path: &str,
+    entry_id: &str,
+    folder_id: Option<&str>,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        folder_id: Option<&'a str>,
+    }
+    call_void(
+        "move_entry",
+        &Args {
+            vault_path,
+            entry_id,
+            folder_id,
+        },
+    )
+    .await
+}
