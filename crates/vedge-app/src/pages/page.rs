@@ -47,7 +47,7 @@ pub fn Page() -> impl IntoView {
         <div class="flex h-full w-full flex-col justify-center">
             <div class="flex w-full justify-center">
                 <div
-                    class="flex w-full max-w-[36rem]"
+                    class="flex w-full max-w-xl"
                     on:keydown=move |ev| {
                         if ev.key() == "Enter" {
                             handle_submit(pw.get());

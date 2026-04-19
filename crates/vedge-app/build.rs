@@ -1,3 +1,4 @@
+use leptos_i18n_build::options::CodegenOptions;
 use leptos_i18n_build::{Config, FileFormat, ParseOptions, TranslationsInfos};
 use std::error::Error;
 use std::path::PathBuf;
@@ -6,7 +7,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-changed=Cargo.toml");
 
-    let i18n_mod_directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/i18n");
+    // Root is okay
+    let i18n_mod_directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
     let options = ParseOptions::default().file_format(FileFormat::Yaml);
 
     let cfg = Config::new("en")?
@@ -17,7 +19,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let translations_infos = TranslationsInfos::parse(cfg)?;
     translations_infos.emit_diagnostics();
     translations_infos.rerun_if_locales_changed();
-    translations_infos.generate_i18n_module(i18n_mod_directory)?;
+
+    let mut codegen_options = CodegenOptions::default();
+    let filename = PathBuf::from("i18n.rs");
+    codegen_options.module_file_name = &filename;
+
+    translations_infos.generate_i18n_module_with_options(i18n_mod_directory, codegen_options)?;
 
     Ok(())
 }
