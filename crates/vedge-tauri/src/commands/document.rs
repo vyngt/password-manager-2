@@ -30,7 +30,7 @@ fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, filename = %filename, bytes = content.len()))]
 pub async fn import_document(
     vault_path: String,
@@ -57,7 +57,7 @@ pub async fn import_document(
     Ok(id.into_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
 pub async fn export_document(
     vault_path: String,

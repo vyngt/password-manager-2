@@ -33,5 +33,6 @@ mod pg_toggle;
 mod pg_tooltip;
 mod routes;
 mod theme;
+mod theme_api;
 
 pub use routes::PlayGroundRoutes;

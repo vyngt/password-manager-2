@@ -4,9 +4,7 @@
 use serde::Serialize;
 use serde_json::Value;
 
-use vedge_ipc::{
-    AppSettingDto, CreateCustomThemeInputDto, ThemeDto, UpdateCustomThemeInputDto,
-};
+use vedge_ipc::{AppSettingDto, CreateCustomThemeInputDto, ThemeDto, UpdateCustomThemeInputDto};
 
 use crate::api::call::{call, call_noargs, call_void};
 use crate::api::error::ApiError;
@@ -88,10 +86,7 @@ pub async fn update_custom_theme(input: &UpdateCustomThemeInputDto) -> Result<()
     call_void("update_custom_theme", &Args { input }).await
 }
 
-pub async fn duplicate_theme(
-    source_id: &str,
-    new_name: Option<&str>,
-) -> Result<String, ApiError> {
+pub async fn duplicate_theme(source_id: &str, new_name: Option<&str>) -> Result<String, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
         source_id: &'a str,

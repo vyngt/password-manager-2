@@ -28,7 +28,7 @@ fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn create_tag(
     vault_path: String,
@@ -43,7 +43,7 @@ pub async fn create_tag(
     Ok(id.into_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, tag_id = %input.tag_id))]
 pub async fn rename_tag(
     vault_path: String,
@@ -59,7 +59,7 @@ pub async fn rename_tag(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, tag_id = %tag_id))]
 pub async fn delete_tag(
     vault_path: String,

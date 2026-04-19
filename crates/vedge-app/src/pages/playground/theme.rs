@@ -1,12 +1,22 @@
 use leptos::prelude::*;
+use leptos::task::spawn_local;
+use vedge_ipc::ThemeDto;
+use vedge_ui::components::Badge;
+use vedge_ui::components::Input;
 use vedge_ui::components::button::Button;
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::components::form::color_picker::ColorPicker;
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::primitives::tokens::{BadgeSize, BadgeVariant, Size, Variant};
 use vedge_ui::theme::{Severity, ThemeConfig, ThemeState, ThemeValidation, validate_theme_config};
 
 use icondata as i;
 use leptos_icons::Icon;
+
+use crate::api;
+use crate::pages::playground::theme_api::{
+    create_input_from, theme_config_from_dto, update_input_from,
+};
 
 // ---------------------------------------------------------------------------
 // Color picker row
@@ -176,12 +186,144 @@ fn ComponentPreview() -> impl IntoView {
 }
 
 // ---------------------------------------------------------------------------
+// Themes panel
+// ---------------------------------------------------------------------------
+
+/// Refresh both the theme list and the active-theme id. Called on mount
+/// and after every mutation.
+fn refresh_themes(
+    themes: RwSignal<Vec<ThemeDto>>,
+    active_id: RwSignal<Option<String>>,
+    list_error: RwSignal<Option<String>>,
+) {
+    spawn_local(async move {
+        match api::settings::list_themes().await {
+            Ok(rows) => {
+                list_error.set(None);
+                themes.set(rows);
+            }
+            Err(e) => {
+                list_error.set(Some(format!("list failed: {e}")));
+            }
+        }
+        if let Ok(active) = api::settings::get_active_theme().await {
+            active_id.set(Some(active.id));
+        }
+    });
+}
+
+#[component]
+#[allow(clippy::too_many_arguments)]
+fn ThemeRow(
+    theme: ThemeDto,
+    active_id: RwSignal<Option<String>>,
+    selected_id: RwSignal<Option<String>>,
+    on_preview: Callback<ThemeDto>,
+    on_update: Callback<ThemeDto>,
+    on_delete: Callback<ThemeDto>,
+    on_duplicate: Callback<ThemeDto>,
+    on_set_active: Callback<ThemeDto>,
+) -> impl IntoView {
+    let id_for_active = theme.id.clone();
+    let id_for_selected = theme.id.clone();
+    let is_built_in = theme.is_built_in;
+    let display_name = theme.name.clone();
+    let swatch_bg = theme.root_background.clone();
+    let swatch_primary = theme.root_primary.clone();
+
+    let t_preview = theme.clone();
+    let t_update = theme.clone();
+    let t_delete = theme.clone();
+    let t_duplicate = theme.clone();
+    let t_set_active = theme.clone();
+    let update_disabled_reason = !is_built_in;
+
+    view! {
+        <div class="flex items-center gap-2 rounded border border-border bg-surface-1 p-2">
+            <button
+                type="button"
+                class="flex items-center gap-2 flex-1 text-left"
+                on:click=move |_| on_preview.run(t_preview.clone())
+            >
+                <span
+                    class="w-4 h-4 rounded border border-border flex-shrink-0"
+                    style=format!("background: {swatch_bg}")
+                />
+                <span
+                    class="w-4 h-4 rounded border border-border flex-shrink-0"
+                    style=format!("background: {swatch_primary}")
+                />
+                <span class="text-sm text-text-primary flex-1 truncate">{display_name}</span>
+                <Show when=move || is_built_in>
+                    <Badge variant=BadgeVariant::Info size=BadgeSize::Sm>
+                        "Built-in"
+                    </Badge>
+                </Show>
+                <Show when=move || {
+                    active_id.get().as_deref() == Some(id_for_active.as_str())
+                }>
+                    <Badge variant=BadgeVariant::Success size=BadgeSize::Sm>
+                        "Active"
+                    </Badge>
+                </Show>
+                <Show when=move || {
+                    selected_id.get().as_deref() == Some(id_for_selected.as_str())
+                }>
+                    <span class="text-xs text-text-tertiary">"(editing)"</span>
+                </Show>
+            </button>
+
+            <IconButton
+                aria_label="Duplicate"
+                size=Size::Sm
+                on:click=move |_| on_duplicate.run(t_duplicate.clone())
+            >
+                <Icon icon=i::FiCopy />
+            </IconButton>
+
+            <Show when=move || update_disabled_reason>
+                {
+                    let t_u = t_update.clone();
+                    let t_d = t_delete.clone();
+                    view! {
+                        <IconButton
+                            aria_label="Save current editor state to this theme"
+                            size=Size::Sm
+                            variant=Variant::Secondary
+                            on:click=move |_| on_update.run(t_u.clone())
+                        >
+                            <Icon icon=i::ChFloppyDisk />
+                        </IconButton>
+                        <IconButton
+                            aria_label="Delete"
+                            size=Size::Sm
+                            variant=Variant::Danger
+                            on:click=move |_| on_delete.run(t_d.clone())
+                        >
+                            <Icon icon=i::FaTrashSolid />
+                        </IconButton>
+                    }
+                }
+            </Show>
+
+            <Button
+                size=Size::Sm
+                variant=Variant::Primary
+                on:click=move |_| on_set_active.run(t_set_active.clone())
+            >
+                "Use"
+            </Button>
+        </div>
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Theme Page
 // ---------------------------------------------------------------------------
 
 #[component]
 pub fn ThemePage() -> impl IntoView {
-    let theme = expect_context::<ThemeState>();
+    let theme_state = expect_context::<ThemeState>();
 
     let (background, set_background) = signal("#FFFFFF".to_string());
     let (foreground, set_foreground) = signal("#111827".to_string());
@@ -191,8 +333,29 @@ pub fn ThemePage() -> impl IntoView {
     let (success, set_success) = signal("#16A34A".to_string());
 
     let validation: RwSignal<Option<ThemeValidation>> = RwSignal::new(None);
-    let tokens_signal = theme.tokens();
+    let tokens_signal = theme_state.tokens();
 
+    // ---- Themes panel state --------------------------------------------------
+    let themes: RwSignal<Vec<ThemeDto>> = RwSignal::new(Vec::new());
+    let active_id: RwSignal<Option<String>> = RwSignal::new(None);
+    let selected_id: RwSignal<Option<String>> = RwSignal::new(None);
+    let list_error: RwSignal<Option<String>> = RwSignal::new(None);
+    let save_error: RwSignal<Option<String>> = RwSignal::new(None);
+    let row_error: RwSignal<Option<String>> = RwSignal::new(None);
+
+    // Dialog state: create new theme.
+    let save_dialog_open = RwSignal::new(false);
+    let new_name = RwSignal::new(String::new());
+
+    // Dialog state: confirm delete.
+    let delete_target: RwSignal<Option<ThemeDto>> = RwSignal::new(None);
+
+    Effect::new(move |_| {
+        refresh_themes(themes, active_id, list_error);
+    });
+
+    // Live-preview from the editor.
+    let theme_for_preview = theme_state.clone();
     Effect::new(move || {
         let config = ThemeConfig {
             background: background.get(),
@@ -205,8 +368,146 @@ pub fn ThemePage() -> impl IntoView {
         if let Ok(v) = validate_theme_config(&config) {
             validation.set(Some(v));
         }
-        theme.preview(&config);
+        theme_for_preview.preview(&config);
     });
+
+    // Snapshot the editor state imperatively at click time — `current_config`
+    // is only called from non-reactive click handlers, so we use
+    // `get_untracked()` to signal that we don't want a subscription (the
+    // live-preview Effect above owns the reactive reads).
+    let current_config = move || ThemeConfig {
+        background: background.get_untracked(),
+        foreground: foreground.get_untracked(),
+        primary: primary.get_untracked(),
+        danger: Some(danger.get_untracked()),
+        warning: Some(warning.get_untracked()),
+        success: Some(success.get_untracked()),
+    };
+
+    let load_into_editor = move |cfg: &ThemeConfig| {
+        set_background.set(cfg.background.clone());
+        set_foreground.set(cfg.foreground.clone());
+        set_primary.set(cfg.primary.clone());
+        set_danger.set(cfg.danger.clone().unwrap_or_default());
+        set_warning.set(cfg.warning.clone().unwrap_or_default());
+        set_success.set(cfg.success.clone().unwrap_or_default());
+    };
+
+    // ---- Row callbacks -------------------------------------------------------
+    let on_preview = Callback::new(move |dto: ThemeDto| {
+        row_error.set(None);
+        let cfg = theme_config_from_dto(&dto);
+        load_into_editor(&cfg);
+        selected_id.set(Some(dto.id.clone()));
+    });
+
+    let theme_for_commit = theme_state.clone();
+    let on_set_active = Callback::new(move |dto: ThemeDto| {
+        let id = dto.id.clone();
+        let cfg = theme_config_from_dto(&dto);
+        let theme_for_this_call = theme_for_commit.clone();
+        spawn_local(async move {
+            match api::settings::set_active_theme(&id).await {
+                Ok(()) => {
+                    active_id.set(Some(id));
+                    row_error.set(None);
+                    theme_for_this_call.commit(&cfg);
+                }
+                Err(e) => {
+                    row_error.set(Some(format!("set-active failed: {e}")));
+                }
+            }
+        });
+    });
+
+    let on_duplicate = Callback::new(move |dto: ThemeDto| {
+        let source_id = dto.id;
+        spawn_local(async move {
+            match api::settings::duplicate_theme(&source_id, None).await {
+                Ok(_new_id) => {
+                    row_error.set(None);
+                    refresh_themes(themes, active_id, list_error);
+                }
+                Err(e) => {
+                    row_error.set(Some(format!("duplicate failed: {e}")));
+                }
+            }
+        });
+    });
+
+    let on_update = Callback::new(move |dto: ThemeDto| {
+        let input = update_input_from(dto.id.clone(), dto.name.clone(), &current_config());
+        spawn_local(async move {
+            match api::settings::update_custom_theme(&input).await {
+                Ok(()) => {
+                    row_error.set(None);
+                    refresh_themes(themes, active_id, list_error);
+                }
+                Err(e) => {
+                    row_error.set(Some(format!("update failed: {e}")));
+                }
+            }
+        });
+    });
+
+    let on_delete_request = Callback::new(move |dto: ThemeDto| {
+        delete_target.set(Some(dto));
+    });
+
+    let confirm_delete = move |_| {
+        let Some(dto) = delete_target.get_untracked() else {
+            return;
+        };
+        let id = dto.id;
+        spawn_local(async move {
+            match api::settings::delete_custom_theme(&id).await {
+                Ok(()) => {
+                    row_error.set(None);
+                    // If the deleted theme was loaded in the editor, clear the marker.
+                    if selected_id.get_untracked().as_deref() == Some(id.as_str()) {
+                        selected_id.set(None);
+                    }
+                    refresh_themes(themes, active_id, list_error);
+                }
+                Err(e) => {
+                    row_error.set(Some(format!("delete failed: {e}")));
+                }
+            }
+        });
+        delete_target.set(None);
+    };
+
+    let cancel_delete = move |_| {
+        delete_target.set(None);
+    };
+
+    // ---- Save-as-new flow ----------------------------------------------------
+    let open_save_dialog = move |_| {
+        new_name.set(String::new());
+        save_error.set(None);
+        save_dialog_open.set(true);
+    };
+
+    let confirm_save = move |_| {
+        let name = new_name.get_untracked();
+        if name.trim().is_empty() {
+            save_error.set(Some("name required".into()));
+            return;
+        }
+        let input = create_input_from(name, &current_config());
+        spawn_local(async move {
+            match api::settings::create_custom_theme(&input).await {
+                Ok(new_id) => {
+                    save_dialog_open.set(false);
+                    selected_id.set(Some(new_id));
+                    refresh_themes(themes, active_id, list_error);
+                }
+                Err(e) => {
+                    save_error.set(Some(format!("save failed: {e}")));
+                }
+            }
+        });
+    };
 
     let apply_light = move |_| {
         set_background.set("#FFFFFF".into());
@@ -215,6 +516,7 @@ pub fn ThemePage() -> impl IntoView {
         set_danger.set("#DC2626".into());
         set_warning.set("#D97706".into());
         set_success.set("#16A34A".into());
+        selected_id.set(None);
     };
 
     let apply_dark = move |_| {
@@ -224,6 +526,7 @@ pub fn ThemePage() -> impl IntoView {
         set_danger.set("#EF4444".into());
         set_warning.set("#F59E0B".into());
         set_success.set("#22C55E".into());
+        selected_id.set(None);
     };
 
     view! {
@@ -237,6 +540,49 @@ pub fn ThemePage() -> impl IntoView {
                     <Button variant=Variant::Secondary size=Size::Sm on:click=apply_dark>
                         "Dark Preset"
                     </Button>
+                    <Button variant=Variant::Primary size=Size::Sm on:click=open_save_dialog>
+                        "Save as new\u{2026}"
+                    </Button>
+                </div>
+            </div>
+
+            // ---- Themes from app.db --------------------------------------
+            <div class="rounded-lg border border-border bg-surface-1 p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-text-primary">"Themes (app.db)"</h3>
+                    {move || {
+                        list_error
+                            .get()
+                            .map(|e| view! { <span class="text-xs text-danger">{e}</span> })
+                    }}
+                </div>
+                {move || {
+                    row_error.get().map(|e| view! { <div class="text-xs text-danger">{e}</div> })
+                }}
+                <div class="space-y-2">
+                    <For
+                        each=move || themes.get()
+                        key=|t| t.id.clone()
+                        children=move |t| {
+                            view! {
+                                <ThemeRow
+                                    theme=t
+                                    active_id=active_id
+                                    selected_id=selected_id
+                                    on_preview=on_preview
+                                    on_update=on_update
+                                    on_delete=on_delete_request
+                                    on_duplicate=on_duplicate
+                                    on_set_active=on_set_active
+                                />
+                            }
+                        }
+                    />
+                    <Show when=move || themes.get().is_empty() && list_error.get().is_none()>
+                        <p class="text-xs text-text-tertiary">
+                            "No themes yet \u{2014} built-ins seed on first app.db open."
+                        </p>
+                    </Show>
                 </div>
             </div>
 
@@ -412,6 +758,70 @@ pub fn ThemePage() -> impl IntoView {
                     </div>
                 </div>
             </div>
+
+            // ---- Save-as-new dialog --------------------------------------
+            <Dialog
+                open=Signal::derive(move || save_dialog_open.get())
+                on_close=Callback::new(move |()| save_dialog_open.set(false))
+            >
+                <DialogHeader>
+                    <DialogTitle>"Save theme"</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <div class="space-y-3">
+                        <Input
+                            id="theme-new-name"
+                            placeholder=Signal::derive(|| "Theme name".to_string())
+                            value=Signal::derive(move || new_name.get())
+                            on_input=Callback::new(move |v| new_name.set(v))
+                        />
+                        {move || {
+                            save_error
+                                .get()
+                                .map(|e| view! { <p class="text-xs text-danger">{e}</p> })
+                        }}
+                    </div>
+                </DialogBody>
+                <DialogFooter>
+                    <Button
+                        variant=Variant::Ghost
+                        size=Size::Sm
+                        on:click=move |_| save_dialog_open.set(false)
+                    >
+                        "Cancel"
+                    </Button>
+                    <Button variant=Variant::Primary size=Size::Sm on:click=confirm_save>
+                        "Save"
+                    </Button>
+                </DialogFooter>
+            </Dialog>
+
+            // ---- Confirm-delete dialog -----------------------------------
+            <Dialog
+                open=Signal::derive(move || delete_target.get().is_some())
+                on_close=Callback::new(move |()| delete_target.set(None))
+            >
+                <DialogHeader>
+                    <DialogTitle>"Delete theme?"</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <p class="text-sm text-text-secondary">
+                        {move || {
+                            delete_target
+                                .get()
+                                .map_or_else(String::new, |t| format!("Delete \"{}\"?", t.name))
+                        }}
+                    </p>
+                </DialogBody>
+                <DialogFooter>
+                    <Button variant=Variant::Ghost size=Size::Sm on:click=cancel_delete>
+                        "Cancel"
+                    </Button>
+                    <Button variant=Variant::Danger size=Size::Sm on:click=confirm_delete>
+                        "Delete"
+                    </Button>
+                </DialogFooter>
+            </Dialog>
         </div>
     }
 }

@@ -28,7 +28,7 @@ use crate::dto::emergency_kit::{
 use crate::error::CommandError;
 use crate::state::AppState;
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %input.vault_path))]
 pub async fn unlock_with_recovery_key(
     input: UnlockWithRecoveryKeyInputDto,

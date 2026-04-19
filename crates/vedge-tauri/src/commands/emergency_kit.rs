@@ -37,7 +37,7 @@ async fn resolve_display_name(state: &AppState, vault_path: &str) -> Option<Stri
         .map(|r| r.display_name)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn export_emergency_kit(
     vault_path: String,
@@ -61,7 +61,7 @@ pub async fn export_emergency_kit(
     Ok(emergency_kit_to_dto(content))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn emergency_kit_pdf(
     vault_path: String,

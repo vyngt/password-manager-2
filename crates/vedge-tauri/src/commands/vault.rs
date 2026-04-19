@@ -11,7 +11,7 @@
 //!
 //! ## Allow block below
 //!
-//! The `#[tauri::command]` attribute macro expands into dispatch code that
+//! The `#[tauri::command(rename_all = "snake_case")]` attribute macro expands into dispatch code that
 //! includes an `unreachable!()` branch (argument-count mismatch) and a
 //! `let _ = <must_use>` on the handler return. Both trip the workspace's
 //! `deny(unreachable, let_underscore_must_use)` under `cargo clippy
@@ -57,7 +57,7 @@ fn vault_id_from_string(s: &str) -> VaultId {
 
 // ---- unlock / lock / is_unlocked --------------------------------------------
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %input.vault_path))]
 pub async fn unlock_vault(
     input: UnlockVaultInputDto,
@@ -92,7 +92,7 @@ pub async fn unlock_vault(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn lock_vault(
     vault_path: String,
@@ -132,7 +132,7 @@ pub async fn lock_vault(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn is_unlocked(
     vault_path: String,
@@ -143,7 +143,7 @@ pub async fn is_unlocked(
 
 // ---- read queries (via use cases) -------------------------------------------
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn list_entries(
     vault_path: String,
@@ -158,7 +158,7 @@ pub async fn list_entries(
         .collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn list_trashed(
     vault_path: String,
@@ -173,7 +173,7 @@ pub async fn list_trashed(
         .collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn search(
     vault_path: String,
@@ -189,7 +189,7 @@ pub async fn search(
         .collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, tag_id = %tag_id))]
 pub async fn by_tag(
     vault_path: String,
@@ -206,7 +206,7 @@ pub async fn by_tag(
         .collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn by_folder(
     vault_path: String,
@@ -223,7 +223,7 @@ pub async fn by_folder(
         .collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, domain = %domain))]
 pub async fn by_domain(
     vault_path: String,
@@ -239,7 +239,7 @@ pub async fn by_domain(
         .collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn list_tags(
     vault_path: String,

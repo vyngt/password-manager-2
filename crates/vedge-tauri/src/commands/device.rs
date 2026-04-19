@@ -28,7 +28,7 @@ use crate::state::AppState;
 
 // ---- known_devices -----------------------------------------------------------
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
 pub async fn list_known_devices(
     state: tauri::State<'_, AppState>,
@@ -37,7 +37,7 @@ pub async fn list_known_devices(
     Ok(rows.iter().map(known_device_to_dto).collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(device_id = %device.device_id))]
 pub async fn upsert_known_device(
     device: KnownDeviceDto,
@@ -48,7 +48,7 @@ pub async fn upsert_known_device(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(device_id = %device_id))]
 pub async fn delete_known_device(
     device_id: String,
@@ -59,7 +59,7 @@ pub async fn delete_known_device(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(device_id = %device_id))]
 pub async fn touch_known_device_last_seen(
     device_id: String,
@@ -72,7 +72,7 @@ pub async fn touch_known_device_last_seen(
 
 // ---- extension_sessions ------------------------------------------------------
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
 pub async fn list_extension_sessions(
     state: tauri::State<'_, AppState>,
@@ -81,7 +81,7 @@ pub async fn list_extension_sessions(
     Ok(rows.iter().map(extension_session_to_dto).collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(session_id = %session.session_id))]
 pub async fn upsert_extension_session(
     session: ExtensionSessionDto,
@@ -92,7 +92,7 @@ pub async fn upsert_extension_session(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(session_id = %session_id))]
 pub async fn delete_extension_session(
     session_id: String,
@@ -103,7 +103,7 @@ pub async fn delete_extension_session(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(session_id = %session_id))]
 pub async fn touch_extension_session_last_active(
     session_id: String,

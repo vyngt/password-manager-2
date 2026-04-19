@@ -2,7 +2,7 @@
 //! `vedge-core` use case — no direct `state.recent_vaults.*` calls.
 //!
 //! See `commands/vault.rs` for the `#![allow]` rationale (macro expansion
-//! of `#[tauri::command]`).
+//! of `#[tauri::command(rename_all = "snake_case")]`).
 
 #![allow(clippy::unreachable, clippy::let_underscore_must_use)]
 
@@ -25,7 +25,7 @@ use crate::dto::settings::{
 use crate::error::CommandError;
 use crate::state::AppState;
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
 pub async fn list_recent_vaults(
     state: tauri::State<'_, AppState>,
@@ -35,7 +35,7 @@ pub async fn list_recent_vaults(
 }
 
 /// Onboarding variant: list + per-row filesystem existence check.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
 pub async fn list_recent_vaults_with_status(
     state: tauri::State<'_, AppState>,
@@ -46,7 +46,7 @@ pub async fn list_recent_vaults_with_status(
 
 /// Strict add: validates the file exists and has a `SQLite` header
 /// before persisting to the recents list.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %dto.id))]
 pub async fn add_recent_vault(
     dto: RecentVaultDto,
@@ -65,7 +65,7 @@ pub async fn add_recent_vault(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %id))]
 pub async fn remove_recent_vault(
     id: String,
@@ -75,7 +75,7 @@ pub async fn remove_recent_vault(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %id))]
 pub async fn touch_recent_vault(
     id: String,
@@ -87,7 +87,7 @@ pub async fn touch_recent_vault(
 
 /// Bump `last_opened` + move to top. Called by the shell after a
 /// successful unlock.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %id))]
 pub async fn touch_recent_vault_on_unlock(
     id: String,
@@ -99,7 +99,7 @@ pub async fn touch_recent_vault_on_unlock(
 
 /// Batch-delete entries whose paths no longer exist on disk. Returns the
 /// count for a "cleaned up N" toast.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
 pub async fn remove_stale_recent_vaults(
     state: tauri::State<'_, AppState>,

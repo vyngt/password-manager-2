@@ -24,7 +24,7 @@ fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn run_maintenance(
     vault_path: String,

@@ -1,7 +1,7 @@
 //! Entry CRUD + `copy_field` + `move_entry`.
 //!
 //! See `commands/vault.rs` for the rationale behind the `#![allow]` below
-//! (macro expansion of `#[tauri::command]` trips `unreachable` /
+//! (macro expansion of `#[tauri::command(rename_all = "snake_case")]` trips `unreachable` /
 //! `let_underscore_must_use`; holding the session mutex across the full
 //! command body trips `significant_drop_tightening`).
 
@@ -38,7 +38,7 @@ fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn create_entry(
     vault_path: String,
@@ -60,7 +60,7 @@ pub async fn create_entry(
     Ok(out.entry_id.into_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
 pub async fn update_entry(
     vault_path: String,
@@ -85,7 +85,7 @@ pub async fn update_entry(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
 pub async fn soft_delete_entry(
     vault_path: String,
@@ -101,7 +101,7 @@ pub async fn soft_delete_entry(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
 pub async fn restore_entry(
     vault_path: String,
@@ -117,7 +117,7 @@ pub async fn restore_entry(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
 pub async fn hard_delete_entry(
     vault_path: String,
@@ -135,7 +135,7 @@ pub async fn hard_delete_entry(
 
 /// `clear_after_secs = None` means "use the use-case default" (30 s). The
 /// use case takes a concrete `u32`, so we substitute 30 here.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
 pub async fn copy_field(
     vault_path: String,
@@ -162,7 +162,7 @@ pub async fn copy_field(
 
 /// `folder_id = None` moves the entry to the root. Matches the use case's
 /// `Option<&EntryId>` signature.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
 pub async fn move_entry(
     vault_path: String,

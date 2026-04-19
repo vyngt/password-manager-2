@@ -28,7 +28,7 @@ use crate::state::AppState;
 
 // ---- app_settings ------------------------------------------------------------
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(key = %key))]
 pub async fn get_app_setting(
     key: String,
@@ -38,7 +38,7 @@ pub async fn get_app_setting(
     Ok(row.as_ref().map(app_setting_to_dto))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(key = %key))]
 pub async fn set_app_setting(
     key: String,
@@ -49,7 +49,7 @@ pub async fn set_app_setting(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(key = %key))]
 pub async fn delete_app_setting(
     key: String,
@@ -59,7 +59,7 @@ pub async fn delete_app_setting(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(prefix = %prefix))]
 pub async fn list_app_settings(
     prefix: String,
@@ -71,14 +71,14 @@ pub async fn list_app_settings(
 
 // ---- themes ------------------------------------------------------------------
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
 pub async fn list_themes(state: tauri::State<'_, AppState>) -> Result<Vec<ThemeDto>, CommandError> {
     let rows = list_themes_core(&*state.themes).await?;
     Ok(rows.iter().map(theme_to_dto).collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %id))]
 pub async fn get_theme(
     id: String,
@@ -91,7 +91,7 @@ pub async fn get_theme(
 
 /// Resolve the active theme, falling back to the built-in default if the
 /// setting is unset or points at a missing row. Called on app startup.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
 pub async fn get_active_theme(state: tauri::State<'_, AppState>) -> Result<ThemeDto, CommandError> {
     let theme = resolve_active_theme_core(&*state.themes, &*state.app_settings).await?;
@@ -99,7 +99,7 @@ pub async fn get_active_theme(state: tauri::State<'_, AppState>) -> Result<Theme
 }
 
 /// Set the active theme. Validates the target exists before writing.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %id))]
 pub async fn set_active_theme(
     id: String,
@@ -112,7 +112,7 @@ pub async fn set_active_theme(
 
 /// Create a user-defined theme. Validates colors + name, forces
 /// `is_built_in = false`.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(name = %input.name))]
 pub async fn create_custom_theme(
     input: CreateCustomThemeInputDto,
@@ -135,7 +135,7 @@ pub async fn create_custom_theme(
 }
 
 /// Mutate an existing custom theme. Built-ins are rejected.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %input.id))]
 pub async fn update_custom_theme(
     input: UpdateCustomThemeInputDto,
@@ -159,7 +159,7 @@ pub async fn update_custom_theme(
 }
 
 /// Clone a theme. `new_name = None` → `"{source} (copy)"`.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(source_id = %source_id))]
 pub async fn duplicate_theme(
     source_id: String,
@@ -173,7 +173,7 @@ pub async fn duplicate_theme(
 
 /// Delete a custom theme. Rejects built-ins. If the theme was the active
 /// one, clears the active-theme setting first.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %id))]
 pub async fn delete_custom_theme(
     id: String,
