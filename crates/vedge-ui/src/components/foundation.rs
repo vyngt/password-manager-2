@@ -1,3 +1,4 @@
+pub mod accordion;
 pub mod avatar;
 pub mod badge;
 pub mod button;
@@ -10,6 +11,7 @@ pub mod sidebar_item;
 pub mod spinner;
 pub mod step_indicator;
 
+pub use accordion::*;
 pub use avatar::*;
 pub use badge::*;
 pub use button::*;

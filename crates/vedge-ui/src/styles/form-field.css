@@ -1,0 +1,26 @@
+@layer components {
+  /* ============================================================
+     Form Field — Tier 2: Label + control + HelperText wrapper
+     ============================================================ */
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .form-field:focus-within .label {
+    color: var(--color-text-primary);
+  }
+
+  .form-field--error:focus-within .label {
+    color: var(--color-danger-text);
+  }
+
+  .form-field__control {
+    margin-top: var(--space-1_5);
+  }
+
+  .form-field__helper {
+    margin-top: var(--space-1);
+  }
+}

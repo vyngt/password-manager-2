@@ -1,5 +1,6 @@
 use super::color_picker::ColorPickerPage;
 use super::layout::PlaygroundLayout;
+use super::pg_accordion::AccordionPage;
 use super::pg_avatar::AvatarPage;
 use super::pg_badge::BadgePage;
 use super::pg_button::ButtonPage;
@@ -8,6 +9,7 @@ use super::pg_data_table::DataTablePage;
 use super::pg_date_picker::DatePickerPage;
 use super::pg_dialog::DialogPage;
 use super::pg_file_upload::FileUploadPage;
+use super::pg_form_field::FormFieldPage;
 use super::pg_helper_text::HelperTextPage;
 use super::pg_icon_button::IconButtonPage;
 use super::pg_input::InputPage;
@@ -16,6 +18,7 @@ use super::pg_label::LabelPage;
 use super::pg_number_input::NumberInputPage;
 use super::pg_pagination::PaginationPage;
 use super::pg_password_strength_meter::PasswordStrengthMeterPage;
+use super::pg_popover::PopoverPage;
 use super::pg_progress_bar::ProgressBarPage;
 use super::pg_qrcode::QRCodePage;
 use super::pg_radio_group::RadioGroupPage;
@@ -41,6 +44,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
         <ParentRoute path=path!("/playground") view=PlaygroundLayout>
             <Route path=path!("/") view=ThemePage />
             // Foundation
+            <Route path=path!("/accordion") view=AccordionPage />
             <Route path=path!("/avatar") view=AvatarPage />
             <Route path=path!("/badge") view=BadgePage />
             <Route path=path!("/button") view=ButtonPage />
@@ -57,6 +61,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/color-picker") view=ColorPickerPage />
             <Route path=path!("/date-picker") view=DatePickerPage />
             <Route path=path!("/file-upload") view=FileUploadPage />
+            <Route path=path!("/form-field") view=FormFieldPage />
             <Route path=path!("/helper-text") view=HelperTextPage />
             <Route path=path!("/input") view=InputPage />
             <Route path=path!("/label") view=LabelPage />
@@ -74,6 +79,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/pagination") view=PaginationPage />
             // Feedback
             <Route path=path!("/dialog") view=DialogPage />
+            <Route path=path!("/popover") view=PopoverPage />
             <Route path=path!("/toast") view=ToastPage />
             <Route path=path!("/tooltip") view=TooltipPage />
         </ParentRoute>

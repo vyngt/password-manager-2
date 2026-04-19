@@ -154,6 +154,13 @@ impl Size {
             Size::Lg => "qrcode--lg",
         }
     }
+
+    pub fn accordion_trigger_class(&self) -> &'static str {
+        match self {
+            Size::Sm | Size::Md => "",
+            Size::Lg => "accordion__trigger--lg",
+        }
+    }
 }
 
 /// Field status — communicates validation state visually.

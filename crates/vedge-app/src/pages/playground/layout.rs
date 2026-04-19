@@ -17,6 +17,10 @@ const GROUPS: &[SidebarGroup] = &[
         label: "Foundation",
         items: &[
             SidebarItem {
+                name: "Accordion",
+                path: "/playground/accordion",
+            },
+            SidebarItem {
                 name: "Avatar",
                 path: "/playground/avatar",
             },
@@ -82,6 +86,10 @@ const GROUPS: &[SidebarGroup] = &[
                 path: "/playground/file-upload",
             },
             SidebarItem {
+                name: "Form Field",
+                path: "/playground/form-field",
+            },
+            SidebarItem {
                 name: "Helper Text",
                 path: "/playground/helper-text",
             },
@@ -137,6 +145,10 @@ const GROUPS: &[SidebarGroup] = &[
             SidebarItem {
                 name: "Dialog",
                 path: "/playground/dialog",
+            },
+            SidebarItem {
+                name: "Popover",
+                path: "/playground/popover",
             },
             SidebarItem {
                 name: "Toast",
