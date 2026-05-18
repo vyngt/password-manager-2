@@ -4,9 +4,8 @@ use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
-use vedge_ui::components::Tooltip;
 use vedge_ui::components::icon::VEdge;
-use vedge_ui::components::icon_button::IconButton;
+use vedge_ui::components::tooltip_icon_button::TooltipIconButton;
 use vedge_ui::primitives::tokens::{Placement, Shape, Size, Variant};
 use vedge_ui::theme::{ThemeState, compute_primary_foreground};
 
@@ -73,73 +72,61 @@ pub fn WindowPanel() -> impl IntoView {
                 </button>
             </div>
             <div class="flex h-full" style=handle_inner_color>
-                <Tooltip
-                    content=Signal::derive(move || t_string!(i18n, window.minimize).to_string())
-                    placement=Placement::Bottom
+                <TooltipIconButton
+                    label=Signal::derive(move || t_string!(i18n, window.minimize).to_string())
+                    size=Size::Lg
+                    shape=Shape::Square
+                    tooltip_placement=Placement::Bottom
+                    on_click=Callback::new(move |_: ()| {
+                        spawn_local(async move {
+                            let app_window = window::current();
+                            window::minimize(&app_window).await;
+                        });
+                    })
                 >
-                    <IconButton
-                        aria_label=tu_string!(i18n, window.minimize).to_string()
-                        size=Size::Lg
-                        shape=Shape::Square
-                        on:click=move |_ev| {
-                            spawn_local(async move {
-                                let app_window = window::current();
-                                window::minimize(&app_window).await;
-                            });
-                        }
-                    >
-                        <Icon icon=i::FaWindowMinimizeSolid />
-                    </IconButton>
-                </Tooltip>
-                <Tooltip
-                    content=Signal::derive(move || t_string!(i18n, window.maximize).to_string())
-                    placement=Placement::Left
+                    <Icon icon=i::FaWindowMinimizeSolid />
+                </TooltipIconButton>
+                <TooltipIconButton
+                    label=Signal::derive(move || t_string!(i18n, window.maximize).to_string())
+                    size=Size::Lg
+                    shape=Shape::Square
+                    tooltip_placement=Placement::Left
+                    on_click=Callback::new(move |_: ()| {
+                        spawn_local(async move {
+                            let app_window = window::current();
+                            let is_maximized = window::is_maximized(&app_window).await;
+                            if is_maximized {
+                                window::unmaximize(&app_window).await;
+                                set_is_maximized.set(false);
+                            } else {
+                                window::maximize(&app_window).await;
+                                set_is_maximized.set(true);
+                            }
+                        });
+                    })
                 >
-                    <IconButton
-                        aria_label=tu_string!(i18n, window.maximize).to_string()
-                        size=Size::Lg
-                        shape=Shape::Square
-                        on:click=move |_ev| {
-                            spawn_local(async move {
-                                let app_window = window::current();
-                                let is_maximized = window::is_maximized(&app_window).await;
-                                if is_maximized {
-                                    window::unmaximize(&app_window).await;
-                                    set_is_maximized.set(false);
-                                } else {
-                                    window::maximize(&app_window).await;
-                                    set_is_maximized.set(true);
-                                }
-                            });
-                        }
+                    <Show
+                        when=move || is_maximized.get()
+                        fallback=move || view! { <Icon icon=i::FaWindowMaximizeSolid /> }
                     >
-                        <Show
-                            when=move || is_maximized.get()
-                            fallback=move || view! { <Icon icon=i::FaWindowMaximizeSolid /> }
-                        >
-                            <Icon icon=i::FaWindowRestoreSolid />
-                        </Show>
-                    </IconButton>
-                </Tooltip>
-                <Tooltip
-                    content=Signal::derive(move || t_string!(i18n, window.close).to_string())
-                    placement=Placement::Left
+                        <Icon icon=i::FaWindowRestoreSolid />
+                    </Show>
+                </TooltipIconButton>
+                <TooltipIconButton
+                    label=Signal::derive(move || t_string!(i18n, window.close).to_string())
+                    variant=Variant::Danger
+                    size=Size::Lg
+                    shape=Shape::Square
+                    tooltip_placement=Placement::Left
+                    on_click=Callback::new(move |_: ()| {
+                        spawn_local(async move {
+                            let app_window = window::current();
+                            window::close(&app_window).await;
+                        });
+                    })
                 >
-                    <IconButton
-                        aria_label=tu_string!(i18n, window.close).to_string()
-                        variant=Variant::Danger
-                        size=Size::Lg
-                        shape=Shape::Square
-                        on:click=move |_ev| {
-                            spawn_local(async move {
-                                let app_window = window::current();
-                                window::close(&app_window).await;
-                            });
-                        }
-                    >
-                        <Icon icon=i::FaXmarkSolid />
-                    </IconButton>
-                </Tooltip>
+                    <Icon icon=i::FaXmarkSolid />
+                </TooltipIconButton>
             </div>
         </header>
     }
