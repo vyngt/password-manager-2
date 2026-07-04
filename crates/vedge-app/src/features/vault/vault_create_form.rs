@@ -1,26 +1,49 @@
-use super::types::{VaultItem, VaultItemData, VaultItemDataCredential};
+use crate::api;
+use crate::features::vault::context::ActiveVault;
 use crate::i18n::*;
 use leptos::prelude::*;
-use uuid::Uuid;
+use leptos::task::spawn_local;
+use vedge_ipc::{CommonMetaDto, EntryTypeDto, LoginPayloadDto, PayloadDto};
 use vedge_ui::components::Button;
 use vedge_ui::components::Input;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
-// TODO(UI adaptation): this form currently produces a local-only
-// `VaultItem` without calling the shell. The real save path is
-// `api::entry::create_entry(vault_path, &PayloadDto::Login(...))` returning
-// the new entry id. Component tree needs a vault_path context before
-// wiring; see docs/ImplementAppBridge.md "What comes after this plan".
+/// Build the write-side payload for a new Login entry from the form fields.
+///
+/// An empty URL collapses to `None` so we don't persist a blank string.
+fn to_login_payload(title: String, username: String, password: String, url: String) -> PayloadDto {
+    PayloadDto::Login(LoginPayloadDto {
+        meta: CommonMetaDto {
+            name: title,
+            entry_type: EntryTypeDto::Login,
+            url: (!url.is_empty()).then_some(url),
+            favicon_url: None,
+            tag_ids: vec![],
+            folder_id: None,
+            is_favorite: false,
+            notes: None,
+        },
+        username,
+        password,
+        totp_secret: None,
+        recovery_codes: vec![],
+    })
+}
 
+/// Add-entry form. On submit it persists a Login entry through the backend
+/// (`api::entry::create_entry`) against the active vault, then pings the
+/// parent to refresh via `on_created` (a `Callback<()>`).
 #[component]
-pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) -> impl IntoView {
+pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl IntoView {
     let i18n = use_i18n();
+    let active = expect_context::<ActiveVault>();
 
     let form_title = RwSignal::new(String::new());
     let form_identifier = RwSignal::new(String::new());
     let form_password = RwSignal::new(String::new());
     let form_url = RwSignal::new(String::new());
     let submitting = RwSignal::new(false);
+    let error = RwSignal::new(Option::<String>::None);
 
     let reset_form = move || {
         form_title.set(String::new());
@@ -31,6 +54,7 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) ->
 
     let handle_cancel = move |_| {
         reset_form();
+        error.set(None);
         show.set(false);
     };
 
@@ -39,28 +63,34 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) ->
             return;
         }
         let title = form_title.get();
-        if title.is_empty() {
+        if title.trim().is_empty() {
             return;
         }
 
         submitting.set(true);
+        error.set(None);
 
-        let item = VaultItem {
-            id: Uuid::new_v4().to_string(),
+        let vault_path = active.path.get().unwrap_or_default();
+        let payload = to_login_payload(
             title,
-            kind: "Credential".to_owned(),
-            data: VaultItemData::Credential(VaultItemDataCredential {
-                identifier: form_identifier.get(),
-                password: form_password.get(),
-                url: form_url.get(),
-            }),
-            created_at: None,
-            updated_at: None,
-        };
-        on_created.run(item);
-        reset_form();
-        show.set(false);
-        submitting.set(false);
+            form_identifier.get(),
+            form_password.get(),
+            form_url.get(),
+        );
+
+        spawn_local(async move {
+            match api::entry::create_entry(&vault_path, &payload).await {
+                Ok(_id) => {
+                    reset_form();
+                    show.set(false);
+                    on_created.run(());
+                }
+                Err(e) => {
+                    error.set(Some(format!("Could not save the entry: {e}")));
+                }
+            }
+            submitting.set(false);
+        });
     };
 
     view! {
@@ -107,14 +137,64 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<VaultItem>) ->
                     on_input=Callback::new(move |v: String| form_url.set(v))
                 />
             </div>
+            {move || error.get().map(|e| view! {
+                <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>
+            })}
             <div class="flex gap-2 justify-end mt-3">
                 <Button variant=Variant::Ghost size=Size::Sm on:click=handle_cancel>
                     {move || t!(i18n, vault.cancel)}
                 </Button>
-                <Button variant=Variant::Primary size=Size::Sm on:click=handle_save>
-                    {move || t!(i18n, vault.save)}
-                </Button>
+                {move || {
+                    let busy = submitting.get() || form_title.get().trim().is_empty();
+                    view! {
+                        <Button
+                            variant=Variant::Primary
+                            size=Size::Sm
+                            disabled=busy
+                            on:click=handle_save
+                        >
+                            {move || t!(i18n, vault.save)}
+                        </Button>
+                    }
+                }}
             </div>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::to_login_payload;
+    use vedge_ipc::{EntryTypeDto, PayloadDto};
+
+    #[test]
+    fn maps_login_fields() {
+        let PayloadDto::Login(p) = to_login_payload(
+            "GitHub".into(),
+            "alice".into(),
+            "s3cret".into(),
+            "https://github.com".into(),
+        ) else {
+            panic!("expected Login variant");
+        };
+        assert_eq!(p.meta.name, "GitHub");
+        assert_eq!(p.meta.entry_type, EntryTypeDto::Login);
+        assert_eq!(p.meta.url.as_deref(), Some("https://github.com"));
+        assert_eq!(p.username, "alice");
+        assert_eq!(p.password, "s3cret");
+        assert!(p.totp_secret.is_none());
+        assert!(p.recovery_codes.is_empty());
+        assert!(p.meta.tag_ids.is_empty());
+        assert!(!p.meta.is_favorite);
+    }
+
+    #[test]
+    fn empty_url_becomes_none() {
+        let PayloadDto::Login(p) =
+            to_login_payload("x".into(), "u".into(), "p".into(), String::new())
+        else {
+            panic!("expected Login variant");
+        };
+        assert!(p.meta.url.is_none());
     }
 }
