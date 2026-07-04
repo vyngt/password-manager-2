@@ -39,6 +39,23 @@ Verifies the create-vault vertical slice end-to-end: **UI wizard → `create_vau
 - **Kit acknowledgement is non-skippable** — **"Finish" stays disabled** until the checkbox is ticked.
 - **Keychain unavailable** — if the OS keychain write fails (`keychain_stored == false`), step Emergency Kit shows a stronger warning that the kit is the only way back in. Hard to force on a healthy Windows machine; primarily a code-path note.
 
+## Add a login entry (slice 1.4)
+
+Once you land at `/v/vault` (the `ActiveVault` path is set by the create flow), the "new item" form persists through the backend. The list itself is **not** wired until slice 1.5, so confirm the write out-of-band.
+
+| # | Action | Expected |
+|---|---|---|
+| 1 | Click **"New item"** | The add-entry form appears (Title / Identifier / Password / URL). |
+| 2 | Fill **Title** = `GitHub`, Identifier = `alice`, Password = `s3cret`, URL = `https://github.com` | Save is enabled once Title is non-empty. |
+| 3 | Click **Save** | The form closes (no error). Under the hood: `create_entry` → an encrypted row in `entries`. |
+| 4 | In **devtools**: `await window.__TAURI__.core.invoke('list_entries', { vault_path: '<your path>' })` | Returns an array with the new `IndexEntryDto` (`name: "GitHub"`, `entry_type: "Login"`, `url`, timestamps). |
+| 5 | (Optional) Inspect the `entries` table in the `.vdb` | The row's payload is **ciphertext**, not plaintext `s3cret`. |
+
+**Edge cases:**
+- **No active vault** — if you reach the form without an active vault (e.g. navigate directly), Save shows an inline **"Could not save the entry: …"** and keeps your input.
+- **Empty title** — the Save button stays disabled.
+- **Not in the list yet** — the row won't render in the on-screen table until slice 1.5 wires `list_entries`. This is expected for 1.4.
+
 ## Command-level smoke (optional, faster than the UI)
 
 Because `withGlobalTauri` is enabled, you can exercise the command directly in **devtools** (Ctrl+Shift+I in the dev window) without the wizard:

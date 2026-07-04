@@ -32,7 +32,7 @@ Notes:
 
 | Smoke | Covers | Slices |
 |---|---|---|
-| [Phase 1 — Create Vault](phase-1-create-vault.md) | Create a vault from the UI → land unlocked | 1.1, 1.2, 1.3 |
+| [Phase 1 — Create Vault](phase-1-create-vault.md) | Create a vault from the UI → land unlocked → add a login entry | 1.1, 1.2, 1.3, 1.4 |
 
 ## Doc conventions
 
