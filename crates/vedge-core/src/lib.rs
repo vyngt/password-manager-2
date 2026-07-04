@@ -33,14 +33,14 @@ pub use application::app::use_cases::{
 };
 pub use application::vault::session::VaultSession;
 pub use application::vault::use_cases::{
-    ChangePasswordInput, CopyFieldInput, CreateEntryInput, CreateEntryOutput,
-    DOCUMENT_SIZE_LIMIT_BYTES, ExportEmergencyKitInput, FieldSelector, ImportDocumentInput,
-    MaintenanceReport, RecoverVaultInput, RecoveryOutcome, UnlockVault, UnlockVaultInput,
-    UpdateEntryInput, change_password, copy_field, create_entry, create_tag, delete_tag,
-    entries_by_domain, entries_by_folder, entries_by_tag, export_document, export_emergency_kit,
-    hard_delete_entry, import_document, list_active_entries, list_tags, list_trashed_entries,
-    lock_vault, move_entry, normalize_tag_name, recover_vault, rename_tag, restore_entry,
-    run_maintenance, search_entries, soft_delete_entry, update_entry,
+    ChangePasswordInput, CopyFieldInput, CreateEntryInput, CreateEntryOutput, CreateVault,
+    CreateVaultInput, CreateVaultOutput, DOCUMENT_SIZE_LIMIT_BYTES, ExportEmergencyKitInput,
+    FieldSelector, ImportDocumentInput, MaintenanceReport, RecoverVaultInput, RecoveryOutcome,
+    UnlockVault, UnlockVaultInput, UpdateEntryInput, change_password, copy_field, create_entry,
+    create_tag, delete_tag, entries_by_domain, entries_by_folder, entries_by_tag, export_document,
+    export_emergency_kit, hard_delete_entry, import_document, list_active_entries, list_tags,
+    list_trashed_entries, lock_vault, move_entry, normalize_tag_name, recover_vault, rename_tag,
+    restore_entry, run_maintenance, search_entries, soft_delete_entry, update_entry,
 };
 pub use domain::vault::emergency_kit::EmergencyKitContent;
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
