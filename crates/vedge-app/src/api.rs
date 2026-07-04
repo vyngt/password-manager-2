@@ -12,6 +12,7 @@ pub mod error;
 pub mod tauri;
 
 pub mod device;
+pub mod dialog;
 pub mod document;
 pub mod emergency_kit;
 pub mod entry;

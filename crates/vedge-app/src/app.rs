@@ -2,6 +2,7 @@ use crate::i18n::*;
 
 use leptos::prelude::*;
 
+use crate::features::vault::context::ActiveVault;
 use crate::features::window_panel::WindowPanel;
 use crate::routes::AppRoutes;
 use vedge_ui::components::feedback::toast::provider::ToastProvider;
@@ -38,6 +39,7 @@ pub fn App() -> impl IntoView {
     );
 
     provide_context(theme);
+    provide_context(ActiveVault::new());
 
     view! {
         <I18nContextProvider>

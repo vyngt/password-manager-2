@@ -87,6 +87,7 @@ pub fn run() {
             // ---- emergency kit + recovery ----
             commands::emergency_kit::export_emergency_kit,
             commands::emergency_kit::emergency_kit_pdf,
+            commands::emergency_kit::write_emergency_kit_pdf,
             commands::recovery::unlock_with_recovery_key,
             // ---- app.db: recent vaults ----
             commands::recent::list_recent_vaults,

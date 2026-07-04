@@ -1,3 +1,4 @@
+use crate::features::vault::vault_setup::VaultSetup;
 use crate::pages::{
     not_found::NotFoundPage, page::Page as EntryPage, playground::PlayGroundRoutes, v::VRoutes,
 };
@@ -11,6 +12,7 @@ pub fn AppRoutes() -> impl IntoView {
         <Router>
             <Routes fallback=|| view! { <NotFoundPage /> }>
                 <Route path=path!("/") view=EntryPage />
+                <Route path=path!("/onboarding") view=VaultSetup />
                 <VRoutes />
 
                 // ....

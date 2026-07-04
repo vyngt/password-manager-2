@@ -9,6 +9,7 @@ use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
 use leptos_icons::Icon;
+use vedge_ui::components::Button;
 use vedge_ui::components::Input;
 use vedge_ui::components::icon::Decrypt;
 
@@ -77,6 +78,17 @@ pub fn Page() -> impl IntoView {
                         </IconButton>
                     </Tooltip>
                 </div>
+            </div>
+            <div class="mt-4 flex w-full justify-center">
+                <Button
+                    variant=Variant::Ghost
+                    on:click=move |_| {
+                        let nav = use_navigate();
+                        nav("/onboarding", Default::default());
+                    }
+                >
+                    "Create a new vault"
+                </Button>
             </div>
         </div>
     };
