@@ -41,20 +41,39 @@ Verifies the create-vault vertical slice end-to-end: **UI wizard → `create_vau
 
 ## Add a login entry (slice 1.4)
 
-Once you land at `/v/vault` (the `ActiveVault` path is set by the create flow), the "new item" form persists through the backend. The list itself is **not** wired until slice 1.5, so confirm the write out-of-band.
+Once you land at `/v/vault` (the `ActiveVault` path is set by the create flow), the "new item" form persists through the backend.
 
 | # | Action | Expected |
 |---|---|---|
 | 1 | Click **"New item"** | The add-entry form appears (Title / Identifier / Password / URL). |
 | 2 | Fill **Title** = `GitHub`, Identifier = `alice`, Password = `s3cret`, URL = `https://github.com` | Save is enabled once Title is non-empty. |
-| 3 | Click **Save** | The form closes (no error). Under the hood: `create_entry` → an encrypted row in `entries`. |
-| 4 | In **devtools**: `await window.__TAURI__.core.invoke('list_entries', { vault_path: '<your path>' })` | Returns an array with the new `IndexEntryDto` (`name: "GitHub"`, `entry_type: "Login"`, `url`, timestamps). |
-| 5 | (Optional) Inspect the `entries` table in the `.vdb` | The row's payload is **ciphertext**, not plaintext `s3cret`. |
+| 3 | Click **Save** | The form closes (no error). Under the hood: `create_entry` → an encrypted row in `entries`. The row **appears in the list** immediately (see slice 1.5 below). |
+| 4 | (Optional) Inspect the `entries` table in the `.vdb` | The row's payload is **ciphertext**, not plaintext `s3cret`. |
 
 **Edge cases:**
 - **No active vault** — if you reach the form without an active vault (e.g. navigate directly), Save shows an inline **"Could not save the entry: …"** and keeps your input.
 - **Empty title** — the Save button stays disabled.
-- **Not in the list yet** — the row won't render in the on-screen table until slice 1.5 wires `list_entries`. This is expected for 1.4.
+
+## List / detail / copy / delete (slice 1.5)
+
+The vault view now reads live entries from `list_entries` and supports view / copy / delete. Secrets are copied by the backend onto the OS clipboard (30 s auto-clear) — the UI never sees plaintext.
+
+| # | Action | Expected |
+|---|---|---|
+| 1 | Look at the table after adding entries | Rows show **Name · Type · URL · Updated · Actions** (e.g. `GitHub` · `Login` · `https://github.com` · date). |
+| 2 | Type `hub` in the **search** box | The list filters instantly to matching name/URL rows; clear it to show all again. |
+| 3 | Click a **row** (not the trash icon) | A **detail panel** opens on the right: name, type, URL (as a link), created/updated, and **Copy username / Copy password** buttons (Login). |
+| 4 | Click **Copy password** | Status line shows "Copied to clipboard — clears in 30s". Paste into a text editor **within 30 s** → the password appears; after 30 s the clipboard is cleared. |
+| 5 | Click **Copy username** | Same, for the username. |
+| 6 | Click the **trash icon** on a row | The entry is soft-deleted and the list re-fetches without it (the detail panel closes if it was that row). |
+| 7 | Restart the app + unlock, or re-run `list_entries` | The deleted entry is gone from the active list (it's trashed, not hard-deleted). |
+
+**Edge cases:**
+- **Copy on a non-Login type** — only Login exposes copy buttons today (other types are add-entry-later).
+- **Delete failure** — surfaces as an inline "Could not delete: …" status line; the row stays.
+- **Search** matches **name/URL only** (client-side); `username` isn't in the metadata index, so it isn't searchable in-app yet (server-side `search` is a follow-up).
+
+Command-level equivalents (devtools): `list_entries`, `copy_field` (`{ vault_path, entry_id, field: { kind: "Password" }, clear_after_secs: 30 }`), `soft_delete_entry`.
 
 ## Command-level smoke (optional, faster than the UI)
 
