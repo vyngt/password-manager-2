@@ -59,9 +59,10 @@ pub fn VaultPage() -> impl IntoView {
         items.update(|list| list.retain(|item| item.id != id));
     });
 
-    let on_created = Callback::new(move |item: VaultItem| {
-        items.update(|list| list.push(item));
-    });
+    // 1.4: the form now persists through the backend and pings us to refresh.
+    // `load_items` is still the legacy stub here; it becomes the real
+    // `api::vault::list_entries` fetch in slice 1.5.
+    let on_created = Callback::new(move |()| load_items(items, loading));
 
     view! {
         <div class="h-full flex flex-col gap-4 p-4">
