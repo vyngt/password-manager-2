@@ -1,27 +1,8 @@
 use serde::Deserialize;
 
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-pub struct VaultItemDataCredential {
-    pub identifier: String,
-    pub password: String,
-    pub url: String,
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-#[serde(tag = "kind")]
-pub enum VaultItemData {
-    Credential(VaultItemDataCredential),
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-pub struct VaultItem {
-    pub id: String,
-    pub title: String,
-    pub kind: String,
-    pub data: VaultItemData,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
-}
+// NOTE: the legacy `VaultItem` / `VaultItemData` shim was retired in slice 1.5
+// once the list and add-entry paths moved to `vedge_ipc::IndexEntryDto` /
+// `PayloadDto`. The pagination types below are not yet wired.
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct PaginationMetadata {

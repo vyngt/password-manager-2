@@ -1,68 +1,101 @@
-use crate::features::vault::types::{VaultItem, VaultItemData};
+use crate::api;
+use crate::features::vault::context::ActiveVault;
 use crate::features::vault::vault_create_form::VaultCreateForm;
+use crate::features::vault::vault_detail::VaultDetail;
 use crate::features::vault::vault_search::VaultSearch;
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::*;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
+use vedge_ipc::{FieldSelectorDto, IndexEntryDto};
 use vedge_ui::components::Button;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
-// TODO(UI adaptation): this page still uses the legacy `VaultItem` /
-// `VaultItemData::Credential` shape. The real data source is
-// `api::vault::list_entries(vault_path).await` returning
-// `Vec<IndexEntryDto>`; delete goes through `api::entry::soft_delete_entry`.
-// Component tree needs to be rebuilt around the new DTOs before this page
-// can talk to the live shell. See docs/ImplementAppBridge.md "What comes
-// after this plan".
-fn load_items(items: RwSignal<Vec<VaultItem>>, loading: RwSignal<bool>) {
-    loading.set(true);
-    items.set(Vec::new());
-    loading.set(false);
+/// Client-side filter predicate over the loaded metadata. Matches on `name`
+/// and `url` (case-insensitive). Secrets/`username` aren't in `IndexEntryDto`,
+/// so those are not searchable client-side — server-side `search` is the
+/// scale follow-up.
+fn matches(entry: &IndexEntryDto, query: &str) -> bool {
+    let q = query.trim().to_lowercase();
+    if q.is_empty() {
+        return true;
+    }
+    entry.name.to_lowercase().contains(&q)
+        || entry
+            .url
+            .as_deref()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains(&q)
 }
 
 #[component]
 pub fn VaultPage() -> impl IntoView {
     let i18n = use_i18n();
+    let active = expect_context::<ActiveVault>();
 
-    let items = RwSignal::new(Vec::<VaultItem>::new());
+    let items = RwSignal::new(Vec::<IndexEntryDto>::new());
     let loading = RwSignal::new(false);
     let search_query = RwSignal::new(String::new());
     let show_create_form = RwSignal::new(false);
+    let selected = RwSignal::new(Option::<IndexEntryDto>::None);
+    let status_msg = RwSignal::new(Option::<String>::None);
 
-    Effect::new(move |_| {
-        load_items(items, loading);
-    });
-
-    let filtered_items = Memo::new(move |_| {
-        let query = search_query.get().to_lowercase();
-        if query.is_empty() {
-            return items.get();
+    // Fetch the live entry index for the active vault. Re-run on demand
+    // (mount, create-ping, post-delete).
+    let refresh = move || {
+        let vault_path = active.path.get().unwrap_or_default();
+        if vault_path.is_empty() {
+            items.set(Vec::new());
+            return;
         }
-        items
-            .get()
-            .into_iter()
-            .filter(|item| {
-                let matches_title = item.title.to_lowercase().contains(&query);
-                let matches_data = match &item.data {
-                    VaultItemData::Credential(cred) => {
-                        cred.identifier.to_lowercase().contains(&query)
-                            || cred.url.to_lowercase().contains(&query)
-                    }
-                };
-                matches_title || matches_data
-            })
-            .collect::<Vec<_>>()
+        loading.set(true);
+        spawn_local(async move {
+            match api::vault::list_entries(&vault_path).await {
+                Ok(list) => items.set(list),
+                Err(e) => status_msg.set(Some(format!("Could not load entries: {e}"))),
+            }
+            loading.set(false);
+        });
+    };
+
+    // Load on mount and whenever the active vault path changes.
+    Effect::new(move |_| {
+        let _ = active.path.get();
+        refresh();
     });
 
-    // TODO(UI adaptation): wire to `api::entry::soft_delete_entry`.
     let on_delete = Callback::new(move |id: String| {
-        items.update(|list| list.retain(|item| item.id != id));
+        let vault_path = active.path.get().unwrap_or_default();
+        spawn_local(async move {
+            match api::entry::soft_delete_entry(&vault_path, &id).await {
+                Ok(()) => {
+                    if selected.get().map(|e| e.id).as_deref() == Some(id.as_str()) {
+                        selected.set(None);
+                    }
+                    refresh();
+                }
+                Err(e) => status_msg.set(Some(format!("Could not delete: {e}"))),
+            }
+        });
     });
 
-    // 1.4: the form now persists through the backend and pings us to refresh.
-    // `load_items` is still the legacy stub here; it becomes the real
-    // `api::vault::list_entries` fetch in slice 1.5.
-    let on_created = Callback::new(move |()| load_items(items, loading));
+    let on_select = Callback::new(move |entry: IndexEntryDto| selected.set(Some(entry)));
+    let on_close = Callback::new(move |()| selected.set(None));
+    let on_created = Callback::new(move |()| refresh());
+
+    let on_copy = Callback::new(move |field: FieldSelectorDto| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let Some(id) = selected.get().map(|e| e.id) else {
+            return;
+        };
+        spawn_local(async move {
+            match api::entry::copy_field(&vault_path, &id, &field, Some(30)).await {
+                Ok(()) => status_msg.set(Some(t_string!(i18n, vault.copied).to_string())),
+                Err(e) => status_msg.set(Some(format!("Could not copy: {e}"))),
+            }
+        });
+    });
 
     view! {
         <div class="h-full flex flex-col gap-4 p-4">
@@ -78,25 +111,82 @@ pub fn VaultPage() -> impl IntoView {
                 </Button>
             </div>
 
+            {move || status_msg.get().map(|m| view! {
+                <p class="text-sm text-text-secondary">{m}</p>
+            })}
+
             <Show when=move || show_create_form.get()>
                 <VaultCreateForm show=show_create_form on_created=on_created />
             </Show>
 
-            <Show
-                when=move || !loading.get()
-                fallback=|| {
-                    view! {
-                        <div class="flex-1 flex items-center justify-center text-foreground/40 text-sm">
-                            "Loading..."
-                        </div>
+            <div class="flex-1 flex gap-4 min-h-0">
+                <Show
+                    when=move || !loading.get()
+                    fallback=|| {
+                        view! {
+                            <div class="flex-1 flex items-center justify-center text-foreground/40 text-sm">
+                                "Loading..."
+                            </div>
+                        }
                     }
-                }
-            >
-                <VaultTable
-                    items=Signal::derive(move || filtered_items.get())
-                    on_delete=on_delete
-                />
-            </Show>
+                >
+                    <VaultTable
+                        items=Signal::derive(move || {
+                            items.get().into_iter().filter(|e| matches(e, &search_query.get())).collect::<Vec<_>>()
+                        })
+                        on_delete=on_delete
+                        on_select=on_select
+                    />
+                </Show>
+                {move || selected.get().map(|entry| view! {
+                    <VaultDetail entry=entry on_copy=on_copy on_close=on_close />
+                })}
+            </div>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::matches;
+    use vedge_ipc::{EntryTypeDto, IndexEntryDto};
+
+    fn entry(name: &str, url: Option<&str>) -> IndexEntryDto {
+        IndexEntryDto {
+            id: "1".into(),
+            name: name.into(),
+            entry_type: EntryTypeDto::Login,
+            url: url.map(str::to_string),
+            favicon_url: None,
+            tag_ids: vec![],
+            folder_id: None,
+            is_favorite: false,
+            is_trashed: false,
+            cipher_suite: 1,
+            created_at: "2026-07-05T00:00:00.000Z".into(),
+            updated_at: "2026-07-05T00:00:00.000Z".into(),
+            accessed_at: None,
+        }
+    }
+
+    #[test]
+    fn empty_query_matches_all() {
+        assert!(matches(&entry("GitHub", Some("https://github.com")), "  "));
+    }
+
+    #[test]
+    fn matches_name_case_insensitive() {
+        assert!(matches(&entry("GitHub", None), "hub"));
+        assert!(!matches(&entry("GitHub", None), "gitlab"));
+    }
+
+    #[test]
+    fn matches_url() {
+        assert!(matches(&entry("x", Some("https://example.com")), "example"));
+    }
+
+    #[test]
+    fn no_url_does_not_panic() {
+        assert!(!matches(&entry("x", None), "example"));
     }
 }
