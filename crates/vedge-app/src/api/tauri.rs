@@ -38,3 +38,14 @@ extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "window"], js_name = getCurrentWindow)]
     pub fn get_current_window() -> TauriWindow;
 }
+
+/// Dialog plugin APIs. Exposed under `window.__TAURI__.dialog` because
+/// `withGlobalTauri` is enabled and `tauri_plugin_dialog` is registered.
+#[wasm_bindgen]
+extern "C" {
+    // `save` shows a native save-file dialog and resolves to the chosen path
+    // string, or `null` if the user cancels. `catch` maps a rejection to
+    // `Err(JsValue)`.
+    #[wasm_bindgen(catch, js_namespace = ["window", "__TAURI__", "dialog"], js_name = save)]
+    pub async fn dialog_save(options: JsValue) -> Result<JsValue, JsValue>;
+}

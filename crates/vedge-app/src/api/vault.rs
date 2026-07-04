@@ -3,7 +3,9 @@
 
 use serde::Serialize;
 
-use vedge_ipc::{IndexEntryDto, TagMetaDto, UnlockVaultInputDto};
+use vedge_ipc::{
+    CreateVaultInputDto, CreateVaultOutputDto, IndexEntryDto, TagMetaDto, UnlockVaultInputDto,
+};
 
 use crate::api::call::{call, call_void};
 use crate::api::error::ApiError;
@@ -14,6 +16,16 @@ pub async fn unlock(input: &UnlockVaultInputDto) -> Result<(), ApiError> {
         input: &'a UnlockVaultInputDto,
     }
     call_void("unlock_vault", &Args { input }).await
+}
+
+/// Create a new vault. Returns the Emergency-Kit display string + keychain
+/// status; the vault ends unlocked in shell state.
+pub async fn create(input: &CreateVaultInputDto) -> Result<CreateVaultOutputDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        input: &'a CreateVaultInputDto,
+    }
+    call("create_vault", &Args { input }).await
 }
 
 pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
@@ -92,14 +104,7 @@ pub async fn by_domain(vault_path: &str, domain: &str) -> Result<Vec<IndexEntryD
         vault_path: &'a str,
         domain: &'a str,
     }
-    call(
-        "by_domain",
-        &Args {
-            vault_path,
-            domain,
-        },
-    )
-    .await
+    call("by_domain", &Args { vault_path, domain }).await
 }
 
 pub async fn list_tags(vault_path: &str) -> Result<Vec<TagMetaDto>, ApiError> {
