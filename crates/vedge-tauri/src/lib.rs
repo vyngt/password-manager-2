@@ -55,6 +55,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // ---- vault lifecycle + read queries ----
+            commands::vault::create_vault,
             commands::vault::unlock_vault,
             commands::vault::lock_vault,
             commands::vault::is_unlocked,

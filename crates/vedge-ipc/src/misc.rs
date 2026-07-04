@@ -1,5 +1,5 @@
 //! Misc DTOs: field selector, maintenance report, document export,
-//! unlock input, change-password input.
+//! unlock/create-vault input, change-password input.
 
 use serde::{Deserialize, Serialize};
 
@@ -54,4 +54,62 @@ pub struct ChangePasswordInputDto {
     pub new_password: String,
     #[serde(default)]
     pub new_secret_key_b64: Option<String>,
+}
+
+// ---- CreateVault DTOs --------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateVaultInputDto {
+    pub vault_path: String,
+    pub master_password: String,
+    /// `None` → the core generates a fresh 16-byte Secret Key.
+    #[serde(default)]
+    pub secret_key_b64: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateVaultOutputDto {
+    /// `A3-XXXXX-…` Emergency-Kit string. Shown once; never stored.
+    pub secret_key_display: String,
+    pub keychain_stored: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    #[test]
+    fn create_vault_input_round_trips_with_secret_key() {
+        let dto = CreateVaultInputDto {
+            vault_path: "/tmp/new.vdb".into(),
+            master_password: "hunter2".into(),
+            secret_key_b64: Some("AAAAAAAAAAAAAAAAAAAAAA==".into()),
+        };
+        let json = serde_json::to_string(&dto).unwrap();
+        let back: CreateVaultInputDto = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.vault_path, dto.vault_path);
+        assert_eq!(back.master_password, dto.master_password);
+        assert_eq!(back.secret_key_b64, dto.secret_key_b64);
+    }
+
+    #[test]
+    fn create_vault_input_defaults_missing_secret_key() {
+        let back: CreateVaultInputDto =
+            serde_json::from_str(r#"{"vault_path":"/tmp/x.vdb","master_password":"pw"}"#).unwrap();
+        assert!(back.secret_key_b64.is_none());
+    }
+
+    #[test]
+    fn create_vault_output_round_trips() {
+        let dto = CreateVaultOutputDto {
+            secret_key_display: "A3-ABCDE-FGHIJ".into(),
+            keychain_stored: true,
+        };
+        let json = serde_json::to_string(&dto).unwrap();
+        let back: CreateVaultOutputDto = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.secret_key_display, dto.secret_key_display);
+        assert_eq!(back.keychain_stored, dto.keychain_stored);
+    }
 }
