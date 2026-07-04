@@ -34,3 +34,29 @@ pub fn score(password: &str) -> u8 {
     }
     s.min(4)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::score;
+
+    #[test]
+    fn empty_password_scores_zero() {
+        assert_eq!(score(""), 0);
+    }
+
+    #[test]
+    fn long_varied_password_is_max() {
+        assert_eq!(score("Corr3ct-Horse-Battery9"), 4);
+    }
+
+    #[test]
+    fn variety_and_length_raise_the_score() {
+        assert!(score("Aa1!aaaa") > score("aaaaaaaa"));
+        assert!(score("abcdefghijkl") > score("abc"));
+    }
+
+    #[test]
+    fn short_simple_is_below_the_meter_threshold() {
+        assert!(score("abc") <= 1);
+    }
+}

@@ -37,3 +37,33 @@ pub async fn save(options: &SaveDialogOptions) -> Result<Option<String>, ApiErro
     // Resolves to a path string or `null` (cancelled).
     serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{DialogFilter, SaveDialogOptions};
+
+    #[test]
+    fn save_options_serialize_camel_case() {
+        let opts = SaveDialogOptions {
+            title: Some("Save".to_string()),
+            default_path: Some("kit.pdf".to_string()),
+            filters: vec![DialogFilter {
+                name: "PDF".to_string(),
+                extensions: vec!["pdf".to_string()],
+            }],
+        };
+        let v = serde_json::to_value(&opts).unwrap();
+        assert_eq!(v["defaultPath"], "kit.pdf");
+        assert_eq!(v["title"], "Save");
+        assert_eq!(v["filters"][0]["name"], "PDF");
+        assert_eq!(v["filters"][0]["extensions"][0], "pdf");
+    }
+
+    #[test]
+    fn save_options_omit_none_and_empty() {
+        let v = serde_json::to_value(SaveDialogOptions::default()).unwrap();
+        assert!(v.get("title").is_none());
+        assert!(v.get("defaultPath").is_none());
+        assert!(v.get("filters").is_none());
+    }
+}

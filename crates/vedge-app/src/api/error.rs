@@ -91,3 +91,48 @@ impl ApiError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ApiError;
+    use vedge_ipc::envelope::ErrorEnvelope;
+
+    fn env(kind: &str, message: Option<&str>) -> ErrorEnvelope {
+        ErrorEnvelope {
+            kind: kind.to_string(),
+            message: message.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn maps_already_exists() {
+        assert!(matches!(
+            ApiError::from_envelope(env("AlreadyExists", None)),
+            ApiError::AlreadyExists
+        ));
+    }
+
+    #[test]
+    fn maps_wrong_credentials() {
+        assert!(matches!(
+            ApiError::from_envelope(env("WrongCredentials", None)),
+            ApiError::WrongCredentials
+        ));
+    }
+
+    #[test]
+    fn maps_not_found_with_message() {
+        match ApiError::from_envelope(env("NotFound", Some("entry x"))) {
+            ApiError::NotFound(m) => assert_eq!(m, "entry x"),
+            other => panic!("unexpected: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_kind_falls_through_to_transport() {
+        assert!(matches!(
+            ApiError::from_envelope(env("Bogus", None)),
+            ApiError::Transport(_)
+        ));
+    }
+}
