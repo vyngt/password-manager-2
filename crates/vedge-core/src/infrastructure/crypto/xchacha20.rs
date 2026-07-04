@@ -7,7 +7,7 @@ use zeroize::Zeroizing;
 
 use crate::application::vault::ports::crypto::{CryptoProvider, Nonce};
 use crate::domain::vault::crypto_constants::{
-    DEK_LEN, DEK_WRAPPED_LEN, KEK_LEN, NONCE_LEN, VERIFY_HASH_LEN,
+    DEK_LEN, DEK_WRAPPED_LEN, KEK_LEN, NONCE_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN, VERIFY_HASH_LEN,
 };
 use crate::domain::vault::errors::VaultError;
 
@@ -134,6 +134,18 @@ impl CryptoProvider for XChaCha20CryptoProvider {
         let mut n = [0u8; NONCE_LEN];
         rng().fill_bytes(&mut n);
         n
+    }
+
+    fn generate_secret_key(&self) -> Zeroizing<[u8; SECRET_KEY_LEN]> {
+        let mut k = [0u8; SECRET_KEY_LEN];
+        rng().fill_bytes(&mut k);
+        Zeroizing::new(k)
+    }
+
+    fn generate_vault_salt(&self) -> [u8; VAULT_SALT_LEN] {
+        let mut s = [0u8; VAULT_SALT_LEN];
+        rng().fill_bytes(&mut s);
+        s
     }
 
     fn verify_hash_matches(

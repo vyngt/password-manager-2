@@ -10,6 +10,9 @@ pub enum VaultError {
     #[error("vault file is not a Vedge vault (magic mismatch)")]
     BadMagic,
 
+    #[error("a vault already exists at this path")]
+    VaultAlreadyExists,
+
     #[error("unsupported schema version: {0}")]
     UnsupportedSchemaVersion(i32),
 
