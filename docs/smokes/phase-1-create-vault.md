@@ -18,8 +18,8 @@ Verifies the create-vault vertical slice end-to-end: **UI wizard → `create_vau
 
 | # | Action | Expected |
 |---|---|---|
-| 1 | App launches | Lands on the **unlock screen** (password field + "Create a new vault" button). |
-| 2 | Click **"Create a new vault"** | Navigates to `/onboarding`; wizard shows step **Location** with the 3-step indicator (Location · Password · Emergency Kit). |
+| 1 | App launches | Lands on the **launch screen** (`/`). On a fresh machine (no recents) it shows the empty state: "No recent vaults yet" + a **Create your first vault** button. |
+| 2 | Click **"Create your first vault"** (or **"Create a new vault"**) | Navigates to `/onboarding`; wizard shows step **Location** with the 3-step indicator (Location · Password · Emergency Kit). |
 | 3 | Click **"Choose…"** | A **native save dialog** opens, filtered to `*.vdb`. Pick `…\vedge-smoke\test.vdb`. The path appears in the field. (You can also type/paste a path instead.) |
 | 4 | Click **Next** | Enabled only when the path is non-empty. Advances to **Password**. |
 | 5 | Type a master password, e.g. `correct horse battery staple` | The **strength meter** fills (this passphrase reads ~"Good"). |
@@ -74,6 +74,29 @@ The vault view now reads live entries from `list_entries` and supports view / co
 - **Search** matches **name/URL only** (client-side); `username` isn't in the metadata index, so it isn't searchable in-app yet (server-side `search` is a follow-up).
 
 Command-level equivalents (devtools): `list_entries`, `copy_field` (`{ vault_path, entry_id, field: { kind: "Password" }, clear_after_secs: 30 }`), `soft_delete_entry`.
+
+## Lock, relaunch & unlock (slice 1.6)
+
+The returning-user loop: the `/` launch screen lists recent vaults, unlocks the selected one, and the `/v` sidebar has a **Lock** control. Single-active-vault model.
+
+| # | Action | Expected |
+|---|---|---|
+| 1 | After creating a vault, look at the sidebar (left of the `/v` shell) | A **Lock** icon sits at the **bottom** of the sidebar. |
+| 2 | Click **Lock** | The open vault locks; you return to the **launch screen** (`/`). |
+| 3 | Observe the launch screen | The vault you created is now **listed as a recent** (name from the file stem, its path, last-opened). |
+| 4 | Click the vault card | The card highlights and a **master-password** field appears. |
+| 5 | Enter the master password → **Unlock** (Enter or the button) | Lands back at `/v/vault` with the **entries intact** (re-decrypted from disk). |
+| 6 | (Restart the app entirely, then repeat 3–5) | The vault still appears in recents across restarts and unlocks the same way. |
+
+**Edge cases:**
+- **Wrong password** — inline "Wrong password or Secret Key.", no navigation, field kept, no crash.
+- **Missing file** — if the `.vdb` was moved/deleted, its card shows **"File missing"**, unlock is disabled, and **Remove** drops it from recents.
+- **Keychain missing** — a vault whose Secret Key isn't in this machine's keychain shows "This vault needs its Secret Key / Emergency Kit" (full recover UI is Phase 3).
+- **Open other file…** — the launch screen's "Open other file…" opens a native picker; choosing a `.vdb` lets you unlock it (and adds it to recents on success).
+
+> **Verify the recents list actually renders.** `RecentVaultStatusDto` crosses the IPC boundary with `#[serde(flatten)]`; if the list is unexpectedly empty right after locking a just-created vault (and `list_recent_vaults_with_status` in devtools returns rows), suspect a serde_wasm_bindgen flatten decode issue — see the 1.6 changelog for the fix.
+
+Command-level equivalents (devtools): `list_recent_vaults_with_status`, `unlock_vault`, `lock_vault`, `add_recent_vault`, `touch_recent_vault_on_unlock`.
 
 ## Command-level smoke (optional, faster than the UI)
 

@@ -5,6 +5,7 @@ pub mod secret_display;
 pub mod types;
 pub mod vault_create_form;
 pub mod vault_detail;
+pub mod vault_launch;
 pub mod vault_search;
 pub mod vault_setup;
 pub mod vault_table;
