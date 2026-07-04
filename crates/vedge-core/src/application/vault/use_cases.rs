@@ -1,6 +1,7 @@
 pub mod change_password;
 pub mod copy_field;
 pub mod create_entry;
+pub mod create_vault;
 pub mod document_ops;
 pub mod export_emergency_kit;
 pub mod hard_delete_entry;
@@ -19,6 +20,7 @@ pub mod update_entry;
 pub use change_password::{ChangePasswordInput, change_password};
 pub use copy_field::{CopyFieldInput, FieldSelector, copy_field};
 pub use create_entry::{CreateEntryInput, CreateEntryOutput, create_entry};
+pub use create_vault::{CreateVault, CreateVaultInput, CreateVaultOutput};
 pub use document_ops::{
     DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, export_document, import_document,
 };

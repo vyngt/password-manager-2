@@ -1,7 +1,7 @@
 use zeroize::Zeroizing;
 
 use crate::domain::vault::crypto_constants::{
-    DEK_LEN, DEK_WRAPPED_LEN, KEK_LEN, NONCE_LEN, VERIFY_HASH_LEN,
+    DEK_LEN, DEK_WRAPPED_LEN, KEK_LEN, NONCE_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN, VERIFY_HASH_LEN,
 };
 use crate::domain::vault::errors::VaultError;
 
@@ -79,6 +79,14 @@ pub trait CryptoProvider: Send + Sync {
     /// Generate a fresh 24-byte nonce from the OS CSPRNG. Nonce is not secret —
     /// no zeroize wrapper.
     fn generate_nonce(&self) -> Nonce;
+
+    /// Generate a fresh 16-byte Secret Key from the OS CSPRNG. Wrapped in
+    /// `Zeroizing` — this is the vault's root secret alongside the password.
+    fn generate_secret_key(&self) -> Zeroizing<[u8; SECRET_KEY_LEN]>;
+
+    /// Generate a fresh 32-byte vault salt from the OS CSPRNG. Not secret —
+    /// no zeroize wrapper.
+    fn generate_vault_salt(&self) -> [u8; VAULT_SALT_LEN];
 
     /// Constant-time equality for `verify_hash` values. Callers must never use `==`.
     fn verify_hash_matches(
