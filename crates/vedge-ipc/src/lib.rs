@@ -31,7 +31,7 @@ pub mod settings;
 pub mod tag;
 
 pub use common::{
-    b64_decode, b64_decode_fixed, b64_encode, CommonMetaDto, EntryTypeDto, Timestamp,
+    CommonMetaDto, EntryTypeDto, Timestamp, b64_decode, b64_decode_fixed, b64_encode,
     ts_from_string, ts_to_string,
 };
 pub use emergency_kit::{EmergencyKitDto, RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
@@ -43,8 +43,8 @@ pub use entry::{
 pub use envelope::ErrorEnvelope;
 pub use error::IpcError;
 pub use misc::{
-    ChangePasswordInputDto, ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto,
-    UnlockVaultInputDto,
+    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, ExportedDocumentDto,
+    FieldSelectorDto, MaintenanceReportDto, UnlockVaultInputDto,
 };
 pub use settings::{
     AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto, RecentVaultDto,

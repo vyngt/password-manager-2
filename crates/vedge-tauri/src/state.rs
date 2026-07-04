@@ -22,7 +22,7 @@ use vedge_core::application::vault::ports::{
     ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
 };
 use vedge_core::application::vault::session::VaultSession;
-use vedge_core::application::vault::use_cases::UnlockVault;
+use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
 use vedge_core::domain::shared::VaultId;
 
 use crate::error::CommandError;
@@ -43,9 +43,10 @@ pub struct AppState {
     pub known_devices: Arc<dyn KnownDeviceRepository>,
     pub extension_sessions: Arc<dyn ExtensionSessionRepository>,
 
-    // ---- pre-wired UnlockVault use case (per-vault infra built via factories
-    //      inside `execute`; this struct is constructed once in `compose`) ----
+    // ---- pre-wired vault-lifecycle use cases (per-vault infra built via
+    //      factories inside `execute`; constructed once in `compose`) ---------
     pub unlock_vault: UnlockVault,
+    pub create_vault: CreateVault,
 
     // ---- active vault sessions ---------------------------------------------
     sessions: Arc<StdMutex<HashMap<VaultId, SessionHandle>>>,
@@ -64,6 +65,7 @@ impl AppState {
         known_devices: Arc<dyn KnownDeviceRepository>,
         extension_sessions: Arc<dyn ExtensionSessionRepository>,
         unlock_vault: UnlockVault,
+        create_vault: CreateVault,
     ) -> Self {
         Self {
             crypto,
@@ -76,6 +78,7 @@ impl AppState {
             known_devices,
             extension_sessions,
             unlock_vault,
+            create_vault,
             sessions: Arc::new(StdMutex::new(HashMap::new())),
         }
     }
@@ -184,6 +187,15 @@ mod tests {
             kdf: Arc::clone(&kdf),
             keychain: Arc::clone(&keychain),
         };
+        let create_vault = CreateVault {
+            repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+                as Arc<dyn VaultRepositoryFactory>,
+            blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
+            crypto: Arc::clone(&crypto),
+            clipboard: Arc::clone(&clipboard),
+            kdf: Arc::clone(&kdf),
+            keychain: Arc::clone(&keychain),
+        };
 
         AppState::new(
             crypto,
@@ -196,7 +208,20 @@ mod tests {
             known_devices,
             extension_sessions,
             unlock_vault,
+            create_vault,
         )
+    }
+
+    /// Fast Argon2id params so create tests don't run the 256 MiB production
+    /// KDF. Mirrors `vedge-core`'s `fast_kdf_params` test helper.
+    fn fast_params() -> vedge_core::domain::vault::kdf_params::KdfParams {
+        vedge_core::domain::vault::kdf_params::KdfParams {
+            alg: "argon2id".into(),
+            m: 8,
+            t: 1,
+            p: 1,
+            version: 1,
+        }
     }
 
     #[tokio::test]
@@ -219,5 +244,71 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let state = state_fixture(&dir).await;
         assert!(!state.is_unlocked(&VaultId::new(PathBuf::from("/x"))));
+    }
+
+    #[tokio::test]
+    async fn create_vault_leaves_vault_unlocked() {
+        use vedge_core::CreateVaultInput;
+        use zeroize::Zeroizing;
+
+        let dir = tempfile::tempdir().unwrap();
+        let state = state_fixture(&dir).await;
+        let vault_path = dir.path().join("new.vdb");
+        let vault_id = VaultId::new(vault_path.clone());
+
+        // Mirror the command body: run the use case, then register the session.
+        let out = state
+            .create_vault
+            .execute(CreateVaultInput {
+                vault_path,
+                master_password: Zeroizing::new("correct horse battery staple".into()),
+                secret_key: None,
+                kdf_params: Some(fast_params()),
+            })
+            .await
+            .unwrap();
+        assert!(out.keychain_stored);
+        state.insert_session(vault_id.clone(), out.session).unwrap();
+
+        // The vault ends UNLOCKED with a live, queryable session — no unlock.
+        assert!(state.is_unlocked(&vault_id));
+        let handle = state.get_session(&vault_id).unwrap();
+        assert!(handle.lock().await.index().all_active().is_empty());
+    }
+
+    #[tokio::test]
+    async fn create_vault_on_existing_path_is_already_exists() {
+        use vedge_core::CreateVaultInput;
+        use vedge_core::domain::vault::errors::VaultError;
+        use zeroize::Zeroizing;
+
+        let dir = tempfile::tempdir().unwrap();
+        let state = state_fixture(&dir).await;
+        let vault_path = dir.path().join("dup.vdb");
+
+        let mk_input = || CreateVaultInput {
+            vault_path: vault_path.clone(),
+            master_password: Zeroizing::new("pw".into()),
+            secret_key: None,
+            kdf_params: Some(fast_params()),
+        };
+
+        // First create succeeds; drop the session to release the file handle.
+        drop(
+            state
+                .create_vault
+                .execute(mk_input())
+                .await
+                .unwrap()
+                .session,
+        );
+
+        // Second create on the same path → VaultAlreadyExists → AlreadyExists.
+        let err = state.create_vault.execute(mk_input()).await.unwrap_err();
+        assert!(matches!(err, VaultError::VaultAlreadyExists));
+        assert!(matches!(
+            CommandError::from(VaultError::VaultAlreadyExists),
+            CommandError::AlreadyExists
+        ));
     }
 }

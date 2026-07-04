@@ -1,8 +1,8 @@
 //! Misc DTO conversion layer.
 
 pub use vedge_ipc::{
-    ChangePasswordInputDto, ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto,
-    UnlockVaultInputDto,
+    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, ExportedDocumentDto,
+    FieldSelectorDto, MaintenanceReportDto, UnlockVaultInputDto,
 };
 
 use vedge_core::MaintenanceReport;
@@ -62,6 +62,17 @@ pub fn decode_change_password_secret_key(
         .transpose()
 }
 
+/// Decode the optional Secret Key for vault creation. `None` → the core
+/// generates a fresh one. Mirrors [`decode_unlock_secret_key`].
+pub fn decode_create_secret_key(
+    dto: &CreateVaultInputDto,
+) -> Result<Option<Zeroizing<[u8; SECRET_KEY_LEN]>>, CommandError> {
+    dto.secret_key_b64
+        .as_deref()
+        .map(|s| b64_decode_fixed::<SECRET_KEY_LEN>(s).map(Zeroizing::new))
+        .transpose()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
@@ -97,5 +108,27 @@ mod tests {
             secret_key_b64: None,
         };
         assert!(decode_unlock_secret_key(&dto).unwrap().is_none());
+    }
+
+    #[test]
+    fn create_input_decodes_secret_key() {
+        let key = [0x22u8; SECRET_KEY_LEN];
+        let dto = CreateVaultInputDto {
+            vault_path: "/tmp/new.vdb".into(),
+            master_password: "hunter2".into(),
+            secret_key_b64: Some(b64_encode(&key)),
+        };
+        let decoded = decode_create_secret_key(&dto).unwrap().unwrap();
+        assert_eq!(*decoded, key);
+    }
+
+    #[test]
+    fn create_input_accepts_missing_secret_key() {
+        let dto = CreateVaultInputDto {
+            vault_path: "/tmp/new.vdb".into(),
+            master_password: "hunter2".into(),
+            secret_key_b64: None,
+        };
+        assert!(decode_create_secret_key(&dto).unwrap().is_none());
     }
 }

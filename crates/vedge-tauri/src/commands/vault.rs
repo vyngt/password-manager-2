@@ -38,13 +38,16 @@ use zeroize::Zeroizing;
 
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{
-    UnlockVaultInput, entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries,
-    list_tags as list_tags_core, list_trashed_entries, lock_vault as lock_vault_core,
-    search_entries,
+    CreateVaultInput, UnlockVaultInput, entries_by_domain, entries_by_folder, entries_by_tag,
+    list_active_entries, list_tags as list_tags_core, list_trashed_entries,
+    lock_vault as lock_vault_core, search_entries,
 };
 
 use crate::dto::entry::{IndexEntryDto, entry_id_from_str, index_entry_to_dto, tag_id_from_str};
-use crate::dto::misc::{UnlockVaultInputDto, decode_unlock_secret_key};
+use crate::dto::misc::{
+    CreateVaultInputDto, CreateVaultOutputDto, UnlockVaultInputDto, decode_create_secret_key,
+    decode_unlock_secret_key,
+};
 use crate::dto::tag::{TagMetaDto, tag_meta_to_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -90,6 +93,40 @@ pub async fn unlock_vault(
 
     state.insert_session(vault_id, session)?;
     Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %input.vault_path))]
+pub async fn create_vault(
+    input: CreateVaultInputDto,
+    state: tauri::State<'_, AppState>,
+) -> Result<CreateVaultOutputDto, CommandError> {
+    let vault_path = PathBuf::from(&input.vault_path);
+    let vault_id = VaultId::new(vault_path.clone());
+
+    let secret_key = decode_create_secret_key(&input)?;
+    let master_password = Zeroizing::new(input.master_password.clone());
+
+    // The use case generates key material, provisions the per-vault repo +
+    // blob store via its factory ports, writes the initial config, and
+    // returns an already-unlocked session.
+    let out = state
+        .create_vault
+        .execute(CreateVaultInput {
+            vault_path,
+            master_password,
+            secret_key,
+            kdf_params: None,
+        })
+        .await?;
+
+    // Read owned fields before moving the session into the registry.
+    let dto = CreateVaultOutputDto {
+        secret_key_display: out.secret_key_display,
+        keychain_stored: out.keychain_stored,
+    };
+    state.insert_session(vault_id, out.session)?; // vault ends UNLOCKED
+    Ok(dto)
 }
 
 #[tauri::command(rename_all = "snake_case")]

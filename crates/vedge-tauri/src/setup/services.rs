@@ -27,7 +27,7 @@ use vedge_core::application::vault::ports::{
     BlobStoreFactory, ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
     VaultRepositoryFactory,
 };
-use vedge_core::application::vault::use_cases::UnlockVault;
+use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
 use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
 use vedge_core::infrastructure::clipboard::ArboardClipboardProvider;
 use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
@@ -113,6 +113,15 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         kdf: Arc::clone(&kdf),
         keychain: Arc::clone(&keychain),
     };
+    let create_vault = CreateVault {
+        repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+            as Arc<dyn VaultRepositoryFactory>,
+        blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
+        crypto: Arc::clone(&crypto),
+        clipboard: Arc::clone(&clipboard),
+        kdf: Arc::clone(&kdf),
+        keychain: Arc::clone(&keychain),
+    };
 
     Ok(AppState::new(
         crypto,
@@ -125,6 +134,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         known_devices,
         extension_sessions,
         unlock_vault,
+        create_vault,
     ))
 }
 
@@ -180,6 +190,15 @@ mod tests {
             kdf: Arc::clone(&kdf),
             keychain: Arc::clone(&keychain),
         };
+        let create_vault = CreateVault {
+            repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+                as Arc<dyn VaultRepositoryFactory>,
+            blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
+            crypto: Arc::clone(&crypto),
+            clipboard: Arc::clone(&clipboard),
+            kdf: Arc::clone(&kdf),
+            keychain: Arc::clone(&keychain),
+        };
 
         AppState::new(
             crypto,
@@ -192,6 +211,7 @@ mod tests {
             known_devices,
             extension_sessions,
             unlock_vault,
+            create_vault,
         )
     }
 

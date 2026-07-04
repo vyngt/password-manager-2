@@ -51,6 +51,12 @@ pub enum CommandError {
     #[error("invalid input: {0}")]
     Invalid(String),
 
+    /// A vault already exists at the target path — creation refuses to
+    /// overwrite. Distinct from `Invalid` so the onboarding UI can offer to
+    /// open the existing vault instead.
+    #[error("a vault already exists at this location")]
+    AlreadyExists,
+
     /// Catch-all for unexpected internal states. Distinct from `Storage` so
     /// the frontend can treat it as a bug rather than a transient failure.
     #[error("internal error")]
@@ -78,6 +84,8 @@ impl From<VaultError> for CommandError {
             | VaultError::KeychainEntryNotFound => Self::Keychain(e.to_string()),
 
             VaultError::Storage(inner) => Self::Storage(storage_detail(&inner)),
+
+            VaultError::VaultAlreadyExists => Self::AlreadyExists,
 
             VaultError::ConfigMissing
             | VaultError::BadMagic
