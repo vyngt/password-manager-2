@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use vedge_ipc::EmergencyKitDto;
 
-use crate::api::call::call;
+use crate::api::call::{call, call_void};
 use crate::api::error::ApiError;
 
 pub async fn export_emergency_kit(vault_path: &str) -> Result<EmergencyKitDto, ApiError> {
@@ -24,4 +24,22 @@ pub async fn emergency_kit_pdf(vault_path: &str) -> Result<Vec<u8>, ApiError> {
         vault_path: &'a str,
     }
     call("emergency_kit_pdf", &Args { vault_path }).await
+}
+
+/// Render the Emergency Kit PDF and write it to `dest_path` (chosen via the
+/// native save dialog). The shell writes the file with `std::fs`.
+pub async fn write_pdf(vault_path: &str, dest_path: &str) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        dest_path: &'a str,
+    }
+    call_void(
+        "write_emergency_kit_pdf",
+        &Args {
+            vault_path,
+            dest_path,
+        },
+    )
+    .await
 }

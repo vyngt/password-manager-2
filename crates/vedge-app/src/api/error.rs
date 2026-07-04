@@ -39,6 +39,8 @@ pub enum ApiError {
     Storage(String),
     #[error("invalid input: {0}")]
     Invalid(String),
+    #[error("a vault already exists at this location")]
+    AlreadyExists,
     #[error("internal error")]
     Internal,
 
@@ -83,6 +85,7 @@ impl ApiError {
             envelope::kind::KEYCHAIN => Self::Keychain(msg),
             envelope::kind::STORAGE => Self::Storage(msg),
             envelope::kind::INVALID => Self::Invalid(msg),
+            envelope::kind::ALREADY_EXISTS => Self::AlreadyExists,
             envelope::kind::INTERNAL => Self::Internal,
             other => Self::Transport(format!("unknown error kind `{other}`: {msg}")),
         }

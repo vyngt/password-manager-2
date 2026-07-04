@@ -19,6 +19,7 @@ pub mod kind {
     pub const KEYCHAIN: &str = "Keychain";
     pub const STORAGE: &str = "Storage";
     pub const INVALID: &str = "Invalid";
+    pub const ALREADY_EXISTS: &str = "AlreadyExists";
     pub const INTERNAL: &str = "Internal";
 }
 
