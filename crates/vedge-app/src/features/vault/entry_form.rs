@@ -554,6 +554,7 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                     <DatePicker
                         id="ef-expiry"
                         variant=DatePickerVariant::Month
+                        month_numeric=true
                         value=Signal::derive(move || expiry_to_picker(&data.with(|d| d.card_expiry.clone())))
                         on_change=Callback::new(move |v: DatePickerValue| data.update(|d| d.card_expiry = picker_to_expiry(v)))
                         placeholder=Signal::derive(move || t_string!(i18n, vault.field_card_expiry).to_string())

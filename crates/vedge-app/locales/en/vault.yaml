@@ -46,7 +46,7 @@ doc_not_editable: "Documents are managed from the detail view (attach / export).
 field_totp: "TOTP secret (optional)"
 field_cardholder: "Cardholder name"
 field_card_number: "Card number"
-field_card_expiry: "Expiry (MM/YY)"
+field_card_expiry: "Expiry (MM/YYYY)"
 field_cvv: "CVV"
 field_pin: "PIN (optional)"
 field_private_key: "Private key"

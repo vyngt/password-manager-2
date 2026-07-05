@@ -46,7 +46,7 @@ doc_not_editable: "Tài liệu được quản lý từ khung chi tiết (đính
 field_totp: "Mã bí mật TOTP (tùy chọn)"
 field_cardholder: "Tên chủ thẻ"
 field_card_number: "Số thẻ"
-field_card_expiry: "Hết hạn (MM/YY)"
+field_card_expiry: "Hết hạn (MM/YYYY)"
 field_cvv: "CVV"
 field_pin: "Mã PIN (tùy chọn)"
 field_private_key: "Khóa riêng"
