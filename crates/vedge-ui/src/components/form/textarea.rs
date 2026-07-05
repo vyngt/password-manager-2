@@ -39,7 +39,10 @@ pub fn Textarea(
     let max_height = (max_rows as f64) * line_height + padding_y * 2.0 + border;
 
     let auto_resize = move || {
-        if let Some(el) = textarea_ref.get() {
+        // Imperative DOM work — often deferred via `request_animation_frame`
+        // (no reactive owner), so read the ref untracked to avoid the
+        // "signal accessed outside a reactive tracking context" warning.
+        if let Some(el) = textarea_ref.get_untracked() {
             let raw: &HtmlTextAreaElement = &el;
             // Reset height to auto so scrollHeight reflects true content height
             let _ = raw.set_attribute(

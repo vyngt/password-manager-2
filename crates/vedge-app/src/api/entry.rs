@@ -24,6 +24,24 @@ pub async fn create_entry(vault_path: &str, payload: &PayloadDto) -> Result<Stri
     .await
 }
 
+/// Reveal one entry's full decrypted payload (secrets included). Backs the
+/// edit form's prefill; the backend audits this as `Viewed`.
+pub async fn get_entry(vault_path: &str, entry_id: &str) -> Result<PayloadDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+    }
+    call(
+        "get_entry",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
+}
+
 pub async fn update_entry(
     vault_path: &str,
     entry_id: &str,

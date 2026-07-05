@@ -70,7 +70,10 @@ fn VaultTableRow(
     let entry_for_select = item.clone();
     let item_id = item.id.clone();
     let name = item.name.clone();
-    let type_lbl = type_label_i18n(i18n, &item.entry_type);
+    // Reactive so it doesn't read the i18n locale in the (owner-less) row body
+    // and relocalizes on language switch.
+    let entry_type = item.entry_type.clone();
+    let type_lbl = Signal::derive(move || type_label_i18n(i18n, &entry_type));
     let url = item.url.clone().unwrap_or_default();
     let updated = short_date(&item.updated_at);
 

@@ -1,59 +1,35 @@
+//! Add-entry form. A type picker selects one of the eight editable entry
+//! types; [`EntryForm`] renders that type's fields over a single
+//! `RwSignal<EntryFormData>`. On submit it builds the wire `PayloadDto` via
+//! `EntryFormData::to_payload` and persists it through the backend
+//! (`api::entry::create_entry`), then pings the parent to refresh via
+//! `on_created` (a `Callback<()>`).
+
 use crate::api;
 use crate::features::vault::context::ActiveVault;
+use crate::features::vault::entry_form::{
+    EntryForm, EntryFormData, EntryFormError, editable_types, type_from_key, type_to_key,
+};
+use crate::features::vault::entry_view::type_label_i18n;
 use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use vedge_ipc::{CommonMetaDto, EntryTypeDto, LoginPayloadDto, PayloadDto};
+use vedge_ipc::EntryTypeDto;
 use vedge_ui::components::Button;
-use vedge_ui::components::Input;
+use vedge_ui::components::select::{Select, SelectItem};
 use vedge_ui::primitives::tokens::{Size, Variant};
 
-/// Build the write-side payload for a new Login entry from the form fields.
-///
-/// An empty URL collapses to `None` so we don't persist a blank string.
-fn to_login_payload(title: String, username: String, password: String, url: String) -> PayloadDto {
-    PayloadDto::Login(LoginPayloadDto {
-        meta: CommonMetaDto {
-            name: title,
-            entry_type: EntryTypeDto::Login,
-            url: (!url.is_empty()).then_some(url),
-            favicon_url: None,
-            tag_ids: vec![],
-            folder_id: None,
-            is_favorite: false,
-            notes: None,
-        },
-        username,
-        password,
-        totp_secret: None,
-        recovery_codes: vec![],
-    })
-}
-
-/// Add-entry form. On submit it persists a Login entry through the backend
-/// (`api::entry::create_entry`) against the active vault, then pings the
-/// parent to refresh via `on_created` (a `Callback<()>`).
 #[component]
 pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
 
-    let form_title = RwSignal::new(String::new());
-    let form_identifier = RwSignal::new(String::new());
-    let form_password = RwSignal::new(String::new());
-    let form_url = RwSignal::new(String::new());
+    let data = RwSignal::new(EntryFormData::new(EntryTypeDto::Login));
     let submitting = RwSignal::new(false);
     let error = RwSignal::new(Option::<String>::None);
 
-    let reset_form = move || {
-        form_title.set(String::new());
-        form_identifier.set(String::new());
-        form_password.set(String::new());
-        form_url.set(String::new());
-    };
-
     let handle_cancel = move |_| {
-        reset_form();
+        data.set(EntryFormData::new(EntryTypeDto::Login));
         error.set(None);
         show.set(false);
     };
@@ -62,32 +38,34 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl I
         if submitting.get() {
             return;
         }
-        let title = form_title.get();
-        if title.trim().is_empty() {
-            return;
-        }
+        // Read locale-dependent strings in the handler body (reactive owner
+        // present); reading them inside `spawn_local` would warn.
+        let payload = match data.get().to_payload() {
+            Ok(p) => p,
+            Err(EntryFormError::NameRequired) => return,
+            Err(EntryFormError::InvalidExpiry) => {
+                error.set(Some(t_string!(i18n, vault.err_invalid_expiry).to_string()));
+                return;
+            }
+            Err(EntryFormError::UnsupportedType) => {
+                error.set(Some(t_string!(i18n, vault.err_save).to_string()));
+                return;
+            }
+        };
 
         submitting.set(true);
         error.set(None);
-
         let vault_path = active.path.get().unwrap_or_default();
-        let payload = to_login_payload(
-            title,
-            form_identifier.get(),
-            form_password.get(),
-            form_url.get(),
-        );
+        let err_prefix = t_string!(i18n, vault.err_save).to_string();
 
         spawn_local(async move {
             match api::entry::create_entry(&vault_path, &payload).await {
                 Ok(_id) => {
-                    reset_form();
+                    data.set(EntryFormData::new(EntryTypeDto::Login));
                     show.set(false);
                     on_created.run(());
                 }
-                Err(e) => {
-                    error.set(Some(format!("Could not save the entry: {e}")));
-                }
+                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
             }
             submitting.set(false);
         });
@@ -98,54 +76,40 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl I
             <h3 class="text-sm font-semibold mb-3 text-text-secondary">
                 {move || t!(i18n, vault.create_title)}
             </h3>
-            <div class="grid grid-cols-2 gap-3">
-                <Input
-                    id="vault-form-title"
-                    placeholder=Signal::derive(move || {
-                        t_string!(i18n, vault.form_title).to_string()
-                    })
-                    value=Signal::derive(move || form_title.get())
-                    on_input=Callback::new(move |v: String| form_title.set(v))
-                />
-                <Input
-                    id="vault-form-identifier"
-                    placeholder=Signal::derive(move || {
-                        t_string!(i18n, vault.form_identifier).to_string()
-                    })
-                    value=Signal::derive(move || form_identifier.get())
-                    on_input=Callback::new(move |v: String| form_identifier.set(v))
-                />
-                <Input
-                    id="vault-form-password"
-                    placeholder=Signal::derive(move || {
-                        t_string!(i18n, vault.form_password).to_string()
-                    })
-                    input_type="password"
-                    value=Signal::derive(move || form_password.get())
-                    on_input=Callback::new(move |v: String| form_password.set(v))
-                    reveal_label=Signal::derive(move || {
-                        t_string!(i18n, playground.show_password).to_string()
-                    })
-                    hide_label=Signal::derive(move || {
-                        t_string!(i18n, playground.hide_password).to_string()
-                    })
-                />
-                <Input
-                    id="vault-form-url"
-                    placeholder=Signal::derive(move || t_string!(i18n, vault.form_url).to_string())
-                    value=Signal::derive(move || form_url.get())
-                    on_input=Callback::new(move |v: String| form_url.set(v))
-                />
+
+            <div class="mb-3">
+                // Built inside a reactive closure so the locale read is tracked
+                // (no owner-less warning) and the labels relocalize on switch.
+                {move || {
+                    let options: Vec<SelectItem> = editable_types()
+                        .iter()
+                        .map(|ty| SelectItem::option(type_to_key(ty), type_label_i18n(i18n, ty)))
+                        .collect();
+                    view! {
+                        <Select
+                            options=options
+                            value=Signal::derive(move || data.with(|d| type_to_key(&d.entry_type).to_owned()))
+                            placeholder=Signal::derive(move || t_string!(i18n, vault.type_picker).to_string())
+                            on_change=Callback::new(move |key: String| {
+                                data.update(|d| *d = d.switch_type(type_from_key(&key)));
+                            })
+                        />
+                    }
+                }}
             </div>
+
+            <EntryForm data=data />
+
             {move || error.get().map(|e| view! {
                 <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>
             })}
+
             <div class="flex gap-2 justify-end mt-3">
                 <Button variant=Variant::Ghost size=Size::Sm on:click=handle_cancel>
                     {move || t!(i18n, vault.cancel)}
                 </Button>
                 {move || {
-                    let busy = submitting.get() || form_title.get().trim().is_empty();
+                    let busy = submitting.get() || data.with(|d| d.name.trim().is_empty());
                     view! {
                         <Button
                             variant=Variant::Primary
@@ -159,42 +123,5 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl I
                 }}
             </div>
         </div>
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::to_login_payload;
-    use vedge_ipc::{EntryTypeDto, PayloadDto};
-
-    #[test]
-    fn maps_login_fields() {
-        let PayloadDto::Login(p) = to_login_payload(
-            "GitHub".into(),
-            "alice".into(),
-            "s3cret".into(),
-            "https://github.com".into(),
-        ) else {
-            panic!("expected Login variant");
-        };
-        assert_eq!(p.meta.name, "GitHub");
-        assert_eq!(p.meta.entry_type, EntryTypeDto::Login);
-        assert_eq!(p.meta.url.as_deref(), Some("https://github.com"));
-        assert_eq!(p.username, "alice");
-        assert_eq!(p.password, "s3cret");
-        assert!(p.totp_secret.is_none());
-        assert!(p.recovery_codes.is_empty());
-        assert!(p.meta.tag_ids.is_empty());
-        assert!(!p.meta.is_favorite);
-    }
-
-    #[test]
-    fn empty_url_becomes_none() {
-        let PayloadDto::Login(p) =
-            to_login_payload("x".into(), "u".into(), "p".into(), String::new())
-        else {
-            panic!("expected Login variant");
-        };
-        assert!(p.meta.url.is_none());
     }
 }

@@ -30,6 +30,10 @@ pub fn DatePicker(
     /// panel. Used by DateTimePicker to compose the calendar alongside a
     /// TimePicker inside a shared Popover.
     #[prop(optional)] inline: bool,
+    /// `Month`-variant only: when `true`, the trigger displays as `MM/YYYY`
+    /// (numeric) instead of the localized long form (e.g. `December 2030`). The
+    /// calendar panel header is unaffected.
+    #[prop(optional)] month_numeric: bool,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -272,9 +276,11 @@ pub fn DatePicker(
                 start: Some(s),
                 end: None,
             }) => Some(format_trigger_date(s, &loc)),
-            DatePickerValue::Month(Some(ym)) => {
-                Some(super::locale::format_month_year(ym.year, ym.month, &loc))
-            }
+            DatePickerValue::Month(Some(ym)) => Some(if month_numeric {
+                format!("{:02}/{}", ym.month, ym.year)
+            } else {
+                super::locale::format_month_year(ym.year, ym.month, &loc)
+            }),
             _ => None,
         }
     };

@@ -4,6 +4,7 @@ pub mod create_entry;
 pub mod create_vault;
 pub mod document_ops;
 pub mod export_emergency_kit;
+pub mod get_entry;
 pub mod hard_delete_entry;
 pub mod lock_vault;
 pub mod move_entry;
@@ -25,6 +26,7 @@ pub use document_ops::{
     DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, export_document, import_document,
 };
 pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
+pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
 pub use lock_vault::lock_vault;
 pub use move_entry::move_entry;
