@@ -50,7 +50,9 @@ pub fn VaultPage() -> impl IntoView {
             return;
         }
         loading.set(true);
-        let err_prefix = t_string!(i18n, vault.err_load).to_string();
+        // `refresh` is called from an Effect *and* from inside `spawn_local`
+        // (on delete); `untrack` reads the current locale string safely in both.
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_load).to_string());
         spawn_local(async move {
             match api::vault::list_entries(&vault_path).await {
                 Ok(list) => items.set(list),
