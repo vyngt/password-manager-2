@@ -13,19 +13,16 @@ use crate::features::vault::context::ActiveVault;
 use crate::i18n::*;
 
 struct SidebarRouteItem {
-    name: &'static str,
     path: &'static str,
     icon: IconData,
 }
 
 const SIDEBAR_ITEMS: &[SidebarRouteItem] = &[
     SidebarRouteItem {
-        name: "Vault",
         path: "/v/vault",
         icon: ui_icon::Pm,
     },
     SidebarRouteItem {
-        name: "Settings",
         path: "/v/settings",
         icon: ui_icon::Pm,
     },
@@ -33,9 +30,15 @@ const SIDEBAR_ITEMS: &[SidebarRouteItem] = &[
 
 #[component]
 fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
+    let i18n = use_i18n();
     let location = leptos_router::hooks::use_location();
 
     let is_active = move || location.pathname.get().starts_with(item.path);
+
+    let label = Signal::derive(move || match item.path {
+        "/v/settings" => t_string!(i18n, nav.settings).to_string(),
+        _ => t_string!(i18n, nav.vault).to_string(),
+    });
 
     let item_class = move || {
         if is_active() {
@@ -47,7 +50,7 @@ fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
 
     view! {
         <A href=item.path>
-            <Tooltip placement=Placement::Right arrow=true content=item.name>
+            <Tooltip placement=Placement::Right arrow=true content=label>
                 <div class=item_class>
                     <Icon icon=item.icon height="100%" width="100%" />
                 </div>
@@ -61,7 +64,7 @@ fn Sidebar() -> impl IntoView {
     view! {
         <div class="w-[60px] flex flex-col gap-1 bg-primary/10 border-r border-r-secondary/15">
             <For
-                each=move || SIDEBAR_ITEMS.into_iter().enumerate()
+                each=move || SIDEBAR_ITEMS.iter().enumerate()
                 key=|(_, record)| record.path
                 children=move |(_, record)| {
                     view! { <SidebarItemRow item=record /> }

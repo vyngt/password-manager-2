@@ -75,6 +75,8 @@ The vault view now reads live entries from `list_entries` and supports view / co
 
 Command-level equivalents (devtools): `list_entries`, `copy_field` (`{ vault_path, entry_id, field: { kind: "Password" }, clear_after_secs: 30 }`), `soft_delete_entry`.
 
+> **Restore has no UI yet** (the trash screen is Phase 3). To exercise restore, soft-delete an entry, then in devtools `await window.__TAURI__.core.invoke('restore_entry', { vault_path: '<path>', entry_id: '<id>' })` — it reappears in `list_entries`. This is the command-level step for the Phase-1 close-out cycle.
+
 ## Lock, relaunch & unlock (slice 1.6)
 
 The returning-user loop: the `/` launch screen lists recent vaults, unlocks the selected one, and the `/v` sidebar has a **Lock** control. Single-active-vault model.
