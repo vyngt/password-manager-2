@@ -89,9 +89,13 @@ pub fn VaultPage() -> impl IntoView {
         let Some(id) = selected.get().map(|e| e.id) else {
             return;
         };
+        // Read the locale string here (reactive owner present); reading it
+        // inside `spawn_local` trips the "outside a reactive tracking context"
+        // warning.
+        let copied_msg = t_string!(i18n, vault.copied).to_string();
         spawn_local(async move {
             match api::entry::copy_field(&vault_path, &id, &field, Some(30)).await {
-                Ok(()) => status_msg.set(Some(t_string!(i18n, vault.copied).to_string())),
+                Ok(()) => status_msg.set(Some(copied_msg)),
                 Err(e) => status_msg.set(Some(format!("Could not copy: {e}"))),
             }
         });

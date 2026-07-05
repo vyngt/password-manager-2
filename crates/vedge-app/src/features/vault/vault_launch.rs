@@ -88,6 +88,12 @@ pub fn VaultLaunch() -> impl IntoView {
         }
         error.set(None);
         let nav = use_navigate();
+        // Read locale-dependent strings in the handler (which has a reactive
+        // owner); reading them inside `spawn_local` is outside any owner and
+        // trips Leptos's "accessed outside a reactive tracking context" warning.
+        let msg_wrong = t_string!(i18n, unlock.wrong_password).to_string();
+        let msg_keychain = t_string!(i18n, unlock.keychain_missing).to_string();
+        let msg_failed = t_string!(i18n, unlock.unlock_failed).to_string();
         spawn_local(async move {
             let input = UnlockVaultInputDto {
                 vault_path: sel.path.clone(),
@@ -114,27 +120,19 @@ pub fn VaultLaunch() -> impl IntoView {
                     active.path.set(Some(sel.path.clone()));
                     nav("/v/vault", Default::default());
                 }
-                Err(ApiError::WrongCredentials) => {
-                    error.set(Some(t_string!(i18n, unlock.wrong_password).to_string()));
-                }
-                Err(ApiError::Keychain(_)) => {
-                    error.set(Some(t_string!(i18n, unlock.keychain_missing).to_string()));
-                }
-                Err(e) => {
-                    error.set(Some(format!(
-                        "{}{e}",
-                        t_string!(i18n, unlock.unlock_failed)
-                    )));
-                }
+                Err(ApiError::WrongCredentials) => error.set(Some(msg_wrong)),
+                Err(ApiError::Keychain(_)) => error.set(Some(msg_keychain)),
+                Err(e) => error.set(Some(format!("{msg_failed}{e}"))),
             }
         });
     };
 
     let open_other = move || {
         error.set(None);
+        let dialog_title = t_string!(i18n, unlock.open_other).to_string();
         spawn_local(async move {
             let opts = OpenDialogOptions {
-                title: Some(t_string!(i18n, unlock.open_other).to_string()),
+                title: Some(dialog_title),
                 filters: vec![DialogFilter {
                     name: "VEdge Vault".to_string(),
                     extensions: vec!["vdb".to_string()],
