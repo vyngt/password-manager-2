@@ -69,6 +69,7 @@ pub fn run() {
             // ---- entry CRUD + clipboard + move ----
             commands::entry::create_entry,
             commands::entry::update_entry,
+            commands::entry::get_entry,
             commands::entry::soft_delete_entry,
             commands::entry::restore_entry,
             commands::entry::hard_delete_entry,

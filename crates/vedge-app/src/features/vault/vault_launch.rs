@@ -74,9 +74,12 @@ pub fn VaultLaunch() -> impl IntoView {
     });
 
     let on_remove = Callback::new(move |id: String| {
+        // Read `selected` in the handler body — inside `spawn_local` it's
+        // owner-less and would trip the reactive-context warning.
+        let clear_selection = selected.get().and_then(|s| s.id).as_deref() == Some(id.as_str());
         spawn_local(async move {
             let _ = api::recent::remove_recent_vault(&id).await;
-            if selected.get().and_then(|s| s.id) == Some(id) {
+            if clear_selection {
                 selected.set(None);
             }
             refresh_recents();

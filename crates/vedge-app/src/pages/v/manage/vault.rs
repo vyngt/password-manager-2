@@ -38,20 +38,30 @@ pub fn VaultPage() -> impl IntoView {
     let loading = RwSignal::new(false);
     let search_query = RwSignal::new(String::new());
     let show_create_form = RwSignal::new(false);
-    let selected = RwSignal::new(Option::<IndexEntryDto>::None);
+    // Selection is tracked by id and the entry is *derived* from the live
+    // `items`, so an edit (which refreshes `items`) auto-updates the open panel
+    // instead of showing a stale metadata snapshot.
+    let selected_id = RwSignal::new(Option::<String>::None);
+    let selected_entry = Signal::derive(move || {
+        selected_id
+            .get()
+            .and_then(|id| items.get().into_iter().find(|e| e.id == id))
+    });
     let status_msg = RwSignal::new(Option::<String>::None);
 
     // Fetch the live entry index for the active vault. Re-run on demand
     // (mount, create-ping, post-delete).
     let refresh = move || {
-        let vault_path = active.path.get().unwrap_or_default();
+        // `refresh` runs from an `Effect` *and* from inside `spawn_local`
+        // (on create/save/delete pings) — the latter has no reactive owner, so
+        // read both the path and the locale string `untrack`ed. The Effect below
+        // is what actually tracks `active.path` for re-runs.
+        let vault_path = untrack(|| active.path.get()).unwrap_or_default();
         if vault_path.is_empty() {
             items.set(Vec::new());
             return;
         }
         loading.set(true);
-        // `refresh` is called from an Effect *and* from inside `spawn_local`
-        // (on delete); `untrack` reads the current locale string safely in both.
         let err_prefix = untrack(|| t_string!(i18n, vault.err_load).to_string());
         spawn_local(async move {
             match api::vault::list_entries(&vault_path).await {
@@ -69,13 +79,16 @@ pub fn VaultPage() -> impl IntoView {
     });
 
     let on_delete = Callback::new(move |id: String| {
+        // Read signals in the handler body (owner present); inside `spawn_local`
+        // they'd be owner-less. `set` is fine there — only reads warn.
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_delete).to_string();
+        let was_selected = selected_id.get().as_deref() == Some(id.as_str());
         spawn_local(async move {
             match api::entry::soft_delete_entry(&vault_path, &id).await {
                 Ok(()) => {
-                    if selected.get().map(|e| e.id).as_deref() == Some(id.as_str()) {
-                        selected.set(None);
+                    if was_selected {
+                        selected_id.set(None);
                     }
                     refresh();
                 }
@@ -84,13 +97,14 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
-    let on_select = Callback::new(move |entry: IndexEntryDto| selected.set(Some(entry)));
-    let on_close = Callback::new(move |()| selected.set(None));
+    let on_select = Callback::new(move |entry: IndexEntryDto| selected_id.set(Some(entry.id)));
+    let on_close = Callback::new(move |()| selected_id.set(None));
     let on_created = Callback::new(move |()| refresh());
+    let on_saved = Callback::new(move |()| refresh());
 
     let on_copy = Callback::new(move |field: FieldSelectorDto| {
         let vault_path = active.path.get().unwrap_or_default();
-        let Some(id) = selected.get().map(|e| e.id) else {
+        let Some(id) = selected_id.get() else {
             return;
         };
         // Read the locale string here (reactive owner present); reading it
@@ -147,8 +161,8 @@ pub fn VaultPage() -> impl IntoView {
                         on_select=on_select
                     />
                 </Show>
-                {move || selected.get().map(|entry| view! {
-                    <VaultDetail entry=entry on_copy=on_copy on_close=on_close />
+                {move || selected_entry.get().map(|entry| view! {
+                    <VaultDetail entry=entry on_copy=on_copy on_close=on_close on_saved=on_saved />
                 })}
             </div>
         </div>
