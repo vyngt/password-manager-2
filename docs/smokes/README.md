@@ -32,7 +32,7 @@ Notes:
 
 | Smoke | Covers | Slices |
 |---|---|---|
-| [Phase 1 — Create Vault](phase-1-create-vault.md) | Create a vault → add an entry → list / detail / copy / delete | 1.1, 1.2, 1.3, 1.4, 1.5 |
+| [Phase 1 — Create Vault](phase-1-create-vault.md) | Create → add → list/detail/copy/delete → lock → relaunch → unlock | 1.1–1.6 |
 
 ## Doc conventions
 

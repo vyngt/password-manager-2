@@ -48,4 +48,9 @@ extern "C" {
     // `Err(JsValue)`.
     #[wasm_bindgen(catch, js_namespace = ["window", "__TAURI__", "dialog"], js_name = save)]
     pub async fn dialog_save(options: JsValue) -> Result<JsValue, JsValue>;
+
+    // `open` shows a native open-file dialog. With no `multiple`/`directory`
+    // option it resolves to a single path string, or `null` if cancelled.
+    #[wasm_bindgen(catch, js_namespace = ["window", "__TAURI__", "dialog"], js_name = open)]
+    pub async fn dialog_open(options: JsValue) -> Result<JsValue, JsValue>;
 }
