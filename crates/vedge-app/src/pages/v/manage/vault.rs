@@ -50,10 +50,11 @@ pub fn VaultPage() -> impl IntoView {
             return;
         }
         loading.set(true);
+        let err_prefix = t_string!(i18n, vault.err_load).to_string();
         spawn_local(async move {
             match api::vault::list_entries(&vault_path).await {
                 Ok(list) => items.set(list),
-                Err(e) => status_msg.set(Some(format!("Could not load entries: {e}"))),
+                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
             }
             loading.set(false);
         });
@@ -67,6 +68,7 @@ pub fn VaultPage() -> impl IntoView {
 
     let on_delete = Callback::new(move |id: String| {
         let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_delete).to_string();
         spawn_local(async move {
             match api::entry::soft_delete_entry(&vault_path, &id).await {
                 Ok(()) => {
@@ -75,7 +77,7 @@ pub fn VaultPage() -> impl IntoView {
                     }
                     refresh();
                 }
-                Err(e) => status_msg.set(Some(format!("Could not delete: {e}"))),
+                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
             }
         });
     });
@@ -93,10 +95,11 @@ pub fn VaultPage() -> impl IntoView {
         // inside `spawn_local` trips the "outside a reactive tracking context"
         // warning.
         let copied_msg = t_string!(i18n, vault.copied).to_string();
+        let err_prefix = t_string!(i18n, vault.err_copy).to_string();
         spawn_local(async move {
             match api::entry::copy_field(&vault_path, &id, &field, Some(30)).await {
                 Ok(()) => status_msg.set(Some(copied_msg)),
-                Err(e) => status_msg.set(Some(format!("Could not copy: {e}"))),
+                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
             }
         });
     });
@@ -126,10 +129,10 @@ pub fn VaultPage() -> impl IntoView {
             <div class="flex-1 flex gap-4 min-h-0">
                 <Show
                     when=move || !loading.get()
-                    fallback=|| {
+                    fallback=move || {
                         view! {
                             <div class="flex-1 flex items-center justify-center text-foreground/40 text-sm">
-                                "Loading..."
+                                {move || t!(i18n, vault.loading)}
                             </div>
                         }
                     }

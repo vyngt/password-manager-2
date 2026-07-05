@@ -3,7 +3,7 @@
 //! `copy_field` command (`on_copy`) which puts it on the OS clipboard with a
 //! 30 s auto-clear — plaintext never enters the renderer.
 
-use super::entry_view::{short_date, type_label};
+use super::entry_view::{short_date, type_label_i18n};
 use crate::i18n::*;
 use leptos::prelude::*;
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto};
@@ -21,7 +21,7 @@ pub fn VaultDetail(
 
     let is_login = entry.entry_type == EntryTypeDto::Login;
     let name = entry.name.clone();
-    let type_lbl = type_label(&entry.entry_type);
+    let type_lbl = type_label_i18n(i18n, &entry.entry_type);
     let url = entry.url.clone();
     let updated = short_date(&entry.updated_at);
     let created = short_date(&entry.created_at);
@@ -82,7 +82,9 @@ pub fn VaultDetail(
                     <dd class="text-foreground/70">{updated}</dd>
                 </div>
                 <div>
-                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">"Created"</dt>
+                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                        {move || t!(i18n, vault.col_created)}
+                    </dt>
                     <dd class="text-foreground/70">{created}</dd>
                 </div>
             </dl>

@@ -2,7 +2,6 @@ pub mod context;
 pub mod entry_view;
 pub mod password_strength;
 pub mod secret_display;
-pub mod types;
 pub mod vault_create_form;
 pub mod vault_detail;
 pub mod vault_launch;
