@@ -47,6 +47,7 @@ pub fn VaultLaunch() -> impl IntoView {
     let selected = RwSignal::new(Option::<Selected>::None);
     let pw = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
+    let unlocking = RwSignal::new(false);
 
     let refresh_recents = move || {
         loading.set(true);
@@ -83,10 +84,11 @@ pub fn VaultLaunch() -> impl IntoView {
             return;
         };
         let password = pw.get();
-        if password.is_empty() {
+        if password.is_empty() || unlocking.get() {
             return;
         }
         error.set(None);
+        unlocking.set(true);
         let nav = use_navigate();
         // Read locale-dependent strings in the handler (which has a reactive
         // owner); reading them inside `spawn_local` is outside any owner and
@@ -124,6 +126,7 @@ pub fn VaultLaunch() -> impl IntoView {
                 Err(ApiError::Keychain(_)) => error.set(Some(msg_keychain)),
                 Err(e) => error.set(Some(format!("{msg_failed}{e}"))),
             }
+            unlocking.set(false);
         });
     };
 
@@ -226,15 +229,23 @@ pub fn VaultLaunch() -> impl IntoView {
                         on_input=Callback::new(move |v: String| pw.set(v))
                         class="flex-1 rounded-r-none border-r-0"
                     />
-                    <IconButton
-                        aria_label=Signal::derive(move || t_string!(i18n, unlock.unlock).to_string())
-                        variant=Variant::Primary
-                        size=Size::Lg
-                        class="rounded-l-none"
-                        on:click=move |_: web_sys::MouseEvent| do_unlock()
-                    >
-                        <Icon icon=Decrypt />
-                    </IconButton>
+                    {move || {
+                        let busy = unlocking.get();
+                        view! {
+                            <IconButton
+                                aria_label=Signal::derive(move || {
+                                    t_string!(i18n, unlock.unlock).to_string()
+                                })
+                                variant=Variant::Primary
+                                size=Size::Lg
+                                loading=busy
+                                class="rounded-l-none"
+                                on:click=move |_: web_sys::MouseEvent| do_unlock()
+                            >
+                                <Icon icon=Decrypt />
+                            </IconButton>
+                        }
+                    }}
                 </div>
             })}
 
