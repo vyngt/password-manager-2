@@ -10,5 +10,14 @@ chrono = { version = "0.4", default-features = false, features = ["alloc", "serd
 thiserror = "2"
 base64 = "0.22"
 
+# Browserless wasm-bindgen tests (`tests/wire_wasm.rs`) exercise the real
+# frontend wire codec (`serde_wasm_bindgen`) under node. Only used by the
+# wasm32 test target; run with `wasm-pack test --node crates/vedge-ipc`.
+[dev-dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"
+serde-wasm-bindgen = "0.6.5"
+js-sys = "0.3"
+
 [lints]
 workspace = true
