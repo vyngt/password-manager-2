@@ -51,7 +51,10 @@ pub fn VaultLaunch() -> impl IntoView {
 
     let refresh_recents = move || {
         loading.set(true);
-        let err_prefix = t_string!(i18n, unlock.err_recents).to_string();
+        // `refresh_recents` is called from an Effect *and* from inside
+        // `spawn_local` (on Remove); `untrack` reads the current locale string
+        // safely in both (a `spawn_local` future has no reactive owner).
+        let err_prefix = untrack(|| t_string!(i18n, unlock.err_recents).to_string());
         spawn_local(async move {
             match api::recent::list_recent_vaults_with_status().await {
                 Ok(list) => recents.set(list),
