@@ -7,10 +7,9 @@
 //! actual file work.
 
 use serde::Serialize;
-use wasm_bindgen::JsValue;
 
 use crate::api::error::ApiError;
-use crate::api::tauri::dialog_save;
+use crate::api::tauri::{dialog_open, dialog_save};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DialogFilter {
@@ -38,9 +37,45 @@ pub async fn save(options: &SaveDialogOptions) -> Result<Option<String>, ApiErro
     serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
 }
 
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenDialogOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub filters: Vec<DialogFilter>,
+}
+
+/// Show a native open-file dialog (single-select). Returns the chosen path, or
+/// `None` when the user cancels.
+pub async fn open(options: &OpenDialogOptions) -> Result<Option<String>, ApiError> {
+    let args = serde_wasm_bindgen::to_value(options).map_err(ApiError::serialize)?;
+    let raw = dialog_open(args).await.map_err(ApiError::from_rejection)?;
+    // Single-select resolves to a path string or `null` (cancelled).
+    serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{DialogFilter, SaveDialogOptions};
+    use super::{DialogFilter, OpenDialogOptions, SaveDialogOptions};
+
+    #[test]
+    fn open_options_serialize_camel_case_and_omit_empty() {
+        let opts = OpenDialogOptions {
+            title: Some("Open vault".to_string()),
+            filters: vec![DialogFilter {
+                name: "VEdge Vault".to_string(),
+                extensions: vec!["vdb".to_string()],
+            }],
+        };
+        let v = serde_json::to_value(&opts).unwrap();
+        assert_eq!(v["title"], "Open vault");
+        assert_eq!(v["filters"][0]["extensions"][0], "vdb");
+
+        let empty = serde_json::to_value(OpenDialogOptions::default()).unwrap();
+        assert!(empty.get("title").is_none());
+        assert!(empty.get("filters").is_none());
+    }
 
     #[test]
     fn save_options_serialize_camel_case() {

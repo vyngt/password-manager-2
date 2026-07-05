@@ -10,7 +10,8 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 
-use vedge_ipc::CreateVaultInputDto;
+use uuid::Uuid;
+use vedge_ipc::{CreateVaultInputDto, RecentVaultDto};
 
 use crate::api;
 use crate::api::dialog::{DialogFilter, SaveDialogOptions};
@@ -18,6 +19,7 @@ use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::password_strength::score as password_score;
 use crate::features::vault::secret_display::SecretDisplay;
+use crate::features::vault::vault_launch::display_name_from_path;
 
 use vedge_ui::components::{Button, Checkbox, Input, PasswordStrengthMeter, Step, StepIndicator};
 use vedge_ui::primitives::tokens::Variant;
@@ -184,6 +186,19 @@ pub fn VaultSetup() -> impl IntoView {
                                                         keychain_ok.set(out.keychain_stored);
                                                         created.set(true);
                                                         current_step.set(2);
+                                                        // Add to recents so it appears on the
+                                                        // launch screen next time (non-fatal).
+                                                        let dto = RecentVaultDto {
+                                                            id: Uuid::new_v4().to_string(),
+                                                            path: input.vault_path.clone(),
+                                                            display_name: display_name_from_path(
+                                                                &input.vault_path,
+                                                            ),
+                                                            last_opened: None,
+                                                            sort_order: 0,
+                                                        };
+                                                        let _ = api::recent::add_recent_vault(&dto)
+                                                            .await;
                                                     }
                                                     Err(ApiError::AlreadyExists) => {
                                                         error.set(Some(
