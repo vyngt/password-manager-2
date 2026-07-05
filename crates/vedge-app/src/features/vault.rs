@@ -1,4 +1,5 @@
 pub mod context;
+pub mod document_attach;
 pub mod entry_form;
 pub mod entry_view;
 pub mod password_strength;

@@ -7,6 +7,9 @@ pub mod pdf;
 pub mod setup;
 pub mod state;
 
+#[cfg(test)]
+pub(crate) mod test_support;
+
 use tauri::Manager;
 
 /// Entry point wired from `main.rs`.
@@ -82,6 +85,8 @@ pub fn run() {
             // ---- document import/export ----
             commands::document::import_document,
             commands::document::export_document,
+            commands::document::import_document_from_path,
+            commands::document::export_document_to_path,
             // ---- password + maintenance ----
             commands::password::change_password,
             commands::maintenance::run_maintenance,
