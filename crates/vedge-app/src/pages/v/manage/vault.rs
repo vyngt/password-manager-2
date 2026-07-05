@@ -1,5 +1,6 @@
 use crate::api;
 use crate::features::vault::context::ActiveVault;
+use crate::features::vault::document_attach::DocumentAttach;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
 use crate::features::vault::vault_search::VaultSearch;
@@ -38,6 +39,7 @@ pub fn VaultPage() -> impl IntoView {
     let loading = RwSignal::new(false);
     let search_query = RwSignal::new(String::new());
     let show_create_form = RwSignal::new(false);
+    let show_attach = RwSignal::new(false);
     // Selection is tracked by id and the entry is *derived* from the live
     // `items`, so an edit (which refreshes `items`) auto-updates the open panel
     // instead of showing a stale metadata snapshot.
@@ -128,9 +130,23 @@ pub fn VaultPage() -> impl IntoView {
                     variant=Variant::Primary
                     size=Size::Sm
                     class="whitespace-nowrap"
-                    on:click=move |_| show_create_form.update(|v| *v = !*v)
+                    on:click=move |_| {
+                        show_attach.set(false);
+                        show_create_form.update(|v| *v = !*v);
+                    }
                 >
                     {move || t!(i18n, vault.new_item)}
+                </Button>
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    class="whitespace-nowrap"
+                    on:click=move |_| {
+                        show_create_form.set(false);
+                        show_attach.update(|v| *v = !*v);
+                    }
+                >
+                    {move || t!(i18n, vault.attach_document)}
                 </Button>
             </div>
 
@@ -140,6 +156,10 @@ pub fn VaultPage() -> impl IntoView {
 
             <Show when=move || show_create_form.get()>
                 <VaultCreateForm show=show_create_form on_created=on_created />
+            </Show>
+
+            <Show when=move || show_attach.get()>
+                <DocumentAttach show=show_attach on_attached=on_created />
             </Show>
 
             <div class="flex-1 flex gap-4 min-h-0">
