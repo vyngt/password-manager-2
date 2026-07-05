@@ -39,9 +39,9 @@ fn SidebarItemRow(item: &'static SidebarRouteItem) -> impl IntoView {
 
     let item_class = move || {
         if is_active() {
-            "p-2 text-white"
+            "p-2 text-text-primary"
         } else {
-            "p-2 text-white/60 hover:text-white"
+            "p-2 text-text-secondary hover:text-text-primary"
         }
     };
 
@@ -97,7 +97,7 @@ fn LockButton() -> impl IntoView {
                 content=Signal::derive(move || t_string!(i18n, unlock.lock).to_string())
             >
                 <button
-                    class="p-2 text-white/60 hover:text-white"
+                    class="p-2 text-text-secondary hover:text-text-primary"
                     aria-label=move || t_string!(i18n, unlock.lock).to_string()
                     on:click=on_lock
                 >
