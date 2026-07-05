@@ -13,7 +13,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let cfg = Config::new("en")?
         .add_locale("vi")?
-        .add_namespaces(["unlock", "vault", "window", "playground", "date_picker"])?
+        .add_namespaces([
+            "unlock",
+            "vault",
+            "window",
+            "playground",
+            "date_picker",
+            "onboarding",
+            "nav",
+        ])?
         .parse_options(options);
 
     let translations_infos = TranslationsInfos::parse(cfg)?;

@@ -1,4 +1,4 @@
-use super::entry_view::{short_date, type_label};
+use super::entry_view::{short_date, type_label_i18n};
 use crate::i18n::*;
 use leptos::prelude::*;
 use vedge_ipc::IndexEntryDto;
@@ -70,7 +70,7 @@ fn VaultTableRow(
     let entry_for_select = item.clone();
     let item_id = item.id.clone();
     let name = item.name.clone();
-    let type_lbl = type_label(&item.entry_type);
+    let type_lbl = type_label_i18n(i18n, &item.entry_type);
     let url = item.url.clone().unwrap_or_default();
     let updated = short_date(&item.updated_at);
 

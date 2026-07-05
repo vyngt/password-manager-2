@@ -1,23 +1,24 @@
-//! Pure, host-testable presentation helpers shared by the entry list
-//! (`vault_table`) and detail panel (`vault_detail`). No reactivity here —
-//! just `IndexEntryDto` → display-string mapping.
+//! Presentation helpers shared by the entry list (`vault_table`) and detail
+//! panel (`vault_detail`). `short_date` is pure/host-testable; the entry-type
+//! label is localized (`vault.type_*`) so it needs the i18n context.
 
+use crate::i18n::*;
+use leptos_i18n::I18nContext;
 use vedge_ipc::EntryTypeDto;
 
-/// Short English label for an entry type, for the list/detail Type field.
-/// (Type names aren't localized yet — a later i18n pass can map these.)
-pub fn type_label(entry_type: &EntryTypeDto) -> &'static str {
+/// Localized label for an entry type, for the list/detail Type field.
+pub fn type_label_i18n(i18n: I18nContext<Locale>, entry_type: &EntryTypeDto) -> String {
     match entry_type {
-        EntryTypeDto::Login => "Login",
-        EntryTypeDto::Card => "Card",
-        EntryTypeDto::SshKey => "SSH Key",
-        EntryTypeDto::ApiKey => "API Key",
-        EntryTypeDto::EnvVars => "Env Vars",
-        EntryTypeDto::Note => "Note",
-        EntryTypeDto::Document => "Document",
-        EntryTypeDto::Identity => "Identity",
-        EntryTypeDto::Folder => "Folder",
-        EntryTypeDto::Unknown(_) => "Other",
+        EntryTypeDto::Login => t_string!(i18n, vault.type_login).to_string(),
+        EntryTypeDto::Card => t_string!(i18n, vault.type_card).to_string(),
+        EntryTypeDto::SshKey => t_string!(i18n, vault.type_ssh_key).to_string(),
+        EntryTypeDto::ApiKey => t_string!(i18n, vault.type_api_key).to_string(),
+        EntryTypeDto::EnvVars => t_string!(i18n, vault.type_env_vars).to_string(),
+        EntryTypeDto::Note => t_string!(i18n, vault.type_note).to_string(),
+        EntryTypeDto::Document => t_string!(i18n, vault.type_document).to_string(),
+        EntryTypeDto::Identity => t_string!(i18n, vault.type_identity).to_string(),
+        EntryTypeDto::Folder => t_string!(i18n, vault.type_folder).to_string(),
+        EntryTypeDto::Unknown(_) => t_string!(i18n, vault.type_other).to_string(),
     }
 }
 
@@ -31,18 +32,7 @@ pub fn short_date(rfc3339: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{short_date, type_label};
-    use vedge_ipc::EntryTypeDto;
-
-    #[test]
-    fn type_label_maps_known_and_unknown() {
-        assert_eq!(type_label(&EntryTypeDto::Login), "Login");
-        assert_eq!(type_label(&EntryTypeDto::SshKey), "SSH Key");
-        assert_eq!(
-            type_label(&EntryTypeDto::Unknown("Passkey".into())),
-            "Other"
-        );
-    }
+    use super::short_date;
 
     #[test]
     fn short_date_trims_time() {

@@ -51,10 +51,11 @@ pub fn VaultLaunch() -> impl IntoView {
 
     let refresh_recents = move || {
         loading.set(true);
+        let err_prefix = t_string!(i18n, unlock.err_recents).to_string();
         spawn_local(async move {
             match api::recent::list_recent_vaults_with_status().await {
                 Ok(list) => recents.set(list),
-                Err(e) => error.set(Some(format!("{e}"))),
+                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
             }
             loading.set(false);
         });
@@ -133,6 +134,7 @@ pub fn VaultLaunch() -> impl IntoView {
     let open_other = move || {
         error.set(None);
         let dialog_title = t_string!(i18n, unlock.open_other).to_string();
+        let err_prefix = t_string!(i18n, unlock.err_open).to_string();
         spawn_local(async move {
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
@@ -154,7 +156,7 @@ pub fn VaultLaunch() -> impl IntoView {
                     }));
                 }
                 Ok(None) => {}
-                Err(e) => error.set(Some(format!("{e}"))),
+                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
             }
         });
     };
@@ -183,9 +185,11 @@ pub fn VaultLaunch() -> impl IntoView {
 
             <Show
                 when=move || !loading.get()
-                fallback=|| {
+                fallback=move || {
                     view! {
-                        <div class="text-center text-sm text-foreground/40">"Loading…"</div>
+                        <div class="text-center text-sm text-foreground/40">
+                            {move || t!(i18n, unlock.loading)}
+                        </div>
                     }
                 }
             >
