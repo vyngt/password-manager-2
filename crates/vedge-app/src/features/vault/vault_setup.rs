@@ -55,11 +55,16 @@ pub fn VaultSetup() -> impl IntoView {
     };
     let can_finish = move || created.get() && acknowledged.get();
 
-    let steps = Signal::stored(vec![
-        Step::new(t_string!(i18n, onboarding.step_location).to_string()),
-        Step::new(t_string!(i18n, onboarding.step_password).to_string()),
-        Step::new(t_string!(i18n, onboarding.step_kit).to_string()),
-    ]);
+    // `Signal::derive` (not `stored`) so the `t_string!` reads run inside a
+    // reactive context — an eager read in the component body is "outside a
+    // reactive tracking context" — and so labels relocalize on language switch.
+    let steps = Signal::derive(move || {
+        vec![
+            Step::new(t_string!(i18n, onboarding.step_location).to_string()),
+            Step::new(t_string!(i18n, onboarding.step_password).to_string()),
+            Step::new(t_string!(i18n, onboarding.step_kit).to_string()),
+        ]
+    });
 
     view! {
         <div class="mx-auto flex h-full w-full max-w-xl flex-col gap-6 p-8">
@@ -158,7 +163,7 @@ pub fn VaultSetup() -> impl IntoView {
                                 strength_label=Signal::derive(move || {
                                     t_string!(i18n, onboarding.strength_label).to_string()
                                 })
-                                level_labels=Signal::stored([
+                                level_labels=Signal::derive(move || [
                                     t_string!(i18n, onboarding.strength_weak).to_string(),
                                     t_string!(i18n, onboarding.strength_fair).to_string(),
                                     t_string!(i18n, onboarding.strength_good).to_string(),
