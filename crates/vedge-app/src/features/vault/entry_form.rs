@@ -99,8 +99,8 @@ pub struct EntryFormData {
     // Card.
     pub cardholder_name: String,
     pub card_number: String,
-    pub expiry_month: String,
-    pub expiry_year: String,
+    /// Card expiry in `MM/YY` form (single field).
+    pub card_expiry: String,
     pub cvv: String,
     pub pin: String,
 
@@ -166,8 +166,7 @@ impl EntryFormData {
             totp: String::new(),
             cardholder_name: String::new(),
             card_number: String::new(),
-            expiry_month: String::new(),
-            expiry_year: String::new(),
+            card_expiry: String::new(),
             cvv: String::new(),
             pin: String::new(),
             ssh_private_key: String::new(),
@@ -252,8 +251,7 @@ impl EntryFormData {
                 recovery_codes: self.recovery_codes.clone(),
             }),
             EntryTypeDto::Card => {
-                let expiry_month = parse_expiry::<u8>(&self.expiry_month)?;
-                let expiry_year = parse_expiry::<u16>(&self.expiry_year)?;
+                let (expiry_month, expiry_year) = parse_card_expiry(&self.card_expiry)?;
                 PayloadDto::Card(CardPayloadDto {
                     meta,
                     cardholder_name: self.cardholder_name.clone(),
@@ -358,8 +356,7 @@ impl EntryFormData {
             PayloadDto::Card(p) => {
                 d.cardholder_name = p.cardholder_name.clone();
                 d.card_number = p.number.clone();
-                d.expiry_month = p.expiry_month.to_string();
-                d.expiry_year = p.expiry_year.to_string();
+                d.card_expiry = format!("{:02}/{:02}", p.expiry_month, p.expiry_year % 100);
                 d.cvv = p.cvv.clone();
                 d.pin = p.pin.clone().unwrap_or_default();
             }
@@ -423,10 +420,26 @@ fn non_empty(s: &str) -> Option<String> {
     }
 }
 
-fn parse_expiry<T: std::str::FromStr>(s: &str) -> Result<T, EntryFormError> {
-    s.trim()
-        .parse::<T>()
-        .map_err(|_| EntryFormError::InvalidExpiry)
+/// Parse a `MM/YY` (or `MM/YYYY`) card expiry into `(month, year)`. A 2-digit
+/// year is read as `20YY`. Rejects a missing `/`, non-numeric parts, or a month
+/// outside 1..=12.
+fn parse_card_expiry(s: &str) -> Result<(u8, u16), EntryFormError> {
+    let (m, y) = s.split_once('/').ok_or(EntryFormError::InvalidExpiry)?;
+    let month: u8 = m
+        .trim()
+        .parse()
+        .map_err(|_| EntryFormError::InvalidExpiry)?;
+    let y = y.trim();
+    let raw_year: u16 = y.parse().map_err(|_| EntryFormError::InvalidExpiry)?;
+    let year = if y.len() <= 2 {
+        2000 + raw_year
+    } else {
+        raw_year
+    };
+    if !(1..=12).contains(&month) {
+        return Err(EntryFormError::InvalidExpiry);
+    }
+    Ok((month, year))
 }
 
 fn payload_entry_type(p: &PayloadDto) -> EntryTypeDto {
@@ -516,8 +529,7 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                 EntryTypeDto::Card => view! {
                     {text_field!(data, i18n, "ef-cardholder", cardholder_name, field_cardholder)}
                     {secret_field!(data, i18n, "ef-number", card_number, field_card_number)}
-                    {text_field!(data, i18n, "ef-exp-month", expiry_month, field_expiry_month)}
-                    {text_field!(data, i18n, "ef-exp-year", expiry_year, field_expiry_year)}
+                    {text_field!(data, i18n, "ef-expiry", card_expiry, field_card_expiry)}
                     {secret_field!(data, i18n, "ef-cvv", cvv, field_cvv)}
                     {secret_field!(data, i18n, "ef-pin", pin, field_pin)}
                 }.into_any(),
@@ -666,8 +678,7 @@ mod tests {
     fn to_payload_card_parses_expiry() {
         let mut d = base(EntryTypeDto::Card);
         d.card_number = "4111".into();
-        d.expiry_month = "12".into();
-        d.expiry_year = "2030".into();
+        d.card_expiry = "12/30".into();
         d.cvv = "123".into();
         let PayloadDto::Card(p) = d.to_payload().unwrap() else {
             panic!("card");
@@ -680,7 +691,7 @@ mod tests {
     #[test]
     fn to_payload_card_bad_expiry_errors() {
         let mut d = base(EntryTypeDto::Card);
-        d.expiry_month = "xx".into();
+        d.card_expiry = "13/30".into(); // month out of range
         assert_eq!(d.to_payload().unwrap_err(), EntryFormError::InvalidExpiry);
     }
 
@@ -733,8 +744,7 @@ mod tests {
         let mut d = base(EntryTypeDto::Card);
         d.cardholder_name = "Alice A".into();
         d.card_number = "4111111111111111".into();
-        d.expiry_month = "12".into();
-        d.expiry_year = "2030".into();
+        d.card_expiry = "12/30".into();
         d.cvv = "123".into();
         d.pin = "4321".into();
         let round = EntryFormData::from_payload(&d.to_payload().unwrap());

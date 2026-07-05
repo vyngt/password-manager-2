@@ -28,15 +28,6 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl I
     let submitting = RwSignal::new(false);
     let error = RwSignal::new(Option::<String>::None);
 
-    // Picker options — built once. `untrack` avoids an eager locale read in the
-    // component body (the labels don't need to relocalize live here).
-    let type_options: Vec<SelectItem> = untrack(|| {
-        editable_types()
-            .iter()
-            .map(|ty| SelectItem::option(type_to_key(ty), type_label_i18n(i18n, ty)))
-            .collect()
-    });
-
     let handle_cancel = move |_| {
         data.set(EntryFormData::new(EntryTypeDto::Login));
         error.set(None);
@@ -87,14 +78,24 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl I
             </h3>
 
             <div class="mb-3">
-                <Select
-                    options=type_options
-                    value=Signal::derive(move || data.with(|d| type_to_key(&d.entry_type).to_owned()))
-                    placeholder=Signal::derive(move || t_string!(i18n, vault.type_picker).to_string())
-                    on_change=Callback::new(move |key: String| {
-                        data.update(|d| *d = d.switch_type(type_from_key(&key)));
-                    })
-                />
+                // Built inside a reactive closure so the locale read is tracked
+                // (no owner-less warning) and the labels relocalize on switch.
+                {move || {
+                    let options: Vec<SelectItem> = editable_types()
+                        .iter()
+                        .map(|ty| SelectItem::option(type_to_key(ty), type_label_i18n(i18n, ty)))
+                        .collect();
+                    view! {
+                        <Select
+                            options=options
+                            value=Signal::derive(move || data.with(|d| type_to_key(&d.entry_type).to_owned()))
+                            placeholder=Signal::derive(move || t_string!(i18n, vault.type_picker).to_string())
+                            on_change=Callback::new(move |key: String| {
+                                data.update(|d| *d = d.switch_type(type_from_key(&key)));
+                            })
+                        />
+                    }
+                }}
             </div>
 
             <EntryForm data=data />
