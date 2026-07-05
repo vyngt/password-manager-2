@@ -23,13 +23,14 @@ use tracing::instrument;
 
 use vedge_core::domain::shared::{EntryId, VaultId};
 use vedge_core::{
-    CopyFieldInput, CreateEntryInput, UpdateEntryInput, copy_field as copy_field_core,
-    create_entry as create_entry_core, hard_delete_entry as hard_delete_entry_core,
-    move_entry as move_entry_core, restore_entry as restore_entry_core,
-    soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
+    CopyFieldInput, CreateEntryInput, GetEntryInput, UpdateEntryInput,
+    copy_field as copy_field_core, create_entry as create_entry_core, get_entry as get_entry_core,
+    hard_delete_entry as hard_delete_entry_core, move_entry as move_entry_core,
+    restore_entry as restore_entry_core, soft_delete_entry as soft_delete_entry_core,
+    update_entry as update_entry_core,
 };
 
-use crate::dto::entry::{PayloadDto, entry_id_from_str, payload_from_dto};
+use crate::dto::entry::{PayloadDto, entry_id_from_str, payload_from_dto, payload_to_dto};
 use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -83,6 +84,32 @@ pub async fn update_entry(
     )
     .await?;
     Ok(())
+}
+
+/// Reveal one entry's full decrypted payload (secrets included) to the frontend.
+///
+/// The sanctioned, user-initiated relaxation of "no plaintext in WASM": used by
+/// the edit form to prefill and preserve existing values. The core audits this
+/// as `Viewed`.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn get_entry(
+    vault_path: String,
+    entry_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<PayloadDto, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let payload = get_entry_core(
+        &mut guard,
+        GetEntryInput {
+            entry_id: entry_id_from_str(&entry_id),
+        },
+    )
+    .await?;
+    payload_to_dto(&payload)
 }
 
 #[tauri::command(rename_all = "snake_case")]

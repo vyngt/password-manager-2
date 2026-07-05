@@ -100,7 +100,11 @@ pub fn payload_from_dto(dto: PayloadDto) -> Result<EntryPayload, CommandError> {
                 username: d.username,
                 password: SecretString::from(d.password),
                 totp_secret: d.totp_secret.map(SecretString::from),
-                recovery_codes: d.recovery_codes.into_iter().map(SecretString::from).collect(),
+                recovery_codes: d
+                    .recovery_codes
+                    .into_iter()
+                    .map(SecretString::from)
+                    .collect(),
             })
         }
         PayloadDto::Card(d) => {
@@ -329,6 +333,137 @@ mod tests {
         assert_eq!(b.blob_nonce, nonce);
         assert_eq!(b.filename, "a.pdf");
         assert_eq!(b.size_bytes, 12_345);
+    }
+
+    #[test]
+    fn card_round_trips_through_dto() {
+        let p = EntryPayload::Card(CardPayload {
+            meta: minimal_meta(EntryType::Card),
+            cardholder_name: "Alice A".into(),
+            number: SecretString::from("4111111111111111"),
+            expiry_month: 12,
+            expiry_year: 2030,
+            cvv: SecretString::from("123"),
+            pin: Some(SecretString::from("4321")),
+        });
+        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
+        let EntryPayload::Card(b) = back else {
+            panic!("wrong variant")
+        };
+        assert_eq!(b.cardholder_name, "Alice A");
+        assert_eq!(b.number.expose_secret(), "4111111111111111");
+        assert_eq!(b.expiry_month, 12);
+        assert_eq!(b.expiry_year, 2030);
+        assert_eq!(b.cvv.expose_secret(), "123");
+        assert_eq!(b.pin.unwrap().expose_secret(), "4321");
+    }
+
+    #[test]
+    fn ssh_key_round_trips_through_dto() {
+        let p = EntryPayload::SshKey(SshKeyPayload {
+            meta: minimal_meta(EntryType::SshKey),
+            private_key_pem: SecretString::from("-----BEGIN KEY-----"),
+            passphrase: Some(SecretString::from("pp")),
+            public_key: "ssh-ed25519 AAAA".into(),
+            fingerprint: "SHA256:abc".into(),
+            key_type: "ed25519".into(),
+        });
+        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
+        let EntryPayload::SshKey(b) = back else {
+            panic!("wrong variant")
+        };
+        assert_eq!(b.private_key_pem.expose_secret(), "-----BEGIN KEY-----");
+        assert_eq!(b.passphrase.unwrap().expose_secret(), "pp");
+        assert_eq!(b.public_key, "ssh-ed25519 AAAA");
+        assert_eq!(b.fingerprint, "SHA256:abc");
+        assert_eq!(b.key_type, "ed25519");
+    }
+
+    #[test]
+    fn api_key_round_trips_through_dto() {
+        let p = EntryPayload::ApiKey(ApiKeyPayload {
+            meta: minimal_meta(EntryType::ApiKey),
+            key: SecretString::from("sk-123"),
+            secret: Some(SecretString::from("shh")),
+            endpoint: Some("https://api".into()),
+            expiry: None,
+            key_type: Some("bearer".into()),
+        });
+        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
+        let EntryPayload::ApiKey(b) = back else {
+            panic!("wrong variant")
+        };
+        assert_eq!(b.key.expose_secret(), "sk-123");
+        assert_eq!(b.secret.unwrap().expose_secret(), "shh");
+        assert_eq!(b.endpoint.as_deref(), Some("https://api"));
+        assert!(b.expiry.is_none());
+        assert_eq!(b.key_type.as_deref(), Some("bearer"));
+    }
+
+    #[test]
+    fn env_vars_round_trips_through_dto() {
+        let p = EntryPayload::EnvVars(EnvVarsPayload {
+            meta: minimal_meta(EntryType::EnvVars),
+            vars: vec![
+                EnvVar {
+                    key: "DB_URL".into(),
+                    value: SecretString::from("postgres://"),
+                },
+                EnvVar {
+                    key: "TOKEN".into(),
+                    value: SecretString::from("abc"),
+                },
+            ],
+        });
+        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
+        let EntryPayload::EnvVars(b) = back else {
+            panic!("wrong variant")
+        };
+        assert_eq!(b.vars.len(), 2);
+        assert_eq!(b.vars[0].key, "DB_URL");
+        assert_eq!(b.vars[0].value.expose_secret(), "postgres://");
+        assert_eq!(b.vars[1].key, "TOKEN");
+    }
+
+    #[test]
+    fn identity_round_trips_through_dto() {
+        let p = EntryPayload::Identity(IdentityPayload {
+            meta: minimal_meta(EntryType::Identity),
+            first_name: "Alice".into(),
+            last_name: "Anderson".into(),
+            email: "alice@example.com".into(),
+            phone: Some("+1".into()),
+            address: Some(Address {
+                line1: "1 St".into(),
+                line2: None,
+                city: "Town".into(),
+                state: Some("CA".into()),
+                postal_code: "90001".into(),
+                country: "US".into(),
+            }),
+            date_of_birth: Some("1990-01-01".into()),
+            national_id: Some(SecretString::from("ID-1")),
+        });
+        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
+        let EntryPayload::Identity(b) = back else {
+            panic!("wrong variant")
+        };
+        assert_eq!(b.first_name, "Alice");
+        assert_eq!(b.email, "alice@example.com");
+        let addr = b.address.unwrap();
+        assert_eq!(addr.city, "Town");
+        assert_eq!(addr.country, "US");
+        assert_eq!(b.national_id.unwrap().expose_secret(), "ID-1");
+    }
+
+    #[test]
+    fn folder_round_trips_through_dto() {
+        let p = EntryPayload::Folder(FolderPayload {
+            meta: minimal_meta(EntryType::Folder),
+        });
+        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
+        assert!(matches!(back, EntryPayload::Folder(_)));
+        assert_eq!(back.meta().entry_type, EntryType::Folder);
     }
 
     #[test]

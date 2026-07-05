@@ -38,7 +38,15 @@ pub fn VaultPage() -> impl IntoView {
     let loading = RwSignal::new(false);
     let search_query = RwSignal::new(String::new());
     let show_create_form = RwSignal::new(false);
-    let selected = RwSignal::new(Option::<IndexEntryDto>::None);
+    // Selection is tracked by id and the entry is *derived* from the live
+    // `items`, so an edit (which refreshes `items`) auto-updates the open panel
+    // instead of showing a stale metadata snapshot.
+    let selected_id = RwSignal::new(Option::<String>::None);
+    let selected_entry = Signal::derive(move || {
+        selected_id
+            .get()
+            .and_then(|id| items.get().into_iter().find(|e| e.id == id))
+    });
     let status_msg = RwSignal::new(Option::<String>::None);
 
     // Fetch the live entry index for the active vault. Re-run on demand
@@ -74,8 +82,8 @@ pub fn VaultPage() -> impl IntoView {
         spawn_local(async move {
             match api::entry::soft_delete_entry(&vault_path, &id).await {
                 Ok(()) => {
-                    if selected.get().map(|e| e.id).as_deref() == Some(id.as_str()) {
-                        selected.set(None);
+                    if selected_id.get().as_deref() == Some(id.as_str()) {
+                        selected_id.set(None);
                     }
                     refresh();
                 }
@@ -84,13 +92,14 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
-    let on_select = Callback::new(move |entry: IndexEntryDto| selected.set(Some(entry)));
-    let on_close = Callback::new(move |()| selected.set(None));
+    let on_select = Callback::new(move |entry: IndexEntryDto| selected_id.set(Some(entry.id)));
+    let on_close = Callback::new(move |()| selected_id.set(None));
     let on_created = Callback::new(move |()| refresh());
+    let on_saved = Callback::new(move |()| refresh());
 
     let on_copy = Callback::new(move |field: FieldSelectorDto| {
         let vault_path = active.path.get().unwrap_or_default();
-        let Some(id) = selected.get().map(|e| e.id) else {
+        let Some(id) = selected_id.get() else {
             return;
         };
         // Read the locale string here (reactive owner present); reading it
@@ -147,8 +156,8 @@ pub fn VaultPage() -> impl IntoView {
                         on_select=on_select
                     />
                 </Show>
-                {move || selected.get().map(|entry| view! {
-                    <VaultDetail entry=entry on_copy=on_copy on_close=on_close />
+                {move || selected_entry.get().map(|entry| view! {
+                    <VaultDetail entry=entry on_copy=on_copy on_close=on_close on_saved=on_saved />
                 })}
             </div>
         </div>

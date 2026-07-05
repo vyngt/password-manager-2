@@ -191,6 +191,39 @@ impl Harness {
         id
     }
 
+    /// Encrypt and insert an entry whose `entry_type` is unrecognized, so it
+    /// decodes to `EntryPayload::Unknown`. Bypasses the use-case API (which
+    /// refuses to serialize `Unknown`) by encrypting a bare `CommonMeta` whose
+    /// `entry_type` is `Unknown(..)`. Used to exercise the reveal/edit guards.
+    pub async fn seed_unknown(&self, name: &str, unknown_type: &str) -> EntryId {
+        let id = EntryId::new();
+        let version: i64 = 1;
+
+        let meta = CommonMeta::new(name, EntryType::Unknown(unknown_type.to_owned()));
+        let bytes = serde_json::to_vec(&meta).unwrap();
+
+        let dek = self.crypto.generate_dek();
+        let aad = entry_aad(&id, version).unwrap();
+        let (nonce, ciphertext) = self.crypto.encrypt_entry(&dek, &bytes, &aad).unwrap();
+        let dek_wrapped = self.crypto.wrap_dek(&dek, &self.kek).unwrap();
+
+        let row = EntryRow {
+            id: id.clone(),
+            version,
+            cipher_suite: 1,
+            dek_wrapped,
+            nonce,
+            ciphertext,
+            created_at: now(),
+            updated_at: now(),
+            accessed_at: None,
+            is_trashed: false,
+            trashed_at: None,
+        };
+        self.repo.insert_entry(&row).await.unwrap();
+        id
+    }
+
     /// Seed a tag with the given (already normalized) name.
     pub async fn seed_tag(&self, normalized_name: &str) -> TagId {
         let id = TagId::new();
