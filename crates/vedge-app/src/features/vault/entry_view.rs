@@ -30,9 +30,23 @@ pub fn short_date(rfc3339: &str) -> String {
         .map_or_else(|| rfc3339.to_string(), |(date, _)| date.to_string())
 }
 
+/// Human-readable byte size for the Document detail view (e.g. `2.5 MB`).
+pub fn human_size(bytes: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = 1024.0 * 1024.0;
+    let b = bytes as f64;
+    if b >= MB {
+        format!("{:.1} MB", b / MB)
+    } else if b >= KB {
+        format!("{:.1} KB", b / KB)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::short_date;
+    use super::{human_size, short_date};
 
     #[test]
     fn short_date_trims_time() {
@@ -42,5 +56,13 @@ mod tests {
     #[test]
     fn short_date_passes_through_without_separator() {
         assert_eq!(short_date("2026-07-05"), "2026-07-05");
+    }
+
+    #[test]
+    fn human_size_scales_units() {
+        assert_eq!(human_size(0), "0 B");
+        assert_eq!(human_size(512), "512 B");
+        assert_eq!(human_size(2048), "2.0 KB");
+        assert_eq!(human_size(5 * 1024 * 1024), "5.0 MB");
     }
 }

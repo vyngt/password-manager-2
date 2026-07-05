@@ -7,15 +7,16 @@
 //! `api::entry::update_entry`; `on_saved` pings the parent to refresh.
 
 use super::entry_form::{EntryForm, EntryFormData, EntryFormError};
-use super::entry_view::{short_date, type_label_i18n};
+use super::entry_view::{human_size, short_date, type_label_i18n};
 use crate::api;
+use crate::api::dialog::SaveDialogOptions;
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::*;
 use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_i18n::I18nContext;
-use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto};
+use vedge_ipc::{DocumentPayloadDto, EntryTypeDto, FieldSelectorDto, IndexEntryDto, PayloadDto};
 use vedge_ui::components::Button;
 use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
@@ -47,6 +48,27 @@ pub fn VaultDetail(
     let saving = RwSignal::new(false);
     let error = RwSignal::new(Option::<String>::None);
     let form = RwSignal::new(EntryFormData::new(EntryTypeDto::Login));
+
+    // Document detail: reveal metadata (filename / mime / size) once on open so
+    // the read view can show it and the export dialog can default to the real
+    // filename. Metadata only — the blob bytes stay in the sidecar, so no
+    // plaintext file bytes reach WASM. (`get_entry` audits this as `Viewed`.)
+    let is_document = matches!(entry.entry_type, EntryTypeDto::Document);
+    let doc_meta = RwSignal::new(Option::<DocumentPayloadDto>::None);
+    let doc_name_default = StoredValue::new(entry.name.clone());
+    if is_document {
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        let id = entry_id.get_value();
+        spawn_local(async move {
+            match api::entry::get_entry(&vault_path, &id).await {
+                Ok(PayloadDto::Document(p)) => doc_meta.set(Some(p)),
+                Ok(_) => {}
+                Err(e) => web_sys::console::error_1(
+                    &format!("document metadata reveal failed: {e:?}").into(),
+                ),
+            }
+        });
+    }
 
     let start_edit = move |_: web_sys::MouseEvent| {
         let vault_path = active.path.get().unwrap_or_default();
@@ -99,6 +121,38 @@ pub fn VaultDetail(
                 Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
             }
             saving.set(false);
+        });
+    };
+
+    let export_doc = move |_: web_sys::MouseEvent| {
+        // Read signals + locale strings in the handler body (owner present);
+        // reading them inside `spawn_local` would warn.
+        let vault_path = active.path.get().unwrap_or_default();
+        let id = entry_id.get_value();
+        let default_name = doc_meta
+            .get()
+            .map(|p| p.filename)
+            .unwrap_or_else(|| doc_name_default.get_value());
+        let dialog_title = t_string!(i18n, vault.export).to_string();
+        let err_prefix = t_string!(i18n, vault.err_export).to_string();
+        error.set(None);
+        spawn_local(async move {
+            let opts = SaveDialogOptions {
+                title: Some(dialog_title),
+                default_path: Some(default_name),
+                filters: vec![],
+            };
+            match api::dialog::save(&opts).await {
+                Ok(Some(dest)) => {
+                    if let Err(e) =
+                        api::document::export_document_to_path(&vault_path, &id, &dest).await
+                    {
+                        error.set(Some(format!("{err_prefix}{e}")));
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+            }
         });
     };
 
@@ -196,6 +250,35 @@ pub fn VaultDetail(
                                 </dt>
                                 <dd class="text-foreground/70">{created}</dd>
                             </div>
+                            {move || {
+                                is_document
+                                    .then(|| doc_meta.get())
+                                    .flatten()
+                                    .map(|p| view! {
+                                        <div>
+                                            <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                                {move || t!(i18n, vault.document_filename)}
+                                            </dt>
+                                            <dd class="text-text-primary font-jetbrains-mono break-all">
+                                                {p.filename.clone()}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                                {move || t!(i18n, vault.document_type)}
+                                            </dt>
+                                            <dd class="text-foreground/70 font-jetbrains-mono break-all">
+                                                {p.mime_type.clone()}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                                {move || t!(i18n, vault.document_size)}
+                                            </dt>
+                                            <dd class="text-foreground/70">{human_size(p.size_bytes)}</dd>
+                                        </div>
+                                    })
+                            }}
                         </dl>
 
                         <div class="flex flex-col gap-2 mt-4">
@@ -208,6 +291,16 @@ pub fn VaultDetail(
                                     on:click=start_edit
                                 >
                                     {move || t!(i18n, vault.edit)}
+                                </Button>
+                            })}
+                            {is_document.then(|| view! {
+                                <Button
+                                    variant=Variant::Primary
+                                    size=Size::Sm
+                                    full_width=true
+                                    on:click=export_doc
+                                >
+                                    {move || t!(i18n, vault.export)}
                                 </Button>
                             })}
                         </div>
