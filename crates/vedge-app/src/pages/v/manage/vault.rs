@@ -79,12 +79,15 @@ pub fn VaultPage() -> impl IntoView {
     });
 
     let on_delete = Callback::new(move |id: String| {
+        // Read signals in the handler body (owner present); inside `spawn_local`
+        // they'd be owner-less. `set` is fine there — only reads warn.
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_delete).to_string();
+        let was_selected = selected_id.get().as_deref() == Some(id.as_str());
         spawn_local(async move {
             match api::entry::soft_delete_entry(&vault_path, &id).await {
                 Ok(()) => {
-                    if selected_id.get().as_deref() == Some(id.as_str()) {
+                    if was_selected {
                         selected_id.set(None);
                     }
                     refresh();
