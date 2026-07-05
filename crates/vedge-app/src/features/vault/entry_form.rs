@@ -19,6 +19,9 @@ use vedge_ipc::{
 };
 use vedge_ui::components::Button;
 use vedge_ui::components::Input;
+use vedge_ui::components::form::date_picker::{
+    DatePicker, DatePickerValue, DatePickerVariant, YearMonth,
+};
 use vedge_ui::components::form::textarea::Textarea;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
@@ -442,6 +445,25 @@ fn parse_card_expiry(s: &str) -> Result<(u8, u16), EntryFormError> {
     Ok((month, year))
 }
 
+/// `card_expiry` string ("MM/YY") → the month-variant `DatePicker` value.
+/// A blank/invalid string is an empty month selection.
+fn expiry_to_picker(s: &str) -> DatePickerValue {
+    match parse_card_expiry(s) {
+        Ok((month, year)) => {
+            DatePickerValue::Month(Some(YearMonth::new(year.into(), month.into())))
+        }
+        Err(_) => DatePickerValue::Month(None),
+    }
+}
+
+/// The month-variant `DatePicker` value → a canonical `MM/YY` string.
+fn picker_to_expiry(v: DatePickerValue) -> String {
+    match v.as_month() {
+        Some(ym) => format!("{:02}/{:02}", ym.month, ym.year.rem_euclid(100)),
+        None => String::new(),
+    }
+}
+
 fn payload_entry_type(p: &PayloadDto) -> EntryTypeDto {
     match p {
         PayloadDto::Login(_) => EntryTypeDto::Login,
@@ -529,7 +551,13 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                 EntryTypeDto::Card => view! {
                     {text_field!(data, i18n, "ef-cardholder", cardholder_name, field_cardholder)}
                     {secret_field!(data, i18n, "ef-number", card_number, field_card_number)}
-                    {text_field!(data, i18n, "ef-expiry", card_expiry, field_card_expiry)}
+                    <DatePicker
+                        id="ef-expiry"
+                        variant=DatePickerVariant::Month
+                        value=Signal::derive(move || expiry_to_picker(&data.with(|d| d.card_expiry.clone())))
+                        on_change=Callback::new(move |v: DatePickerValue| data.update(|d| d.card_expiry = picker_to_expiry(v)))
+                        placeholder=Signal::derive(move || t_string!(i18n, vault.field_card_expiry).to_string())
+                    />
                     {secret_field!(data, i18n, "ef-cvv", cvv, field_cvv)}
                     {secret_field!(data, i18n, "ef-pin", pin, field_pin)}
                 }.into_any(),

@@ -52,14 +52,16 @@ pub fn VaultPage() -> impl IntoView {
     // Fetch the live entry index for the active vault. Re-run on demand
     // (mount, create-ping, post-delete).
     let refresh = move || {
-        let vault_path = active.path.get().unwrap_or_default();
+        // `refresh` runs from an `Effect` *and* from inside `spawn_local`
+        // (on create/save/delete pings) — the latter has no reactive owner, so
+        // read both the path and the locale string `untrack`ed. The Effect below
+        // is what actually tracks `active.path` for re-runs.
+        let vault_path = untrack(|| active.path.get()).unwrap_or_default();
         if vault_path.is_empty() {
             items.set(Vec::new());
             return;
         }
         loading.set(true);
-        // `refresh` is called from an Effect *and* from inside `spawn_local`
-        // (on delete); `untrack` reads the current locale string safely in both.
         let err_prefix = untrack(|| t_string!(i18n, vault.err_load).to_string());
         spawn_local(async move {
             match api::vault::list_entries(&vault_path).await {
