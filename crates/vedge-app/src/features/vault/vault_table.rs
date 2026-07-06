@@ -11,6 +11,13 @@ use leptos_icons::Icon;
 #[component]
 pub fn VaultTable(
     #[prop(into)] items: Signal<Vec<IndexEntryDto>>,
+    /// Message shown when `items` is empty — the page picks *no entries* vs
+    /// *no matches* vs *empty trash* so this component stays presentational.
+    #[prop(into)]
+    empty_label: Signal<String>,
+    /// Hide the per-row Delete action (the trashed view is read-only here).
+    #[prop(into)]
+    hide_delete: Signal<bool>,
     on_delete: Callback<String>,
     on_select: Callback<IndexEntryDto>,
 ) -> impl IntoView {
@@ -23,7 +30,7 @@ pub fn VaultTable(
                 fallback=move || {
                     view! {
                         <div class="flex items-center justify-center h-full text-foreground/40 text-sm">
-                            {move || t!(i18n, vault.no_items)}
+                            {move || empty_label.get()}
                         </div>
                     }
                 }
@@ -46,6 +53,7 @@ pub fn VaultTable(
                                 view! {
                                     <VaultTableRow
                                         item=item
+                                        hide_delete=hide_delete
                                         on_delete=on_delete
                                         on_select=on_select
                                     />
@@ -62,6 +70,7 @@ pub fn VaultTable(
 #[component]
 fn VaultTableRow(
     item: IndexEntryDto,
+    hide_delete: Signal<bool>,
     on_delete: Callback<String>,
     on_select: Callback<IndexEntryDto>,
 ) -> impl IntoView {
@@ -87,17 +96,27 @@ fn VaultTableRow(
             <td class="p-3 text-sm font-jetbrains-mono text-foreground/60">{url}</td>
             <td class="p-3 text-sm text-foreground/60">{updated}</td>
             <td class="p-3">
-                <IconButton
-                    aria_label=Signal::derive(move || t_string!(i18n, vault.delete).to_string())
-                    variant=Variant::Danger
-                    size=Size::Sm
-                    on:click=move |ev: web_sys::MouseEvent| {
-                        ev.stop_propagation();
-                        on_delete.run(item_id.clone());
+                <Show when=move || !hide_delete.get()>
+                    {
+                        // Clone per render so the inner `on:click` (a `move`
+                        // closure) doesn't take ownership out of the `Show`'s
+                        // re-runnable `Fn` children.
+                        let item_id = item_id.clone();
+                        view! {
+                            <IconButton
+                                aria_label=Signal::derive(move || t_string!(i18n, vault.delete).to_string())
+                                variant=Variant::Danger
+                                size=Size::Sm
+                                on:click=move |ev: web_sys::MouseEvent| {
+                                    ev.stop_propagation();
+                                    on_delete.run(item_id.clone());
+                                }
+                            >
+                                <Icon icon=i::BiTrashRegular />
+                            </IconButton>
+                        }
                     }
-                >
-                    <Icon icon=i::BiTrashRegular />
-                </IconButton>
+                </Show>
             </td>
         </tr>
     }
