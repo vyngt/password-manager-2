@@ -6,6 +6,7 @@ pub mod password_strength;
 pub mod secret_display;
 pub mod vault_create_form;
 pub mod vault_detail;
+pub mod vault_filters;
 pub mod vault_launch;
 pub mod vault_search;
 pub mod vault_setup;
