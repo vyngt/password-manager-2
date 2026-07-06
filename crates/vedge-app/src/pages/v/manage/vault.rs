@@ -3,32 +3,15 @@ use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
-use crate::features::vault::vault_search::VaultSearch;
+use crate::features::vault::vault_filters::{Filters, SortKey, VaultFilters, filter_and_sort};
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use vedge_ipc::{FieldSelectorDto, IndexEntryDto};
+use std::collections::HashMap;
+use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
 use vedge_ui::components::Button;
 use vedge_ui::primitives::tokens::{Size, Variant};
-
-/// Client-side filter predicate over the loaded metadata. Matches on `name`
-/// and `url` (case-insensitive). Secrets/`username` aren't in `IndexEntryDto`,
-/// so those are not searchable client-side — server-side `search` is the
-/// scale follow-up.
-fn matches(entry: &IndexEntryDto, query: &str) -> bool {
-    let q = query.trim().to_lowercase();
-    if q.is_empty() {
-        return true;
-    }
-    entry.name.to_lowercase().contains(&q)
-        || entry
-            .url
-            .as_deref()
-            .unwrap_or_default()
-            .to_lowercase()
-            .contains(&q)
-}
 
 #[component]
 pub fn VaultPage() -> impl IntoView {
@@ -51,8 +34,49 @@ pub fn VaultPage() -> impl IntoView {
     });
     let status_msg = RwSignal::new(Option::<String>::None);
 
+    // Filter / sort facets (client-side over the loaded metadata).
+    let entry_type = RwSignal::new(Option::<EntryTypeDto>::None);
+    let tag_id = RwSignal::new(Option::<String>::None);
+    let favorites_only = RwSignal::new(false);
+    let sort = RwSignal::new(SortKey::default());
+    // Active vs trashed switches the *fetch source* (see `refresh`), not a facet.
+    let trashed_view = RwSignal::new(false);
+    // Tags back both the tag facet and tag-name search.
+    let tags = RwSignal::new(Vec::<TagMetaDto>::new());
+
+    // `tag_id -> name`, memoized so keystroke-level re-filtering doesn't rebuild it.
+    let tag_map = Memo::new(move |_| {
+        tags.get()
+            .into_iter()
+            .map(|t| (t.id, t.name))
+            .collect::<HashMap<String, String>>()
+    });
+    // The filtered + sorted list feeding the table.
+    let visible = Signal::derive(move || {
+        let filters = Filters {
+            query: search_query.get(),
+            entry_type: entry_type.get(),
+            tag_id: tag_id.get(),
+            favorites_only: favorites_only.get(),
+        };
+        tag_map.with(|m| filter_and_sort(&items.get(), &filters, m, sort.get()))
+    });
+    // Distinguish *no entries yet* / *no matches* / *empty trash* when the table
+    // is empty (shown by `VaultTable`'s fallback).
+    let empty_label = Signal::derive(move || {
+        if items.get().is_empty() {
+            if trashed_view.get() {
+                t_string!(i18n, vault.empty_trash).to_string()
+            } else {
+                t_string!(i18n, vault.empty_none).to_string()
+            }
+        } else {
+            t_string!(i18n, vault.empty_no_matches).to_string()
+        }
+    });
+
     // Fetch the live entry index for the active vault. Re-run on demand
-    // (mount, create-ping, post-delete).
+    // (mount, create-ping, post-delete, view switch).
     let refresh = move || {
         // `refresh` runs from an `Effect` *and* from inside `spawn_local`
         // (on create/save/delete pings) — the latter has no reactive owner, so
@@ -61,12 +85,25 @@ pub fn VaultPage() -> impl IntoView {
         let vault_path = untrack(|| active.path.get()).unwrap_or_default();
         if vault_path.is_empty() {
             items.set(Vec::new());
+            tags.set(Vec::new());
             return;
         }
         loading.set(true);
+        let is_trashed = untrack(|| trashed_view.get());
         let err_prefix = untrack(|| t_string!(i18n, vault.err_load).to_string());
+        let tags_path = vault_path.clone();
         spawn_local(async move {
-            match api::vault::list_entries(&vault_path).await {
+            // Tags back the facet + tag-name search; best-effort (a failure just
+            // leaves the tag facet empty, it doesn't block the entry list).
+            if let Ok(list) = api::vault::list_tags(&tags_path).await {
+                tags.set(list);
+            }
+            let result = if is_trashed {
+                api::vault::list_trashed(&vault_path).await
+            } else {
+                api::vault::list_entries(&vault_path).await
+            };
+            match result {
                 Ok(list) => items.set(list),
                 Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
             }
@@ -74,9 +111,11 @@ pub fn VaultPage() -> impl IntoView {
         });
     };
 
-    // Load on mount and whenever the active vault path changes.
+    // Load on mount and whenever the active vault path or the active/trashed
+    // view changes (toggling the view re-fetches from the other source).
     Effect::new(move |_| {
         let _ = active.path.get();
+        let _ = trashed_view.get();
         refresh();
     });
 
@@ -125,7 +164,15 @@ pub fn VaultPage() -> impl IntoView {
     view! {
         <div class="h-full flex flex-col gap-4 p-4">
             <div class="flex items-center gap-3">
-                <VaultSearch search_query=search_query />
+                <VaultFilters
+                    search_query=search_query
+                    entry_type=entry_type
+                    tag_id=tag_id
+                    favorites_only=favorites_only
+                    sort=sort
+                    trashed_view=trashed_view
+                    tags=Signal::derive(move || tags.get())
+                />
                 <Button
                     variant=Variant::Primary
                     size=Size::Sm
@@ -174,9 +221,9 @@ pub fn VaultPage() -> impl IntoView {
                     }
                 >
                     <VaultTable
-                        items=Signal::derive(move || {
-                            items.get().into_iter().filter(|e| matches(e, &search_query.get())).collect::<Vec<_>>()
-                        })
+                        items=visible
+                        empty_label=empty_label
+                        hide_delete=Signal::derive(move || trashed_view.get())
                         on_delete=on_delete
                         on_select=on_select
                     />
@@ -186,50 +233,5 @@ pub fn VaultPage() -> impl IntoView {
                 })}
             </div>
         </div>
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::matches;
-    use vedge_ipc::{EntryTypeDto, IndexEntryDto};
-
-    fn entry(name: &str, url: Option<&str>) -> IndexEntryDto {
-        IndexEntryDto {
-            id: "1".into(),
-            name: name.into(),
-            entry_type: EntryTypeDto::Login,
-            url: url.map(str::to_string),
-            favicon_url: None,
-            tag_ids: vec![],
-            folder_id: None,
-            is_favorite: false,
-            is_trashed: false,
-            cipher_suite: 1,
-            created_at: "2026-07-05T00:00:00.000Z".into(),
-            updated_at: "2026-07-05T00:00:00.000Z".into(),
-            accessed_at: None,
-        }
-    }
-
-    #[test]
-    fn empty_query_matches_all() {
-        assert!(matches(&entry("GitHub", Some("https://github.com")), "  "));
-    }
-
-    #[test]
-    fn matches_name_case_insensitive() {
-        assert!(matches(&entry("GitHub", None), "hub"));
-        assert!(!matches(&entry("GitHub", None), "gitlab"));
-    }
-
-    #[test]
-    fn matches_url() {
-        assert!(matches(&entry("x", Some("https://example.com")), "example"));
-    }
-
-    #[test]
-    fn no_url_does_not_panic() {
-        assert!(!matches(&entry("x", None), "example"));
     }
 }
