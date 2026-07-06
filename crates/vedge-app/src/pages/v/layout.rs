@@ -9,7 +9,9 @@ use vedge_ui::components::icon as ui_icon;
 use vedge_ui::primitives::tokens::Placement;
 
 use crate::api;
+use crate::features::vault::command_palette::{CommandPalette, typing_in_field};
 use crate::features::vault::context::ActiveVault;
+use crate::features::vault::ui_state::VaultUiState;
 use crate::i18n::*;
 
 struct SidebarRouteItem {
@@ -113,6 +115,29 @@ fn LockButton() -> impl IntoView {
 
 #[component]
 pub fn VLayout() -> impl IntoView {
+    // Shared UI state for the whole `/v` area (selection, create-toggle, palette,
+    // edit-request). Provided here so `VaultPage`, `VaultDetail`, and the palette
+    // all read the same signals.
+    let ui = VaultUiState::new();
+    provide_context(ui);
+
+    // App-wide Ctrl/⌘-K toggles the command palette. Suppressed while typing in a
+    // field — unless the palette is already open, in which case the shortcut
+    // closes it (covering focus being in the palette's own input). The listener
+    // is removed on unmount so re-entering `/v` never stacks handlers.
+    let handle = window_event_listener(leptos::ev::keydown, move |ev| {
+        if (ev.ctrl_key() || ev.meta_key()) && ev.key().eq_ignore_ascii_case("k") {
+            if ui.palette_open.get_untracked() {
+                ev.prevent_default();
+                ui.palette_open.set(false);
+            } else if !typing_in_field() {
+                ev.prevent_default();
+                ui.palette_open.set(true);
+            }
+        }
+    });
+    on_cleanup(move || handle.remove());
+
     view! {
         <div class="flex flex-row h-full">
             <Sidebar />
@@ -120,5 +145,6 @@ pub fn VLayout() -> impl IntoView {
                 <Outlet />
             </div>
         </div>
+        <CommandPalette />
     }
 }

@@ -1,9 +1,11 @@
+pub mod command_palette;
 pub mod context;
 pub mod document_attach;
 pub mod entry_form;
 pub mod entry_view;
 pub mod password_strength;
 pub mod secret_display;
+pub mod ui_state;
 pub mod vault_create_form;
 pub mod vault_detail;
 pub mod vault_filters;

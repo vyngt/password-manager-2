@@ -78,7 +78,8 @@ pub fn filter_and_sort(
 
 /// Case-insensitive substring match over name, url, and each tag's resolved
 /// name. `q` is expected pre-trimmed and lowercased; empty ⇒ matches all.
-fn query_matches(e: &IndexEntryDto, q: &str, tag_names: &HashMap<String, String>) -> bool {
+/// Reused by the command palette (2.3) for quick-open filtering.
+pub fn query_matches(e: &IndexEntryDto, q: &str, tag_names: &HashMap<String, String>) -> bool {
     if q.is_empty() {
         return true;
     }

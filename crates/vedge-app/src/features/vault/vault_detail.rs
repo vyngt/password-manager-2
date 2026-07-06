@@ -11,6 +11,7 @@ use super::entry_view::{human_size, short_date, type_label_i18n};
 use crate::api;
 use crate::api::dialog::SaveDialogOptions;
 use crate::features::vault::context::ActiveVault;
+use crate::features::vault::ui_state::VaultUiState;
 use crate::i18n::*;
 use leptos::either::Either;
 use leptos::prelude::*;
@@ -30,6 +31,7 @@ pub fn VaultDetail(
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let ui = expect_context::<VaultUiState>();
 
     let entry_id = StoredValue::new(entry.id.clone());
     let name = entry.name.clone();
@@ -70,10 +72,14 @@ pub fn VaultDetail(
         });
     }
 
-    let start_edit = move |_: web_sys::MouseEvent| {
-        let vault_path = active.path.get().unwrap_or_default();
+    // Reveal the full payload (the sanctioned secret-reveal path) then enter edit
+    // mode. Called from the Edit button *and* from the command palette via
+    // `ui.edit_request` (the effect below), so reads are `untrack`ed — inside the
+    // effect a tracked read of `active.path`/locale would wrongly re-subscribe it.
+    let reveal_and_edit = move || {
+        let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry_id.get_value();
-        let err_prefix = t_string!(i18n, vault.err_reveal).to_string();
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_reveal).to_string());
         error.set(None);
         spawn_local(async move {
             match api::entry::get_entry(&vault_path, &id).await {
@@ -85,6 +91,20 @@ pub fn VaultDetail(
             }
         });
     };
+    let start_edit = move |_: web_sys::MouseEvent| reveal_and_edit();
+
+    // The command palette's "Edit" bumps `ui.edit_request`; enter edit mode when
+    // it changes for an editable entry. The `prev`-value guard skips the initial
+    // mount (and any stale bump captured when a new entry is selected).
+    Effect::new(move |prev: Option<u32>| {
+        let cur = ui.edit_request.get();
+        if let Some(p) = prev {
+            if cur != p && is_editable {
+                reveal_and_edit();
+            }
+        }
+        cur
+    });
 
     let cancel_edit = move |_: web_sys::MouseEvent| {
         editing.set(false);
