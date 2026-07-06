@@ -1,0 +1,112 @@
+# mise task runner for VEdge — https://mise.jdx.dev/tasks/
+#
+#   mise tasks            # list tasks
+#   mise run <task>       # run one (e.g. `mise run ci`)
+#   mise run setup        # one-time dev setup
+#
+# Stack: Leptos/WASM frontend (`vedge-app`) bundled by Trunk, wrapped by a
+# Tauri v2 shell (`vedge-tauri`). `cargo tauri dev` drives Trunk via
+# `beforeDevCommand` in crates/vedge-tauri/tauri.conf.json.
+
+# No `[tools]` block on purpose: it would force a tool install before *every*
+# task. Install the frontend chain explicitly via `mise run setup`.
+
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
+
+[tasks.setup]
+description = "One-time dev setup: wasm target + trunk + tauri-cli + leptosfmt"
+run = [
+  "rustup target add wasm32-unknown-unknown",
+  "cargo install trunk --locked",
+  "cargo install tauri-cli --locked",
+  "cargo install leptosfmt --locked",
+]
+
+# ---------------------------------------------------------------------------
+# Run / build
+# ---------------------------------------------------------------------------
+
+[tasks.dev]
+description = "Run the desktop app (Tauri + Trunk live-reload)"
+dir = "crates/vedge-tauri"
+run = "cargo tauri dev"
+
+[tasks.serve]
+description = "Serve the frontend only in a browser (no Tauri; invoke calls will fail)"
+run = "trunk serve --config crates/vedge-app/Trunk.toml"
+
+[tasks.build]
+description = "Release-build the desktop app bundle"
+dir = "crates/vedge-tauri"
+run = "cargo tauri build"
+
+# ---------------------------------------------------------------------------
+# Format
+# ---------------------------------------------------------------------------
+
+[tasks.fmt]
+alias = "format"
+description = "Format all Rust code (rustfmt) + `view!` macros (leptosfmt)"
+# rustfmt first (it skips macro bodies), then leptosfmt for the `view!` internals.
+run = [
+  "cargo fmt --all",
+  "leptosfmt crates/vedge-app crates/vedge-ui",
+]
+
+[tasks.fmt-check]
+description = "Check rustfmt + leptosfmt formatting without writing"
+run = [
+  "cargo fmt --all -- --check",
+  "leptosfmt --check crates/vedge-app crates/vedge-ui",
+]
+
+# ---------------------------------------------------------------------------
+# Lint
+# ---------------------------------------------------------------------------
+
+[tasks.lint]
+alias = "clippy"
+description = "Clippy gate — backend crates strict; vedge-app isolated via --no-deps"
+run = [
+  "cargo clippy -p vedge-codegen -p vedge-core -p vedge-ipc -p vedge-tauri --all-targets -- -D warnings",
+  "cargo clippy -p vedge-app --all-targets --no-deps -- -D warnings",
+]
+
+[tasks.lint-ui]
+description = "Clippy for vedge-ui (informational — carries deferred pedantic warnings, not gated)"
+run = "cargo clippy -p vedge-ui --all-targets"
+
+# ---------------------------------------------------------------------------
+# Test
+# ---------------------------------------------------------------------------
+
+[tasks.test]
+description = "Workspace test gate (lib + bins + tests; doctests excluded)"
+run = "cargo test --workspace --lib --bins --tests"
+
+[tasks.test-app]
+description = "Fast frontend host tests only"
+run = "cargo test -p vedge-app"
+
+# ---------------------------------------------------------------------------
+# Frontend wasm type-check
+# ---------------------------------------------------------------------------
+
+[tasks.wasm]
+alias = "wasm-check"
+description = "Type-check the frontend on the wasm32 target (the real build target)"
+run = "cargo check -p vedge-app --target wasm32-unknown-unknown"
+
+# ---------------------------------------------------------------------------
+# Aggregate
+# ---------------------------------------------------------------------------
+
+[tasks.ci]
+description = "Full local CI: format check, lint, test, wasm check"
+depends = ["fmt-check", "lint", "test", "wasm"]
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "cargo clean"
