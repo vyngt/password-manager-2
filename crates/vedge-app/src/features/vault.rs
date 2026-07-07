@@ -1,3 +1,4 @@
+pub mod auto_lock;
 pub mod command_palette;
 pub mod context;
 pub mod document_attach;

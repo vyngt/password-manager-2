@@ -1,7 +1,9 @@
 use crate::i18n::*;
 
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 
+use crate::features::settings::security_prefs::{self, SecurityPrefs, SecurityPrefsCtx};
 use crate::features::vault::context::ActiveVault;
 use crate::features::window_panel::WindowPanel;
 use crate::routes::AppRoutes;
@@ -40,6 +42,18 @@ pub fn App() -> impl IntoView {
 
     provide_context(theme);
     provide_context(ActiveVault::new());
+
+    // App-global security prefs (idle auto-lock, lock-on-blur, clipboard clear
+    // delay). Loaded once from `app_settings` and provided as a live context the
+    // AutoLock hook, the Settings section, and both clipboard copy sites read.
+    let security = SecurityPrefsCtx(RwSignal::new(SecurityPrefs::default()));
+    provide_context(security);
+    Effect::new(move |_| {
+        // No tracked reads → runs exactly once after mount.
+        spawn_local(async move {
+            security.0.set(security_prefs::load().await);
+        });
+    });
 
     view! {
         <I18nContextProvider>
