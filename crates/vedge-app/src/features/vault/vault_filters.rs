@@ -14,6 +14,7 @@ use crate::features::vault::folder_tree::{FolderScope, scope_matches};
 use crate::features::vault::vault_search::VaultSearch;
 use crate::i18n::*;
 use leptos::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use vedge_ipc::{EntryTypeDto, IndexEntryDto, TagMetaDto};
@@ -35,7 +36,7 @@ pub struct Filters {
 }
 
 /// How the filtered list is ordered.
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub enum SortKey {
     /// Name, case-insensitive A–Z.
     #[default]

@@ -8,6 +8,9 @@ use crate::features::vault::folder_move::FolderMove;
 use crate::features::vault::folder_tree::{
     FolderBreadcrumb, FolderScope, FolderTree, build_folder_tree, subtree_contents,
 };
+use crate::features::vault::smart_folders::{
+    SmartFolder, SmartFolders, apply_preset, capture_preset,
+};
 use crate::features::vault::tag_manager::TagManager;
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
@@ -61,6 +64,8 @@ pub fn VaultPage() -> impl IntoView {
     let move_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let folder_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let customize_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    // Saved "smart folder" filter presets (per-vault, persisted in app_settings).
+    let smart_folders = RwSignal::new(Vec::<SmartFolder>::new());
 
     // `tag_id -> name`, memoized so keystroke-level re-filtering doesn't rebuild it.
     let tag_map = Memo::new(move |_| {
@@ -147,6 +152,88 @@ pub fn VaultPage() -> impl IntoView {
         let _ = active.path.get();
         let _ = trashed_view.get();
         refresh();
+    });
+
+    // Load the saved smart-folder presets for the active vault (client-only state
+    // in the `app_settings` KV store, keyed by vault path — not the vault).
+    Effect::new(move |_| {
+        let vault_path = active.path.get().unwrap_or_default();
+        if vault_path.is_empty() {
+            smart_folders.set(Vec::new());
+            return;
+        }
+        let key = format!("smartfolders.{vault_path}");
+        spawn_local(async move {
+            match api::settings::get_app_setting(&key).await {
+                Ok(Some(dto)) => {
+                    if let Ok(list) = serde_json::from_value::<Vec<SmartFolder>>(dto.value) {
+                        smart_folders.set(list);
+                    }
+                }
+                _ => smart_folders.set(Vec::new()),
+            }
+        });
+    });
+
+    // Persist the current preset list back to `app_settings`.
+    let persist_smart = Callback::new(move |list: Vec<SmartFolder>| {
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        if vault_path.is_empty() {
+            return;
+        }
+        let key = format!("smartfolders.{vault_path}");
+        if let Ok(value) = serde_json::to_value(&list) {
+            spawn_local(async move {
+                let _ = api::settings::set_app_setting(&key, &value).await;
+            });
+        }
+    });
+
+    // Apply a preset: push its captured filter/sort state onto the toolbar signals
+    // (and leave the trashed view, since folder scopes are an active-view concept).
+    let on_apply_smart = Callback::new(move |p: SmartFolder| {
+        let (filters, sk) = apply_preset(&p);
+        trashed_view.set(false);
+        search_query.set(filters.query);
+        entry_type.set(filters.entry_type);
+        tag_id.set(filters.tag_id);
+        favorites_only.set(filters.favorites_only);
+        current_scope.set(filters.scope);
+        sort.set(sk);
+    });
+
+    // Save the current view as a named preset (the id is minted here so the
+    // capture helper stays pure).
+    let on_save_smart = Callback::new(move |name: String| {
+        let filters = Filters {
+            query: search_query.get_untracked(),
+            entry_type: entry_type.get_untracked(),
+            tag_id: tag_id.get_untracked(),
+            favorites_only: favorites_only.get_untracked(),
+            scope: current_scope.get_untracked(),
+        };
+        let id = uuid::Uuid::new_v4().to_string();
+        let preset = capture_preset(id, name, &filters, sort.get_untracked());
+        smart_folders.update(|l| l.push(preset));
+        persist_smart.run(smart_folders.get_untracked());
+    });
+
+    let on_delete_smart = Callback::new(move |id: String| {
+        smart_folders.update(|l| l.retain(|p| p.id != id));
+        persist_smart.run(smart_folders.get_untracked());
+    });
+
+    let on_rename_smart = Callback::new(move |(id, name): (String, String)| {
+        let name = name.trim().to_owned();
+        if name.is_empty() {
+            return;
+        }
+        smart_folders.update(|l| {
+            if let Some(p) = l.iter_mut().find(|p| p.id == id) {
+                p.name = name.clone();
+            }
+        });
+        persist_smart.run(smart_folders.get_untracked());
     });
 
     let on_delete = Callback::new(move |id: String| {
@@ -342,7 +429,9 @@ pub fn VaultPage() -> impl IntoView {
             .iter()
             .filter_map(|(id, _)| {
                 items.with_untracked(|l| {
-                    l.iter().find(|e| e.id == *id).map(|e| (id.clone(), e.sort_order))
+                    l.iter()
+                        .find(|e| e.id == *id)
+                        .map(|e| (id.clone(), e.sort_order))
                 })
             })
             .collect();
@@ -598,7 +687,15 @@ pub fn VaultPage() -> impl IntoView {
                         on_delete=on_delete
                         on_rename=on_rename_folder
                         on_customize=on_customize
-                    />
+                    >
+                        <SmartFolders
+                            presets=Signal::derive(move || smart_folders.get())
+                            on_apply=on_apply_smart
+                            on_save=on_save_smart
+                            on_delete=on_delete_smart
+                            on_rename=on_rename_smart
+                        />
+                    </FolderTree>
                 </Show>
                 <Show
                     when=move || !loading.get()

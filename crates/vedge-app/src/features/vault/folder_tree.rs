@@ -16,6 +16,7 @@ use crate::i18n::*;
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use vedge_ipc::{EntryTypeDto, IndexEntryDto};
 
@@ -82,7 +83,7 @@ pub fn folder_style(nodes: &[FolderNode], id: &str) -> (Option<String>, Option<S
 /// Which slice of the index the list shows. `All` is the cleared/default view;
 /// `Unfiled` is the dedicated root-only node (`folder_id == None`); `Folder(id)`
 /// is one folder's direct contents.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum FolderScope {
     #[default]
     All,
@@ -370,6 +371,9 @@ pub fn FolderTree(
     on_rename: Callback<(String, String)>,
     /// Open the color/icon customize dialog for a folder id.
     on_customize: Callback<String>,
+    /// Extra sidebar content rendered below the folder list (the smart folders).
+    #[prop(optional)]
+    children: Option<Children>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let collapsed = RwSignal::new(HashSet::<String>::new());
@@ -735,6 +739,10 @@ pub fn FolderTree(
                     }
                 }
             />
+
+            // Optional extra sidebar content (e.g. the smart-folders section),
+            // rendered below the folder list inside the same scrollable aside.
+            {children.map(|c| c())}
             </div>
 
             // Drag handle — pointer-capture resize (20–40vw).

@@ -9,6 +9,7 @@ pub mod folder_move;
 pub mod folder_tree;
 pub mod password_strength;
 pub mod secret_display;
+pub mod smart_folders;
 pub mod tag_assign;
 pub mod tag_manager;
 pub mod ui_state;
