@@ -8,6 +8,8 @@
 
 use super::entry_form::{EntryForm, EntryFormData, EntryFormError};
 use super::entry_view::{human_size, short_date, type_label_i18n};
+use super::folder_move::FolderSelect;
+use super::folder_tree::{FolderNode, folder_display_name};
 use super::tag_assign::TagAssign;
 use crate::api;
 use crate::api::dialog::SaveDialogOptions;
@@ -43,6 +45,11 @@ pub fn VaultDetail(
     on_tags: Callback<(String, Vec<String>)>,
     /// Reload the tag catalog (after an inline tag create).
     on_catalog: Callback<()>,
+    /// Folder catalog for the "Folder" row + the edit-mode folder picker.
+    #[prop(into)]
+    folders: Signal<Vec<FolderNode>>,
+    /// Open the move-to-folder picker for this entry.
+    on_move_request: Callback<IndexEntryDto>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
@@ -51,6 +58,11 @@ pub fn VaultDetail(
     let entry_id = StoredValue::new(entry.id.clone());
     let fav_id = entry.id.clone();
     let is_fav = entry.is_favorite;
+    let entry_for_move = entry.clone();
+    let folder_of = entry.folder_id.clone();
+    // Exclude this folder (+ its descendants) from its own parent picker so an
+    // edit can't build a cycle; non-folder entries get every folder as a target.
+    let move_exclude = (entry.entry_type == EntryTypeDto::Folder).then(|| entry.id.clone());
     let tag_entry_id = entry.id.clone();
     let tag_ids = entry.tag_ids.clone();
     let name = entry.name.clone();
@@ -235,8 +247,12 @@ pub fn VaultDetail(
 
             {move || {
                 if editing.get() {
+                    let move_exclude = move_exclude.clone();
                     Either::Left(view! {
                         <EntryForm data=form />
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <FolderSelect data=form folders=folders exclude_id=move_exclude />
+                        </div>
                         {move || error.get().map(|e| view! {
                             <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>
                         })}
@@ -267,6 +283,8 @@ pub fn VaultDetail(
                     let copy_type = copy_type.clone();
                     let tag_ids = tag_ids.clone();
                     let tag_entry_id = tag_entry_id.clone();
+                    let folder_of = folder_of.clone();
+                    let entry_for_move = entry_for_move.clone();
                     Either::Right(view! {
                         <dl class="flex flex-col gap-2 text-sm">
                             <div>
@@ -313,6 +331,20 @@ pub fn VaultDetail(
                                 </dt>
                                 <dd class="text-foreground/70">{created}</dd>
                             </div>
+                            <div>
+                                <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                    {move || t!(i18n, vault.folder_label)}
+                                </dt>
+                                <dd class="text-foreground/70">
+                                    {move || match folder_of.as_deref() {
+                                        Some(id) => folder_display_name(&folders.get(), id)
+                                            .unwrap_or_else(|| {
+                                                t_string!(i18n, vault.folder_none).to_string()
+                                            }),
+                                        None => t_string!(i18n, vault.folder_none).to_string(),
+                                    }}
+                                </dd>
+                            </div>
                             {move || {
                                 is_document
                                     .then(|| doc_meta.get())
@@ -346,6 +378,16 @@ pub fn VaultDetail(
 
                         <div class="flex flex-col gap-2 mt-4">
                             {copy_buttons(i18n, copy_type, on_copy)}
+                            <Button
+                                variant=Variant::Secondary
+                                size=Size::Sm
+                                full_width=true
+                                on:click=move |_: web_sys::MouseEvent| {
+                                    on_move_request.run(entry_for_move.clone());
+                                }
+                            >
+                                {move || t!(i18n, vault.folder_move)}
+                            </Button>
                             {is_editable.then(|| view! {
                                 <Button
                                     variant=Variant::Secondary

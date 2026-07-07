@@ -42,6 +42,7 @@ enum ActionId {
     NewEntry,
     Lock,
     Edit,
+    MoveToFolder,
     CopyPassword,
     CopyUsername,
 }
@@ -112,6 +113,7 @@ fn action_icon(id: ActionId) -> icondata::Icon {
         ActionId::NewEntry => i::FaPlusSolid,
         ActionId::Lock => i::FaLockSolid,
         ActionId::Edit => i::FaPenSolid,
+        ActionId::MoveToFolder => i::FaFolderOpenSolid,
         ActionId::CopyPassword | ActionId::CopyUsername => i::FaCopySolid,
     }
 }
@@ -210,6 +212,11 @@ pub fn CommandPalette() -> impl IntoView {
             if is_editable(&e.entry_type) {
                 actions.push((ActionId::Edit, t_string!(i18n, vault.cmd_edit).to_string()));
             }
+            // Move works for every type (Document / Folder included).
+            actions.push((
+                ActionId::MoveToFolder,
+                t_string!(i18n, vault.cmd_move_folder).to_string(),
+            ));
             if e.entry_type == EntryTypeDto::Login {
                 actions.push((
                     ActionId::CopyPassword,
@@ -266,6 +273,9 @@ pub fn CommandPalette() -> impl IntoView {
                 }
                 ActionId::Edit => {
                     ui.edit_request.update(|n| *n = n.wrapping_add(1));
+                }
+                ActionId::MoveToFolder => {
+                    ui.move_request.update(|n| *n = n.wrapping_add(1));
                 }
                 ActionId::CopyPassword => copy_selected(active, ui, FieldSelectorDto::Password),
                 ActionId::CopyUsername => copy_selected(active, ui, FieldSelectorDto::Username),
