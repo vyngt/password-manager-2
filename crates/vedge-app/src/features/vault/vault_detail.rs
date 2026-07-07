@@ -8,6 +8,7 @@
 
 use super::entry_form::{EntryForm, EntryFormData, EntryFormError};
 use super::entry_view::{human_size, short_date, type_label_i18n};
+use super::tag_assign::TagAssign;
 use crate::api;
 use crate::api::dialog::SaveDialogOptions;
 use crate::features::vault::context::ActiveVault;
@@ -17,23 +18,41 @@ use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_i18n::I18nContext;
-use vedge_ipc::{DocumentPayloadDto, EntryTypeDto, FieldSelectorDto, IndexEntryDto, PayloadDto};
+use vedge_ipc::{
+    DocumentPayloadDto, EntryTypeDto, FieldSelectorDto, IndexEntryDto, PayloadDto, TagMetaDto,
+};
 use vedge_ui::components::Button;
 use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
+use icondata as i;
+use leptos_icons::Icon;
+
 #[component]
 pub fn VaultDetail(
     entry: IndexEntryDto,
+    /// Ordered tag catalog (chip resolution + the tag widget's "add" list).
+    #[prop(into)]
+    tags: Signal<Vec<TagMetaDto>>,
     on_copy: Callback<FieldSelectorDto>,
     on_close: Callback<()>,
     on_saved: Callback<()>,
+    /// `(entry_id, next_state)` — flip this entry's favorite flag.
+    on_favorite: Callback<(String, bool)>,
+    /// `(entry_id, new_tag_ids)` — persist this entry's tag assignments.
+    on_tags: Callback<(String, Vec<String>)>,
+    /// Reload the tag catalog (after an inline tag create).
+    on_catalog: Callback<()>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
     let ui = expect_context::<VaultUiState>();
 
     let entry_id = StoredValue::new(entry.id.clone());
+    let fav_id = entry.id.clone();
+    let is_fav = entry.is_favorite;
+    let tag_entry_id = entry.id.clone();
+    let tag_ids = entry.tag_ids.clone();
     let name = entry.name.clone();
     let url = entry.url.clone();
     let updated = short_date(&entry.updated_at);
@@ -182,14 +201,36 @@ pub fn VaultDetail(
                 <h3 class="text-sm font-semibold text-text-secondary">
                     {move || t!(i18n, vault.detail_title)}
                 </h3>
-                <IconButton
-                    aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
-                    variant=Variant::Ghost
-                    size=Size::Sm
-                    on:click=move |_: web_sys::MouseEvent| on_close.run(())
-                >
-                    <span aria-hidden="true">"✕"</span>
-                </IconButton>
+                <div class="flex items-center gap-1">
+                    <IconButton
+                        aria_label=Signal::derive(move || {
+                            if is_fav {
+                                t_string!(i18n, vault.unfavorite).to_string()
+                            } else {
+                                t_string!(i18n, vault.favorite).to_string()
+                            }
+                        })
+                        variant=Variant::Ghost
+                        size=Size::Sm
+                        on:click=move |_: web_sys::MouseEvent| {
+                            on_favorite.run((fav_id.clone(), !is_fav));
+                        }
+                    >
+                        {if is_fav {
+                            Either::Left(view! { <Icon icon=i::FaStarSolid /> })
+                        } else {
+                            Either::Right(view! { <Icon icon=i::FaStarRegular /> })
+                        }}
+                    </IconButton>
+                    <IconButton
+                        aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+                        variant=Variant::Ghost
+                        size=Size::Sm
+                        on:click=move |_: web_sys::MouseEvent| on_close.run(())
+                    >
+                        <span aria-hidden="true">"✕"</span>
+                    </IconButton>
+                </div>
             </div>
 
             {move || {
@@ -224,6 +265,8 @@ pub fn VaultDetail(
                     let updated = updated.clone();
                     let created = created.clone();
                     let copy_type = copy_type.clone();
+                    let tag_ids = tag_ids.clone();
+                    let tag_entry_id = tag_entry_id.clone();
                     Either::Right(view! {
                         <dl class="flex flex-col gap-2 text-sm">
                             <div>
@@ -323,6 +366,18 @@ pub fn VaultDetail(
                                     {move || t!(i18n, vault.export)}
                                 </Button>
                             })}
+                        </div>
+
+                        // Tagging lives here (read view) so it works for any
+                        // type — Document included — without entering edit mode.
+                        <div class="mt-4 pt-4 border-t border-secondary/15">
+                            <TagAssign
+                                entry_id=tag_entry_id
+                                initial=tag_ids
+                                catalog=tags
+                                on_tags=on_tags
+                                on_catalog=on_catalog
+                            />
                         </div>
                         {move || error.get().map(|e| view! {
                             <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>

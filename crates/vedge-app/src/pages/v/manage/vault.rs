@@ -1,6 +1,7 @@
 use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
+use crate::features::vault::tag_manager::TagManager;
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
@@ -52,6 +53,15 @@ pub fn VaultPage() -> impl IntoView {
             .map(|t| (t.id, t.name))
             .collect::<HashMap<String, String>>()
     });
+    // `tag_id -> full meta` (keeps color) for resolving row/detail tag chips.
+    let tag_lookup = Memo::new(move |_| {
+        tags.get()
+            .into_iter()
+            .map(|t| (t.id.clone(), t))
+            .collect::<HashMap<String, TagMetaDto>>()
+    });
+    // Opens the tag-catalog manager modal.
+    let manage_tags_open = RwSignal::new(false);
     // The filtered + sorted list feeding the table.
     let visible = Signal::derive(move || {
         let filters = Filters {
@@ -144,6 +154,76 @@ pub fn VaultPage() -> impl IntoView {
     let on_created = Callback::new(move |()| refresh());
     let on_saved = Callback::new(move |()| refresh());
 
+    // Favorite toggle: flip `items` in place (optimistic — avoids the whole-table
+    // loading flash a full `refresh()` would trigger) then persist via
+    // `set_favorite`. `update` is a write, so it's owner-safe in `spawn_local`;
+    // on error we revert and surface a message. `is_favorite` is part of the
+    // table's `<For>` key, so the row repaints on the in-place flip.
+    let on_favorite = Callback::new(move |(id, next): (String, bool)| {
+        items.update(|list| {
+            if let Some(e) = list.iter_mut().find(|e| e.id == id) {
+                e.is_favorite = next;
+            }
+        });
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_favorite).to_string();
+        let revert_id = id.clone();
+        spawn_local(async move {
+            if let Err(e) = api::entry::set_favorite(&vault_path, &id, next).await {
+                items.update(|list| {
+                    if let Some(en) = list.iter_mut().find(|en| en.id == revert_id) {
+                        en.is_favorite = !next;
+                    }
+                });
+                status_msg.set(Some(format!("{err_prefix}{e}")));
+            }
+        });
+    });
+
+    // Reload just the tag catalog (no entries refetch, no loading flash) — used
+    // by the tag manager and by inline tag creation.
+    let refresh_tags = move || {
+        let vault_path = untrack(|| active.path.get()).unwrap_or_default();
+        if vault_path.is_empty() {
+            return;
+        }
+        spawn_local(async move {
+            if let Ok(list) = api::vault::list_tags(&vault_path).await {
+                tags.set(list);
+            }
+        });
+    };
+    let on_catalog = Callback::new(move |()| refresh_tags());
+
+    // Persist an entry's tag assignments: optimistic in-place `items` flip (no
+    // loading flash) then `set_tags`, reverting on error. `tag_ids` is part of
+    // the table's `<For>` key so the row repaints. Reads are untracked so it's
+    // owner-safe when called from a `spawn_local` (inline tag create) too.
+    let on_tags = Callback::new(move |(id, new_ids): (String, Vec<String>)| {
+        let prev = items
+            .with_untracked(|list| list.iter().find(|e| e.id == id).map(|e| e.tag_ids.clone()));
+        items.update(|list| {
+            if let Some(e) = list.iter_mut().find(|e| e.id == id) {
+                e.tag_ids = new_ids.clone();
+            }
+        });
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_tag_assign).to_string());
+        let revert_id = id.clone();
+        spawn_local(async move {
+            if let Err(e) = api::entry::set_tags(&vault_path, &id, &new_ids).await {
+                if let Some(p) = prev {
+                    items.update(|list| {
+                        if let Some(en) = list.iter_mut().find(|en| en.id == revert_id) {
+                            en.tag_ids = p;
+                        }
+                    });
+                }
+                status_msg.set(Some(format!("{err_prefix}{e}")));
+            }
+        });
+    });
+
     let on_copy = Callback::new(move |field: FieldSelectorDto| {
         let vault_path = active.path.get().unwrap_or_default();
         let Some(id) = ui.selected_id.get() else {
@@ -196,7 +276,22 @@ pub fn VaultPage() -> impl IntoView {
                 >
                     {move || t!(i18n, vault.attach_document)}
                 </Button>
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    class="whitespace-nowrap"
+                    on:click=move |_| manage_tags_open.set(true)
+                >
+                    {move || t!(i18n, vault.tag_manage)}
+                </Button>
             </div>
+
+            <TagManager
+                open=manage_tags_open
+                tags=Signal::derive(move || tags.get())
+                entries=Signal::derive(move || items.get())
+                on_changed=on_catalog
+            />
 
             {move || status_msg.get().map(|m| view! {
                 <p class="text-sm text-text-secondary">{m}</p>
@@ -225,12 +320,23 @@ pub fn VaultPage() -> impl IntoView {
                         items=visible
                         empty_label=empty_label
                         hide_delete=Signal::derive(move || trashed_view.get())
+                        tags=Signal::derive(move || tag_lookup.get())
                         on_delete=on_delete
                         on_select=on_select
+                        on_favorite=on_favorite
                     />
                 </Show>
                 {move || selected_entry.get().map(|entry| view! {
-                    <VaultDetail entry=entry on_copy=on_copy on_close=on_close on_saved=on_saved />
+                    <VaultDetail
+                        entry=entry
+                        tags=Signal::derive(move || tags.get())
+                        on_copy=on_copy
+                        on_close=on_close
+                        on_saved=on_saved
+                        on_favorite=on_favorite
+                        on_tags=on_tags
+                        on_catalog=on_catalog
+                    />
                 })}
             </div>
         </div>
