@@ -79,6 +79,7 @@ pub fn run() {
             commands::entry::copy_field,
             commands::entry::move_entry,
             commands::entry::set_favorite,
+            commands::entry::set_sort_order,
             commands::entry::set_tags,
             // ---- tag ops ----
             commands::tag::create_tag,

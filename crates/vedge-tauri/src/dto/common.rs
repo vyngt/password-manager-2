@@ -59,6 +59,9 @@ pub fn common_meta_to_dto(m: &CommonMeta) -> CommonMetaDto {
         folder_id: m.folder_id.as_ref().map(|f| f.as_str().to_owned()),
         is_favorite: m.is_favorite,
         notes: m.notes.clone(),
+        color: m.color.clone(),
+        icon: m.icon.clone(),
+        sort_order: m.sort_order,
     }
 }
 
@@ -76,6 +79,9 @@ pub fn common_meta_from_dto(dto: CommonMetaDto) -> CommonMeta {
         folder_id: dto.folder_id.map(EntryId::from_raw),
         is_favorite: dto.is_favorite,
         notes: dto.notes,
+        color: dto.color,
+        icon: dto.icon,
+        sort_order: dto.sort_order,
         payload_schema: vedge_core::domain::vault::payloads::CURRENT_PAYLOAD_SCHEMA,
     }
 }
@@ -147,6 +153,9 @@ mod tests {
             folder_id: Some(EntryId::from_raw("01ARZ3NDEKTSV4RRFFQ69G5FAW")),
             is_favorite: true,
             notes: Some("ok".into()),
+            color: Some("#4f46e5".into()),
+            icon: Some("briefcase".into()),
+            sort_order: 3,
             payload_schema: 1,
         };
         let dto = common_meta_to_dto(&m);
@@ -158,6 +167,9 @@ mod tests {
         assert_eq!(back.folder_id, m.folder_id);
         assert_eq!(back.is_favorite, m.is_favorite);
         assert_eq!(back.notes, m.notes);
+        assert_eq!(back.color, m.color);
+        assert_eq!(back.icon, m.icon);
+        assert_eq!(back.sort_order, m.sort_order);
     }
 
     #[test]

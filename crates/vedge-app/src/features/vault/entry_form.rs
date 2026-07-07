@@ -148,6 +148,13 @@ pub struct EntryFormData {
     pub folder_id: Option<String>,
     pub is_favorite: bool,
     pub notes: Option<String>,
+    /// Folder presentation: a CSS color string (set from the tree's Customize
+    /// dialog). Carried through every round-trip so a rename doesn't drop it.
+    pub color: Option<String>,
+    /// Folder presentation: a curated icon key. Same carry-through rationale.
+    pub icon: Option<String>,
+    /// Manual ordering position within the folder (set by drag-reorder).
+    pub sort_order: u32,
 
     // Document (read-only carry-through; not editable in this slice).
     pub doc_filename: String,
@@ -202,6 +209,9 @@ impl EntryFormData {
             folder_id: None,
             is_favorite: false,
             notes: None,
+            color: None,
+            icon: None,
+            sort_order: 0,
             doc_filename: String::new(),
             doc_mime_type: String::new(),
             doc_size_bytes: 0,
@@ -220,6 +230,10 @@ impl EntryFormData {
         // Preserve the chosen folder across a type switch (the folder select is
         // shared across all types, so switching shouldn't discard it).
         next.folder_id = self.folder_id.clone();
+        // Folder presentation is likewise type-agnostic carry-through.
+        next.color = self.color.clone();
+        next.icon = self.icon.clone();
+        next.sort_order = self.sort_order;
         next
     }
 
@@ -233,6 +247,9 @@ impl EntryFormData {
             folder_id: self.folder_id.clone(),
             is_favorite: self.is_favorite,
             notes: self.notes.clone(),
+            color: self.color.clone(),
+            icon: self.icon.clone(),
+            sort_order: self.sort_order,
         }
     }
 
@@ -351,6 +368,9 @@ impl EntryFormData {
         d.folder_id = meta.folder_id.clone();
         d.is_favorite = meta.is_favorite;
         d.notes = meta.notes.clone();
+        d.color = meta.color.clone();
+        d.icon = meta.icon.clone();
+        d.sort_order = meta.sort_order;
 
         match payload {
             PayloadDto::Login(p) => {

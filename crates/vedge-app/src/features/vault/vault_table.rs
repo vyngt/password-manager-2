@@ -29,6 +29,11 @@ pub fn VaultTable(
     on_favorite: Callback<(String, bool)>,
     /// Open the move-to-folder picker for this entry.
     on_move_request: Callback<IndexEntryDto>,
+    /// `(moved_id, target_id)` — a drag-reorder dropped `moved` onto `target`.
+    on_reorder: Callback<(String, String)>,
+    /// Whether drag-reorder is active (only under the Manual sort).
+    #[prop(into)]
+    reorder_enabled: Signal<bool>,
 ) -> impl IntoView {
     let i18n = use_i18n();
 
@@ -68,6 +73,7 @@ pub fn VaultTable(
                                     item.is_favorite,
                                     item.tag_ids.join(","),
                                     item.folder_id.clone(),
+                                    item.sort_order,
                                     item.updated_at.clone(),
                                 )
                             }
@@ -81,6 +87,8 @@ pub fn VaultTable(
                                         on_select=on_select
                                         on_favorite=on_favorite
                                         on_move_request=on_move_request
+                                        on_reorder=on_reorder
+                                        reorder_enabled=reorder_enabled
                                     />
                                 }
                             }
@@ -101,6 +109,8 @@ fn VaultTableRow(
     on_select: Callback<IndexEntryDto>,
     on_favorite: Callback<(String, bool)>,
     on_move_request: Callback<IndexEntryDto>,
+    on_reorder: Callback<(String, String)>,
+    reorder_enabled: Signal<bool>,
 ) -> impl IntoView {
     let i18n = use_i18n();
 
@@ -108,6 +118,9 @@ fn VaultTableRow(
     let entry_for_move = item.clone();
     let item_id = item.id.clone();
     let drag_id = item.id.clone();
+    // This row as a reorder drop target: the dragged entry's id + the highlight.
+    let drop_target_id = item.id.clone();
+    let drag_over = RwSignal::new(false);
     let fav_id = item.id.clone();
     let is_fav = item.is_favorite;
     let tag_ids = item.tag_ids.clone();
@@ -146,11 +159,43 @@ fn VaultTableRow(
     view! {
         <tr
             class="border-b border-secondary/10 hover:bg-primary/5 transition-colors cursor-pointer"
+            class=("border-t-2", move || drag_over.get())
+            class=("border-t-primary", move || drag_over.get())
             draggable="true"
             on:click=move |_: web_sys::MouseEvent| on_select.run(entry_for_select.clone())
             on:dragstart=move |ev: web_sys::DragEvent| {
                 if let Some(dt) = ev.data_transfer() {
                     let _ = dt.set_data("text/plain", &drag_id);
+                }
+            }
+            // Reorder drop target — active only under the Manual sort, so a plain
+            // move-to-folder drag isn't hijacked. Not preventing default under the
+            // other sorts means the row simply isn't a drop target there.
+            on:dragover=move |ev: web_sys::DragEvent| {
+                if reorder_enabled.get() {
+                    ev.prevent_default();
+                }
+            }
+            on:dragenter=move |_: web_sys::DragEvent| {
+                if reorder_enabled.get_untracked() {
+                    drag_over.set(true);
+                }
+            }
+            on:dragleave=move |_: web_sys::DragEvent| drag_over.set(false)
+            on:drop=move |ev: web_sys::DragEvent| {
+                drag_over.set(false);
+                if !reorder_enabled.get_untracked() {
+                    return;
+                }
+                ev.prevent_default();
+                let moved = ev
+                    .data_transfer()
+                    .and_then(|dt| dt.get_data("text/plain").ok())
+                    .filter(|s| !s.is_empty());
+                if let Some(moved) = moved {
+                    if moved != drop_target_id {
+                        on_reorder.run((moved, drop_target_id.clone()));
+                    }
                 }
             }
         >

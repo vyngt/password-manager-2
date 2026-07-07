@@ -9,7 +9,7 @@
 use super::entry_form::{EntryForm, EntryFormData, EntryFormError};
 use super::entry_view::{human_size, short_date, type_label_i18n};
 use super::folder_move::FolderSelect;
-use super::folder_tree::{FolderNode, folder_display_name};
+use super::folder_tree::{FolderNode, folder_display_name, folder_icon_from_key, folder_style};
 use super::tag_assign::TagAssign;
 use crate::api;
 use crate::api::dialog::SaveDialogOptions;
@@ -337,11 +337,37 @@ pub fn VaultDetail(
                                 </dt>
                                 <dd class="text-foreground/70">
                                     {move || match folder_of.as_deref() {
-                                        Some(id) => folder_display_name(&folders.get(), id)
-                                            .unwrap_or_else(|| {
-                                                t_string!(i18n, vault.folder_none).to_string()
-                                            }),
-                                        None => t_string!(i18n, vault.folder_none).to_string(),
+                                        Some(id) => {
+                                            let nodes = folders.get();
+                                            let name = folder_display_name(&nodes, id)
+                                                .unwrap_or_else(|| {
+                                                    t_string!(i18n, vault.folder_none).to_string()
+                                                });
+                                            let (color, icon) = folder_style(&nodes, id);
+                                            let icon_data = folder_icon_from_key(
+                                                icon.as_deref().unwrap_or_default(),
+                                            );
+                                            Either::Left(
+                                                view! {
+                                                    <span class="flex items-center gap-1.5">
+                                                        <span
+                                                            class="flex shrink-0 text-foreground/50"
+                                                            style:color=color.unwrap_or_default()
+                                                        >
+                                                            <Icon icon=icon_data width="12" height="12" />
+                                                        </span>
+                                                        {name}
+                                                    </span>
+                                                },
+                                            )
+                                        }
+                                        None => {
+                                            Either::Right(
+                                                view! {
+                                                    <span>{t_string!(i18n, vault.folder_none).to_string()}</span>
+                                                },
+                                            )
+                                        }
                                     }}
                                 </dd>
                             </div>
