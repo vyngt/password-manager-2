@@ -11,6 +11,7 @@
 //! no owner-less warning — and the labels relocalize on a language switch.
 
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx};
+use crate::features::settings::theme_list::ThemeList;
 use crate::i18n::*;
 use icondata as i;
 use leptos::either::Either;
@@ -183,15 +184,7 @@ pub fn SettingsPage() -> impl IntoView {
                             },
                         )
                     }
-                    Tab::Appearance => {
-                        Either::Right(
-                            view! {
-                                <div class="py-8 text-sm text-text-secondary">
-                                    {move || t!(i18n, settings.appearance_soon)}
-                                </div>
-                            },
-                        )
-                    }
+                    Tab::Appearance => Either::Right(view! { <ThemeList /> }),
                 }}
             </div>
         </div>
