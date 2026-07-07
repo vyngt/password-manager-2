@@ -16,6 +16,7 @@ use crate::i18n::*;
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use vedge_ipc::{EntryTypeDto, IndexEntryDto};
 
@@ -25,6 +26,9 @@ pub struct FolderNode {
     pub id: String,
     pub name: String,
     pub parent: Option<String>,
+    /// Presentation, projected from the folder's index entry (`meta.color/icon`).
+    pub color: Option<String>,
+    pub icon: Option<String>,
     pub children: Vec<FolderNode>,
 }
 
@@ -35,12 +39,51 @@ pub struct FlatFolder {
     pub name: String,
     pub depth: usize,
     pub has_children: bool,
+    pub color: Option<String>,
+    pub icon: Option<String>,
+}
+
+/// The curated folder icon set. The stored `meta.icon` key maps back to an
+/// `icondata` icon here; an unknown / absent key falls back to the plain folder.
+/// Keep this list and the picker (`folder_customize`) in sync.
+pub const FOLDER_ICONS: &[(&str, icondata::Icon)] = &[
+    ("folder", i::FaFolderSolid),
+    ("briefcase", i::FaBriefcaseSolid),
+    ("house", i::FaHouseSolid),
+    ("user", i::FaUserSolid),
+    ("star", i::FaStarSolid),
+    ("heart", i::FaHeartSolid),
+    ("key", i::FaKeySolid),
+    ("lock", i::FaLockSolid),
+    ("globe", i::FaGlobeSolid),
+    ("code", i::FaCodeSolid),
+    ("credit-card", i::FaCreditCardSolid),
+    ("tag", i::FaTagSolid),
+    ("bookmark", i::FaBookmarkSolid),
+    ("flag", i::FaFlagSolid),
+    ("bell", i::FaBellSolid),
+    ("gear", i::FaGearSolid),
+];
+
+/// Resolve a stored icon key to its `icondata` icon (default folder on miss).
+#[must_use]
+pub fn folder_icon_from_key(key: &str) -> icondata::Icon {
+    FOLDER_ICONS
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map_or(i::FaFolderSolid, |(_, ic)| *ic)
+}
+
+/// The `(color, icon_key)` presentation of folder `id`, if it exists.
+#[must_use]
+pub fn folder_style(nodes: &[FolderNode], id: &str) -> (Option<String>, Option<String>) {
+    find_node(nodes, id).map_or((None, None), |n| (n.color.clone(), n.icon.clone()))
 }
 
 /// Which slice of the index the list shows. `All` is the cleared/default view;
 /// `Unfiled` is the dedicated root-only node (`folder_id == None`); `Folder(id)`
 /// is one folder's direct contents.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum FolderScope {
     #[default]
     All,
@@ -69,14 +112,19 @@ pub fn build_folder_tree(items: &[IndexEntryDto]) -> Vec<FolderNode> {
         .map(|e| e.id.as_str())
         .collect();
 
-    let mut names: HashMap<String, String> = HashMap::new();
+    // Per-folder presentation, keyed by id: (name, color, icon).
+    type Attrs = (String, Option<String>, Option<String>);
+    let mut attrs: HashMap<String, Attrs> = HashMap::new();
     let mut children: HashMap<String, Vec<String>> = HashMap::new();
     let mut root_ids: Vec<String> = Vec::new();
     for e in items
         .iter()
         .filter(|e| e.entry_type == EntryTypeDto::Folder)
     {
-        names.insert(e.id.clone(), e.name.clone());
+        attrs.insert(
+            e.id.clone(),
+            (e.name.clone(), e.color.clone(), e.icon.clone()),
+        );
         // Normalize the parent: it must reference an existing *folder* and not be
         // the node itself; anything else roots the node.
         let parent = e
@@ -90,8 +138,14 @@ pub fn build_folder_tree(items: &[IndexEntryDto]) -> Vec<FolderNode> {
     }
 
     let by_name = |a: &String, b: &String| {
-        let na = names.get(a).map(|s| s.to_lowercase()).unwrap_or_default();
-        let nb = names.get(b).map(|s| s.to_lowercase()).unwrap_or_default();
+        let na = attrs
+            .get(a)
+            .map(|(n, ..)| n.to_lowercase())
+            .unwrap_or_default();
+        let nb = attrs
+            .get(b)
+            .map(|(n, ..)| n.to_lowercase())
+            .unwrap_or_default();
         na.cmp(&nb).then_with(|| a.cmp(b))
     };
     root_ids.sort_by(by_name);
@@ -103,7 +157,7 @@ pub fn build_folder_tree(items: &[IndexEntryDto]) -> Vec<FolderNode> {
     let mut roots: Vec<FolderNode> = Vec::new();
     for id in &root_ids {
         if !visited.contains(id) {
-            roots.push(build_node(id, None, &children, &names, &mut visited));
+            roots.push(build_node(id, None, &children, &attrs, &mut visited));
         }
     }
     // Cycle-trapped folders (never reached from a real root) → graft to root so
@@ -113,7 +167,7 @@ pub fn build_folder_tree(items: &[IndexEntryDto]) -> Vec<FolderNode> {
         .filter(|e| e.entry_type == EntryTypeDto::Folder)
     {
         if !visited.contains(&e.id) {
-            roots.push(build_node(&e.id, None, &children, &names, &mut visited));
+            roots.push(build_node(&e.id, None, &children, &attrs, &mut visited));
         }
     }
     roots.sort_by(|a, b| {
@@ -129,7 +183,7 @@ fn build_node(
     id: &str,
     parent: Option<&str>,
     children: &HashMap<String, Vec<String>>,
-    names: &HashMap<String, String>,
+    attrs: &HashMap<String, (String, Option<String>, Option<String>)>,
     visited: &mut HashSet<String>,
 ) -> FolderNode {
     visited.insert(id.to_owned());
@@ -137,14 +191,17 @@ fn build_node(
     if let Some(kids) = children.get(id) {
         for k in kids {
             if !visited.contains(k) {
-                child_nodes.push(build_node(k, Some(id), children, names, visited));
+                child_nodes.push(build_node(k, Some(id), children, attrs, visited));
             }
         }
     }
+    let (name, color, icon) = attrs.get(id).cloned().unwrap_or_default();
     FolderNode {
         id: id.to_owned(),
-        name: names.get(id).cloned().unwrap_or_default(),
+        name,
         parent: parent.map(str::to_owned),
+        color,
+        icon,
         children: child_nodes,
     }
 }
@@ -170,6 +227,8 @@ fn flatten_into(
             name: n.name.clone(),
             depth,
             has_children: !n.children.is_empty(),
+            color: n.color.clone(),
+            icon: n.icon.clone(),
         });
         if !collapsed.contains(&n.id) {
             flatten_into(&n.children, depth.saturating_add(1), collapsed, out);
@@ -310,6 +369,11 @@ pub fn FolderTree(
     on_delete: Callback<String>,
     /// `(folder_id, new_name)` — persist an inline rename.
     on_rename: Callback<(String, String)>,
+    /// Open the color/icon customize dialog for a folder id.
+    on_customize: Callback<String>,
+    /// Extra sidebar content rendered below the folder list (the smart folders).
+    #[prop(optional)]
+    children: Option<Children>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let collapsed = RwSignal::new(HashSet::<String>::new());
@@ -457,7 +521,9 @@ pub fn FolderTree(
                 class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
                 class=("bg-primary/10", move || matches!(scope.get(), FolderScope::All))
                 class=("text-primary", move || matches!(scope.get(), FolderScope::All))
-                class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == DROP_ALL)
+                class=("ring-1", move || drag_over.get() == DROP_ALL)
+                class=("ring-primary", move || drag_over.get() == DROP_ALL)
+                class=("bg-primary/15", move || drag_over.get() == DROP_ALL)
                 on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::All)
                 on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
                 on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_ALL.to_owned())
@@ -475,7 +541,9 @@ pub fn FolderTree(
                 class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
                 class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Unfiled))
                 class=("text-primary", move || matches!(scope.get(), FolderScope::Unfiled))
-                class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == DROP_UNFILED)
+                class=("ring-1", move || drag_over.get() == DROP_UNFILED)
+                class=("ring-primary", move || drag_over.get() == DROP_UNFILED)
+                class=("bg-primary/15", move || drag_over.get() == DROP_UNFILED)
                 on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::Unfiled)
                 on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
                 on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_UNFILED.to_owned())
@@ -489,7 +557,14 @@ pub fn FolderTree(
 
             <For
                 each=rows
-                key=|f| (f.id.clone(), f.name.clone(), f.depth, f.has_children)
+                key=|f| (
+                    f.id.clone(),
+                    f.name.clone(),
+                    f.depth,
+                    f.has_children,
+                    f.color.clone(),
+                    f.icon.clone(),
+                )
                 children=move |f| {
                     let sel_id_a = f.id.clone();
                     let sel_id_b = f.id.clone();
@@ -498,6 +573,10 @@ pub fn FolderTree(
                     let col_id = f.id.clone();
                     let cnt_id = f.id.clone();
                     let over_id = f.id.clone();
+                    // Three clones — one per single-token drag-over ring toggle below
+                    // (`class=(...)` takes one token; multi-token strings break at runtime).
+                    let over_id2 = f.id.clone();
+                    let over_id3 = f.id.clone();
                     let enter_id = f.id.clone();
                     let drop_id = f.id.clone();
                     let drag_check_id = f.id.clone();
@@ -505,10 +584,13 @@ pub fn FolderTree(
                     let rn_check_id = f.id.clone();
                     let start_id = f.id.clone();
                     let start_nm = f.name.clone();
+                    let cust_id = f.id.clone();
                     let del_id = f.id.clone();
                     let name = f.name.clone();
                     let depth = f.depth;
                     let has_children = f.has_children;
+                    let icon_data = folder_icon_from_key(f.icon.as_deref().unwrap_or_default());
+                    let icon_color = f.color.clone();
                     let indent = format!("padding-left:{}rem", 0.25 + depth as f64 * 0.85);
                     // Commit an inline rename (shared by Enter + blur). Untracked
                     // reads — invoked from event handlers, no-op once cleared.
@@ -523,7 +605,9 @@ pub fn FolderTree(
                             class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
                             class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_a))
                             class=("text-primary", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_b))
-                            class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == over_id)
+                            class=("ring-1", move || drag_over.get() == over_id)
+                            class=("ring-primary", move || drag_over.get() == over_id2)
+                            class=("bg-primary/15", move || drag_over.get() == over_id3)
                             style=indent
                             // Draggable as a move source (to reparent under another
                             // folder / root) — but not while its rename input is open,
@@ -579,8 +663,11 @@ pub fn FolderTree(
                             } else {
                                 leptos::either::Either::Right(view! { <span class="w-4 shrink-0"></span> })
                             }}
-                            <span class="flex shrink-0 text-foreground/50">
-                                <Icon icon=i::FaFolderSolid width="14" height="14" />
+                            <span
+                                class="flex shrink-0 text-foreground/50"
+                                style:color=move || icon_color.clone().unwrap_or_default()
+                            >
+                                <Icon icon=icon_data width="14" height="14" />
                             </span>
                             {move || {
                                 if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
@@ -627,6 +714,17 @@ pub fn FolderTree(
                             <button
                                 type="button"
                                 class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-primary"
+                                aria-label=move || t_string!(i18n, vault.folder_customize).to_string()
+                                on:click=move |ev: web_sys::MouseEvent| {
+                                    ev.stop_propagation();
+                                    on_customize.run(cust_id.clone());
+                                }
+                            >
+                                <Icon icon=i::FaPaletteSolid width="10" height="10" />
+                            </button>
+                            <button
+                                type="button"
+                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-primary"
                                 aria-label=move || t_string!(i18n, vault.folder_rename).to_string()
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
@@ -651,6 +749,10 @@ pub fn FolderTree(
                     }
                 }
             />
+
+            // Optional extra sidebar content (e.g. the smart-folders section),
+            // rendered below the folder list inside the same scrollable aside.
+            {children.map(|c| c())}
             </div>
 
             // Drag handle — pointer-capture resize (20–40vw).
@@ -694,19 +796,28 @@ pub fn FolderBreadcrumb(
                         .into_any()
                 }
                 FolderScope::Folder(id) => {
-                    folder_path(&folders.get(), &id)
+                    let nodes = folders.get();
+                    folder_path(&nodes, &id)
                         .into_iter()
                         .map(|(pid, pname)| {
                             let target = pid.clone();
+                            let (color, icon) = folder_style(&nodes, &pid);
+                            let icon_data = folder_icon_from_key(icon.as_deref().unwrap_or_default());
                             view! {
                                 <span class="text-foreground/30">"/"</span>
                                 <button
                                     type="button"
-                                    class="hover:text-primary"
+                                    class="flex items-center gap-1 hover:text-primary"
                                     on:click=move |_: web_sys::MouseEvent| {
                                         scope.set(FolderScope::Folder(target.clone()));
                                     }
                                 >
+                                    <span
+                                        class="flex shrink-0"
+                                        style:color=color.unwrap_or_default()
+                                    >
+                                        <Icon icon=icon_data width="11" height="11" />
+                                    </span>
                                     {pname}
                                 </button>
                             }
@@ -734,6 +845,9 @@ mod tests {
             tag_ids: vec![],
             folder_id: folder.map(str::to_owned),
             is_favorite: false,
+            color: None,
+            icon: None,
+            sort_order: 0,
             is_trashed: false,
             cipher_suite: 1,
             created_at: "2026-07-07T00:00:00.000Z".into(),
@@ -852,6 +966,32 @@ mod tests {
         let mut got = subtree_contents(&items, &tree, "a");
         got.sort();
         assert_eq!(got, ["b", "e1", "e2"]);
+    }
+
+    #[test]
+    fn folder_icon_from_key_known_and_fallback() {
+        assert_eq!(folder_icon_from_key("briefcase"), i::FaBriefcaseSolid);
+        assert_eq!(folder_icon_from_key("star"), i::FaStarSolid);
+        // Unknown / empty keys fall back to the plain folder.
+        assert_eq!(folder_icon_from_key("nope"), i::FaFolderSolid);
+        assert_eq!(folder_icon_from_key(""), i::FaFolderSolid);
+    }
+
+    #[test]
+    fn build_tree_carries_color_and_icon() {
+        let mut a = folder("a", "Alpha", None);
+        a.color = Some("#ef4444".into());
+        a.icon = Some("star".into());
+        let tree = build_folder_tree(&[a]);
+        assert_eq!(tree[0].color.as_deref(), Some("#ef4444"));
+        assert_eq!(tree[0].icon.as_deref(), Some("star"));
+        // …and the flattened row + style lookup expose the same.
+        let flat = flatten_tree(&tree, &HashSet::new());
+        assert_eq!(flat[0].icon.as_deref(), Some("star"));
+        assert_eq!(
+            folder_style(&tree, "a"),
+            (Some("#ef4444".to_owned()), Some("star".to_owned()))
+        );
     }
 
     #[test]

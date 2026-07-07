@@ -34,6 +34,9 @@ pub fn index_entry_to_dto(e: &IndexEntry) -> IndexEntryDto {
         tag_ids: e.tag_ids.iter().map(|t| t.as_str().to_owned()).collect(),
         folder_id: e.folder_id.as_ref().map(|f| f.as_str().to_owned()),
         is_favorite: e.is_favorite,
+        color: e.color.clone(),
+        icon: e.icon.clone(),
+        sort_order: e.sort_order,
         is_trashed: e.is_trashed,
         cipher_suite: e.cipher_suite,
         created_at: ts_to_string(e.created_at),
@@ -477,6 +480,9 @@ mod tests {
             folder_id: None,
             is_favorite: false,
             notes: None,
+            color: None,
+            icon: None,
+            sort_order: 0,
         };
         let dto = PayloadDto::Note(NotePayloadDto {
             meta: wrong_meta,

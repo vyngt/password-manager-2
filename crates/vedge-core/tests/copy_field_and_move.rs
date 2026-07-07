@@ -18,7 +18,7 @@ use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     CopyFieldInput, CreateEntryInput, FieldSelector, UnlockVaultInput, copy_field, create_entry,
-    move_entry, set_favorite, set_tags,
+    move_entry, set_favorite, set_sort_order, set_tags,
 };
 use vedge_core::domain::shared::{EntryId, TagId};
 use vedge_core::domain::vault::errors::VaultError;
@@ -314,6 +314,34 @@ async fn set_favorite_bumps_version_and_nonce() {
 
     set_favorite(&mut session, &id, true).await.unwrap();
 
+    let v2 = h.repo.get_entry(&id).await.unwrap();
+    assert_eq!(v2.version, 2);
+    assert_ne!(v1.nonce, v2.nonce);
+}
+
+#[tokio::test]
+async fn set_sort_order_roundtrips_and_bumps_version() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("gh", "pw", None),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+
+    // Fresh entries default to sort_order 0.
+    assert_eq!(session.index().entries.get(&id).unwrap().sort_order, 0);
+    let v1 = h.repo.get_entry(&id).await.unwrap();
+    assert_eq!(v1.version, 1);
+
+    set_sort_order(&mut session, &id, 3).await.unwrap();
+    assert_eq!(session.index().entries.get(&id).unwrap().sort_order, 3);
+
+    // Re-encrypt bumped the version + rotated the nonce.
     let v2 = h.repo.get_entry(&id).await.unwrap();
     assert_eq!(v2.version, 2);
     assert_ne!(v1.nonce, v2.nonce);

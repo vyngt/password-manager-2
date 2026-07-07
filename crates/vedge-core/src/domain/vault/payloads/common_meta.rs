@@ -32,6 +32,21 @@ pub struct CommonMeta {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 
+    /// Presentational hint for folders (and, in principle, any entry): a CSS
+    /// color string. `None` = use the default folder color.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// Presentational hint for folders: a curated icon key (resolved to an
+    /// `icondata` icon on the frontend). `None` = the default folder icon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+
+    /// Manual ordering position within the entry's folder (lower first). `0` for
+    /// every entry until it's dragged; ties fall back to name order.
+    #[serde(default)]
+    pub sort_order: u32,
+
     #[serde(default = "default_payload_schema")]
     pub payload_schema: u32,
 }
@@ -47,6 +62,9 @@ impl CommonMeta {
             folder_id: None,
             is_favorite: false,
             notes: None,
+            color: None,
+            icon: None,
+            sort_order: 0,
             payload_schema: CURRENT_PAYLOAD_SCHEMA,
         }
     }
@@ -75,6 +93,9 @@ mod tests {
             folder_id: Some(EntryId::from_raw("01ARZ3NDEKTSV4RRFFQ69G5FAV")),
             is_favorite: true,
             notes: Some("test notes".into()),
+            color: Some("#4f46e5".into()),
+            icon: Some("star".into()),
+            sort_order: 7,
             payload_schema: 1,
         };
         let json = serde_json::to_string(&m).unwrap();

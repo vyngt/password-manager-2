@@ -2,16 +2,22 @@ use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
 use crate::features::vault::entry_form::EntryFormData;
+use crate::features::vault::folder_customize::FolderCustomize;
 use crate::features::vault::folder_delete::FolderDelete;
 use crate::features::vault::folder_move::FolderMove;
 use crate::features::vault::folder_tree::{
     FolderBreadcrumb, FolderScope, FolderTree, build_folder_tree, subtree_contents,
 };
+use crate::features::vault::smart_folders::{
+    SmartFolder, SmartFolders, apply_preset, capture_preset,
+};
 use crate::features::vault::tag_manager::TagManager;
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
-use crate::features::vault::vault_filters::{Filters, SortKey, VaultFilters, filter_and_sort};
+use crate::features::vault::vault_filters::{
+    Filters, SortKey, VaultFilters, filter_and_sort, reorder_within,
+};
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::*;
 use leptos::prelude::*;
@@ -57,6 +63,9 @@ pub fn VaultPage() -> impl IntoView {
     let current_scope = RwSignal::new(FolderScope::All);
     let move_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let folder_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    let customize_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    // Saved "smart folder" filter presets (per-vault, persisted in app_settings).
+    let smart_folders = RwSignal::new(Vec::<SmartFolder>::new());
 
     // `tag_id -> name`, memoized so keystroke-level re-filtering doesn't rebuild it.
     let tag_map = Memo::new(move |_| {
@@ -143,6 +152,88 @@ pub fn VaultPage() -> impl IntoView {
         let _ = active.path.get();
         let _ = trashed_view.get();
         refresh();
+    });
+
+    // Load the saved smart-folder presets for the active vault (client-only state
+    // in the `app_settings` KV store, keyed by vault path — not the vault).
+    Effect::new(move |_| {
+        let vault_path = active.path.get().unwrap_or_default();
+        if vault_path.is_empty() {
+            smart_folders.set(Vec::new());
+            return;
+        }
+        let key = format!("smartfolders.{vault_path}");
+        spawn_local(async move {
+            match api::settings::get_app_setting(&key).await {
+                Ok(Some(dto)) => {
+                    if let Ok(list) = serde_json::from_value::<Vec<SmartFolder>>(dto.value) {
+                        smart_folders.set(list);
+                    }
+                }
+                _ => smart_folders.set(Vec::new()),
+            }
+        });
+    });
+
+    // Persist the current preset list back to `app_settings`.
+    let persist_smart = Callback::new(move |list: Vec<SmartFolder>| {
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        if vault_path.is_empty() {
+            return;
+        }
+        let key = format!("smartfolders.{vault_path}");
+        if let Ok(value) = serde_json::to_value(&list) {
+            spawn_local(async move {
+                let _ = api::settings::set_app_setting(&key, &value).await;
+            });
+        }
+    });
+
+    // Apply a preset: push its captured filter/sort state onto the toolbar signals
+    // (and leave the trashed view, since folder scopes are an active-view concept).
+    let on_apply_smart = Callback::new(move |p: SmartFolder| {
+        let (filters, sk) = apply_preset(&p);
+        trashed_view.set(false);
+        search_query.set(filters.query);
+        entry_type.set(filters.entry_type);
+        tag_id.set(filters.tag_id);
+        favorites_only.set(filters.favorites_only);
+        current_scope.set(filters.scope);
+        sort.set(sk);
+    });
+
+    // Save the current view as a named preset (the id is minted here so the
+    // capture helper stays pure).
+    let on_save_smart = Callback::new(move |name: String| {
+        let filters = Filters {
+            query: search_query.get_untracked(),
+            entry_type: entry_type.get_untracked(),
+            tag_id: tag_id.get_untracked(),
+            favorites_only: favorites_only.get_untracked(),
+            scope: current_scope.get_untracked(),
+        };
+        let id = uuid::Uuid::new_v4().to_string();
+        let preset = capture_preset(id, name, &filters, sort.get_untracked());
+        smart_folders.update(|l| l.push(preset));
+        persist_smart.run(smart_folders.get_untracked());
+    });
+
+    let on_delete_smart = Callback::new(move |id: String| {
+        smart_folders.update(|l| l.retain(|p| p.id != id));
+        persist_smart.run(smart_folders.get_untracked());
+    });
+
+    let on_rename_smart = Callback::new(move |(id, name): (String, String)| {
+        let name = name.trim().to_owned();
+        if name.is_empty() {
+            return;
+        }
+        smart_folders.update(|l| {
+            if let Some(p) = l.iter_mut().find(|p| p.id == id) {
+                p.name = name.clone();
+            }
+        });
+        persist_smart.run(smart_folders.get_untracked());
     });
 
     let on_delete = Callback::new(move |id: String| {
@@ -317,6 +408,59 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // Drag-reorder (Manual sort): renumber the affected run and persist only the
+    // changed entries. Optimistic in-place `sort_order` flips (in the `<For>` key,
+    // so rows repaint under Manual sort) → `set_sort_order` per changed id, revert
+    // on error. Reads are untracked (owner-safe from the row's drop handler).
+    let on_reorder = Callback::new(move |(moved, target): (String, String)| {
+        // The current display order (id, sort_order) — under Manual this is the
+        // folder's contents in shown order.
+        let current: Vec<(String, u32)> = visible
+            .get_untracked()
+            .iter()
+            .map(|e| (e.id.clone(), e.sort_order))
+            .collect();
+        let changes = reorder_within(&current, &moved, &target);
+        if changes.is_empty() {
+            return;
+        }
+        // Snapshot the prior orders of just the changed ids for revert.
+        let prev: Vec<(String, u32)> = changes
+            .iter()
+            .filter_map(|(id, _)| {
+                items.with_untracked(|l| {
+                    l.iter()
+                        .find(|e| e.id == *id)
+                        .map(|e| (id.clone(), e.sort_order))
+                })
+            })
+            .collect();
+        items.update(|l| {
+            for (id, ord) in &changes {
+                if let Some(e) = l.iter_mut().find(|e| e.id == *id) {
+                    e.sort_order = *ord;
+                }
+            }
+        });
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_reorder).to_string());
+        spawn_local(async move {
+            for (id, ord) in changes {
+                if let Err(e) = api::entry::set_sort_order(&vault_path, &id, ord).await {
+                    items.update(|l| {
+                        for (rid, rord) in &prev {
+                            if let Some(en) = l.iter_mut().find(|en| en.id == *rid) {
+                                en.sort_order = *rord;
+                            }
+                        }
+                    });
+                    status_msg.set(Some(format!("{err_prefix}{e}")));
+                    return;
+                }
+            }
+        });
+    });
+
     let on_move_request = Callback::new(move |entry: IndexEntryDto| move_target.set(Some(entry)));
 
     // The palette's "Move to folder…" bumps `ui.move_request`; open the picker for
@@ -382,6 +526,39 @@ pub fn VaultPage() -> impl IntoView {
             }
         });
     });
+
+    // Open the customize dialog for a folder id (resolve it from the live index).
+    let on_customize = Callback::new(move |id: String| {
+        if let Some(e) = items.with_untracked(|l| l.iter().find(|e| e.id == id).cloned()) {
+            customize_target.set(Some(e));
+        }
+    });
+
+    // Persist a folder's color/icon. Like rename, a folder carries no secrets, so
+    // the get_entry → mutate → update_entry round-trip reveals nothing sensitive.
+    let on_customize_apply = Callback::new(
+        move |(id, color, icon): (String, Option<String>, Option<String>)| {
+            let vault_path = active.path.get().unwrap_or_default();
+            let err_prefix = t_string!(i18n, vault.err_folder_customize).to_string();
+            spawn_local(async move {
+                match api::entry::get_entry(&vault_path, &id).await {
+                    Ok(payload) => {
+                        let mut d = EntryFormData::from_payload(&payload);
+                        d.color = color;
+                        d.icon = icon;
+                        if let Ok(p) = d.to_payload() {
+                            if let Err(e) = api::entry::update_entry(&vault_path, &id, &p).await {
+                                status_msg.set(Some(format!("{err_prefix}{e}")));
+                            } else {
+                                refresh();
+                            }
+                        }
+                    }
+                    Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                }
+            });
+        },
+    );
 
     // Recursively soft-delete a folder's contents (the delete dialog's "Empty
     // folder"). Sequential so a mid-way failure surfaces and stops.
@@ -481,6 +658,7 @@ pub fn VaultPage() -> impl IntoView {
                 on_empty=on_empty
                 on_delete_folder=on_delete_folder
             />
+            <FolderCustomize target=customize_target on_apply=on_customize_apply />
 
             {move || status_msg.get().map(|m| view! {
                 <p class="text-sm text-text-secondary">{m}</p>
@@ -508,7 +686,16 @@ pub fn VaultPage() -> impl IntoView {
                         on_move=on_move
                         on_delete=on_delete
                         on_rename=on_rename_folder
-                    />
+                        on_customize=on_customize
+                    >
+                        <SmartFolders
+                            presets=Signal::derive(move || smart_folders.get())
+                            on_apply=on_apply_smart
+                            on_save=on_save_smart
+                            on_delete=on_delete_smart
+                            on_rename=on_rename_smart
+                        />
+                    </FolderTree>
                 </Show>
                 <Show
                     when=move || !loading.get()
@@ -529,6 +716,8 @@ pub fn VaultPage() -> impl IntoView {
                         on_select=on_select
                         on_favorite=on_favorite
                         on_move_request=on_move_request
+                        on_reorder=on_reorder
+                        reorder_enabled=Signal::derive(move || sort.get() == SortKey::Manual)
                     />
                 </Show>
                 {move || selected_entry.get().map(|entry| view! {

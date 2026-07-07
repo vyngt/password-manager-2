@@ -31,6 +31,9 @@ fn meta(name: &str, ty: EntryType) -> CommonMeta {
         folder_id: Some(EntryId::from_raw("01ARZ3NDEKTSV4RRFFQ69G5FAV")),
         is_favorite: true,
         notes: Some("hello".into()),
+        color: None,
+        icon: None,
+        sort_order: 0,
         payload_schema: 1,
     }
 }
@@ -57,6 +60,7 @@ fn login_wire_format() {
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         "is_favorite": true,
         "notes": "hello",
+        "sort_order": 0,
         "payload_schema": 1,
         "username": "alice",
         "password": "hunter2",
@@ -83,7 +87,7 @@ fn card_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
         "cardholder_name": "Alice Smith",
         "number": "4242424242424242",
         "expiry_month": 12, "expiry_year": 2030,
@@ -107,7 +111,7 @@ fn ssh_key_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
         "private_key_pem": "-----BEGIN OPENSSH PRIVATE KEY-----\n...",
         "public_key": "ssh-ed25519 AAAA...",
         "fingerprint": "SHA256:abc...",
@@ -131,7 +135,7 @@ fn api_key_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
         "key": "AKIA...",
         "secret": "secret...",
         "endpoint": "https://ec2.amazonaws.com",
@@ -161,7 +165,7 @@ fn env_vars_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
         "vars": [
             {"key": "DATABASE_URL", "value": "postgres://..."},
             {"key": "API_KEY", "value": "xyz"},
@@ -181,7 +185,7 @@ fn note_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
         "content": "# confidential\nsecret stuff",
     });
     assert_eq!(to_value(&p), expected);
@@ -204,7 +208,7 @@ fn document_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
         "filename": "passport.pdf",
         "mime_type": "application/pdf",
         "size_bytes": 102_400,
@@ -237,7 +241,7 @@ fn identity_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
         "first_name": "Alice", "last_name": "Smith",
         "email": "alice@example.com",
         "phone": "+84-900-000-000",
@@ -260,7 +264,7 @@ fn folder_wire_format() {
         "url": "https://example.com",
         "tag_ids": ["01H0000000000000000000TAG1"],
         "folder_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "is_favorite": true, "notes": "hello", "payload_schema": 1,
+        "is_favorite": true, "notes": "hello", "sort_order": 0, "payload_schema": 1,
     });
     assert_eq!(to_value(&p), expected);
 }

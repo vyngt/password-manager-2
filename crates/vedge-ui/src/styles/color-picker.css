@@ -129,7 +129,9 @@
        ============================================================ */
     .color-picker-panel {
         position: fixed;
-        z-index: 50;
+        /* Above its own backdrop (60) and the dialog scrim (50) so the picker
+           renders on top when opened from inside a Dialog. */
+        z-index: 61;
         width: 240px;
         padding: 12px;
         background: var(--color-surface-4);
