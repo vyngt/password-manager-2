@@ -18,9 +18,6 @@ use leptos::prelude::*;
 use leptos_icons::Icon;
 use std::collections::{HashMap, HashSet};
 use vedge_ipc::{EntryTypeDto, IndexEntryDto};
-use vedge_ui::components::Button;
-use vedge_ui::components::Input;
-use vedge_ui::primitives::tokens::{Size, Variant};
 
 /// A node in the folder hierarchy (acyclic — see module docs).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -322,6 +319,13 @@ pub fn FolderTree(
     // The folder id currently being renamed inline (+ its edit buffer).
     let renaming = RwSignal::new(Option::<String>::None);
     let rename_value = RwSignal::new(String::new());
+    // Whether the compact "new folder" input is revealed.
+    let show_new = RwSignal::new(false);
+    // Resizable width as a fraction of the viewport, clamped 20–40%.
+    let panel_frac = RwSignal::new(0.22_f64);
+    let resizing = RwSignal::new(false);
+    let aside_ref = NodeRef::<leptos::html::Aside>::new();
+    let handle_ref = NodeRef::<leptos::html::Div>::new();
     let counts = Memo::new(move |_| folder_counts(&items.get()));
 
     let rows = move || flatten_tree(&folders.get(), &collapsed.get());
@@ -356,6 +360,37 @@ pub fn FolderTree(
         }
     };
 
+    // Pointer-capture resize: the handle keeps receiving move/up even when the
+    // pointer leaves it, so no window-level listeners are needed.
+    let start_resize = move |ev: web_sys::PointerEvent| {
+        ev.prevent_default();
+        if let Some(el) = handle_ref.get() {
+            let _ = el.set_pointer_capture(ev.pointer_id());
+        }
+        resizing.set(true);
+    };
+    let on_resize = move |ev: web_sys::PointerEvent| {
+        if !resizing.get_untracked() {
+            return;
+        }
+        let win_w = window()
+            .inner_width()
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1280.0);
+        let left = aside_ref
+            .get()
+            .map_or(0.0, |el| el.get_bounding_client_rect().left());
+        let frac = ((f64::from(ev.client_x()) - left) / win_w).clamp(0.20, 0.40);
+        panel_frac.set(frac);
+    };
+    let end_resize = move |ev: web_sys::PointerEvent| {
+        resizing.set(false);
+        if let Some(el) = handle_ref.get() {
+            let _ = el.release_pointer_capture(ev.pointer_id());
+        }
+    };
+
     let create = move || {
         let name = new_name.get().trim().to_owned();
         if name.is_empty() {
@@ -367,15 +402,56 @@ pub fn FolderTree(
         };
         on_new_folder.run((parent, name));
         new_name.set(String::new());
+        show_new.set(false);
     };
 
     view! {
-        <aside class="w-56 shrink-0 flex flex-col gap-0.5 border border-border rounded-lg p-2 bg-primary-muted overflow-auto">
-            <span class="px-2 py-1 text-foreground/50 text-xs uppercase tracking-wider">
-                {move || t!(i18n, vault.folders_label)}
-            </span>
+        <aside
+            node_ref=aside_ref
+            class="relative shrink-0 flex flex-col border border-border rounded-lg bg-primary-muted"
+            style:width=move || format!("{}vw", panel_frac.get() * 100.0)
+        >
+            <div class="flex-1 overflow-auto flex flex-col gap-0.5 p-2">
+                <div class="flex items-center justify-between px-1 py-0.5">
+                    <span class="text-foreground/50 text-xs uppercase tracking-wider">
+                        {move || t!(i18n, vault.folders_label)}
+                    </span>
+                    <button
+                        type="button"
+                        class="flex shrink-0 text-foreground/40 hover:text-primary p-0.5"
+                        aria-label=move || t_string!(i18n, vault.folder_new).to_string()
+                        on:click=move |_: web_sys::MouseEvent| show_new.update(|v| *v = !*v)
+                    >
+                        <Icon icon=i::FaPlusSolid width="12" height="12" />
+                    </button>
+                </div>
 
-            // All items — the cleared scope (also a "move to root" drop target).
+                // Compact new-folder input, revealed by the header "+".
+                <Show when=move || show_new.get()>
+                    <input
+                        class="w-full bg-background border border-primary/40 rounded px-2 py-1 text-sm text-text-primary outline-none mb-1"
+                        autofocus=true
+                        placeholder=move || t_string!(i18n, vault.folder_new_placeholder).to_string()
+                        prop:value=move || new_name.get()
+                        on:input:target=move |ev| new_name.set(ev.target().value())
+                        on:keydown=move |ev: web_sys::KeyboardEvent| {
+                            match ev.key().as_str() {
+                                "Enter" => {
+                                    ev.prevent_default();
+                                    create();
+                                }
+                                "Escape" => {
+                                    ev.prevent_default();
+                                    new_name.set(String::new());
+                                    show_new.set(false);
+                                }
+                                _ => {}
+                            }
+                        }
+                    />
+                </Show>
+
+                // All items — the cleared scope (also a "move to root" drop target).
             <button
                 type="button"
                 class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
@@ -521,8 +597,13 @@ pub fn FolderTree(
                                     )
                                 } else {
                                     let name = name.clone();
+                                    let name_title = name.clone();
                                     leptos::either::Either::Right(
-                                        view! { <span class="flex-1 truncate">{name}</span> },
+                                        view! {
+                                            <span class="flex-1 truncate" title=name_title>
+                                                {name}
+                                            </span>
+                                        },
                                     )
                                 }
                             }}
@@ -556,32 +637,18 @@ pub fn FolderTree(
                     }
                 }
             />
-
-            <div class="flex gap-1 items-center mt-2 pt-2 border-t border-secondary/15">
-                <div class="flex-1">
-                    <Input
-                        id="folder-new"
-                        value=Signal::derive(move || new_name.get())
-                        placeholder=Signal::derive(move || {
-                            t_string!(i18n, vault.folder_new_placeholder).to_string()
-                        })
-                        on_input=Callback::new(move |v: String| new_name.set(v))
-                    />
-                </div>
-                {move || {
-                    let disabled = new_name.with(|s| s.trim().is_empty());
-                    view! {
-                        <Button
-                            variant=Variant::Secondary
-                            size=Size::Sm
-                            disabled=disabled
-                            on:click=move |_: web_sys::MouseEvent| create()
-                        >
-                            {move || t!(i18n, vault.folder_new)}
-                        </Button>
-                    }
-                }}
             </div>
+
+            // Drag handle — pointer-capture resize (20–40vw).
+            <div
+                node_ref=handle_ref
+                class="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 rounded-r-lg touch-none"
+                class=("bg-primary/40", move || resizing.get())
+                aria-hidden="true"
+                on:pointerdown=start_resize
+                on:pointermove=on_resize
+                on:pointerup=end_resize
+            ></div>
         </aside>
     }
 }
