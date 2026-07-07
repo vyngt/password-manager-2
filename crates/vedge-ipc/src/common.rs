@@ -52,6 +52,8 @@ pub struct CommonMetaDto {
     pub color: Option<String>,
     #[serde(default)]
     pub icon: Option<String>,
+    #[serde(default)]
+    pub sort_order: u32,
 }
 
 // ---- helpers ----------------------------------------------------------------

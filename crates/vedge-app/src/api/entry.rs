@@ -185,6 +185,26 @@ pub async fn set_favorite(
     .await
 }
 
+/// Set an entry's manual ordering position within its folder. Backend-only
+/// mutation (decrypt → set → re-encrypt); no secret fields are returned.
+pub async fn set_sort_order(vault_path: &str, entry_id: &str, order: u32) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        order: u32,
+    }
+    call_void(
+        "set_sort_order",
+        &Args {
+            vault_path,
+            entry_id,
+            order,
+        },
+    )
+    .await
+}
+
 /// Replace an entry's tag assignments. Backend-only mutation (decrypt → set →
 /// re-encrypt); works for any type, returns no secrets.
 pub async fn set_tags(

@@ -829,6 +829,7 @@ mod tests {
             is_favorite: false,
             color: None,
             icon: None,
+            sort_order: 0,
             is_trashed: false,
             cipher_suite: 1,
             created_at: "2026-07-07T00:00:00.000Z".into(),

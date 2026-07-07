@@ -257,6 +257,7 @@ mod tests {
             notes: None,
             color: None,
             icon: None,
+            sort_order: 0,
         }
     }
 

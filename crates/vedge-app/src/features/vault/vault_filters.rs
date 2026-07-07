@@ -44,6 +44,9 @@ pub enum SortKey {
     RecentlyUpdated,
     /// `accessed_at` descending, entries never used (`None`) sorted last.
     RecentlyUsed,
+    /// Manual drag order: `sort_order` ascending, ties broken by name. Meaningful
+    /// within a folder view (where a drag-reorder renumbers the siblings).
+    Manual,
 }
 
 /// Filter `items` by `f` (query + facets) and order by `sort`.
@@ -79,8 +82,49 @@ pub fn filter_and_sort(
         SortKey::RecentlyUsed => {
             out.sort_by(|a, b| cmp_accessed_desc(&a.accessed_at, &b.accessed_at));
         }
+        SortKey::Manual => out.sort_by(|a, b| {
+            a.sort_order
+                .cmp(&b.sort_order)
+                .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+        }),
     }
     out
+}
+
+/// Recompute manual `sort_order` after dropping `moved_id` onto `target_id`
+/// within `current` (the visible sibling order, each `(id, sort_order)`). The
+/// dragged row lands immediately **before** the target; the whole run is then
+/// renumbered `0..N`. Returns only the `(id, new_order)` pairs that actually
+/// changed, so the caller persists the minimum. A no-op (same id, missing id, or
+/// order unchanged) yields an empty vec.
+#[must_use]
+pub fn reorder_within(
+    current: &[(String, u32)],
+    moved_id: &str,
+    target_id: &str,
+) -> Vec<(String, u32)> {
+    if moved_id == target_id {
+        return Vec::new();
+    }
+    let mut ids: Vec<&str> = current.iter().map(|(id, _)| id.as_str()).collect();
+    let Some(from) = ids.iter().position(|id| *id == moved_id) else {
+        return Vec::new();
+    };
+    ids.remove(from);
+    let Some(target_idx) = ids.iter().position(|id| *id == target_id) else {
+        return Vec::new();
+    };
+    ids.insert(target_idx, moved_id);
+
+    // Diff the new sequential order against each entry's current sort_order.
+    let old: HashMap<&str, u32> = current.iter().map(|(id, o)| (id.as_str(), *o)).collect();
+    ids.iter()
+        .enumerate()
+        .filter_map(|(idx, id)| {
+            let new_order = u32::try_from(idx).unwrap_or(u32::MAX);
+            (old.get(id).copied() != Some(new_order)).then(|| ((*id).to_owned(), new_order))
+        })
+        .collect()
 }
 
 /// Case-insensitive substring match over name, url, and each tag's resolved
@@ -139,6 +183,7 @@ fn sort_to_key(s: SortKey) -> &'static str {
         SortKey::NameAsc => "name",
         SortKey::RecentlyUpdated => "updated",
         SortKey::RecentlyUsed => "used",
+        SortKey::Manual => "manual",
     }
 }
 
@@ -147,6 +192,7 @@ fn sort_from_key(k: &str) -> SortKey {
     match k {
         "updated" => SortKey::RecentlyUpdated,
         "used" => SortKey::RecentlyUsed,
+        "manual" => SortKey::Manual,
         _ => SortKey::NameAsc,
     }
 }
@@ -251,6 +297,7 @@ pub fn VaultFilters(
                         SelectItem::option("name", t_string!(i18n, vault.sort_name).to_string()),
                         SelectItem::option("updated", t_string!(i18n, vault.sort_updated).to_string()),
                         SelectItem::option("used", t_string!(i18n, vault.sort_used).to_string()),
+                        SelectItem::option("manual", t_string!(i18n, vault.sort_manual).to_string()),
                     ];
                     view! {
                         <Select
@@ -282,7 +329,7 @@ pub fn VaultFilters(
 
 #[cfg(test)]
 mod tests {
-    use super::{Filters, SortKey, filter_and_sort};
+    use super::{Filters, SortKey, filter_and_sort, reorder_within};
     use std::collections::HashMap;
     use vedge_ipc::{EntryTypeDto, IndexEntryDto};
 
@@ -299,6 +346,7 @@ mod tests {
             is_favorite: false,
             color: None,
             icon: None,
+            sort_order: 0,
             is_trashed: false,
             cipher_suite: 1,
             created_at: "2026-07-05T00:00:00.000Z".into(),
@@ -563,6 +611,63 @@ mod tests {
             SortKey::RecentlyUsed,
         );
         assert_eq!(ids(&r), ["b", "a", "c"]);
+    }
+
+    #[test]
+    fn sort_manual_orders_by_sort_order_then_name() {
+        let mut a = entry("a", "Zeta");
+        a.sort_order = 0;
+        let mut b = entry("b", "Alpha");
+        b.sort_order = 2;
+        let mut c = entry("c", "Mid");
+        c.sort_order = 1;
+        // Two entries share a sort_order → the tie breaks on name.
+        let mut d = entry("d", "Beta");
+        d.sort_order = 0;
+        let items = vec![b, a, c, d];
+        let r = filter_and_sort(
+            &items,
+            &Filters::default(),
+            &HashMap::new(),
+            SortKey::Manual,
+        );
+        // order 0: Beta(d), Zeta(a) [name tie]; then Mid(c)=1; then Alpha(b)=2.
+        assert_eq!(ids(&r), ["d", "a", "c", "b"]);
+    }
+
+    #[test]
+    fn reorder_within_moves_row_and_diffs_changed_only() {
+        // Current visible order a,b,c,d with sequential sort_order.
+        let cur = vec![
+            ("a".to_owned(), 0),
+            ("b".to_owned(), 1),
+            ("c".to_owned(), 2),
+            ("d".to_owned(), 3),
+        ];
+        // Drag `d` onto `b` → d lands before b: a, d, b, c. Changed: d,b,c.
+        let mut got = reorder_within(&cur, "d", "b");
+        got.sort();
+        assert_eq!(
+            got,
+            vec![
+                ("b".to_owned(), 2),
+                ("c".to_owned(), 3),
+                ("d".to_owned(), 1),
+            ]
+        );
+        // Drag `a` (top) onto `c` → a lands before c: b, a?  removal then insert
+        // before c gives b, a, c, d → a=1, b=0. Changed: a,b.
+        let mut down = reorder_within(&cur, "a", "c");
+        down.sort();
+        assert_eq!(down, vec![("a".to_owned(), 1), ("b".to_owned(), 0)]);
+    }
+
+    #[test]
+    fn reorder_within_noops_are_empty() {
+        let cur = vec![("a".to_owned(), 0), ("b".to_owned(), 1)];
+        assert!(reorder_within(&cur, "a", "a").is_empty()); // same id
+        assert!(reorder_within(&cur, "ghost", "a").is_empty()); // missing moved
+        assert!(reorder_within(&cur, "a", "ghost").is_empty()); // missing target
     }
 
     #[test]

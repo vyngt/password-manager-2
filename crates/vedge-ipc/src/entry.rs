@@ -33,6 +33,8 @@ pub struct IndexEntryDto {
     pub color: Option<String>,
     #[serde(default)]
     pub icon: Option<String>,
+    #[serde(default)]
+    pub sort_order: u32,
     pub is_trashed: bool,
     pub cipher_suite: i32,
     pub created_at: String,

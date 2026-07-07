@@ -90,6 +90,7 @@ fn index_entry_decodes() {
         is_favorite: true,
         color: Some("#4f46e5".into()),
         icon: Some("briefcase".into()),
+        sort_order: 5,
         is_trashed: false,
         cipher_suite: 1,
         created_at: "2026-07-05T00:00:00.000Z".into(),
@@ -105,6 +106,7 @@ fn index_entry_decodes() {
     assert_eq!(back.url.as_deref(), Some("https://github.com"));
     assert_eq!(back.color.as_deref(), Some("#4f46e5"));
     assert_eq!(back.icon.as_deref(), Some("briefcase"));
+    assert_eq!(back.sort_order, 5);
 }
 
 /// `EntryTypeDto` — a `#[serde(untagged)]` `Unknown(String)` fallback plus the
@@ -150,6 +152,7 @@ fn payload_login_adjacent_decodes() {
             notes: None,
             color: None,
             icon: None,
+            sort_order: 0,
         },
         username: "alice".into(),
         password: "s3cret".into(),

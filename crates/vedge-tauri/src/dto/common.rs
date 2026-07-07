@@ -61,6 +61,7 @@ pub fn common_meta_to_dto(m: &CommonMeta) -> CommonMetaDto {
         notes: m.notes.clone(),
         color: m.color.clone(),
         icon: m.icon.clone(),
+        sort_order: m.sort_order,
     }
 }
 
@@ -80,6 +81,7 @@ pub fn common_meta_from_dto(dto: CommonMetaDto) -> CommonMeta {
         notes: dto.notes,
         color: dto.color,
         icon: dto.icon,
+        sort_order: dto.sort_order,
         payload_schema: vedge_core::domain::vault::payloads::CURRENT_PAYLOAD_SCHEMA,
     }
 }
@@ -153,6 +155,7 @@ mod tests {
             notes: Some("ok".into()),
             color: Some("#4f46e5".into()),
             icon: Some("briefcase".into()),
+            sort_order: 3,
             payload_schema: 1,
         };
         let dto = common_meta_to_dto(&m);
@@ -166,6 +169,7 @@ mod tests {
         assert_eq!(back.notes, m.notes);
         assert_eq!(back.color, m.color);
         assert_eq!(back.icon, m.icon);
+        assert_eq!(back.sort_order, m.sort_order);
     }
 
     #[test]

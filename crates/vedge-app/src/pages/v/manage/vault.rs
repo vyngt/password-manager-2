@@ -12,7 +12,9 @@ use crate::features::vault::tag_manager::TagManager;
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
-use crate::features::vault::vault_filters::{Filters, SortKey, VaultFilters, filter_and_sort};
+use crate::features::vault::vault_filters::{
+    Filters, SortKey, VaultFilters, filter_and_sort, reorder_within,
+};
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::*;
 use leptos::prelude::*;
@@ -319,6 +321,57 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // Drag-reorder (Manual sort): renumber the affected run and persist only the
+    // changed entries. Optimistic in-place `sort_order` flips (in the `<For>` key,
+    // so rows repaint under Manual sort) → `set_sort_order` per changed id, revert
+    // on error. Reads are untracked (owner-safe from the row's drop handler).
+    let on_reorder = Callback::new(move |(moved, target): (String, String)| {
+        // The current display order (id, sort_order) — under Manual this is the
+        // folder's contents in shown order.
+        let current: Vec<(String, u32)> = visible
+            .get_untracked()
+            .iter()
+            .map(|e| (e.id.clone(), e.sort_order))
+            .collect();
+        let changes = reorder_within(&current, &moved, &target);
+        if changes.is_empty() {
+            return;
+        }
+        // Snapshot the prior orders of just the changed ids for revert.
+        let prev: Vec<(String, u32)> = changes
+            .iter()
+            .filter_map(|(id, _)| {
+                items.with_untracked(|l| {
+                    l.iter().find(|e| e.id == *id).map(|e| (id.clone(), e.sort_order))
+                })
+            })
+            .collect();
+        items.update(|l| {
+            for (id, ord) in &changes {
+                if let Some(e) = l.iter_mut().find(|e| e.id == *id) {
+                    e.sort_order = *ord;
+                }
+            }
+        });
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_reorder).to_string());
+        spawn_local(async move {
+            for (id, ord) in changes {
+                if let Err(e) = api::entry::set_sort_order(&vault_path, &id, ord).await {
+                    items.update(|l| {
+                        for (rid, rord) in &prev {
+                            if let Some(en) = l.iter_mut().find(|en| en.id == *rid) {
+                                en.sort_order = *rord;
+                            }
+                        }
+                    });
+                    status_msg.set(Some(format!("{err_prefix}{e}")));
+                    return;
+                }
+            }
+        });
+    });
+
     let on_move_request = Callback::new(move |entry: IndexEntryDto| move_target.set(Some(entry)));
 
     // The palette's "Move to folder…" bumps `ui.move_request`; open the picker for
@@ -566,6 +619,8 @@ pub fn VaultPage() -> impl IntoView {
                         on_select=on_select
                         on_favorite=on_favorite
                         on_move_request=on_move_request
+                        on_reorder=on_reorder
+                        reorder_enabled=Signal::derive(move || sort.get() == SortKey::Manual)
                     />
                 </Show>
                 {move || selected_entry.get().map(|entry| view! {

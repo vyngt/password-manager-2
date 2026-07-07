@@ -42,6 +42,11 @@ pub struct CommonMeta {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
 
+    /// Manual ordering position within the entry's folder (lower first). `0` for
+    /// every entry until it's dragged; ties fall back to name order.
+    #[serde(default)]
+    pub sort_order: u32,
+
     #[serde(default = "default_payload_schema")]
     pub payload_schema: u32,
 }
@@ -59,6 +64,7 @@ impl CommonMeta {
             notes: None,
             color: None,
             icon: None,
+            sort_order: 0,
             payload_schema: CURRENT_PAYLOAD_SCHEMA,
         }
     }
@@ -89,6 +95,7 @@ mod tests {
             notes: Some("test notes".into()),
             color: Some("#4f46e5".into()),
             icon: Some("star".into()),
+            sort_order: 7,
             payload_schema: 1,
         };
         let json = serde_json::to_string(&m).unwrap();

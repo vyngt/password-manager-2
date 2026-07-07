@@ -27,8 +27,8 @@ use vedge_core::{
     copy_field as copy_field_core, create_entry as create_entry_core, get_entry as get_entry_core,
     hard_delete_entry as hard_delete_entry_core, move_entry as move_entry_core,
     restore_entry as restore_entry_core, set_favorite as set_favorite_core,
-    set_tags as set_tags_core, soft_delete_entry as soft_delete_entry_core,
-    update_entry as update_entry_core,
+    set_sort_order as set_sort_order_core, set_tags as set_tags_core,
+    soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
 };
 
 use crate::dto::entry::{
@@ -229,6 +229,28 @@ pub async fn set_favorite(
 
     let id = entry_id_from_str(&entry_id);
     set_favorite_core(&mut guard, &id, favorite).await?;
+    Ok(())
+}
+
+/// Set an entry's manual ordering position within its folder.
+///
+/// `sort_order` lives in the encrypted `CommonMeta`, so the backend decrypts →
+/// sets → re-encrypts; no secrets cross the boundary (unlike a `get_entry` +
+/// `update_entry` round-trip, which would reveal a secret-bearing entry).
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn set_sort_order(
+    vault_path: String,
+    entry_id: String,
+    order: u32,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let id = entry_id_from_str(&entry_id);
+    set_sort_order_core(&mut guard, &id, order).await?;
     Ok(())
 }
 

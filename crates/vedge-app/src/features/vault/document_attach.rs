@@ -39,6 +39,7 @@ fn document_meta(name: String) -> CommonMetaDto {
         notes: None,
         color: None,
         icon: None,
+        sort_order: 0,
     }
 }
 

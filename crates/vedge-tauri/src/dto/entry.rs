@@ -36,6 +36,7 @@ pub fn index_entry_to_dto(e: &IndexEntry) -> IndexEntryDto {
         is_favorite: e.is_favorite,
         color: e.color.clone(),
         icon: e.icon.clone(),
+        sort_order: e.sort_order,
         is_trashed: e.is_trashed,
         cipher_suite: e.cipher_suite,
         created_at: ts_to_string(e.created_at),
@@ -481,6 +482,7 @@ mod tests {
             notes: None,
             color: None,
             icon: None,
+            sort_order: 0,
         };
         let dto = PayloadDto::Note(NotePayloadDto {
             meta: wrong_meta,
