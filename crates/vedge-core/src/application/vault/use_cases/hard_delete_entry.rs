@@ -50,6 +50,11 @@ pub async fn hard_delete_entry(
 
     session.repo.hard_delete_entry(entry_id).await?;
 
+    // No FK cascade in the schema — purge this entry's version history
+    // explicitly. Orphaned snapshots are undecryptable once the DEK is gone, but
+    // we delete them for tidiness and to bound storage.
+    session.repo.delete_history_for_entry(entry_id).await?;
+
     if existing.entry_type == EntryType::Document {
         // Best-effort — failure here means the blob file outlives its
         // entry row; `RunMaintenance` will reap it.

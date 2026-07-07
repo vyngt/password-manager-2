@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 
-use vedge_ipc::{FieldSelectorDto, PayloadDto};
+use vedge_ipc::{FieldSelectorDto, HistoryEntryDto, PayloadDto};
 
 use crate::api::call::{call, call_void};
 use crate::api::error::ApiError;
@@ -224,6 +224,108 @@ pub async fn set_tags(
             vault_path,
             entry_id,
             tag_ids,
+        },
+    )
+    .await
+}
+
+// ---- entry history (slice 2.7) ----------------------------------------------
+
+/// List an entry's version timeline (metadata only — current + dated snapshots
+/// with changed-field summaries). No secret values cross the boundary.
+pub async fn list_history(
+    vault_path: &str,
+    entry_id: &str,
+) -> Result<Vec<HistoryEntryDto>, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+    }
+    call(
+        "list_history",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
+}
+
+/// Reveal a prior version's full decrypted payload (secrets included). The
+/// backend audits this as `Viewed`.
+pub async fn get_history_value(
+    vault_path: &str,
+    entry_id: &str,
+    history_id: &str,
+) -> Result<PayloadDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        history_id: &'a str,
+    }
+    call(
+        "get_history_value",
+        &Args {
+            vault_path,
+            entry_id,
+            history_id,
+        },
+    )
+    .await
+}
+
+/// Copy one field of a prior version to the OS clipboard (auto-clear). Routes
+/// through the backend clipboard; the plaintext never lands in WASM.
+pub async fn copy_history_field(
+    vault_path: &str,
+    entry_id: &str,
+    history_id: &str,
+    field: &FieldSelectorDto,
+    clear_after_secs: Option<u32>,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        history_id: &'a str,
+        field: &'a FieldSelectorDto,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        clear_after_secs: Option<u32>,
+    }
+    call_void(
+        "copy_history_field",
+        &Args {
+            vault_path,
+            entry_id,
+            history_id,
+            field,
+            clear_after_secs,
+        },
+    )
+    .await
+}
+
+/// Restore an entry to a prior version. Server-side re-encrypt (snapshots the
+/// now-current value first); no plaintext crosses the boundary.
+pub async fn restore_history(
+    vault_path: &str,
+    entry_id: &str,
+    history_id: &str,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        history_id: &'a str,
+    }
+    call_void(
+        "restore_history",
+        &Args {
+            vault_path,
+            entry_id,
+            history_id,
         },
     )
     .await

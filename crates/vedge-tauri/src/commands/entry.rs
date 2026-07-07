@@ -23,16 +23,20 @@ use tracing::instrument;
 
 use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
-    CopyFieldInput, CreateEntryInput, GetEntryInput, UpdateEntryInput,
-    copy_field as copy_field_core, create_entry as create_entry_core, get_entry as get_entry_core,
-    hard_delete_entry as hard_delete_entry_core, move_entry as move_entry_core,
-    restore_entry as restore_entry_core, set_favorite as set_favorite_core,
-    set_sort_order as set_sort_order_core, set_tags as set_tags_core,
-    soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
+    CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, UpdateEntryInput,
+    copy_field as copy_field_core, copy_history_field as copy_history_field_core,
+    create_entry as create_entry_core, get_entry as get_entry_core,
+    get_history_value as get_history_value_core, hard_delete_entry as hard_delete_entry_core,
+    list_history as list_history_core, move_entry as move_entry_core,
+    restore_entry as restore_entry_core, restore_from_history as restore_from_history_core,
+    set_favorite as set_favorite_core, set_sort_order as set_sort_order_core,
+    set_tags as set_tags_core, soft_delete_entry as soft_delete_entry_core,
+    update_entry as update_entry_core,
 };
 
 use crate::dto::entry::{
-    PayloadDto, entry_id_from_str, payload_from_dto, payload_to_dto, tag_id_from_str,
+    HistoryEntryDto, PayloadDto, entry_id_from_str, history_to_dto, payload_from_dto,
+    payload_to_dto, tag_id_from_str,
 };
 use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
 use crate::error::CommandError;
@@ -274,6 +278,94 @@ pub async fn set_tags(
     let id = entry_id_from_str(&entry_id);
     let tags: Vec<TagId> = tag_ids.iter().map(|s| tag_id_from_str(s)).collect();
     set_tags_core(&mut guard, &id, tags).await?;
+    Ok(())
+}
+
+// ---- entry history (slice 2.7) ----------------------------------------------
+
+/// List an entry's version timeline (metadata only — current version + dated
+/// snapshots with changed-field summaries). No secret values cross the boundary.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn list_history(
+    vault_path: String,
+    entry_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<HistoryEntryDto>, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let guard = handle.lock().await;
+
+    let id = entry_id_from_str(&entry_id);
+    let versions = list_history_core(&guard, &id).await?;
+    Ok(versions.iter().map(history_to_dto).collect())
+}
+
+/// Reveal a prior version's full decrypted payload — the sanctioned, audited
+/// (`Viewed`) reveal path for history, mirroring `get_entry`.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id, history_id = %history_id))]
+pub async fn get_history_value(
+    vault_path: String,
+    entry_id: String,
+    history_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<PayloadDto, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let guard = handle.lock().await;
+
+    let id = entry_id_from_str(&entry_id);
+    let payload = get_history_value_core(&guard, &id, &history_id).await?;
+    payload_to_dto(&payload)
+}
+
+/// Copy one field of a prior version to the OS clipboard (auto-clear). Routes
+/// through the backend clipboard — the plaintext never returns to WASM.
+/// `clear_after_secs = None` uses the 30 s default.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id, history_id = %history_id))]
+pub async fn copy_history_field(
+    vault_path: String,
+    entry_id: String,
+    history_id: String,
+    field: FieldSelectorDto,
+    clear_after_secs: Option<u32>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let guard = handle.lock().await;
+
+    copy_history_field_core(
+        &guard,
+        CopyHistoryFieldInput {
+            entry_id: entry_id_from_str(&entry_id),
+            history_id,
+            field: field_selector_from_dto(field),
+            clear_after_secs: clear_after_secs.unwrap_or(30),
+        },
+    )
+    .await?;
+    Ok(())
+}
+
+/// Restore an entry to a prior version. Server-side re-encrypt (snapshots the
+/// now-current value first); no plaintext crosses the boundary.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id, history_id = %history_id))]
+pub async fn restore_history(
+    vault_path: String,
+    entry_id: String,
+    history_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let id = entry_id_from_str(&entry_id);
+    restore_from_history_core(&mut guard, &id, &history_id).await?;
     Ok(())
 }
 

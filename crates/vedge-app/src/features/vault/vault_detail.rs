@@ -50,6 +50,8 @@ pub fn VaultDetail(
     folders: Signal<Vec<FolderNode>>,
     /// Open the move-to-folder picker for this entry.
     on_move_request: Callback<IndexEntryDto>,
+    /// Open the version-history panel for this entry.
+    on_history_request: Callback<IndexEntryDto>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
@@ -75,6 +77,16 @@ pub fn VaultDetail(
         entry.entry_type,
         EntryTypeDto::Document | EntryTypeDto::Unknown(_)
     );
+    // Version history is the ✅-Full set from the spec: the field-editable,
+    // secret-bearing types. Folder / Unknown are excluded (trivial / not
+    // editable); Document is too — it never routes through the `update_entry`
+    // use-case (non-editable), so it accumulates no snapshots, and restoring old
+    // metadata would carry a stale blob nonce.
+    let has_history = !matches!(
+        entry.entry_type,
+        EntryTypeDto::Folder | EntryTypeDto::Document | EntryTypeDto::Unknown(_)
+    );
+    let entry_for_history = entry.clone();
     let type_lbl = Signal::derive(move || type_label_i18n(i18n, &label_type));
 
     let editing = RwSignal::new(false);
@@ -234,6 +246,20 @@ pub fn VaultDetail(
                             Either::Right(view! { <Icon icon=i::FaStarRegular /> })
                         }}
                     </IconButton>
+                    {has_history.then(|| view! {
+                        <IconButton
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.version_history).to_string()
+                            })
+                            variant=Variant::Ghost
+                            size=Size::Sm
+                            on:click=move |_: web_sys::MouseEvent| {
+                                on_history_request.run(entry_for_history.clone());
+                            }
+                        >
+                            <Icon icon=i::FaClockRotateLeftSolid />
+                        </IconButton>
+                    })}
                     <IconButton
                         aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
                         variant=Variant::Ghost
