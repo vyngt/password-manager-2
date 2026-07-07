@@ -29,6 +29,10 @@ pub struct IndexEntryDto {
     #[serde(default)]
     pub folder_id: Option<String>,
     pub is_favorite: bool,
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
     pub is_trashed: bool,
     pub cipher_suite: i32,
     pub created_at: String,

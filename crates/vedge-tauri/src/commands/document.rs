@@ -255,6 +255,8 @@ mod tests {
             folder_id: None,
             is_favorite: false,
             notes: None,
+            color: None,
+            icon: None,
         }
     }
 

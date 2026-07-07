@@ -37,6 +37,8 @@ fn document_meta(name: String) -> CommonMetaDto {
         folder_id: None,
         is_favorite: false,
         notes: None,
+        color: None,
+        icon: None,
     }
 }
 

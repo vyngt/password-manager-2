@@ -31,6 +31,8 @@ fn meta(name: &str, ty: EntryType) -> CommonMeta {
         folder_id: Some(EntryId::from_raw("01ARZ3NDEKTSV4RRFFQ69G5FAV")),
         is_favorite: true,
         notes: Some("hello".into()),
+        color: None,
+        icon: None,
         payload_schema: 1,
     }
 }

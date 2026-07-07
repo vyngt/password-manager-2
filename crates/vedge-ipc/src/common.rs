@@ -48,6 +48,10 @@ pub struct CommonMetaDto {
     pub is_favorite: bool,
     #[serde(default)]
     pub notes: Option<String>,
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 // ---- helpers ----------------------------------------------------------------

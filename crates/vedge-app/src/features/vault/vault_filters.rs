@@ -297,6 +297,8 @@ mod tests {
             tag_ids: vec![],
             folder_id: None,
             is_favorite: false,
+            color: None,
+            icon: None,
             is_trashed: false,
             cipher_suite: 1,
             created_at: "2026-07-05T00:00:00.000Z".into(),

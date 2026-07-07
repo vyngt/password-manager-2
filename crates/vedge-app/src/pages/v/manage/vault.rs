@@ -2,6 +2,7 @@ use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
 use crate::features::vault::entry_form::EntryFormData;
+use crate::features::vault::folder_customize::FolderCustomize;
 use crate::features::vault::folder_delete::FolderDelete;
 use crate::features::vault::folder_move::FolderMove;
 use crate::features::vault::folder_tree::{
@@ -57,6 +58,7 @@ pub fn VaultPage() -> impl IntoView {
     let current_scope = RwSignal::new(FolderScope::All);
     let move_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let folder_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    let customize_target = RwSignal::new(Option::<IndexEntryDto>::None);
 
     // `tag_id -> name`, memoized so keystroke-level re-filtering doesn't rebuild it.
     let tag_map = Memo::new(move |_| {
@@ -383,6 +385,39 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // Open the customize dialog for a folder id (resolve it from the live index).
+    let on_customize = Callback::new(move |id: String| {
+        if let Some(e) = items.with_untracked(|l| l.iter().find(|e| e.id == id).cloned()) {
+            customize_target.set(Some(e));
+        }
+    });
+
+    // Persist a folder's color/icon. Like rename, a folder carries no secrets, so
+    // the get_entry → mutate → update_entry round-trip reveals nothing sensitive.
+    let on_customize_apply = Callback::new(
+        move |(id, color, icon): (String, Option<String>, Option<String>)| {
+            let vault_path = active.path.get().unwrap_or_default();
+            let err_prefix = t_string!(i18n, vault.err_folder_customize).to_string();
+            spawn_local(async move {
+                match api::entry::get_entry(&vault_path, &id).await {
+                    Ok(payload) => {
+                        let mut d = EntryFormData::from_payload(&payload);
+                        d.color = color;
+                        d.icon = icon;
+                        if let Ok(p) = d.to_payload() {
+                            if let Err(e) = api::entry::update_entry(&vault_path, &id, &p).await {
+                                status_msg.set(Some(format!("{err_prefix}{e}")));
+                            } else {
+                                refresh();
+                            }
+                        }
+                    }
+                    Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                }
+            });
+        },
+    );
+
     // Recursively soft-delete a folder's contents (the delete dialog's "Empty
     // folder"). Sequential so a mid-way failure surfaces and stops.
     let on_empty = Callback::new(move |ids: Vec<String>| {
@@ -481,6 +516,7 @@ pub fn VaultPage() -> impl IntoView {
                 on_empty=on_empty
                 on_delete_folder=on_delete_folder
             />
+            <FolderCustomize target=customize_target on_apply=on_customize_apply />
 
             {move || status_msg.get().map(|m| view! {
                 <p class="text-sm text-text-secondary">{m}</p>
@@ -508,6 +544,7 @@ pub fn VaultPage() -> impl IntoView {
                         on_move=on_move
                         on_delete=on_delete
                         on_rename=on_rename_folder
+                        on_customize=on_customize
                     />
                 </Show>
                 <Show

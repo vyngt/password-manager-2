@@ -29,6 +29,8 @@ pub struct IndexEntry {
     pub tag_ids: Vec<TagId>,
     pub folder_id: Option<EntryId>,
     pub is_favorite: bool,
+    pub color: Option<String>,
+    pub icon: Option<String>,
     pub is_trashed: bool,
     pub cipher_suite: i32,
     pub created_at: Timestamp,
@@ -52,6 +54,8 @@ impl IndexEntry {
             tag_ids: meta.tag_ids.clone(),
             folder_id: meta.folder_id.clone(),
             is_favorite: meta.is_favorite,
+            color: meta.color.clone(),
+            icon: meta.icon.clone(),
             is_trashed: row.is_trashed,
             cipher_suite: row.cipher_suite,
             created_at: row.created_at,
@@ -295,6 +299,12 @@ fn zeroize_entry(mut e: IndexEntry) {
     if let Some(mut u) = e.favicon_url.take() {
         u.zeroize();
     }
+    if let Some(mut c) = e.color.take() {
+        c.zeroize();
+    }
+    if let Some(mut ic) = e.icon.take() {
+        ic.zeroize();
+    }
 }
 
 fn zeroize_tag(mut t: TagMeta) {
@@ -468,6 +478,17 @@ mod tests {
         assert_eq!(idx.search("aws").len(), 1); // via tag name match
         assert_eq!(idx.search("random").len(), 1);
         assert_eq!(idx.search("none").len(), 0);
+    }
+
+    #[test]
+    fn from_payload_projects_color_and_icon() {
+        let mut meta = CommonMeta::new("Work", EntryType::Folder);
+        meta.color = Some("#ef4444".into());
+        meta.icon = Some("briefcase".into());
+        let payload = EntryPayload::Folder(FolderPayload { meta });
+        let e = IndexEntry::from_payload(&payload, &fake_row(&EntryId::new()));
+        assert_eq!(e.color.as_deref(), Some("#ef4444"));
+        assert_eq!(e.icon.as_deref(), Some("briefcase"));
     }
 
     #[test]
