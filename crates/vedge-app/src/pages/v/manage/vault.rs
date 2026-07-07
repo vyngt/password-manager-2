@@ -1,4 +1,5 @@
 use crate::api;
+use crate::features::settings::security_prefs::SecurityPrefsCtx;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
 use crate::features::vault::entry_form::EntryFormData;
@@ -32,6 +33,7 @@ pub fn VaultPage() -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
     let ui = expect_context::<VaultUiState>();
+    let sec = expect_context::<SecurityPrefsCtx>();
 
     let items = RwSignal::new(Vec::<IndexEntryDto>::new());
     let loading = RwSignal::new(false);
@@ -361,8 +363,9 @@ pub fn VaultPage() -> impl IntoView {
         // warning.
         let copied_msg = t_string!(i18n, vault.copied).to_string();
         let err_prefix = t_string!(i18n, vault.err_copy).to_string();
+        let secs = sec.0.get_untracked().clipboard_clear_seconds;
         spawn_local(async move {
-            match api::entry::copy_field(&vault_path, &id, &field, Some(30)).await {
+            match api::entry::copy_field(&vault_path, &id, &field, Some(secs)).await {
                 Ok(()) => status_msg.set(Some(copied_msg)),
                 Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
             }

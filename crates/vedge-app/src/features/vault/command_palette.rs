@@ -15,6 +15,7 @@
 //! reactive closures or event-handler bodies (owner rule).
 
 use crate::api;
+use crate::features::settings::security_prefs::SecurityPrefsCtx;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::entry_view::{type_icon, type_label_i18n};
 use crate::features::vault::ui_state::VaultUiState;
@@ -118,14 +119,15 @@ fn action_icon(id: ActionId) -> icondata::Icon {
     }
 }
 
-/// Copy a field of the selected entry through the backend clipboard.
-fn copy_selected(active: ActiveVault, ui: VaultUiState, field: FieldSelectorDto) {
+/// Copy a field of the selected entry through the backend clipboard, wiping it
+/// after the user-configured `secs` delay.
+fn copy_selected(active: ActiveVault, ui: VaultUiState, secs: u32, field: FieldSelectorDto) {
     let vault_path = active.path.get_untracked().unwrap_or_default();
     let Some(id) = ui.selected_id.get_untracked() else {
         return;
     };
     spawn_local(async move {
-        let _ = api::entry::copy_field(&vault_path, &id, &field, Some(30)).await;
+        let _ = api::entry::copy_field(&vault_path, &id, &field, Some(secs)).await;
     });
 }
 
@@ -149,6 +151,7 @@ pub fn CommandPalette() -> impl IntoView {
     let i18n = use_i18n();
     let ui = expect_context::<VaultUiState>();
     let active = expect_context::<ActiveVault>();
+    let sec = expect_context::<SecurityPrefsCtx>();
 
     let query = RwSignal::new(String::new());
     let entries = RwSignal::new(Vec::<IndexEntryDto>::new());
@@ -277,8 +280,18 @@ pub fn CommandPalette() -> impl IntoView {
                 ActionId::MoveToFolder => {
                     ui.move_request.update(|n| *n = n.wrapping_add(1));
                 }
-                ActionId::CopyPassword => copy_selected(active, ui, FieldSelectorDto::Password),
-                ActionId::CopyUsername => copy_selected(active, ui, FieldSelectorDto::Username),
+                ActionId::CopyPassword => copy_selected(
+                    active,
+                    ui,
+                    sec.0.get_untracked().clipboard_clear_seconds,
+                    FieldSelectorDto::Password,
+                ),
+                ActionId::CopyUsername => copy_selected(
+                    active,
+                    ui,
+                    sec.0.get_untracked().clipboard_clear_seconds,
+                    FieldSelectorDto::Username,
+                ),
             },
             PaletteRow::Entry { id, .. } => {
                 ui.selected_id.set(Some(id));
