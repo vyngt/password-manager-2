@@ -21,7 +21,10 @@
   /* Container */
   .dialog {
     position: relative;
-    background: var(--color-surface-4);
+    /* Base background (not an elevated surface): the modal reads as the cleanest
+       surface, and the 0.5-black scrim provides the separation. Keeps every
+       dialog consistent with the page background across themes. */
+    background: var(--color-background);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     display: flex;

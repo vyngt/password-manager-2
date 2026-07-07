@@ -1,6 +1,7 @@
 use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
+use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
 use crate::features::vault::vault_filters::{Filters, SortKey, VaultFilters, filter_and_sort};
@@ -17,18 +18,18 @@ use vedge_ui::primitives::tokens::{Size, Variant};
 pub fn VaultPage() -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let ui = expect_context::<VaultUiState>();
 
     let items = RwSignal::new(Vec::<IndexEntryDto>::new());
     let loading = RwSignal::new(false);
     let search_query = RwSignal::new(String::new());
-    let show_create_form = RwSignal::new(false);
     let show_attach = RwSignal::new(false);
-    // Selection is tracked by id and the entry is *derived* from the live
+    // Selection + create-toggle live in the shared `VaultUiState` (so the command
+    // palette can drive them); the selected entry is *derived* from the live
     // `items`, so an edit (which refreshes `items`) auto-updates the open panel
     // instead of showing a stale metadata snapshot.
-    let selected_id = RwSignal::new(Option::<String>::None);
     let selected_entry = Signal::derive(move || {
-        selected_id
+        ui.selected_id
             .get()
             .and_then(|id| items.get().into_iter().find(|e| e.id == id))
     });
@@ -124,12 +125,12 @@ pub fn VaultPage() -> impl IntoView {
         // they'd be owner-less. `set` is fine there — only reads warn.
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_delete).to_string();
-        let was_selected = selected_id.get().as_deref() == Some(id.as_str());
+        let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
         spawn_local(async move {
             match api::entry::soft_delete_entry(&vault_path, &id).await {
                 Ok(()) => {
                     if was_selected {
-                        selected_id.set(None);
+                        ui.selected_id.set(None);
                     }
                     refresh();
                 }
@@ -138,14 +139,14 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
-    let on_select = Callback::new(move |entry: IndexEntryDto| selected_id.set(Some(entry.id)));
-    let on_close = Callback::new(move |()| selected_id.set(None));
+    let on_select = Callback::new(move |entry: IndexEntryDto| ui.selected_id.set(Some(entry.id)));
+    let on_close = Callback::new(move |()| ui.selected_id.set(None));
     let on_created = Callback::new(move |()| refresh());
     let on_saved = Callback::new(move |()| refresh());
 
     let on_copy = Callback::new(move |field: FieldSelectorDto| {
         let vault_path = active.path.get().unwrap_or_default();
-        let Some(id) = selected_id.get() else {
+        let Some(id) = ui.selected_id.get() else {
             return;
         };
         // Read the locale string here (reactive owner present); reading it
@@ -179,7 +180,7 @@ pub fn VaultPage() -> impl IntoView {
                     class="whitespace-nowrap"
                     on:click=move |_| {
                         show_attach.set(false);
-                        show_create_form.update(|v| *v = !*v);
+                        ui.show_create.update(|v| *v = !*v);
                     }
                 >
                     {move || t!(i18n, vault.new_item)}
@@ -189,7 +190,7 @@ pub fn VaultPage() -> impl IntoView {
                     size=Size::Sm
                     class="whitespace-nowrap"
                     on:click=move |_| {
-                        show_create_form.set(false);
+                        ui.show_create.set(false);
                         show_attach.update(|v| *v = !*v);
                     }
                 >
@@ -201,8 +202,8 @@ pub fn VaultPage() -> impl IntoView {
                 <p class="text-sm text-text-secondary">{m}</p>
             })}
 
-            <Show when=move || show_create_form.get()>
-                <VaultCreateForm show=show_create_form on_created=on_created />
+            <Show when=move || ui.show_create.get()>
+                <VaultCreateForm show=ui.show_create on_created=on_created />
             </Show>
 
             <Show when=move || show_attach.get()>
