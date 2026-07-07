@@ -25,6 +25,9 @@ pub enum VaultError {
     #[error("audit event not found: {0}")]
     AuditNotFound(String),
 
+    #[error("history snapshot not found: {0}")]
+    HistoryNotFound(String),
+
     #[error("unknown audit action: {0}")]
     UnknownAuditAction(String),
 

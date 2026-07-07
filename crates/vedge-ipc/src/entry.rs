@@ -43,6 +43,23 @@ pub struct IndexEntryDto {
     pub accessed_at: Option<String>,
 }
 
+// ---- HistoryEntryDto ---------------------------------------------------------
+
+/// One version in an entry's history timeline — metadata only, no secret values.
+///
+/// `history_id = None` marks the current live version; the rest are snapshots.
+/// `changed_fields` are field-name keys that differ from the next-older version
+/// (the changed-field chips); empty for the origin version.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryEntryDto {
+    #[serde(default)]
+    pub history_id: Option<String>,
+    pub version: u32,
+    pub changed_at: String,
+    #[serde(default)]
+    pub changed_fields: Vec<String>,
+}
+
 // ---- AddressDto --------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,4 +193,38 @@ pub enum PayloadDto {
     Document(DocumentPayloadDto),
     Identity(IdentityPayloadDto),
     Folder(FolderPayloadDto),
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::HistoryEntryDto;
+
+    #[test]
+    fn history_entry_snapshot_round_trips() {
+        let dto = HistoryEntryDto {
+            history_id: Some("01J8XH".into()),
+            version: 3,
+            changed_at: "2026-07-03T09:00:00+00:00".into(),
+            changed_fields: vec!["password".into(), "number".into()],
+        };
+        let json = serde_json::to_string(&dto).unwrap();
+        let back: HistoryEntryDto = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.history_id, dto.history_id);
+        assert_eq!(back.version, dto.version);
+        assert_eq!(back.changed_at, dto.changed_at);
+        assert_eq!(back.changed_fields, dto.changed_fields);
+    }
+
+    #[test]
+    fn history_entry_current_row_defaults() {
+        // The current live version rides as `history_id = None`; `changed_fields`
+        // defaults to empty when omitted.
+        let back: HistoryEntryDto =
+            serde_json::from_str(r#"{"version":5,"changed_at":"2026-07-08T00:00:00Z"}"#).unwrap();
+        assert!(back.history_id.is_none());
+        assert!(back.changed_fields.is_empty());
+        assert_eq!(back.version, 5);
+    }
 }

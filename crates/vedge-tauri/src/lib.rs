@@ -81,6 +81,11 @@ pub fn run() {
             commands::entry::set_favorite,
             commands::entry::set_sort_order,
             commands::entry::set_tags,
+            // ---- entry history (slice 2.7) ----
+            commands::entry::list_history,
+            commands::entry::get_history_value,
+            commands::entry::copy_history_field,
+            commands::entry::restore_history,
             // ---- tag ops ----
             commands::tag::create_tag,
             commands::tag::rename_tag,

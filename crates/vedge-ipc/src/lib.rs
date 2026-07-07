@@ -37,8 +37,8 @@ pub use common::{
 pub use emergency_kit::{EmergencyKitDto, RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
 pub use entry::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarDto, EnvVarsPayloadDto,
-    FolderPayloadDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto, NotePayloadDto,
-    PayloadDto, SshKeyPayloadDto,
+    FolderPayloadDto, HistoryEntryDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto,
+    NotePayloadDto, PayloadDto, SshKeyPayloadDto,
 };
 pub use envelope::ErrorEnvelope;
 pub use error::IpcError;

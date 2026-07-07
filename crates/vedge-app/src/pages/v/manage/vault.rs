@@ -3,6 +3,7 @@ use crate::features::settings::security_prefs::SecurityPrefsCtx;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
 use crate::features::vault::entry_form::EntryFormData;
+use crate::features::vault::entry_history::EntryHistory;
 use crate::features::vault::folder_customize::FolderCustomize;
 use crate::features::vault::folder_delete::FolderDelete;
 use crate::features::vault::folder_move::FolderMove;
@@ -66,6 +67,7 @@ pub fn VaultPage() -> impl IntoView {
     let move_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let folder_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let customize_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    let history_target = RwSignal::new(Option::<IndexEntryDto>::None);
     // Saved "smart folder" filter presets (per-vault, persisted in app_settings).
     let smart_folders = RwSignal::new(Vec::<SmartFolder>::new());
 
@@ -465,6 +467,8 @@ pub fn VaultPage() -> impl IntoView {
     });
 
     let on_move_request = Callback::new(move |entry: IndexEntryDto| move_target.set(Some(entry)));
+    let on_history_request =
+        Callback::new(move |entry: IndexEntryDto| history_target.set(Some(entry)));
 
     // The palette's "Move to folder…" bumps `ui.move_request`; open the picker for
     // the selected entry when it changes (prev-guard skips the initial mount).
@@ -662,6 +666,7 @@ pub fn VaultPage() -> impl IntoView {
                 on_delete_folder=on_delete_folder
             />
             <FolderCustomize target=customize_target on_apply=on_customize_apply />
+            <EntryHistory target=history_target on_restored=on_saved />
 
             {move || status_msg.get().map(|m| view! {
                 <p class="text-sm text-text-secondary">{m}</p>
@@ -735,6 +740,7 @@ pub fn VaultPage() -> impl IntoView {
                         on_catalog=on_catalog
                         folders=folders
                         on_move_request=on_move_request
+                        on_history_request=on_history_request
                     />
                 })}
             </div>

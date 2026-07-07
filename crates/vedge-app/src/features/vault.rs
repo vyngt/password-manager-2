@@ -3,6 +3,7 @@ pub mod command_palette;
 pub mod context;
 pub mod document_attach;
 pub mod entry_form;
+pub mod entry_history;
 pub mod entry_view;
 pub mod folder_customize;
 pub mod folder_delete;
