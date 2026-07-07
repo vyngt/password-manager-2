@@ -78,6 +78,7 @@ impl From<VaultError> for CommandError {
             VaultError::FolderNotFound(id) => Self::NotFound(format!("folder {id}")),
             VaultError::BlobNotFound(id) => Self::NotFound(format!("blob {id}")),
             VaultError::AuditNotFound(id) => Self::NotFound(format!("audit {id}")),
+            VaultError::HistoryNotFound(id) => Self::NotFound(format!("history {id}")),
 
             VaultError::KeychainUnavailable
             | VaultError::KeychainAccessDenied

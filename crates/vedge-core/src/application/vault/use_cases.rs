@@ -3,6 +3,7 @@ pub mod copy_field;
 pub mod create_entry;
 pub mod create_vault;
 pub mod document_ops;
+pub mod entry_history;
 pub mod export_emergency_kit;
 pub mod get_entry;
 pub mod hard_delete_entry;
@@ -27,6 +28,10 @@ pub use create_entry::{CreateEntryInput, CreateEntryOutput, create_entry};
 pub use create_vault::{CreateVault, CreateVaultInput, CreateVaultOutput};
 pub use document_ops::{
     DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, export_document, import_document,
+};
+pub use entry_history::{
+    CopyHistoryFieldInput, HISTORY_MAX_VERSIONS, HistoryVersion, changed_fields,
+    copy_history_field, get_history_value, list_history, restore_from_history,
 };
 pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
 pub use get_entry::{GetEntryInput, get_entry};

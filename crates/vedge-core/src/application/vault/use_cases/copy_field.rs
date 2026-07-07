@@ -84,19 +84,16 @@ pub async fn copy_field(
         .decrypt_entry(&dek, &row.nonce, &row.ciphertext, &aad)?;
     let payload = EntryPayload::from_decrypted_json(&plaintext)?;
 
-    // 3. Extract the requested field into a zeroizing String.
-    let mut value = extract_field(&payload, &input.field)?;
+    // 3. Extract the requested field, place it on the clipboard (zeroizing our
+    //    copy), and schedule the background clear.
+    place_field_on_clipboard(session, &payload, &input.field, input.clear_after_secs)?;
 
-    // 4. Hand to clipboard — then zeroize our copy immediately.
-    session.clipboard.set(&value)?;
-    value.zeroize();
-
-    // Drop decrypted secrets before auditing / scheduling the timer.
+    // Drop decrypted secrets before auditing.
     drop(payload);
     drop(plaintext);
     drop(dek);
 
-    // 5. Update accessed_at + audit (side-effects after crypto work is done).
+    // 4. Update accessed_at + audit (side-effects after crypto work is done).
     let when = now();
     session.repo.update_accessed_at(&row.id, when).await?;
     super::create_entry::append_audit(session, AuditAction::Viewed, Some(&row.id)).await?;
@@ -107,10 +104,29 @@ pub async fn copy_field(
         session.index.update_entry(updated);
     }
 
-    // 6. Spawn the clear timer. Detached — outlives this session if the user
-    // locks. `Arc<dyn ClipboardProvider>` is cheap to clone.
+    Ok(())
+}
+
+/// Extract `field` from an already-decrypted payload, place it on the clipboard,
+/// zeroize the local copy, and spawn the detached background clear timer.
+///
+/// Shared by [`copy_field`] (the live entry) and `copy_history_field` (a prior
+/// snapshot) so a historical copy upholds the same discipline: the plaintext is
+/// materialized once, handed to the OS clipboard, and zeroized here — it never
+/// crosses back to the caller / WASM.
+pub(super) fn place_field_on_clipboard(
+    session: &VaultSession,
+    payload: &EntryPayload,
+    field: &FieldSelector,
+    clear_after_secs: u32,
+) -> Result<(), VaultError> {
+    let mut value = extract_field(payload, field)?;
+    session.clipboard.set(&value)?;
+    value.zeroize();
+
+    // Detached — outlives this session if the user locks. `Arc` is cheap.
     let clipboard: Arc<dyn ClipboardProvider> = Arc::clone(&session.clipboard);
-    let delay = Duration::from_secs(u64::from(input.clear_after_secs));
+    let delay = Duration::from_secs(u64::from(clear_after_secs));
     tokio::spawn(async move {
         tokio::time::sleep(delay).await;
         if let Err(e) = clipboard.clear() {

@@ -9,7 +9,7 @@ use sea_orm::{
 
 use crate::application::vault::ports::VaultRepository;
 use crate::domain::shared::{EntryId, StorageError, TagId, Timestamp};
-use crate::domain::vault::entities::{AuditEvent, EntryRow, TagRow, VaultConfig};
+use crate::domain::vault::entities::{AuditEvent, EntryHistoryRow, EntryRow, TagRow, VaultConfig};
 use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::sqlite::vault::entities::audit_log::{
     self as audit_entity, Column as AuditCol,
@@ -17,13 +17,16 @@ use crate::infrastructure::sqlite::vault::entities::audit_log::{
 use crate::infrastructure::sqlite::vault::entities::entry::{
     self as entry_entity, Column as EntryCol,
 };
+use crate::infrastructure::sqlite::vault::entities::entry_history::{
+    self as history_entity, Column as HistoryCol,
+};
 use crate::infrastructure::sqlite::vault::entities::tag::{self as tag_entity};
 use crate::infrastructure::sqlite::vault::entities::vault_config::{
     self as config_entity, Column as ConfigCol,
 };
 use crate::infrastructure::sqlite::vault::mappers::{
-    audit_log as audit_map, entry as entry_map, tag as tag_map, ts_to_string,
-    vault_config as config_map,
+    audit_log as audit_map, entry as entry_map, entry_history as history_map, tag as tag_map,
+    ts_to_string, vault_config as config_map,
 };
 
 pub struct SqliteVaultRepository {
@@ -186,9 +189,28 @@ impl VaultRepository for SqliteVaultRepository {
 
     async fn hard_delete_trashed_before(&self, cutoff: Timestamp) -> Result<u64, VaultError> {
         let cutoff_str = ts_to_string(&cutoff);
+        // Cascade the version history of the entries we're about to purge — the
+        // schema has no FK cascade, and this bulk path bypasses the
+        // `hard_delete_entry` use case that would otherwise do it.
+        let ids: Vec<String> = entry_entity::Entity::find()
+            .select_only()
+            .column(EntryCol::Id)
+            .filter(EntryCol::IsTrashed.eq(1))
+            .filter(EntryCol::TrashedAt.lt(cutoff_str.as_str()))
+            .into_tuple()
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        if !ids.is_empty() {
+            history_entity::Entity::delete_many()
+                .filter(HistoryCol::EntryId.is_in(ids))
+                .exec(self.conn.as_ref())
+                .await
+                .map_err(db_err)?;
+        }
         let res = entry_entity::Entity::delete_many()
             .filter(EntryCol::IsTrashed.eq(1))
-            .filter(EntryCol::TrashedAt.lt(cutoff_str))
+            .filter(EntryCol::TrashedAt.lt(cutoff_str.as_str()))
             .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
@@ -205,6 +227,69 @@ impl VaultRepository for SqliteVaultRepository {
         active.accessed_at = ActiveValue::Set(Some(ts_to_string(&when)));
         active.update(self.conn.as_ref()).await.map_err(db_err)?;
         Ok(())
+    }
+
+    // ---- entry_history ------------------------------------------------------
+
+    async fn insert_history(&self, row: &EntryHistoryRow) -> Result<(), VaultError> {
+        let model = history_map::domain_to_model(row);
+        let active: history_entity::ActiveModel = model.into();
+        history_entity::Entity::insert(active)
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn list_history(&self, entry_id: &EntryId) -> Result<Vec<EntryHistoryRow>, VaultError> {
+        let rows = history_entity::Entity::find()
+            .filter(HistoryCol::EntryId.eq(entry_id.as_str()))
+            .order_by(HistoryCol::Version, Order::Desc)
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        rows.into_iter().map(history_map::model_to_domain).collect()
+    }
+
+    async fn get_history(&self, id: &str) -> Result<EntryHistoryRow, VaultError> {
+        let model = history_entity::Entity::find_by_id(id.to_owned())
+            .one(self.conn.as_ref())
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| VaultError::HistoryNotFound(id.to_owned()))?;
+        history_map::model_to_domain(model)
+    }
+
+    async fn delete_history_for_entry(&self, entry_id: &EntryId) -> Result<u64, VaultError> {
+        let res = history_entity::Entity::delete_many()
+            .filter(HistoryCol::EntryId.eq(entry_id.as_str()))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(res.rows_affected)
+    }
+
+    async fn prune_history_keep(&self, entry_id: &EntryId, keep: usize) -> Result<u64, VaultError> {
+        // Ids newest-first; the ones past `keep` are the oldest and get dropped.
+        let ids: Vec<String> = history_entity::Entity::find()
+            .select_only()
+            .column(HistoryCol::Id)
+            .filter(HistoryCol::EntryId.eq(entry_id.as_str()))
+            .order_by(HistoryCol::Version, Order::Desc)
+            .into_tuple()
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        let stale: Vec<String> = ids.into_iter().skip(keep).collect();
+        if stale.is_empty() {
+            return Ok(0);
+        }
+        let res = history_entity::Entity::delete_many()
+            .filter(HistoryCol::Id.is_in(stale))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(res.rows_affected)
     }
 
     // ---- tags ---------------------------------------------------------------

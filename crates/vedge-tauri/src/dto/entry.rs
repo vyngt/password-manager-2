@@ -2,12 +2,13 @@
 
 pub use vedge_ipc::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarDto, EnvVarsPayloadDto,
-    FolderPayloadDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto, NotePayloadDto,
-    PayloadDto, SshKeyPayloadDto,
+    FolderPayloadDto, HistoryEntryDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto,
+    NotePayloadDto, PayloadDto, SshKeyPayloadDto,
 };
 
 use secrecy::{ExposeSecret, SecretString};
 
+use vedge_core::HistoryVersion;
 use vedge_core::domain::shared::{EntryId, TagId};
 use vedge_core::domain::vault::index::IndexEntry;
 use vedge_core::domain::vault::payloads::{
@@ -42,6 +43,18 @@ pub fn index_entry_to_dto(e: &IndexEntry) -> IndexEntryDto {
         created_at: ts_to_string(e.created_at),
         updated_at: ts_to_string(e.updated_at),
         accessed_at: e.accessed_at.map(ts_to_string),
+    }
+}
+
+// ---- HistoryVersion → DTO ----------------------------------------------------
+
+#[must_use]
+pub fn history_to_dto(v: &HistoryVersion) -> HistoryEntryDto {
+    HistoryEntryDto {
+        history_id: v.history_id.clone(),
+        version: u32::try_from(v.version).unwrap_or(u32::MAX),
+        changed_at: ts_to_string(v.changed_at),
+        changed_fields: v.changed_fields.clone(),
     }
 }
 

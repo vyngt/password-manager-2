@@ -18,10 +18,12 @@ use tracing::instrument;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::aad::entry_aad;
-use crate::domain::vault::entities::AuditAction;
+use crate::domain::vault::entities::{AuditAction, EntryHistoryRow};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::IndexEntry;
 use crate::domain::vault::payloads::EntryPayload;
+
+use super::entry_history::HISTORY_MAX_VERSIONS;
 
 pub struct UpdateEntryInput {
     pub entry_id: EntryId,
@@ -64,6 +66,20 @@ pub async fn update_entry(
     let aad = entry_aad(&input.entry_id, new_version)?;
     let (nonce, ciphertext) = session.crypto.encrypt_entry(&dek, &payload_bytes, &aad)?;
     // `dek` drops here, zeroizing. The wrapped DEK on disk is unchanged.
+
+    // Snapshot the version we're about to overwrite — a pure byte-copy of the
+    // existing ciphertext (no decrypt), keyed to the live entry's stable DEK.
+    // Then prune to the retention cap. Only content edits (this use case) create
+    // history; metadata-only mutations (favorite/tags/sort/move) deliberately do
+    // not, so the log stays a record of real changes.
+    session
+        .repo
+        .insert_history(&EntryHistoryRow::from_superseded(&existing))
+        .await?;
+    session
+        .repo
+        .prune_history_keep(&input.entry_id, HISTORY_MAX_VERSIONS)
+        .await?;
 
     let when = now();
     let mut row = existing;
