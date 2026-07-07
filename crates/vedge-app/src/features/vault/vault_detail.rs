@@ -17,23 +17,36 @@ use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_i18n::I18nContext;
-use vedge_ipc::{DocumentPayloadDto, EntryTypeDto, FieldSelectorDto, IndexEntryDto, PayloadDto};
+use std::collections::HashMap;
+use vedge_ipc::{
+    DocumentPayloadDto, EntryTypeDto, FieldSelectorDto, IndexEntryDto, PayloadDto, TagMetaDto,
+};
 use vedge_ui::components::Button;
 use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
+use icondata as i;
+use leptos_icons::Icon;
+
 #[component]
 pub fn VaultDetail(
     entry: IndexEntryDto,
+    #[prop(into)] tags: Signal<HashMap<String, TagMetaDto>>,
     on_copy: Callback<FieldSelectorDto>,
     on_close: Callback<()>,
     on_saved: Callback<()>,
+    /// `(entry_id, next_state)` — flip this entry's favorite flag.
+    on_favorite: Callback<(String, bool)>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
     let ui = expect_context::<VaultUiState>();
 
     let entry_id = StoredValue::new(entry.id.clone());
+    let fav_id = entry.id.clone();
+    let is_fav = entry.is_favorite;
+    let tag_ids = entry.tag_ids.clone();
+    let has_tags = !entry.tag_ids.is_empty();
     let name = entry.name.clone();
     let url = entry.url.clone();
     let updated = short_date(&entry.updated_at);
@@ -182,14 +195,36 @@ pub fn VaultDetail(
                 <h3 class="text-sm font-semibold text-text-secondary">
                     {move || t!(i18n, vault.detail_title)}
                 </h3>
-                <IconButton
-                    aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
-                    variant=Variant::Ghost
-                    size=Size::Sm
-                    on:click=move |_: web_sys::MouseEvent| on_close.run(())
-                >
-                    <span aria-hidden="true">"✕"</span>
-                </IconButton>
+                <div class="flex items-center gap-1">
+                    <IconButton
+                        aria_label=Signal::derive(move || {
+                            if is_fav {
+                                t_string!(i18n, vault.unfavorite).to_string()
+                            } else {
+                                t_string!(i18n, vault.favorite).to_string()
+                            }
+                        })
+                        variant=Variant::Ghost
+                        size=Size::Sm
+                        on:click=move |_: web_sys::MouseEvent| {
+                            on_favorite.run((fav_id.clone(), !is_fav));
+                        }
+                    >
+                        {if is_fav {
+                            Either::Left(view! { <Icon icon=i::FaStarSolid /> })
+                        } else {
+                            Either::Right(view! { <Icon icon=i::FaStarRegular /> })
+                        }}
+                    </IconButton>
+                    <IconButton
+                        aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+                        variant=Variant::Ghost
+                        size=Size::Sm
+                        on:click=move |_: web_sys::MouseEvent| on_close.run(())
+                    >
+                        <span aria-hidden="true">"✕"</span>
+                    </IconButton>
+                </div>
             </div>
 
             {move || {
@@ -224,6 +259,7 @@ pub fn VaultDetail(
                     let updated = updated.clone();
                     let created = created.clone();
                     let copy_type = copy_type.clone();
+                    let tag_ids = tag_ids.clone();
                     Either::Right(view! {
                         <dl class="flex flex-col gap-2 text-sm">
                             <div>
@@ -270,6 +306,38 @@ pub fn VaultDetail(
                                 </dt>
                                 <dd class="text-foreground/70">{created}</dd>
                             </div>
+                            {has_tags.then(move || {
+                                let chips = move || {
+                                    let map = tags.get();
+                                    tag_ids
+                                        .iter()
+                                        .filter_map(|id| {
+                                            let meta = map.get(id)?;
+                                            let style = meta
+                                                .color
+                                                .clone()
+                                                .map(|c| format!("color:{c}"))
+                                                .unwrap_or_default();
+                                            Some(view! {
+                                                <span
+                                                    class="inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] px-1.5 py-0.5"
+                                                    style=style
+                                                >
+                                                    {meta.name.clone()}
+                                                </span>
+                                            })
+                                        })
+                                        .collect_view()
+                                };
+                                view! {
+                                    <div>
+                                        <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                            {move || t!(i18n, vault.tags_label)}
+                                        </dt>
+                                        <dd class="flex flex-wrap gap-1">{chips}</dd>
+                                    </div>
+                                }
+                            })}
                             {move || {
                                 is_document
                                     .then(|| doc_meta.get())

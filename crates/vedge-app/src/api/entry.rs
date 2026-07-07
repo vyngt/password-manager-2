@@ -160,3 +160,27 @@ pub async fn move_entry(
     )
     .await
 }
+
+/// Flip an entry's `is_favorite` flag. Backend-only mutation (decrypt → set →
+/// re-encrypt); no secret fields are returned.
+pub async fn set_favorite(
+    vault_path: &str,
+    entry_id: &str,
+    favorite: bool,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        favorite: bool,
+    }
+    call_void(
+        "set_favorite",
+        &Args {
+            vault_path,
+            entry_id,
+            favorite,
+        },
+    )
+    .await
+}

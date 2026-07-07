@@ -78,6 +78,7 @@ pub fn run() {
             commands::entry::hard_delete_entry,
             commands::entry::copy_field,
             commands::entry::move_entry,
+            commands::entry::set_favorite,
             // ---- tag ops ----
             commands::tag::create_tag,
             commands::tag::rename_tag,

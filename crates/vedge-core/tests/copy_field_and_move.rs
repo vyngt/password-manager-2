@@ -18,7 +18,7 @@ use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     CopyFieldInput, CreateEntryInput, FieldSelector, UnlockVaultInput, copy_field, create_entry,
-    move_entry,
+    move_entry, set_favorite,
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::errors::VaultError;
@@ -268,4 +268,65 @@ async fn move_entry_to_root_clears_folder() {
             .folder_id
             .is_none()
     );
+}
+
+#[tokio::test]
+async fn set_favorite_roundtrips() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("gh", "pw", None),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+
+    // Fresh entries default to not-favorite.
+    assert!(!session.index().entries.get(&id).unwrap().is_favorite);
+
+    set_favorite(&mut session, &id, true).await.unwrap();
+    assert!(session.index().entries.get(&id).unwrap().is_favorite);
+
+    // Idempotent flip back clears it.
+    set_favorite(&mut session, &id, false).await.unwrap();
+    assert!(!session.index().entries.get(&id).unwrap().is_favorite);
+}
+
+#[tokio::test]
+async fn set_favorite_bumps_version_and_nonce() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("gh", "pw", None),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+
+    let v1 = h.repo.get_entry(&id).await.unwrap();
+    assert_eq!(v1.version, 1);
+
+    set_favorite(&mut session, &id, true).await.unwrap();
+
+    let v2 = h.repo.get_entry(&id).await.unwrap();
+    assert_eq!(v2.version, 2);
+    assert_ne!(v1.nonce, v2.nonce);
+}
+
+#[tokio::test]
+async fn set_favorite_rejects_unknown() {
+    let h = Harness::fresh().await;
+    // Seed before unlock so the rebuilt session index contains the entry —
+    // the existence guard passes and we exercise the payload-level reject.
+    let ghost = h.seed_unknown("mystery", "vault.futuretype").await;
+    let mut session = unlock(&h).await;
+
+    let err = set_favorite(&mut session, &ghost, true).await.unwrap_err();
+    assert!(matches!(err, VaultError::UnsupportedEntryType(_)));
 }

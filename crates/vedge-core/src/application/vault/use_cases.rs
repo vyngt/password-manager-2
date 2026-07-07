@@ -13,6 +13,7 @@ pub mod recover_vault;
 pub mod refs;
 pub mod restore_entry;
 pub mod run_maintenance;
+pub mod set_favorite;
 pub mod soft_delete_entry;
 pub mod tag_ops;
 pub mod unlock_vault;
@@ -37,6 +38,7 @@ pub use queries::{
 pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use restore_entry::restore_entry;
 pub use run_maintenance::{MaintenanceReport, run_maintenance};
+pub use set_favorite::set_favorite;
 pub use soft_delete_entry::soft_delete_entry;
 pub use tag_ops::{create_tag, delete_tag, normalize_tag_name, rename_tag};
 pub use unlock_vault::{UnlockVault, UnlockVaultInput};

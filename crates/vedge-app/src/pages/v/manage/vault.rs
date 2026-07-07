@@ -1,6 +1,7 @@
 use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
+use crate::features::vault::tag_manager::TagManager;
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
@@ -12,7 +13,11 @@ use leptos::task::spawn_local;
 use std::collections::HashMap;
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
 use vedge_ui::components::Button;
+use vedge_ui::components::tooltip_icon_button::TooltipIconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
+
+use icondata as i;
+use leptos_icons::Icon;
 
 #[component]
 pub fn VaultPage() -> impl IntoView {
@@ -52,6 +57,15 @@ pub fn VaultPage() -> impl IntoView {
             .map(|t| (t.id, t.name))
             .collect::<HashMap<String, String>>()
     });
+    // `tag_id -> full meta` (keeps color) for resolving row/detail tag chips.
+    let tag_lookup = Memo::new(move |_| {
+        tags.get()
+            .into_iter()
+            .map(|t| (t.id.clone(), t))
+            .collect::<HashMap<String, TagMetaDto>>()
+    });
+    // Opens the tag-catalog manager modal.
+    let manage_tags_open = RwSignal::new(false);
     // The filtered + sorted list feeding the table.
     let visible = Signal::derive(move || {
         let filters = Filters {
@@ -144,6 +158,32 @@ pub fn VaultPage() -> impl IntoView {
     let on_created = Callback::new(move |()| refresh());
     let on_saved = Callback::new(move |()| refresh());
 
+    // Favorite toggle: flip `items` in place (optimistic — avoids the whole-table
+    // loading flash a full `refresh()` would trigger) then persist via
+    // `set_favorite`. `update` is a write, so it's owner-safe in `spawn_local`;
+    // on error we revert and surface a message. `is_favorite` is part of the
+    // table's `<For>` key, so the row repaints on the in-place flip.
+    let on_favorite = Callback::new(move |(id, next): (String, bool)| {
+        items.update(|list| {
+            if let Some(e) = list.iter_mut().find(|e| e.id == id) {
+                e.is_favorite = next;
+            }
+        });
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_favorite).to_string();
+        let revert_id = id.clone();
+        spawn_local(async move {
+            if let Err(e) = api::entry::set_favorite(&vault_path, &id, next).await {
+                items.update(|list| {
+                    if let Some(en) = list.iter_mut().find(|en| en.id == revert_id) {
+                        en.is_favorite = !next;
+                    }
+                });
+                status_msg.set(Some(format!("{err_prefix}{e}")));
+            }
+        });
+    });
+
     let on_copy = Callback::new(move |field: FieldSelectorDto| {
         let vault_path = active.path.get().unwrap_or_default();
         let Some(id) = ui.selected_id.get() else {
@@ -196,7 +236,19 @@ pub fn VaultPage() -> impl IntoView {
                 >
                     {move || t!(i18n, vault.attach_document)}
                 </Button>
+                <TooltipIconButton
+                    label=Signal::derive(move || t_string!(i18n, vault.tag_manage).to_string())
+                    on_click=Callback::new(move |()| manage_tags_open.set(true))
+                >
+                    <Icon icon=i::FaTagsSolid />
+                </TooltipIconButton>
             </div>
+
+            <TagManager
+                open=manage_tags_open
+                tags=Signal::derive(move || tags.get())
+                on_changed=on_created
+            />
 
             {move || status_msg.get().map(|m| view! {
                 <p class="text-sm text-text-secondary">{m}</p>
@@ -225,12 +277,21 @@ pub fn VaultPage() -> impl IntoView {
                         items=visible
                         empty_label=empty_label
                         hide_delete=Signal::derive(move || trashed_view.get())
+                        tags=Signal::derive(move || tag_lookup.get())
                         on_delete=on_delete
                         on_select=on_select
+                        on_favorite=on_favorite
                     />
                 </Show>
                 {move || selected_entry.get().map(|entry| view! {
-                    <VaultDetail entry=entry on_copy=on_copy on_close=on_close on_saved=on_saved />
+                    <VaultDetail
+                        entry=entry
+                        tags=Signal::derive(move || tag_lookup.get())
+                        on_copy=on_copy
+                        on_close=on_close
+                        on_saved=on_saved
+                        on_favorite=on_favorite
+                    />
                 })}
             </div>
         </div>
