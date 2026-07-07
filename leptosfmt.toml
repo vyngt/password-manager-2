@@ -1,0 +1,4 @@
+# leptosfmt — formats inside `view!` macros (rustfmt skips macro bodies).
+# https://github.com/bram209/leptosfmt
+max_width = 100
+tab_spaces = 4

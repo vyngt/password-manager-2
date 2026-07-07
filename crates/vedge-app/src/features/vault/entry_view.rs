@@ -3,6 +3,7 @@
 //! label is localized (`vault.type_*`) so it needs the i18n context.
 
 use crate::i18n::*;
+use icondata as i;
 use leptos_i18n::I18nContext;
 use vedge_ipc::EntryTypeDto;
 
@@ -19,6 +20,23 @@ pub fn type_label_i18n(i18n: I18nContext<Locale>, entry_type: &EntryTypeDto) -> 
         EntryTypeDto::Identity => t_string!(i18n, vault.type_identity).to_string(),
         EntryTypeDto::Folder => t_string!(i18n, vault.type_folder).to_string(),
         EntryTypeDto::Unknown(_) => t_string!(i18n, vault.type_other).to_string(),
+    }
+}
+
+/// Icon token for an entry type, for the list / command-palette rows.
+#[must_use]
+pub fn type_icon(entry_type: &EntryTypeDto) -> icondata::Icon {
+    match entry_type {
+        EntryTypeDto::Login => i::FaGlobeSolid,
+        EntryTypeDto::Card => i::FaCreditCardSolid,
+        EntryTypeDto::SshKey => i::FaTerminalSolid,
+        EntryTypeDto::ApiKey => i::FaKeySolid,
+        EntryTypeDto::EnvVars => i::FaCodeSolid,
+        EntryTypeDto::Note => i::FaFileLinesSolid,
+        EntryTypeDto::Document => i::FaFileSolid,
+        EntryTypeDto::Identity => i::FaIdCardSolid,
+        EntryTypeDto::Folder => i::FaFolderSolid,
+        EntryTypeDto::Unknown(_) => i::FaCircleQuestionSolid,
     }
 }
 
