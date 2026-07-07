@@ -3,7 +3,9 @@ use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
+use crate::api;
 use crate::features::settings::security_prefs::{self, SecurityPrefs, SecurityPrefsCtx};
+use crate::features::settings::theme_util::theme_config_from_dto;
 use crate::features::vault::context::ActiveVault;
 use crate::features::window_panel::WindowPanel;
 use crate::routes::AppRoutes;
@@ -40,8 +42,22 @@ pub fn App() -> impl IntoView {
         },
     );
 
-    provide_context(theme);
+    provide_context(theme.clone());
     provide_context(ActiveVault::new());
+
+    // Boot into the *saved* active theme (falls back to the seeded light config
+    // on error). `commit` re-derives, injects the `--color-*` cascade, and syncs
+    // the active-tokens signal. Active-theme persistence is id-based via
+    // `set_active_theme`, so the no-op `commit_fn` stub above is fine.
+    Effect::new(move |_| {
+        // No tracked reads → runs once after mount.
+        let theme = theme.clone();
+        spawn_local(async move {
+            if let Ok(dto) = api::settings::get_active_theme().await {
+                theme.commit(&theme_config_from_dto(&dto));
+            }
+        });
+    });
 
     // App-global security prefs (idle auto-lock, lock-on-blur, clipboard clear
     // delay). Loaded once from `app_settings` and provided as a live context the
