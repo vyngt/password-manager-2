@@ -164,11 +164,19 @@ pub fn VaultPage() -> impl IntoView {
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_delete).to_string();
         let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
+        // Deleting the folder we're currently scoped into → fall back to All.
+        let was_scoped = entry.as_ref().is_some_and(|e| {
+            e.entry_type == EntryTypeDto::Folder
+                && matches!(current_scope.get(), FolderScope::Folder(ref s) if *s == id)
+        });
         spawn_local(async move {
             match api::entry::soft_delete_entry(&vault_path, &id).await {
                 Ok(()) => {
                     if was_selected {
                         ui.selected_id.set(None);
+                    }
+                    if was_scoped {
+                        current_scope.set(FolderScope::All);
                     }
                     refresh();
                 }
@@ -348,6 +356,33 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // Rename a folder from the tree. A folder carries no secrets, so the
+    // get_entry → mutate name → update_entry round-trip reveals nothing sensitive.
+    let on_rename_folder = Callback::new(move |(id, name): (String, String)| {
+        let name = name.trim().to_owned();
+        if name.is_empty() {
+            return;
+        }
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_folder_rename).to_string();
+        spawn_local(async move {
+            match api::entry::get_entry(&vault_path, &id).await {
+                Ok(payload) => {
+                    let mut d = EntryFormData::from_payload(&payload);
+                    d.name = name;
+                    if let Ok(p) = d.to_payload() {
+                        if let Err(e) = api::entry::update_entry(&vault_path, &id, &p).await {
+                            status_msg.set(Some(format!("{err_prefix}{e}")));
+                        } else {
+                            refresh();
+                        }
+                    }
+                }
+                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+            }
+        });
+    });
+
     // Recursively soft-delete a folder's contents (the delete dialog's "Empty
     // folder"). Sequential so a mid-way failure surfaces and stops.
     let on_empty = Callback::new(move |ids: Vec<String>| {
@@ -471,6 +506,8 @@ pub fn VaultPage() -> impl IntoView {
                         scope=current_scope
                         on_new_folder=on_new_folder
                         on_move=on_move
+                        on_delete=on_delete
+                        on_rename=on_rename_folder
                     />
                 </Show>
                 <Show

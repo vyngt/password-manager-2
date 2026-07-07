@@ -271,17 +271,24 @@ pub fn available_move_targets(nodes: &[FolderNode], moving_entry_id: &str) -> Ve
         .collect()
 }
 
-/// Per-scope entry counts computed once: `(total, unfiled, folder_id -> direct count)`.
+/// Per-scope entry counts computed once: `(total, unfiled, folder_id -> direct
+/// count)`. Folder-type entries are excluded — they're navigated in the tree, not
+/// listed, so the badges match what selecting a scope actually shows.
 fn folder_counts(items: &[IndexEntryDto]) -> (usize, usize, HashMap<String, usize>) {
     let mut per_folder: HashMap<String, usize> = HashMap::new();
     let mut unfiled = 0usize;
+    let mut total = 0usize;
     for e in items {
+        if e.entry_type == EntryTypeDto::Folder {
+            continue;
+        }
+        total = total.saturating_add(1);
         match &e.folder_id {
             Some(f) => *per_folder.entry(f.clone()).or_default() += 1,
             None => unfiled = unfiled.saturating_add(1),
         }
     }
-    (items.len(), unfiled, per_folder)
+    (total, unfiled, per_folder)
 }
 
 /// Sentinel keys for the two root drop targets (folder rows use their own id).
@@ -302,12 +309,19 @@ pub fn FolderTree(
     on_new_folder: Callback<(Option<String>, String)>,
     /// `(entry_id, destination)` — persist a drag-and-drop move.
     on_move: Callback<(String, Option<String>)>,
+    /// Delete a folder (routes through the page's empty-first logic).
+    on_delete: Callback<String>,
+    /// `(folder_id, new_name)` — persist an inline rename.
+    on_rename: Callback<(String, String)>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let collapsed = RwSignal::new(HashSet::<String>::new());
     let new_name = RwSignal::new(String::new());
     // Which drop target is currently under the pointer (for the highlight ring).
     let drag_over = RwSignal::new(String::new());
+    // The folder id currently being renamed inline (+ its edit buffer).
+    let renaming = RwSignal::new(Option::<String>::None);
+    let rename_value = RwSignal::new(String::new());
     let counts = Memo::new(move |_| folder_counts(&items.get()));
 
     let rows = move || flatten_tree(&folders.get(), &collapsed.get());
@@ -410,13 +424,25 @@ pub fn FolderTree(
                     let over_id = f.id.clone();
                     let enter_id = f.id.clone();
                     let drop_id = f.id.clone();
+                    let rn_check_id = f.id.clone();
+                    let start_id = f.id.clone();
+                    let start_nm = f.name.clone();
+                    let del_id = f.id.clone();
                     let name = f.name.clone();
                     let depth = f.depth;
                     let has_children = f.has_children;
                     let indent = format!("padding-left:{}rem", 0.25 + depth as f64 * 0.85);
+                    // Commit an inline rename (shared by Enter + blur). Untracked
+                    // reads — invoked from event handlers, no-op once cleared.
+                    let commit = move || {
+                        if let Some(id) = renaming.get_untracked() {
+                            on_rename.run((id, rename_value.get_untracked()));
+                        }
+                        renaming.set(None);
+                    };
                     view! {
                         <div
-                            class="flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
+                            class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
                             class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_a))
                             class=("text-primary", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_b))
                             class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == over_id)
@@ -466,10 +492,66 @@ pub fn FolderTree(
                             <span class="flex shrink-0 text-foreground/50">
                                 <Icon icon=i::FaFolderSolid width="14" height="14" />
                             </span>
-                            <span class="flex-1 truncate">{name}</span>
+                            {move || {
+                                if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
+                                    leptos::either::Either::Left(
+                                        view! {
+                                            <input
+                                                class="flex-1 min-w-0 bg-background border border-primary/40 rounded px-1 text-sm text-text-primary outline-none"
+                                                autofocus=true
+                                                prop:value=move || rename_value.get()
+                                                on:click=move |ev: web_sys::MouseEvent| ev.stop_propagation()
+                                                on:input:target=move |ev| rename_value.set(ev.target().value())
+                                                on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                                    match ev.key().as_str() {
+                                                        "Enter" => {
+                                                            ev.prevent_default();
+                                                            commit();
+                                                        }
+                                                        "Escape" => {
+                                                            ev.prevent_default();
+                                                            renaming.set(None);
+                                                        }
+                                                        _ => {}
+                                                    }
+                                                }
+                                                on:blur=move |_: web_sys::FocusEvent| commit()
+                                            />
+                                        },
+                                    )
+                                } else {
+                                    let name = name.clone();
+                                    leptos::either::Either::Right(
+                                        view! { <span class="flex-1 truncate">{name}</span> },
+                                    )
+                                }
+                            }}
                             <span class="shrink-0 text-[10px] text-foreground/40">
                                 {move || counts.get().2.get(&cnt_id).copied().unwrap_or(0)}
                             </span>
+                            <button
+                                type="button"
+                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-primary"
+                                aria-label=move || t_string!(i18n, vault.folder_rename).to_string()
+                                on:click=move |ev: web_sys::MouseEvent| {
+                                    ev.stop_propagation();
+                                    renaming.set(Some(start_id.clone()));
+                                    rename_value.set(start_nm.clone());
+                                }
+                            >
+                                <Icon icon=i::FaPenSolid width="10" height="10" />
+                            </button>
+                            <button
+                                type="button"
+                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
+                                aria-label=move || t_string!(i18n, vault.folder_delete).to_string()
+                                on:click=move |ev: web_sys::MouseEvent| {
+                                    ev.stop_propagation();
+                                    on_delete.run(del_id.clone());
+                                }
+                            >
+                                <Icon icon=i::BiTrashRegular width="10" height="10" />
+                            </button>
                         </div>
                     }
                 }
