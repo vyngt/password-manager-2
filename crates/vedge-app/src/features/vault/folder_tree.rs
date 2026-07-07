@@ -500,6 +500,8 @@ pub fn FolderTree(
                     let over_id = f.id.clone();
                     let enter_id = f.id.clone();
                     let drop_id = f.id.clone();
+                    let drag_check_id = f.id.clone();
+                    let dragstart_id = f.id.clone();
                     let rn_check_id = f.id.clone();
                     let start_id = f.id.clone();
                     let start_nm = f.name.clone();
@@ -523,6 +525,18 @@ pub fn FolderTree(
                             class=("text-primary", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_b))
                             class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == over_id)
                             style=indent
+                            // Draggable as a move source (to reparent under another
+                            // folder / root) — but not while its rename input is open,
+                            // or the parent drag would hijack text selection.
+                            draggable=move || {
+                                (renaming.get().as_deref() != Some(drag_check_id.as_str()))
+                                    .then_some("true")
+                            }
+                            on:dragstart=move |ev: web_sys::DragEvent| {
+                                if let Some(dt) = ev.data_transfer() {
+                                    let _ = dt.set_data("text/plain", &dragstart_id);
+                                }
+                            }
                             on:click=move |_: web_sys::MouseEvent| {
                                 scope.set(FolderScope::Folder(click_id.clone()));
                             }

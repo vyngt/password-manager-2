@@ -25,10 +25,11 @@ use vedge_ui::components::form::date_picker::{
 use vedge_ui::components::form::textarea::Textarea;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
-/// The eight entry types the picker offers (all but `Document`, which needs a
-/// blob sidecar and is handled in slice 2.1.1).
+/// The entry types the create picker offers. Excludes `Document` (needs a blob
+/// sidecar — slice 2.1.1) and `Folder` (created from the folder tree's "+", not
+/// this form — slice 2.5).
 #[must_use]
-pub fn editable_types() -> [EntryTypeDto; 8] {
+pub fn editable_types() -> [EntryTypeDto; 7] {
     [
         EntryTypeDto::Login,
         EntryTypeDto::Card,
@@ -37,7 +38,6 @@ pub fn editable_types() -> [EntryTypeDto; 8] {
         EntryTypeDto::EnvVars,
         EntryTypeDto::Note,
         EntryTypeDto::Identity,
-        EntryTypeDto::Folder,
     ]
 }
 
