@@ -19,7 +19,8 @@ use vedge_core::application::app::ports::{
     ThemeRepository,
 };
 use vedge_core::application::vault::ports::{
-    ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
+    BiometricAuthenticator, ClipboardProvider, CryptoProvider, KeyDerivationProvider,
+    KeychainProvider,
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
@@ -34,6 +35,7 @@ pub struct AppState {
     pub crypto: Arc<dyn CryptoProvider>,
     pub kdf: Arc<dyn KeyDerivationProvider>,
     pub keychain: Arc<dyn KeychainProvider>,
+    pub biometric: Arc<dyn BiometricAuthenticator>,
     pub clipboard: Arc<dyn ClipboardProvider>,
 
     // ---- app.db repositories (one per repo, sharing one DB connection) -----
@@ -58,6 +60,7 @@ impl AppState {
         crypto: Arc<dyn CryptoProvider>,
         kdf: Arc<dyn KeyDerivationProvider>,
         keychain: Arc<dyn KeychainProvider>,
+        biometric: Arc<dyn BiometricAuthenticator>,
         clipboard: Arc<dyn ClipboardProvider>,
         recent_vaults: Arc<dyn RecentVaultRepository>,
         app_settings: Arc<dyn AppSettingRepository>,
@@ -71,6 +74,7 @@ impl AppState {
             crypto,
             kdf,
             keychain,
+            biometric,
             clipboard,
             recent_vaults,
             app_settings,

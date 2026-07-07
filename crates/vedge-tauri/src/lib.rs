@@ -103,6 +103,12 @@ pub fn run() {
             commands::emergency_kit::emergency_kit_pdf,
             commands::emergency_kit::write_emergency_kit_pdf,
             commands::recovery::unlock_with_recovery_key,
+            // ---- biometric unlock (slice 2.8) ----
+            commands::biometric::biometric_available,
+            commands::biometric::biometric_is_enrolled,
+            commands::biometric::biometric_enroll,
+            commands::biometric::biometric_unlock,
+            commands::biometric::biometric_disable,
             // ---- app.db: recent vaults ----
             commands::recent::list_recent_vaults,
             commands::recent::list_recent_vaults_with_status,

@@ -168,6 +168,88 @@ impl UnlockVault {
         ))
     }
 
+    /// Reconstitute a [`VaultSession`] from a KEK released by the biometric gate,
+    /// **without** the master password.
+    ///
+    /// Mirrors [`execute`](Self::execute) from step 5 onward — the KDF/verify steps
+    /// (2–4) are skipped because the caller already holds a validated-by-hardware KEK.
+    /// The KEK is still validated against the vault's own ciphertext: the first entry
+    /// or tag that fails to decrypt surfaces as [`VaultError::WrongCredentials`] (so the
+    /// UI falls back to the password screen) and no partial session is returned. A
+    /// vault with no entries and no tags has nothing to validate against and opens
+    /// directly — there is no secret to protect.
+    #[instrument(skip_all, fields(vault_path = %vault_path.display()))]
+    pub async fn unlock_with_kek(
+        &self,
+        vault_path: PathBuf,
+        kek_bytes: Zeroizing<[u8; KEK_LEN]>,
+    ) -> Result<VaultSession, VaultError> {
+        // ---- 0. Per-vault infrastructure ------------------------------------
+        let repo = self.repo_factory.open(&vault_path).await?;
+        let blob = self
+            .blob_factory
+            .create(&vault_path, Arc::clone(&self.crypto))?;
+
+        // ---- 1. Load config --------------------------------------------------
+        let config = repo.load_config().await?;
+        if config.magic != "VEDG" {
+            return Err(VaultError::BadMagic);
+        }
+        let vault_id = VaultId::new(vault_path.clone());
+
+        // ---- 5. Pin the KEK in mlock'd memory --------------------------------
+        let kek = SecretMem::new(*kek_bytes)?;
+        drop(kek_bytes);
+
+        // ---- 6. Build VaultIndex (also validates the KEK) -------------------
+        // A wrong/stale KEK can't decrypt any row; the first AEAD failure is remapped
+        // to `WrongCredentials` so the shell treats it exactly like a bad password.
+        let mut index = VaultIndex::new();
+
+        let tag_rows = repo.all_tags().await?;
+        for tag_row in tag_rows {
+            let meta = self
+                .decrypt_tag_row(&tag_row, kek.expose())
+                .map_err(kek_validation_error)?;
+            index.insert_tag(meta);
+        }
+
+        let entry_rows = repo.all_entries().await?;
+        for row in entry_rows {
+            let entry = self
+                .decrypt_entry_row(&row, kek.expose())
+                .map_err(kek_validation_error)?;
+            index.insert_entry(entry);
+        }
+
+        // ---- 7. Audit + update last_unlocked_at -----------------------------
+        let when = now();
+        let event = AuditEvent {
+            id: ulid::Ulid::new().to_string(),
+            entry_id: None,
+            action: AuditAction::BiometricUnlocked,
+            occurred_at: when,
+            device_id: None,
+        };
+        repo.append_audit(&event).await?;
+
+        let mut updated_config = config;
+        updated_config.last_unlocked_at = Some(when);
+        repo.save_config(&updated_config).await?;
+
+        // ---- 8. Build session ------------------------------------------------
+        Ok(VaultSession::assemble(
+            vault_id,
+            kek,
+            index,
+            updated_config,
+            repo,
+            Arc::clone(&self.crypto),
+            blob,
+            Arc::clone(&self.clipboard),
+        ))
+    }
+
     /// Decrypt one entry row → `IndexEntry` projection. DEK + plaintext are
     /// zeroized via Drop at the end of this function.
     #[instrument(skip_all, fields(entry_id = %row.id))]
@@ -208,5 +290,16 @@ impl UnlockVault {
             color: payload.color,
             sort_order: payload.sort_order,
         })
+    }
+}
+
+/// Remap an index-build failure during a biometric unlock. A wrong/stale KEK makes AEAD
+/// decryption fail ([`VaultError::DecryptionFailed`]); surface that as
+/// [`VaultError::WrongCredentials`] so the shell falls back to the password screen.
+/// Genuine data errors (malformed payload, storage) pass through unchanged.
+fn kek_validation_error(err: VaultError) -> VaultError {
+    match err {
+        VaultError::DecryptionFailed => VaultError::WrongCredentials,
+        other => other,
     }
 }

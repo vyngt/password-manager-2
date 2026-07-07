@@ -9,6 +9,8 @@ use crate::api::dialog::{DialogFilter, OpenDialogOptions};
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::*;
+use icondata as i;
+use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
@@ -37,6 +39,27 @@ pub fn display_name_from_path(path: &str) -> String {
     name.strip_suffix(".vdb").unwrap_or(name).to_string()
 }
 
+/// Record a just-unlocked vault in recents (touch an existing entry, or add a
+/// freshly-picked one). Shared by the password and biometric unlock paths. A plain
+/// async fn — no reactive owner, so safe to `.await` inside `spawn_local`.
+async fn record_unlock(sel: &Selected) {
+    match &sel.id {
+        Some(id) => {
+            let _ = api::recent::touch_recent_vault_on_unlock(id).await;
+        }
+        None => {
+            let dto = RecentVaultDto {
+                id: Uuid::new_v4().to_string(),
+                path: sel.path.clone(),
+                display_name: display_name_from_path(&sel.path),
+                last_opened: None,
+                sort_order: 0,
+            };
+            let _ = api::recent::add_recent_vault(&dto).await;
+        }
+    }
+}
+
 #[component]
 pub fn VaultLaunch() -> impl IntoView {
     let i18n = use_i18n();
@@ -48,6 +71,13 @@ pub fn VaultLaunch() -> impl IntoView {
     let pw = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
     let unlocking = RwSignal::new(false);
+
+    // Biometric unlock: `bio_available` is device-wide (checked once); `bio_enrolled`
+    // is per-selected-vault. When enrolled, the Hello button is shown by default and
+    // `show_password` reveals the password fallback on demand.
+    let bio_available = RwSignal::new(false);
+    let bio_enrolled = RwSignal::new(false);
+    let show_password = RwSignal::new(true);
 
     let refresh_recents = move || {
         loading.set(true);
@@ -66,6 +96,36 @@ pub fn VaultLaunch() -> impl IntoView {
 
     Effect::new(move |_| {
         refresh_recents();
+    });
+
+    // Check biometric availability once on mount (device-wide, vault-independent).
+    Effect::new(move |_| {
+        spawn_local(async move {
+            let avail = api::biometric::available().await.unwrap_or(false);
+            bio_available.set(avail);
+        });
+    });
+
+    // Re-check enrollment whenever the selected vault (or availability) changes. When a
+    // vault is enrolled, default to the biometric button (hide the password row).
+    Effect::new(move |_| {
+        let sel = selected.get();
+        let avail = bio_available.get();
+        match sel {
+            Some(sel) if avail => {
+                spawn_local(async move {
+                    let enrolled = api::biometric::is_enrolled(&sel.path)
+                        .await
+                        .unwrap_or(false);
+                    bio_enrolled.set(enrolled);
+                    show_password.set(!enrolled);
+                });
+            }
+            _ => {
+                bio_enrolled.set(false);
+                show_password.set(true);
+            }
+        }
     });
 
     let on_select = Callback::new(move |sel: Selected| {
@@ -111,27 +171,42 @@ pub fn VaultLaunch() -> impl IntoView {
             };
             match api::vault::unlock(&input).await {
                 Ok(()) => {
-                    match &sel.id {
-                        Some(id) => {
-                            let _ = api::recent::touch_recent_vault_on_unlock(id).await;
-                        }
-                        None => {
-                            let dto = RecentVaultDto {
-                                id: Uuid::new_v4().to_string(),
-                                path: sel.path.clone(),
-                                display_name: display_name_from_path(&sel.path),
-                                last_opened: None,
-                                sort_order: 0,
-                            };
-                            let _ = api::recent::add_recent_vault(&dto).await;
-                        }
-                    }
+                    record_unlock(&sel).await;
                     active.path.set(Some(sel.path.clone()));
                     nav("/v/vault", Default::default());
                 }
                 Err(ApiError::WrongCredentials) => error.set(Some(msg_wrong)),
                 Err(ApiError::Keychain(_)) => error.set(Some(msg_keychain)),
                 Err(e) => error.set(Some(format!("{msg_failed}{e}"))),
+            }
+            unlocking.set(false);
+        });
+    };
+
+    // Unlock via the biometric gate (Windows Hello / Touch ID). No master password;
+    // any failure reveals the password fallback with an error hint.
+    let do_bio_unlock = move || {
+        let Some(sel) = selected.get() else {
+            return;
+        };
+        if unlocking.get() {
+            return;
+        }
+        error.set(None);
+        unlocking.set(true);
+        let nav = use_navigate();
+        let msg_failed = t_string!(i18n, unlock.err_biometric).to_string();
+        spawn_local(async move {
+            match api::biometric::unlock(&sel.path).await {
+                Ok(()) => {
+                    record_unlock(&sel).await;
+                    active.path.set(Some(sel.path.clone()));
+                    nav("/v/vault", Default::default());
+                }
+                Err(_) => {
+                    show_password.set(true);
+                    error.set(Some(msg_failed));
+                }
             }
             unlocking.set(false);
         });
@@ -219,44 +294,77 @@ pub fn VaultLaunch() -> impl IntoView {
                 </Show>
             </Show>
 
-            {move || selected.get().map(|_| view! {
-                <div
-                    class="flex w-full"
-                    on:keydown=move |ev: web_sys::KeyboardEvent| {
-                        if ev.key() == "Enter" {
-                            do_unlock();
-                        }
-                    }
-                >
-                    <Input
-                        id="master-password"
-                        placeholder=Signal::derive(move || {
-                            t_string!(i18n, unlock.master_password).to_string()
-                        })
-                        size=Size::Lg
-                        input_type="password"
-                        value=Signal::derive(move || pw.get())
-                        on_input=Callback::new(move |v: String| pw.set(v))
-                        class="flex-1 rounded-r-none border-r-0"
-                    />
-                    {move || {
-                        let busy = unlocking.get();
-                        view! {
-                            <IconButton
-                                aria_label=Signal::derive(move || {
-                                    t_string!(i18n, unlock.unlock).to_string()
-                                })
-                                variant=Variant::Primary
-                                size=Size::Lg
-                                loading=busy
-                                class="rounded-l-none"
-                                on:click=move |_: web_sys::MouseEvent| do_unlock()
+            {move || selected.get().map(|sel| {
+                if bio_enrolled.get() && !show_password.get() {
+                    Either::Left(view! {
+                        <div class="flex flex-col items-center gap-3 py-2">
+                            <button
+                                class="flex h-24 w-24 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-primary text-5xl transition-colors hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled=move || unlocking.get()
+                                on:click=move |_: web_sys::MouseEvent| do_bio_unlock()
                             >
-                                <Icon icon=Decrypt />
-                            </IconButton>
-                        }
-                    }}
-                </div>
+                                <Icon icon=i::FaFingerprintSolid />
+                            </button>
+                            <div class="text-center">
+                                <div class="text-sm font-medium text-text-primary">
+                                    {move || t!(i18n, unlock.biometric_unlock_cta)}
+                                </div>
+                                <div class="text-xs text-foreground/50">
+                                    {move || t!(i18n, unlock.biometric_touch_hint)}
+                                </div>
+                                <div class="mt-1 text-xs font-jetbrains-mono text-foreground/40">
+                                    {display_name_from_path(&sel.path)}
+                                </div>
+                            </div>
+                            <button
+                                class="text-sm text-foreground/60 hover:text-foreground"
+                                on:click=move |_: web_sys::MouseEvent| show_password.set(true)
+                            >
+                                {move || t!(i18n, unlock.use_master_password)}
+                            </button>
+                        </div>
+                    })
+                } else {
+                    Either::Right(view! {
+                        <div
+                            class="flex w-full"
+                            on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                if ev.key() == "Enter" {
+                                    do_unlock();
+                                }
+                            }
+                        >
+                            <Input
+                                id="master-password"
+                                placeholder=Signal::derive(move || {
+                                    t_string!(i18n, unlock.master_password).to_string()
+                                })
+                                size=Size::Lg
+                                input_type="password"
+                                value=Signal::derive(move || pw.get())
+                                on_input=Callback::new(move |v: String| pw.set(v))
+                                class="flex-1 rounded-r-none border-r-0"
+                            />
+                            {move || {
+                                let busy = unlocking.get();
+                                view! {
+                                    <IconButton
+                                        aria_label=Signal::derive(move || {
+                                            t_string!(i18n, unlock.unlock).to_string()
+                                        })
+                                        variant=Variant::Primary
+                                        size=Size::Lg
+                                        loading=busy
+                                        class="rounded-l-none"
+                                        on:click=move |_: web_sys::MouseEvent| do_unlock()
+                                    >
+                                        <Icon icon=Decrypt />
+                                    </IconButton>
+                                }
+                            }}
+                        </div>
+                    })
+                }
             })}
 
             {move || error.get().map(|e| view! {

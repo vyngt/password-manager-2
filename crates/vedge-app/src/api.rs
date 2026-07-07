@@ -16,6 +16,8 @@ pub mod tauri;
 // a subset so far, so the not-yet-used wrappers are kept and `dead_code`-allowed
 // rather than deleted — they're the ready-made API for later phases.
 #[allow(dead_code)]
+pub mod biometric;
+#[allow(dead_code)]
 pub mod device;
 pub mod dialog;
 #[allow(dead_code)]
