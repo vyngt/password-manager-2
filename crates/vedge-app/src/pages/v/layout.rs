@@ -10,6 +10,7 @@ use vedge_ui::components::icon as ui_icon;
 use vedge_ui::primitives::tokens::Placement;
 
 use crate::api;
+use crate::features::vault::auto_lock::AutoLock;
 use crate::features::vault::command_palette::{CommandPalette, typing_in_field};
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::ui_state::VaultUiState;
@@ -228,5 +229,6 @@ pub fn VLayout() -> impl IntoView {
             </div>
         </div>
         <CommandPalette />
+        <AutoLock />
     }
 }

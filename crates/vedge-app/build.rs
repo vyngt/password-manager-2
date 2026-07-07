@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "date_picker",
             "onboarding",
             "nav",
+            "settings",
         ])?
         .parse_options(options);
 
