@@ -21,16 +21,19 @@ use std::path::PathBuf;
 
 use tracing::instrument;
 
-use vedge_core::domain::shared::{EntryId, VaultId};
+use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
     CopyFieldInput, CreateEntryInput, GetEntryInput, UpdateEntryInput,
     copy_field as copy_field_core, create_entry as create_entry_core, get_entry as get_entry_core,
     hard_delete_entry as hard_delete_entry_core, move_entry as move_entry_core,
-    restore_entry as restore_entry_core, soft_delete_entry as soft_delete_entry_core,
+    restore_entry as restore_entry_core, set_favorite as set_favorite_core,
+    set_tags as set_tags_core, soft_delete_entry as soft_delete_entry_core,
     update_entry as update_entry_core,
 };
 
-use crate::dto::entry::{PayloadDto, entry_id_from_str, payload_from_dto, payload_to_dto};
+use crate::dto::entry::{
+    PayloadDto, entry_id_from_str, payload_from_dto, payload_to_dto, tag_id_from_str,
+};
 use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -205,4 +208,94 @@ pub async fn move_entry(
     let folder: Option<EntryId> = folder_id.as_deref().map(entry_id_from_str);
     move_entry_core(&mut guard, &id, folder.as_ref()).await?;
     Ok(())
+}
+
+/// Flip an entry's `is_favorite` flag.
+///
+/// Takes an explicit value (idempotent; the UI knows the current state) and
+/// returns nothing — no secret fields cross the boundary, unlike a `get_entry`
+/// + `update_entry` round-trip would.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn set_favorite(
+    vault_path: String,
+    entry_id: String,
+    favorite: bool,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let id = entry_id_from_str(&entry_id);
+    set_favorite_core(&mut guard, &id, favorite).await?;
+    Ok(())
+}
+
+/// Replace an entry's tag assignments.
+///
+/// Works for any entry type (Document included) — the tag list lives in the
+/// encrypted `CommonMeta`, so the backend decrypts → sets → re-encrypts; no
+/// secrets or blob bytes cross the boundary. Dangling ids are tolerated.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn set_tags(
+    vault_path: String,
+    entry_id: String,
+    tag_ids: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let id = entry_id_from_str(&entry_id);
+    let tags: Vec<TagId> = tag_ids.iter().map(|s| tag_id_from_str(s)).collect();
+    set_tags_core(&mut guard, &id, tags).await?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::indexing_slicing,
+        clippy::arithmetic_side_effects
+    )]
+
+    use secrecy::SecretString;
+    use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
+    use vedge_core::{CreateEntryInput, create_entry, set_favorite};
+
+    use crate::test_support::unlocked_vault;
+
+    #[tokio::test]
+    async fn set_favorite_flips_index_flag_through_a_live_session() {
+        let dir = tempfile::tempdir().unwrap();
+        let (state, vault_id) = unlocked_vault(&dir, "fav.vdb").await;
+        let handle = state.get_session(&vault_id).unwrap();
+        let mut guard = handle.lock().await;
+
+        let id = create_entry(
+            &mut guard,
+            CreateEntryInput {
+                payload: EntryPayload::Login(LoginPayload {
+                    meta: CommonMeta::new("gh", EntryType::Login),
+                    username: "alice".into(),
+                    password: SecretString::from("hunter2"),
+                    totp_secret: None,
+                    recovery_codes: vec![],
+                }),
+            },
+        )
+        .await
+        .unwrap()
+        .entry_id;
+
+        assert!(!guard.index().entries.get(&id).unwrap().is_favorite);
+        set_favorite(&mut guard, &id, true).await.unwrap();
+        assert!(guard.index().entries.get(&id).unwrap().is_favorite);
+    }
 }
