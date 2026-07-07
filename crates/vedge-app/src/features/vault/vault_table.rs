@@ -107,6 +107,7 @@ fn VaultTableRow(
     let entry_for_select = item.clone();
     let entry_for_move = item.clone();
     let item_id = item.id.clone();
+    let drag_id = item.id.clone();
     let fav_id = item.id.clone();
     let is_fav = item.is_favorite;
     let tag_ids = item.tag_ids.clone();
@@ -145,7 +146,13 @@ fn VaultTableRow(
     view! {
         <tr
             class="border-b border-secondary/10 hover:bg-primary/5 transition-colors cursor-pointer"
+            draggable="true"
             on:click=move |_: web_sys::MouseEvent| on_select.run(entry_for_select.clone())
+            on:dragstart=move |ev: web_sys::DragEvent| {
+                if let Some(dt) = ev.data_transfer() {
+                    let _ = dt.set_data("text/plain", &drag_id);
+                }
+            }
         >
             <td class="p-3">
                 <IconButton

@@ -470,6 +470,7 @@ pub fn VaultPage() -> impl IntoView {
                         folders=folders
                         scope=current_scope
                         on_new_folder=on_new_folder
+                        on_move=on_move
                     />
                 </Show>
                 <Show

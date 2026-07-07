@@ -284,23 +284,63 @@ fn folder_counts(items: &[IndexEntryDto]) -> (usize, usize, HashMap<String, usiz
     (items.len(), unfiled, per_folder)
 }
 
+/// Sentinel keys for the two root drop targets (folder rows use their own id).
+const DROP_ALL: &str = "\u{0}all";
+const DROP_UNFILED: &str = "\u{0}unfiled";
+
 /// The folder-tree sidebar: an "All items" node, an "Unfiled" node, the nested
 /// folders (indented, collapsible), and an inline "+ New folder" input. Selecting
 /// a node sets `scope`; creating a folder fires `on_new_folder((parent, name))`
-/// with the current folder as the parent.
+/// with the current folder as the parent. Rows are also **drop targets**: a table
+/// row dragged onto a folder moves there (onto "All"/"Unfiled" → root), guarded so
+/// a folder can't be dropped into its own subtree.
 #[component]
 pub fn FolderTree(
     #[prop(into)] items: Signal<Vec<IndexEntryDto>>,
     #[prop(into)] folders: Signal<Vec<FolderNode>>,
     scope: RwSignal<FolderScope>,
     on_new_folder: Callback<(Option<String>, String)>,
+    /// `(entry_id, destination)` — persist a drag-and-drop move.
+    on_move: Callback<(String, Option<String>)>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let collapsed = RwSignal::new(HashSet::<String>::new());
     let new_name = RwSignal::new(String::new());
+    // Which drop target is currently under the pointer (for the highlight ring).
+    let drag_over = RwSignal::new(String::new());
     let counts = Memo::new(move |_| folder_counts(&items.get()));
 
     let rows = move || flatten_tree(&folders.get(), &collapsed.get());
+
+    // Read the dragged entry id off a drop event's dataTransfer.
+    let dragged_id = |ev: &web_sys::DragEvent| -> Option<String> {
+        ev.data_transfer()
+            .and_then(|dt| dt.get_data("text/plain").ok())
+            .filter(|s| !s.is_empty())
+    };
+
+    // Drop onto a folder `dest`: allowed only if `dest` is a valid target for the
+    // dragged entry (not itself / a descendant).
+    let drop_on_folder = move |ev: web_sys::DragEvent, dest: String| {
+        ev.prevent_default();
+        drag_over.set(String::new());
+        if let Some(id) = dragged_id(&ev) {
+            let ok = available_move_targets(&folders.get_untracked(), &id)
+                .iter()
+                .any(|f| f.id == dest);
+            if ok {
+                on_move.run((id, Some(dest)));
+            }
+        }
+    };
+    // Drop onto All / Unfiled: move to root (always valid).
+    let drop_on_root = move |ev: web_sys::DragEvent| {
+        ev.prevent_default();
+        drag_over.set(String::new());
+        if let Some(id) = dragged_id(&ev) {
+            on_move.run((id, None));
+        }
+    };
 
     let create = move || {
         let name = new_name.get().trim().to_owned();
@@ -321,26 +361,36 @@ pub fn FolderTree(
                 {move || t!(i18n, vault.folders_label)}
             </span>
 
-            // All items — the cleared scope.
+            // All items — the cleared scope (also a "move to root" drop target).
             <button
                 type="button"
                 class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
                 class=("bg-primary/10", move || matches!(scope.get(), FolderScope::All))
                 class=("text-primary", move || matches!(scope.get(), FolderScope::All))
+                class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == DROP_ALL)
                 on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::All)
+                on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
+                on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_ALL.to_owned())
+                on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
+                on:drop=drop_on_root
             >
                 <span class="flex shrink-0"><Icon icon=i::FaLayerGroupSolid width="14" height="14" /></span>
                 <span class="flex-1 truncate">{move || t!(i18n, vault.folder_root)}</span>
                 <span class="shrink-0 text-[10px] text-foreground/40">{move || counts.get().0}</span>
             </button>
 
-            // Unfiled — entries with no folder.
+            // Unfiled — entries with no folder (drop here = move to root).
             <button
                 type="button"
                 class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
                 class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Unfiled))
                 class=("text-primary", move || matches!(scope.get(), FolderScope::Unfiled))
+                class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == DROP_UNFILED)
                 on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::Unfiled)
+                on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
+                on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_UNFILED.to_owned())
+                on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
+                on:drop=drop_on_root
             >
                 <span class="flex shrink-0"><Icon icon=i::FaInboxSolid width="14" height="14" /></span>
                 <span class="flex-1 truncate">{move || t!(i18n, vault.folder_unfiled)}</span>
@@ -357,6 +407,9 @@ pub fn FolderTree(
                     let chev_id = f.id.clone();
                     let col_id = f.id.clone();
                     let cnt_id = f.id.clone();
+                    let over_id = f.id.clone();
+                    let enter_id = f.id.clone();
+                    let drop_id = f.id.clone();
                     let name = f.name.clone();
                     let depth = f.depth;
                     let has_children = f.has_children;
@@ -366,10 +419,15 @@ pub fn FolderTree(
                             class="flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
                             class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_a))
                             class=("text-primary", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_b))
+                            class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == over_id)
                             style=indent
                             on:click=move |_: web_sys::MouseEvent| {
                                 scope.set(FolderScope::Folder(click_id.clone()));
                             }
+                            on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
+                            on:dragenter=move |_: web_sys::DragEvent| drag_over.set(enter_id.clone())
+                            on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
+                            on:drop=move |ev: web_sys::DragEvent| drop_on_folder(ev, drop_id.clone())
                         >
                             {if has_children {
                                 leptos::either::Either::Left(
