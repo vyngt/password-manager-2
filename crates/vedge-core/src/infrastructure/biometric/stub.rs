@@ -6,9 +6,9 @@ use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::errors::VaultError;
 
 /// Biometric authenticator for platforms without a native implementation — Linux
-/// (password-only by design) and macOS until slice 2.8.1. Reports unavailable; enroll
-/// and retrieve fail with [`VaultError::BiometricUnavailable`]; `disable` is a no-op so
-/// the settings toggle can always turn off cleanly.
+/// (password-only by design) and macOS until a future Touch ID follow-up. Reports
+/// unavailable; enroll and retrieve fail with [`VaultError::BiometricUnavailable`];
+/// `disable` is a no-op so the settings toggle can always turn off cleanly.
 pub struct StubBiometricAuthenticator;
 
 impl StubBiometricAuthenticator {

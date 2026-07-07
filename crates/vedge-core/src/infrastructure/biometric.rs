@@ -29,7 +29,7 @@ pub use stub::StubBiometricAuthenticator;
 ///
 /// Windows → Windows Hello (reuses `crypto` to wrap the KEK under the Hello-derived
 /// key); every other target → a stub that reports `is_available() == false` (macOS
-/// Touch ID lands in slice 2.8.1; Linux is password-only by design).
+/// Touch ID lands in a future follow-up; Linux is password-only by design).
 #[must_use]
 pub fn platform_authenticator(crypto: Arc<dyn CryptoProvider>) -> Arc<dyn BiometricAuthenticator> {
     #[cfg(windows)]
