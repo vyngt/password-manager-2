@@ -521,7 +521,9 @@ pub fn FolderTree(
                 class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
                 class=("bg-primary/10", move || matches!(scope.get(), FolderScope::All))
                 class=("text-primary", move || matches!(scope.get(), FolderScope::All))
-                class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == DROP_ALL)
+                class=("ring-1", move || drag_over.get() == DROP_ALL)
+                class=("ring-primary", move || drag_over.get() == DROP_ALL)
+                class=("bg-primary/15", move || drag_over.get() == DROP_ALL)
                 on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::All)
                 on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
                 on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_ALL.to_owned())
@@ -539,7 +541,9 @@ pub fn FolderTree(
                 class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
                 class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Unfiled))
                 class=("text-primary", move || matches!(scope.get(), FolderScope::Unfiled))
-                class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == DROP_UNFILED)
+                class=("ring-1", move || drag_over.get() == DROP_UNFILED)
+                class=("ring-primary", move || drag_over.get() == DROP_UNFILED)
+                class=("bg-primary/15", move || drag_over.get() == DROP_UNFILED)
                 on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::Unfiled)
                 on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
                 on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_UNFILED.to_owned())
@@ -569,6 +573,10 @@ pub fn FolderTree(
                     let col_id = f.id.clone();
                     let cnt_id = f.id.clone();
                     let over_id = f.id.clone();
+                    // Three clones — one per single-token drag-over ring toggle below
+                    // (`class=(...)` takes one token; multi-token strings break at runtime).
+                    let over_id2 = f.id.clone();
+                    let over_id3 = f.id.clone();
                     let enter_id = f.id.clone();
                     let drop_id = f.id.clone();
                     let drag_check_id = f.id.clone();
@@ -597,7 +605,9 @@ pub fn FolderTree(
                             class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
                             class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_a))
                             class=("text-primary", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_b))
-                            class=("ring-1 ring-primary bg-primary/15", move || drag_over.get() == over_id)
+                            class=("ring-1", move || drag_over.get() == over_id)
+                            class=("ring-primary", move || drag_over.get() == over_id2)
+                            class=("bg-primary/15", move || drag_over.get() == over_id3)
                             style=indent
                             // Draggable as a move source (to reparent under another
                             // folder / root) — but not while its rename input is open,

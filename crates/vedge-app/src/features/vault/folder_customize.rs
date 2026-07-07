@@ -124,15 +124,30 @@ pub fn FolderCustomize(
                                 .iter()
                                 .map(|(key, ic)| {
                                     let key_s = (*key).to_owned();
-                                    let sel_key = key_s.clone();
+                                    // One clone per reactive toggle — a `class=(...)` tuple
+                                    // takes a SINGLE token (it calls `DOMTokenList.add`, which
+                                    // rejects spaces), so the selected style is three stacked
+                                    // single-token toggles, and closures capturing the (non-Copy)
+                                    // key each need their own clone.
+                                    let sel_a = key_s.clone();
+                                    let sel_b = key_s.clone();
+                                    let sel_c = key_s.clone();
                                     let ic = *ic;
                                     view! {
                                         <button
                                             type="button"
                                             class="flex items-center justify-center p-2 rounded border border-border hover:border-primary text-foreground/70"
                                             class=(
-                                                "border-primary text-primary bg-primary/10",
-                                                move || icon.get().as_deref() == Some(sel_key.as_str()),
+                                                "border-primary",
+                                                move || icon.get().as_deref() == Some(sel_a.as_str()),
+                                            )
+                                            class=(
+                                                "text-primary",
+                                                move || icon.get().as_deref() == Some(sel_b.as_str()),
+                                            )
+                                            class=(
+                                                "bg-primary/10",
+                                                move || icon.get().as_deref() == Some(sel_c.as_str()),
                                             )
                                             on:click=move |_: web_sys::MouseEvent| {
                                                 icon.set(Some(key_s.clone()));

@@ -4,6 +4,7 @@ use super::sliders::{AlphaSlider, HueSlider};
 use super::swatches::SwatchesGrid;
 use super::types::{ColorFormat, SwatchItem, TriggerMode, parse_color_value};
 use crate::primitives::tokens::Size;
+use leptos::portal::Portal;
 use leptos::prelude::*;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -96,6 +97,10 @@ pub fn ColorPicker(
 
     // ---- Open (as Callback) ----
     let swatches_empty = swatches.is_empty();
+    // Held in a `StoredValue` (Copy) so it can be captured across the nested
+    // `Show` → `Portal` children closures (both must be `Fn`); moving the owned
+    // `Vec` through two closure layers would make the outer one `FnOnce`.
+    let swatches = StoredValue::new(swatches);
     let open_sv = show_ver.clone();
     let open_hv = hide_ver.clone();
     let do_open = Callback::new(move |()| {
@@ -302,11 +307,16 @@ pub fn ColorPicker(
                 }}
             </div>
 
-            // Panel: backdrop + floating panel
+            // Panel: backdrop + floating panel. Portaled to `document.body` so the
+            // `position: fixed` panel/backdrop resolve against the viewport even when
+            // an ancestor is a containing block (e.g. a `Dialog` keeps a `transform`
+            // and `overflow: hidden`, which would otherwise reparent + clip them).
             <Show when=move || mounted.get()>
-                // Invisible backdrop catches clicks outside the panel
+                <Portal>
+                // Invisible backdrop catches clicks outside the panel. Sits above the
+                // dialog scrim (z-50) so the picker works when opened from a dialog.
                 <div
-                    style="position: fixed; inset: 0; z-index: 49;"
+                    style="position: fixed; inset: 0; z-index: 60;"
                     on:mousedown=move |_: web_sys::MouseEvent| do_close.run(())
                 />
                 <div
@@ -336,13 +346,14 @@ pub fn ColorPicker(
                         format=format
                     />
                     <SwatchesGrid
-                        swatches=swatches.clone()
+                        swatches=swatches.get_value()
                         hsv=hsv
                         on_change_end=on_change_end
                         format=format
                         alpha=alpha
                     />
                 </div>
+                </Portal>
             </Show>
         </div>
     }
