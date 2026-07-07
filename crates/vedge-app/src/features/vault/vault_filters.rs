@@ -10,6 +10,7 @@
 
 use crate::features::vault::entry_form::{type_from_key, type_to_key};
 use crate::features::vault::entry_view::type_label_i18n;
+use crate::features::vault::folder_tree::{FolderScope, scope_matches};
 use crate::features::vault::vault_search::VaultSearch;
 use crate::i18n::*;
 use leptos::prelude::*;
@@ -28,6 +29,9 @@ pub struct Filters {
     pub entry_type: Option<EntryTypeDto>,
     pub tag_id: Option<String>,
     pub favorites_only: bool,
+    /// Folder navigation scope. `All` (the default) shows everything; `Unfiled`
+    /// shows entries with no folder; `Folder(id)` shows that folder's contents.
+    pub scope: FolderScope,
 }
 
 /// How the filtered list is ordered.
@@ -57,7 +61,10 @@ pub fn filter_and_sort(
     let q = f.query.trim().to_lowercase();
     let mut out: Vec<IndexEntryDto> = items
         .iter()
+        // Folders are navigated in the tree, never listed as rows.
+        .filter(|e| e.entry_type != EntryTypeDto::Folder)
         .filter(|e| query_matches(e, &q, tag_names))
+        .filter(|e| scope_matches(&f.scope, e))
         .filter(|e| f.entry_type.as_ref().is_none_or(|t| &e.entry_type == t))
         .filter(|e| f.tag_id.as_ref().is_none_or(|id| e.tag_ids.contains(id)))
         .filter(|e| !f.favorites_only || e.is_favorite)
@@ -110,9 +117,10 @@ fn cmp_accessed_desc(a: &Option<String>, b: &Option<String>) -> Ordering {
     }
 }
 
-/// The entry types offered in the type facet — all known variants (including
-/// `Document`); the `Unknown` catch-all is not offered.
-fn filterable_types() -> [EntryTypeDto; 9] {
+/// The entry types offered in the type facet — the listable variants (including
+/// `Document`). `Folder` is navigated in the tree, not listed, so it's not
+/// offered; the `Unknown` catch-all isn't either.
+fn filterable_types() -> [EntryTypeDto; 8] {
     [
         EntryTypeDto::Login,
         EntryTypeDto::Card,
@@ -122,7 +130,6 @@ fn filterable_types() -> [EntryTypeDto; 9] {
         EntryTypeDto::Note,
         EntryTypeDto::Document,
         EntryTypeDto::Identity,
-        EntryTypeDto::Folder,
     ]
 }
 
@@ -405,6 +412,74 @@ mod tests {
                 SortKey::NameAsc
             )),
             ["f"]
+        );
+    }
+
+    #[test]
+    fn folders_are_never_listed() {
+        let mut folder = entry("f", "My Folder");
+        folder.entry_type = EntryTypeDto::Folder;
+        let items = vec![folder, entry("l", "GitHub")];
+        // Even the default (no facets) view drops folder-type entries.
+        assert_eq!(
+            ids(&filter_and_sort(
+                &items,
+                &Filters::default(),
+                &HashMap::new(),
+                SortKey::NameAsc
+            )),
+            ["l"]
+        );
+    }
+
+    #[test]
+    fn filter_by_folder() {
+        use crate::features::vault::folder_tree::FolderScope;
+        let mut in_a = entry("a", "A");
+        in_a.folder_id = Some("f1".into());
+        let mut in_b = entry("b", "B");
+        in_b.folder_id = Some("f2".into());
+        let root = entry("r", "Root"); // no folder
+        let items = vec![in_a, in_b, root];
+
+        // `All` (default) passes everything through.
+        assert_eq!(
+            ids(&filter_and_sort(
+                &items,
+                &Filters::default(),
+                &HashMap::new(),
+                SortKey::NameAsc
+            ))
+            .len(),
+            3
+        );
+        // `Folder(id)` narrows to that folder's direct members.
+        let f = Filters {
+            scope: FolderScope::Folder("f1".into()),
+            ..Default::default()
+        };
+        assert_eq!(
+            ids(&filter_and_sort(
+                &items,
+                &f,
+                &HashMap::new(),
+                SortKey::NameAsc
+            )),
+            ["a"]
+        );
+        // `Unfiled` narrows to entries with no folder.
+        let f = Filters {
+            scope: FolderScope::Unfiled,
+            ..Default::default()
+        };
+        assert_eq!(
+            ids(&filter_and_sort(
+                &items,
+                &f,
+                &HashMap::new(),
+                SortKey::NameAsc
+            )),
+            ["r"]
         );
     }
 

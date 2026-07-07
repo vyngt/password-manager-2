@@ -1,6 +1,12 @@
 use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
+use crate::features::vault::entry_form::EntryFormData;
+use crate::features::vault::folder_delete::FolderDelete;
+use crate::features::vault::folder_move::FolderMove;
+use crate::features::vault::folder_tree::{
+    FolderBreadcrumb, FolderScope, FolderTree, build_folder_tree, subtree_contents,
+};
 use crate::features::vault::tag_manager::TagManager;
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
@@ -46,6 +52,12 @@ pub fn VaultPage() -> impl IntoView {
     // Tags back both the tag facet and tag-name search.
     let tags = RwSignal::new(Vec::<TagMetaDto>::new());
 
+    // Folder navigation scope (client-side, over the loaded index) + the targets
+    // for the move-to-folder picker and the non-empty-folder delete confirm.
+    let current_scope = RwSignal::new(FolderScope::All);
+    let move_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    let folder_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
+
     // `tag_id -> name`, memoized so keystroke-level re-filtering doesn't rebuild it.
     let tag_map = Memo::new(move |_| {
         tags.get()
@@ -62,6 +74,8 @@ pub fn VaultPage() -> impl IntoView {
     });
     // Opens the tag-catalog manager modal.
     let manage_tags_open = RwSignal::new(false);
+    // The folder hierarchy, rebuilt from the loaded index (folders are entries).
+    let folders = Memo::new(move |_| build_folder_tree(&items.get()));
     // The filtered + sorted list feeding the table.
     let visible = Signal::derive(move || {
         let filters = Filters {
@@ -69,6 +83,7 @@ pub fn VaultPage() -> impl IntoView {
             entry_type: entry_type.get(),
             tag_id: tag_id.get(),
             favorites_only: favorites_only.get(),
+            scope: current_scope.get(),
         };
         tag_map.with(|m| filter_and_sort(&items.get(), &filters, m, sort.get()))
     });
@@ -131,16 +146,37 @@ pub fn VaultPage() -> impl IntoView {
     });
 
     let on_delete = Callback::new(move |id: String| {
+        // A non-empty folder can't be deleted outright — open the two-stage
+        // confirm dialog (empty-first). An empty folder / non-folder deletes
+        // directly. Reads are untracked (owner-safe either way).
+        let entry = items.with_untracked(|l| l.iter().find(|e| e.id == id).cloned());
+        if let Some(e) = &entry {
+            if e.entry_type == EntryTypeDto::Folder
+                && !subtree_contents(&items.get_untracked(), &folders.get_untracked(), &id)
+                    .is_empty()
+            {
+                folder_delete_target.set(Some(e.clone()));
+                return;
+            }
+        }
         // Read signals in the handler body (owner present); inside `spawn_local`
         // they'd be owner-less. `set` is fine there — only reads warn.
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_delete).to_string();
         let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
+        // Deleting the folder we're currently scoped into → fall back to All.
+        let was_scoped = entry.as_ref().is_some_and(|e| {
+            e.entry_type == EntryTypeDto::Folder
+                && matches!(current_scope.get(), FolderScope::Folder(ref s) if *s == id)
+        });
         spawn_local(async move {
             match api::entry::soft_delete_entry(&vault_path, &id).await {
                 Ok(()) => {
                     if was_selected {
                         ui.selected_id.set(None);
+                    }
+                    if was_scoped {
+                        current_scope.set(FolderScope::All);
                     }
                     refresh();
                 }
@@ -242,6 +278,150 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // Leaving the folder view when toggling active/trash (folders are an active-
+    // view concept). Guarded so the initial mount doesn't reset anything.
+    Effect::new(move |prev: Option<bool>| {
+        let t = trashed_view.get();
+        if prev.is_some_and(|p| p != t) {
+            current_scope.set(FolderScope::All);
+        }
+        t
+    });
+
+    // Persist a move: optimistic in-place `folder_id` flip (no loading flash) then
+    // `move_entry`, reverting on error. `folder_id` is in the table `<For>` key so
+    // the row repaints. Reads are untracked (owner-safe from any caller).
+    let on_move = Callback::new(move |(id, dest): (String, Option<String>)| {
+        let prev =
+            items.with_untracked(|l| l.iter().find(|e| e.id == id).map(|e| e.folder_id.clone()));
+        items.update(|l| {
+            if let Some(e) = l.iter_mut().find(|e| e.id == id) {
+                e.folder_id = dest.clone();
+            }
+        });
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_move).to_string());
+        let revert_id = id.clone();
+        let dest_owned = dest.clone();
+        spawn_local(async move {
+            if let Err(e) = api::entry::move_entry(&vault_path, &id, dest_owned.as_deref()).await {
+                if let Some(p) = prev {
+                    items.update(|l| {
+                        if let Some(en) = l.iter_mut().find(|en| en.id == revert_id) {
+                            en.folder_id = p;
+                        }
+                    });
+                }
+                status_msg.set(Some(format!("{err_prefix}{e}")));
+            }
+        });
+    });
+
+    let on_move_request = Callback::new(move |entry: IndexEntryDto| move_target.set(Some(entry)));
+
+    // The palette's "Move to folder…" bumps `ui.move_request`; open the picker for
+    // the selected entry when it changes (prev-guard skips the initial mount).
+    Effect::new(move |prev: Option<u32>| {
+        let cur = ui.move_request.get();
+        if let Some(p) = prev {
+            if cur != p {
+                if let Some(id) = ui.selected_id.get_untracked() {
+                    if let Some(e) =
+                        items.with_untracked(|l| l.iter().find(|e| e.id == id).cloned())
+                    {
+                        move_target.set(Some(e));
+                    }
+                }
+            }
+        }
+        cur
+    });
+
+    // Create a folder in the current folder (or root). Builds the payload through
+    // the shared form model so the Folder arm stays the single source of truth.
+    let on_new_folder = Callback::new(move |(parent, name): (Option<String>, String)| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_folder_create).to_string();
+        let mut d = EntryFormData::new(EntryTypeDto::Folder);
+        d.name = name;
+        d.folder_id = parent;
+        let Ok(payload) = d.to_payload() else {
+            return;
+        };
+        spawn_local(async move {
+            match api::entry::create_entry(&vault_path, &payload).await {
+                Ok(_id) => refresh(),
+                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+            }
+        });
+    });
+
+    // Rename a folder from the tree. A folder carries no secrets, so the
+    // get_entry → mutate name → update_entry round-trip reveals nothing sensitive.
+    let on_rename_folder = Callback::new(move |(id, name): (String, String)| {
+        let name = name.trim().to_owned();
+        if name.is_empty() {
+            return;
+        }
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_folder_rename).to_string();
+        spawn_local(async move {
+            match api::entry::get_entry(&vault_path, &id).await {
+                Ok(payload) => {
+                    let mut d = EntryFormData::from_payload(&payload);
+                    d.name = name;
+                    if let Ok(p) = d.to_payload() {
+                        if let Err(e) = api::entry::update_entry(&vault_path, &id, &p).await {
+                            status_msg.set(Some(format!("{err_prefix}{e}")));
+                        } else {
+                            refresh();
+                        }
+                    }
+                }
+                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+            }
+        });
+    });
+
+    // Recursively soft-delete a folder's contents (the delete dialog's "Empty
+    // folder"). Sequential so a mid-way failure surfaces and stops.
+    let on_empty = Callback::new(move |ids: Vec<String>| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_folder_delete).to_string();
+        spawn_local(async move {
+            for id in ids {
+                if let Err(e) = api::entry::soft_delete_entry(&vault_path, &id).await {
+                    status_msg.set(Some(format!("{err_prefix}{e}")));
+                    break;
+                }
+            }
+            refresh();
+        });
+    });
+
+    // Delete the now-empty folder itself (the delete dialog's second stage).
+    let on_delete_folder = Callback::new(move |id: String| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_folder_delete).to_string();
+        let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
+        let was_scoped = matches!(current_scope.get(), FolderScope::Folder(ref s) if *s == id);
+        spawn_local(async move {
+            match api::entry::soft_delete_entry(&vault_path, &id).await {
+                Ok(()) => {
+                    if was_selected {
+                        ui.selected_id.set(None);
+                    }
+                    if was_scoped {
+                        current_scope.set(FolderScope::All);
+                    }
+                    folder_delete_target.set(None);
+                    refresh();
+                }
+                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+            }
+        });
+    });
+
     view! {
         <div class="h-full flex flex-col gap-4 p-4">
             <div class="flex items-center gap-3">
@@ -293,12 +473,25 @@ pub fn VaultPage() -> impl IntoView {
                 on_changed=on_catalog
             />
 
+            <FolderMove target=move_target folders=folders on_move=on_move />
+            <FolderDelete
+                target=folder_delete_target
+                items=Signal::derive(move || items.get())
+                folders=folders
+                on_empty=on_empty
+                on_delete_folder=on_delete_folder
+            />
+
             {move || status_msg.get().map(|m| view! {
                 <p class="text-sm text-text-secondary">{m}</p>
             })}
 
             <Show when=move || ui.show_create.get()>
-                <VaultCreateForm show=ui.show_create on_created=on_created />
+                <VaultCreateForm show=ui.show_create on_created=on_created folders=folders />
+            </Show>
+
+            <Show when=move || !trashed_view.get()>
+                <FolderBreadcrumb folders=folders scope=current_scope />
             </Show>
 
             <Show when=move || show_attach.get()>
@@ -306,6 +499,17 @@ pub fn VaultPage() -> impl IntoView {
             </Show>
 
             <div class="flex-1 flex gap-4 min-h-0">
+                <Show when=move || !trashed_view.get()>
+                    <FolderTree
+                        items=Signal::derive(move || items.get())
+                        folders=folders
+                        scope=current_scope
+                        on_new_folder=on_new_folder
+                        on_move=on_move
+                        on_delete=on_delete
+                        on_rename=on_rename_folder
+                    />
+                </Show>
                 <Show
                     when=move || !loading.get()
                     fallback=move || {
@@ -324,6 +528,7 @@ pub fn VaultPage() -> impl IntoView {
                         on_delete=on_delete
                         on_select=on_select
                         on_favorite=on_favorite
+                        on_move_request=on_move_request
                     />
                 </Show>
                 {move || selected_entry.get().map(|entry| view! {
@@ -336,6 +541,8 @@ pub fn VaultPage() -> impl IntoView {
                         on_favorite=on_favorite
                         on_tags=on_tags
                         on_catalog=on_catalog
+                        folders=folders
+                        on_move_request=on_move_request
                     />
                 })}
             </div>

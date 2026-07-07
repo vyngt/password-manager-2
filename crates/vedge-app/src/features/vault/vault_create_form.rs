@@ -11,6 +11,8 @@ use crate::features::vault::entry_form::{
     EntryForm, EntryFormData, EntryFormError, editable_types, type_from_key, type_to_key,
 };
 use crate::features::vault::entry_view::type_label_i18n;
+use crate::features::vault::folder_move::FolderSelect;
+use crate::features::vault::folder_tree::FolderNode;
 use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -20,7 +22,13 @@ use vedge_ui::components::select::{Select, SelectItem};
 use vedge_ui::primitives::tokens::{Size, Variant};
 
 #[component]
-pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl IntoView {
+pub fn VaultCreateForm(
+    show: RwSignal<bool>,
+    on_created: Callback<()>,
+    /// Folder catalog for the folder picker.
+    #[prop(into)]
+    folders: Signal<Vec<FolderNode>>,
+) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
 
@@ -96,6 +104,10 @@ pub fn VaultCreateForm(show: RwSignal<bool>, on_created: Callback<()>) -> impl I
                         />
                     }
                 }}
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-3">
+                <FolderSelect data=data folders=folders />
             </div>
 
             <EntryForm data=data />
