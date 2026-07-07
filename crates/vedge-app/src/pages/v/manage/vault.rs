@@ -289,6 +289,7 @@ pub fn VaultPage() -> impl IntoView {
             <TagManager
                 open=manage_tags_open
                 tags=Signal::derive(move || tags.get())
+                entries=Signal::derive(move || items.get())
                 on_changed=on_catalog
             />
 

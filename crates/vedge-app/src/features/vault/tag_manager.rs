@@ -15,7 +15,7 @@ use crate::i18n::*;
 use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use vedge_ipc::{CreateTagDto, RenameTagDto, TagMetaDto};
+use vedge_ipc::{CreateTagDto, IndexEntryDto, RenameTagDto, TagMetaDto};
 use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::{Button, Input};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
@@ -24,6 +24,9 @@ use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 pub fn TagManager(
     open: RwSignal<bool>,
     #[prop(into)] tags: Signal<Vec<TagMetaDto>>,
+    /// Loaded entries — used to warn how many reference a tag before deleting it.
+    #[prop(into)]
+    entries: Signal<Vec<IndexEntryDto>>,
     on_changed: Callback<()>,
 ) -> impl IntoView {
     let i18n = use_i18n();
@@ -114,7 +117,9 @@ pub fn TagManager(
                             // re-creates the row — a keyed `<For>` otherwise keeps
                             // the stale child for a fixed key.
                             key=|t| (t.id.clone(), t.name.clone())
-                            children=move |t| view! { <TagManagerRow tag=t on_changed=on_changed /> }
+                            children=move |t| {
+                                view! { <TagManagerRow tag=t entries=entries on_changed=on_changed /> }
+                            }
                         />
                     </div>
 
@@ -132,11 +137,24 @@ pub fn TagManager(
 }
 
 #[component]
-fn TagManagerRow(tag: TagMetaDto, on_changed: Callback<()>) -> impl IntoView {
+fn TagManagerRow(
+    tag: TagMetaDto,
+    entries: Signal<Vec<IndexEntryDto>>,
+    on_changed: Callback<()>,
+) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
 
     let tag_id = StoredValue::new(tag.id.clone());
+    // How many loaded entries reference this tag (shown in the delete warning).
+    let ref_count = move || {
+        let id = tag_id.get_value();
+        entries
+            .get()
+            .iter()
+            .filter(|e| e.tag_ids.iter().any(|t| t == &id))
+            .count()
+    };
     let tag_name = tag.name.clone();
     // `Copy` handle to the name so `start_rename` stays a `Copy` closure (it's
     // used inside a re-runnable view closure, which can't move a `String` out).
@@ -233,11 +251,10 @@ fn TagManagerRow(tag: TagMetaDto, on_changed: Callback<()>) -> impl IntoView {
                 } else {
                     let name = tag_name.clone();
                     Either::Right(view! {
-                        <div class="flex gap-2 items-center justify-between">
-                            <span class="text-sm text-text-primary truncate">{name}</span>
-                            <Show
-                                when=move || confirming.get()
-                                fallback=move || view! {
+                        <div class="flex flex-col gap-1.5">
+                            <div class="flex gap-2 items-center justify-between">
+                                <span class="text-sm text-text-primary truncate">{name}</span>
+                                <Show when=move || !confirming.get()>
                                     <div class="flex gap-1 shrink-0">
                                         <Button
                                             variant=Variant::Ghost
@@ -254,26 +271,35 @@ fn TagManagerRow(tag: TagMetaDto, on_changed: Callback<()>) -> impl IntoView {
                                             {move || t!(i18n, vault.tag_delete)}
                                         </Button>
                                     </div>
-                                }
-                            >
-                                <div class="flex gap-1 items-center shrink-0">
-                                    <span class="text-xs text-foreground/60">
-                                        {move || t!(i18n, vault.tag_delete_confirm)}
+                                </Show>
+                            </div>
+                            // Delete confirm: a stacked warning that reports how
+                            // many entries still reference the tag (deletion is
+                            // allowed — it just leaves tolerated dangling ids).
+                            <Show when=move || confirming.get()>
+                                <div class="flex flex-col gap-1.5 rounded-md bg-primary/5 p-2">
+                                    <span class="text-xs" style="color:var(--color-danger-text)">
+                                        {move || {
+                                            let n = ref_count();
+                                            t!(i18n, vault.tag_delete_confirm, refs = n)
+                                        }}
                                     </span>
-                                    <Button
-                                        variant=Variant::Danger
-                                        size=Size::Sm
-                                        on:click=confirm_delete
-                                    >
-                                        {move || t!(i18n, vault.tag_delete)}
-                                    </Button>
-                                    <Button
-                                        variant=Variant::Ghost
-                                        size=Size::Sm
-                                        on:click=cancel_delete
-                                    >
-                                        {move || t!(i18n, vault.cancel)}
-                                    </Button>
+                                    <div class="flex gap-1 justify-end">
+                                        <Button
+                                            variant=Variant::Ghost
+                                            size=Size::Sm
+                                            on:click=cancel_delete
+                                        >
+                                            {move || t!(i18n, vault.cancel)}
+                                        </Button>
+                                        <Button
+                                            variant=Variant::Danger
+                                            size=Size::Sm
+                                            on:click=confirm_delete
+                                        >
+                                            {move || t!(i18n, vault.tag_delete)}
+                                        </Button>
+                                    </div>
                                 </div>
                             </Show>
                         </div>
