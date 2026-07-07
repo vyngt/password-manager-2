@@ -41,7 +41,7 @@ pub use application::vault::use_cases::{
     export_document, export_emergency_kit, get_entry, hard_delete_entry, import_document,
     list_active_entries, list_tags, list_trashed_entries, lock_vault, move_entry,
     normalize_tag_name, recover_vault, rename_tag, restore_entry, run_maintenance, search_entries,
-    set_favorite, soft_delete_entry, update_entry,
+    set_favorite, set_tags, soft_delete_entry, update_entry,
 };
 pub use domain::vault::emergency_kit::EmergencyKitContent;
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};

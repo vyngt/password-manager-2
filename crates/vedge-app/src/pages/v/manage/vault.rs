@@ -13,11 +13,7 @@ use leptos::task::spawn_local;
 use std::collections::HashMap;
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
 use vedge_ui::components::Button;
-use vedge_ui::components::tooltip_icon_button::TooltipIconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
-
-use icondata as i;
-use leptos_icons::Icon;
 
 #[component]
 pub fn VaultPage() -> impl IntoView {
@@ -184,6 +180,50 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // Reload just the tag catalog (no entries refetch, no loading flash) — used
+    // by the tag manager and by inline tag creation.
+    let refresh_tags = move || {
+        let vault_path = untrack(|| active.path.get()).unwrap_or_default();
+        if vault_path.is_empty() {
+            return;
+        }
+        spawn_local(async move {
+            if let Ok(list) = api::vault::list_tags(&vault_path).await {
+                tags.set(list);
+            }
+        });
+    };
+    let on_catalog = Callback::new(move |()| refresh_tags());
+
+    // Persist an entry's tag assignments: optimistic in-place `items` flip (no
+    // loading flash) then `set_tags`, reverting on error. `tag_ids` is part of
+    // the table's `<For>` key so the row repaints. Reads are untracked so it's
+    // owner-safe when called from a `spawn_local` (inline tag create) too.
+    let on_tags = Callback::new(move |(id, new_ids): (String, Vec<String>)| {
+        let prev = items
+            .with_untracked(|list| list.iter().find(|e| e.id == id).map(|e| e.tag_ids.clone()));
+        items.update(|list| {
+            if let Some(e) = list.iter_mut().find(|e| e.id == id) {
+                e.tag_ids = new_ids.clone();
+            }
+        });
+        let vault_path = active.path.get_untracked().unwrap_or_default();
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_tag_assign).to_string());
+        let revert_id = id.clone();
+        spawn_local(async move {
+            if let Err(e) = api::entry::set_tags(&vault_path, &id, &new_ids).await {
+                if let Some(p) = prev {
+                    items.update(|list| {
+                        if let Some(en) = list.iter_mut().find(|en| en.id == revert_id) {
+                            en.tag_ids = p;
+                        }
+                    });
+                }
+                status_msg.set(Some(format!("{err_prefix}{e}")));
+            }
+        });
+    });
+
     let on_copy = Callback::new(move |field: FieldSelectorDto| {
         let vault_path = active.path.get().unwrap_or_default();
         let Some(id) = ui.selected_id.get() else {
@@ -236,18 +276,20 @@ pub fn VaultPage() -> impl IntoView {
                 >
                     {move || t!(i18n, vault.attach_document)}
                 </Button>
-                <TooltipIconButton
-                    label=Signal::derive(move || t_string!(i18n, vault.tag_manage).to_string())
-                    on_click=Callback::new(move |()| manage_tags_open.set(true))
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    class="whitespace-nowrap"
+                    on:click=move |_| manage_tags_open.set(true)
                 >
-                    <Icon icon=i::FaTagsSolid />
-                </TooltipIconButton>
+                    {move || t!(i18n, vault.tag_manage)}
+                </Button>
             </div>
 
             <TagManager
                 open=manage_tags_open
                 tags=Signal::derive(move || tags.get())
-                on_changed=on_created
+                on_changed=on_catalog
             />
 
             {move || status_msg.get().map(|m| view! {
@@ -286,11 +328,13 @@ pub fn VaultPage() -> impl IntoView {
                 {move || selected_entry.get().map(|entry| view! {
                     <VaultDetail
                         entry=entry
-                        tags=Signal::derive(move || tag_lookup.get())
+                        tags=Signal::derive(move || tags.get())
                         on_copy=on_copy
                         on_close=on_close
                         on_saved=on_saved
                         on_favorite=on_favorite
+                        on_tags=on_tags
+                        on_catalog=on_catalog
                     />
                 })}
             </div>

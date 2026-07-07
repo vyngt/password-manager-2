@@ -1,13 +1,12 @@
-//! Tag-assignment widget for the entry form.
+//! Tag-assignment widget for the **detail panel** (read view, any entry type).
 //!
-//! Edits `EntryFormData.tag_ids` (persisted by the existing create/update save
-//! path) — it does **not** call any per-entry command itself. Renders the
-//! currently-assigned tags as removable chips, lets the user attach an existing
-//! catalog tag, and creates a new tag inline (`api::tag::create_tag`) then
-//! attaches it. The tag catalog is self-loaded on mount so the widget needs no
-//! extra props threaded through `EntryForm`.
+//! Tagging is deliberately decoupled from the edit form: it persists directly
+//! through `api::entry::set_tags` (backend decrypt→set→re-encrypt) so it works
+//! for non-editable types too (Document), and never reveals the payload to WASM.
+//! Changes flow through the page's `on_tags` callback (optimistic `items`
+//! update + persist); creating a tag inline also pings `on_catalog` so the new
+//! tag resolves + leaves the "available" pool.
 
-use super::entry_form::EntryFormData;
 use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::*;
@@ -42,31 +41,35 @@ pub fn available_tags(catalog: &[TagMetaDto], assigned: &[String]) -> Vec<TagMet
 }
 
 #[component]
-pub fn TagAssign(data: RwSignal<EntryFormData>) -> impl IntoView {
+pub fn TagAssign(
+    /// The entry being tagged.
+    entry_id: String,
+    /// The entry's current tag ids (a snapshot; the widget re-mounts with a
+    /// fresh value each time the page's `items` refresh after a change).
+    initial: Vec<String>,
+    /// Ordered tag catalog for chip resolution + the "add existing" list.
+    #[prop(into)]
+    catalog: Signal<Vec<TagMetaDto>>,
+    /// `(entry_id, new_tag_ids)` — persist the entry's assignments.
+    on_tags: Callback<(String, Vec<String>)>,
+    /// Reload the tag catalog (after an inline create).
+    on_catalog: Callback<()>,
+) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
 
-    let catalog = RwSignal::new(Vec::<TagMetaDto>::new());
+    let id_sv = StoredValue::new(entry_id);
+    let ids_sv = StoredValue::new(initial);
     let new_name = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
     let error = RwSignal::new(Option::<String>::None);
 
-    // Self-load the tag catalog once on mount. Untracked path read (no owner in
-    // the component body); the `spawn_local` body only `set`s.
-    let vault_path = active.path.get_untracked().unwrap_or_default();
-    if !vault_path.is_empty() {
-        spawn_local(async move {
-            if let Ok(list) = api::vault::list_tags(&vault_path).await {
-                catalog.set(list);
-            }
-        });
-    }
-
-    // Assigned tags → removable chips (unresolved ids from deleted tags are
-    // silently skipped; the color is honored as text tint when present).
+    // Assigned tags → removable chips (unresolved ids from deleted tags skipped;
+    // color honored as text tint when present).
     let chips = move || {
         let cat = catalog.get();
-        data.with(|d| d.tag_ids.clone())
+        ids_sv
+            .get_value()
             .into_iter()
             .filter_map(|id| {
                 let meta = cat.iter().find(|t| t.id == id)?;
@@ -76,7 +79,7 @@ pub fn TagAssign(data: RwSignal<EntryFormData>) -> impl IntoView {
                     .clone()
                     .map(|c| format!("color:{c}"))
                     .unwrap_or_default();
-                let id_for_remove = id.clone();
+                let remove_id = id.clone();
                 Some(view! {
                     <span
                         class="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-xs px-2 py-0.5"
@@ -88,7 +91,11 @@ pub fn TagAssign(data: RwSignal<EntryFormData>) -> impl IntoView {
                             class="leading-none hover:text-danger"
                             aria-label=move || t_string!(i18n, vault.tag_remove).to_string()
                             on:click=move |_: web_sys::MouseEvent| {
-                                data.update(|d| d.tag_ids = toggle_tag(&d.tag_ids, &id_for_remove));
+                                on_tags
+                                    .run((
+                                        id_sv.get_value(),
+                                        toggle_tag(&ids_sv.get_value(), &remove_id),
+                                    ));
                             }
                         >
                             <span aria-hidden="true">"✕"</span>
@@ -99,11 +106,11 @@ pub fn TagAssign(data: RwSignal<EntryFormData>) -> impl IntoView {
             .collect_view()
     };
 
-    // Attach an existing catalog tag. Rebuilt in a closure so the option list
-    // reflects catalog + assignment changes (Select captures options by value).
+    // Attach an existing catalog tag (rebuilt so the option list tracks the
+    // catalog + current assignment).
     let add_existing = move || {
         let cat = catalog.get();
-        let assigned = data.with(|d| d.tag_ids.clone());
+        let assigned = ids_sv.get_value();
         let avail = available_tags(&cat, &assigned);
         if avail.is_empty() {
             ().into_any()
@@ -118,7 +125,7 @@ pub fn TagAssign(data: RwSignal<EntryFormData>) -> impl IntoView {
                     value=Signal::derive(String::new)
                     placeholder=Signal::derive(move || t_string!(i18n, vault.tag_add).to_string())
                     on_change=Callback::new(move |id: String| {
-                        data.update(|d| d.tag_ids = toggle_tag(&d.tag_ids, &id));
+                        on_tags.run((id_sv.get_value(), toggle_tag(&ids_sv.get_value(), &id)));
                     })
                 />
             }
@@ -140,26 +147,16 @@ pub fn TagAssign(data: RwSignal<EntryFormData>) -> impl IntoView {
         busy.set(true);
         error.set(None);
         spawn_local(async move {
-            let dto = CreateTagDto {
-                name: name.clone(),
-                color: None,
-            };
+            let dto = CreateTagDto { name, color: None };
             match api::tag::create_tag(&vault_path, &dto).await {
-                Ok(id) => {
-                    catalog.update(|c| {
-                        c.push(TagMetaDto {
-                            id: id.clone(),
-                            name,
-                            color: None,
-                            sort_order: 0,
-                        });
-                    });
-                    data.update(|d| {
-                        if !d.tag_ids.iter().any(|x| x == &id) {
-                            d.tag_ids.push(id);
-                        }
-                    });
+                Ok(new_id) => {
                     new_name.set(String::new());
+                    let mut ids = ids_sv.get_value();
+                    if !ids.iter().any(|x| x == &new_id) {
+                        ids.push(new_id);
+                    }
+                    on_tags.run((id_sv.get_value(), ids));
+                    on_catalog.run(());
                 }
                 Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
             }
@@ -169,10 +166,12 @@ pub fn TagAssign(data: RwSignal<EntryFormData>) -> impl IntoView {
 
     view! {
         <div class="flex flex-col gap-2">
-            <span class="text-xs uppercase tracking-wider text-foreground/50">
+            <span class="text-foreground/50 text-xs uppercase tracking-wider">
                 {move || t!(i18n, vault.tags_label)}
             </span>
-            <div class="flex flex-wrap gap-1.5">{chips}</div>
+            <Show when=move || !ids_sv.get_value().is_empty()>
+                <div class="flex flex-wrap gap-1.5">{chips}</div>
+            </Show>
             <div class="flex gap-2 items-center">
                 <div class="flex-1">{add_existing}</div>
             </div>

@@ -57,11 +57,16 @@ pub fn VaultTable(
                         <For
                             each=move || items.get()
                             // Key includes the mutable display fields so an
-                            // optimistic favorite flip or a post-edit `tag_ids` /
+                            // optimistic favorite/tag flip or a post-edit
                             // `updated_at` change re-renders the row — a keyed
                             // `<For>` otherwise keeps stale children for a fixed key.
                             key=|item| {
-                                (item.id.clone(), item.is_favorite, item.updated_at.clone())
+                                (
+                                    item.id.clone(),
+                                    item.is_favorite,
+                                    item.tag_ids.join(","),
+                                    item.updated_at.clone(),
+                                )
                             }
                             children=move |item| {
                                 view! {

@@ -71,7 +71,10 @@ pub fn TagManager(
                 <DialogTitle>{move || t!(i18n, vault.tag_manager_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-3">
+                // `.dialog__body` has no bottom padding, so add our own so the
+                // list doesn't run to the dialog edge; min-width keeps the Sm
+                // dialog from feeling cramped.
+                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
                     <div class="flex gap-2 items-center">
                         <div class="flex-1">
                             <Input
@@ -104,7 +107,7 @@ pub fn TagManager(
                         </p>
                     </Show>
 
-                    <div class="flex flex-col divide-y divide-secondary/15">
+                    <div class="flex flex-col divide-y divide-secondary/15 max-h-[45vh] overflow-auto">
                         <For
                             each=move || tags.get()
                             // Key on (id, name) so a rename (same id, new name)

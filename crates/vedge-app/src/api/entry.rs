@@ -184,3 +184,27 @@ pub async fn set_favorite(
     )
     .await
 }
+
+/// Replace an entry's tag assignments. Backend-only mutation (decrypt → set →
+/// re-encrypt); works for any type, returns no secrets.
+pub async fn set_tags(
+    vault_path: &str,
+    entry_id: &str,
+    tag_ids: &[String],
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        tag_ids: &'a [String],
+    }
+    call_void(
+        "set_tags",
+        &Args {
+            vault_path,
+            entry_id,
+            tag_ids,
+        },
+    )
+    .await
+}

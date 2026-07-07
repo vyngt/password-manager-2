@@ -21,16 +21,19 @@ use std::path::PathBuf;
 
 use tracing::instrument;
 
-use vedge_core::domain::shared::{EntryId, VaultId};
+use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
     CopyFieldInput, CreateEntryInput, GetEntryInput, UpdateEntryInput,
     copy_field as copy_field_core, create_entry as create_entry_core, get_entry as get_entry_core,
     hard_delete_entry as hard_delete_entry_core, move_entry as move_entry_core,
     restore_entry as restore_entry_core, set_favorite as set_favorite_core,
-    soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
+    set_tags as set_tags_core, soft_delete_entry as soft_delete_entry_core,
+    update_entry as update_entry_core,
 };
 
-use crate::dto::entry::{PayloadDto, entry_id_from_str, payload_from_dto, payload_to_dto};
+use crate::dto::entry::{
+    PayloadDto, entry_id_from_str, payload_from_dto, payload_to_dto, tag_id_from_str,
+};
 use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -226,6 +229,29 @@ pub async fn set_favorite(
 
     let id = entry_id_from_str(&entry_id);
     set_favorite_core(&mut guard, &id, favorite).await?;
+    Ok(())
+}
+
+/// Replace an entry's tag assignments.
+///
+/// Works for any entry type (Document included) — the tag list lives in the
+/// encrypted `CommonMeta`, so the backend decrypts → sets → re-encrypts; no
+/// secrets or blob bytes cross the boundary. Dangling ids are tolerated.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn set_tags(
+    vault_path: String,
+    entry_id: String,
+    tag_ids: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let id = entry_id_from_str(&entry_id);
+    let tags: Vec<TagId> = tag_ids.iter().map(|s| tag_id_from_str(s)).collect();
+    set_tags_core(&mut guard, &id, tags).await?;
     Ok(())
 }
 

@@ -10,7 +10,6 @@
 //! a `get_entry` reveal). The [`EntryForm`] component renders the active type's
 //! field set over a single `RwSignal<EntryFormData>`.
 
-use super::tag_assign::TagAssign;
 use crate::i18n::*;
 use leptos::prelude::*;
 use vedge_ipc::{
@@ -614,9 +613,6 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                     </p>
                 }.into_any(),
             }}
-            <div class="col-span-2">
-                <TagAssign data=data />
-            </div>
         </div>
     }
 }
