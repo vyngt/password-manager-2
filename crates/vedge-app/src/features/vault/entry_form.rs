@@ -217,6 +217,9 @@ impl EntryFormData {
         let mut next = Self::new(entry_type);
         next.name = self.name.clone();
         next.url = self.url.clone();
+        // Preserve the chosen folder across a type switch (the folder select is
+        // shared across all types, so switching shouldn't discard it).
+        next.folder_id = self.folder_id.clone();
         next
     }
 

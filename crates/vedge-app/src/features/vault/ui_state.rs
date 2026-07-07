@@ -23,6 +23,9 @@ pub struct VaultUiState {
     /// Bumped to ask the open detail panel to enter edit mode (it observes the
     /// change; the value itself is a monotonic ticket, not meaningful).
     pub edit_request: RwSignal<u32>,
+    /// Bumped by the palette's "Move to folder…" command; the page observes it
+    /// and opens the move dialog for the selected entry (monotonic ticket).
+    pub move_request: RwSignal<u32>,
 }
 
 impl VaultUiState {
@@ -33,6 +36,7 @@ impl VaultUiState {
             show_create: RwSignal::new(false),
             palette_open: RwSignal::new(false),
             edit_request: RwSignal::new(0),
+            move_request: RwSignal::new(0),
         }
     }
 }

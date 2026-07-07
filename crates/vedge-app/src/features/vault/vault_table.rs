@@ -27,6 +27,8 @@ pub fn VaultTable(
     on_select: Callback<IndexEntryDto>,
     /// `(entry_id, next_state)` — flip the row's favorite flag.
     on_favorite: Callback<(String, bool)>,
+    /// Open the move-to-folder picker for this entry.
+    on_move_request: Callback<IndexEntryDto>,
 ) -> impl IntoView {
     let i18n = use_i18n();
 
@@ -65,6 +67,7 @@ pub fn VaultTable(
                                     item.id.clone(),
                                     item.is_favorite,
                                     item.tag_ids.join(","),
+                                    item.folder_id.clone(),
                                     item.updated_at.clone(),
                                 )
                             }
@@ -77,6 +80,7 @@ pub fn VaultTable(
                                         on_delete=on_delete
                                         on_select=on_select
                                         on_favorite=on_favorite
+                                        on_move_request=on_move_request
                                     />
                                 }
                             }
@@ -96,10 +100,12 @@ fn VaultTableRow(
     on_delete: Callback<String>,
     on_select: Callback<IndexEntryDto>,
     on_favorite: Callback<(String, bool)>,
+    on_move_request: Callback<IndexEntryDto>,
 ) -> impl IntoView {
     let i18n = use_i18n();
 
     let entry_for_select = item.clone();
+    let entry_for_move = item.clone();
     let item_id = item.id.clone();
     let fav_id = item.id.clone();
     let is_fav = item.is_favorite;
@@ -180,18 +186,32 @@ fn VaultTableRow(
                         // closure) doesn't take ownership out of the `Show`'s
                         // re-runnable `Fn` children.
                         let item_id = item_id.clone();
+                        let entry_for_move = entry_for_move.clone();
                         view! {
-                            <IconButton
-                                aria_label=Signal::derive(move || t_string!(i18n, vault.delete).to_string())
-                                variant=Variant::Danger
-                                size=Size::Sm
-                                on:click=move |ev: web_sys::MouseEvent| {
-                                    ev.stop_propagation();
-                                    on_delete.run(item_id.clone());
-                                }
-                            >
-                                <Icon icon=i::BiTrashRegular />
-                            </IconButton>
+                            <div class="flex items-center gap-1">
+                                <IconButton
+                                    aria_label=Signal::derive(move || t_string!(i18n, vault.folder_move).to_string())
+                                    variant=Variant::Ghost
+                                    size=Size::Sm
+                                    on:click=move |ev: web_sys::MouseEvent| {
+                                        ev.stop_propagation();
+                                        on_move_request.run(entry_for_move.clone());
+                                    }
+                                >
+                                    <Icon icon=i::FaFolderOpenSolid />
+                                </IconButton>
+                                <IconButton
+                                    aria_label=Signal::derive(move || t_string!(i18n, vault.delete).to_string())
+                                    variant=Variant::Danger
+                                    size=Size::Sm
+                                    on:click=move |ev: web_sys::MouseEvent| {
+                                        ev.stop_propagation();
+                                        on_delete.run(item_id.clone());
+                                    }
+                                >
+                                    <Icon icon=i::BiTrashRegular />
+                                </IconButton>
+                            </div>
                         }
                     }
                 </Show>
