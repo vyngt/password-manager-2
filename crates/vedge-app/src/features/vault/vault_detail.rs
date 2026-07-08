@@ -229,7 +229,10 @@ pub fn VaultDetail(
     };
 
     view! {
-        <aside class="w-80 min-w-0 border border-border rounded-lg p-4 bg-primary-muted overflow-auto">
+        // Right-side drawer: absolutely positioned over the table (its parent row
+        // is `relative`), so it never competes for column width. Opaque bg +
+        // shadow lift it off the list; dismiss via the header ✕ (`on_close`).
+        <aside class="absolute inset-y-0 right-0 z-20 w-80 border-l border-border bg-primary-muted p-4 shadow-2xl overflow-auto animate-[drawer-in_180ms_ease-out]">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-semibold text-text-secondary">
                     {move || t!(i18n, vault.detail_title)}
