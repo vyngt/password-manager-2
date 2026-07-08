@@ -8,8 +8,8 @@ use crate::i18n::*;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use vedge_ipc::IndexEntryDto;
-use vedge_ui::components::Button;
 use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::{Button, IconButton};
 use vedge_ui::components::form::color_picker::{ColorPicker, SwatchItem};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
@@ -124,14 +124,9 @@ pub fn FolderCustomize(
                                 .iter()
                                 .map(|(key, ic)| {
                                     let key_s = (*key).to_owned();
-                                    // One clone per reactive toggle — a `class=(...)` tuple
-                                    // takes a SINGLE token (it calls `DOMTokenList.add`, which
-                                    // rejects spaces), so the selected style is three stacked
-                                    // single-token toggles, and closures capturing the (non-Copy)
-                                    // key each need their own clone.
-                                    let sel_a = key_s.clone();
-                                    let sel_b = key_s.clone();
-                                    let sel_c = key_s.clone();
+                                    // One clone per closure (the reactive selected-class read, the
+                                    // aria-pressed read, and the click) since the key is non-Copy.
+                                    let sel_cls = key_s.clone();
                                     let sel_p = key_s.clone();
                                     // The icon key doubles as the accessible name — there's no
                                     // localized per-icon string set, so the identifier is the
@@ -139,32 +134,28 @@ pub fn FolderCustomize(
                                     let label = key_s.clone();
                                     let ic = *ic;
                                     view! {
-                                        <button
-                                            type="button"
-                                            class="flex items-center justify-center p-2 rounded border border-border hover:border-primary text-foreground/70"
-                                            aria-label=label
-                                            aria-pressed=move || {
+                                        <IconButton
+                                            variant=Variant::Ghost
+                                            size=Size::Md
+                                            aria_label=label
+                                            attr:aria-pressed=move || {
                                                 (icon.get().as_deref() == Some(sel_p.as_str()))
                                                     .then_some("true")
                                             }
-                                            class=(
-                                                "border-primary",
-                                                move || icon.get().as_deref() == Some(sel_a.as_str()),
-                                            )
-                                            class=(
-                                                "text-primary",
-                                                move || icon.get().as_deref() == Some(sel_b.as_str()),
-                                            )
-                                            class=(
-                                                "bg-primary/10",
-                                                move || icon.get().as_deref() == Some(sel_c.as_str()),
-                                            )
+                                            class=Signal::derive(move || {
+                                                let base = "border border-border hover:border-primary text-foreground/70";
+                                                if icon.get().as_deref() == Some(sel_cls.as_str()) {
+                                                    format!("{base} border-primary text-primary bg-primary/10")
+                                                } else {
+                                                    base.to_string()
+                                                }
+                                            })
                                             on:click=move |_: web_sys::MouseEvent| {
                                                 icon.set(Some(key_s.clone()));
                                             }
                                         >
                                             <Icon attr:aria-hidden="true" icon=ic width="16" height="16" />
-                                        </button>
+                                        </IconButton>
                                     }
                                 })
                                 .collect_view()}
