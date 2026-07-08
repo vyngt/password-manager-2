@@ -16,12 +16,12 @@ pub fn DialogHeader(children: Children) -> impl IntoView {
                 .closeable
                 .then(|| {
                     view! {
-                        // `on_click=` (a direct binding on IconButton's `<button>`),
-                        // NOT spread `on:click=`: the Dialog renders inside a
-                        // `<Portal>`, and Leptos's spread-onto-component forwarding
-                        // does not attach a listener across the portal boundary — a
-                        // spread `on:click` here silently never fires (the ✕ wouldn't
-                        // close). Do not "simplify" this back to `on:click`.
+                        // `on_click=` (a direct handler binding on IconButton's own
+                        // `<button>`) rather than spread `on:click=`: an explicit
+                        // handler prop is the clean way to wire a component-rendered
+                        // button's click. `ctx.on_close` is the Dialog's *deferred*
+                        // close (see dialog.rs `request_close`), which is what makes
+                        // the in-Portal ✕ actually tear the dialog down.
                         <IconButton
                             aria_label=ctx.close_label
                             variant=Variant::Ghost

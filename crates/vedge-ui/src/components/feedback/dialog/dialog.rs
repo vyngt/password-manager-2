@@ -42,9 +42,22 @@ pub fn Dialog(
     let dialog_ref = NodeRef::<leptos::html::Div>::new();
     let children_stored = StoredValue::new(children);
 
-    // Provide context for sub-components.
+    // Defer the close one macrotask so the `<Portal>` teardown never runs
+    // synchronously from within a portaled event handler. Closing from a
+    // deeply-nested (type-erased) element inside the Portal — the header ✕ —
+    // otherwise flips `open` but fails to unmount the Portal DOM (the
+    // concrete-view backdrop happens to work). This mirrors the deferred unmount
+    // every other Portal overlay uses (Popover / ColorPicker). Keeping `<Show>`
+    // gated on the external `open` (no internal `mounted`) avoids the desync a
+    // prior internal-visibility-signal implementation hit.
+    let request_close = Callback::new(move |()| {
+        set_timeout(move || on_close.run(()), Duration::ZERO);
+    });
+
+    // Provide context for sub-components. The ✕ closes via `request_close`
+    // (deferred) so its in-portal click doesn't tear the Portal down synchronously.
     provide_context(DialogContext {
-        on_close,
+        on_close: request_close,
         closeable,
         close_label,
         set_title_id,
@@ -119,7 +132,7 @@ pub fn Dialog(
                         }
                         if let (Some(t), Some(c)) = (ev.target(), ev.current_target()) {
                             if js_sys::Object::is(t.as_ref(), c.as_ref()) {
-                                on_close.run(());
+                                request_close.run(());
                             }
                         }
                     }
@@ -127,7 +140,7 @@ pub fn Dialog(
                         match ev.key().as_str() {
                             "Escape" if closeable => {
                                 ev.prevent_default();
-                                on_close.run(());
+                                request_close.run(());
                             }
                             "Tab" => trap_tab(&ev, dialog_ref),
                             _ => {}

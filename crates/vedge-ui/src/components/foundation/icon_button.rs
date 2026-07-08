@@ -16,15 +16,12 @@ pub fn IconButton(
     /// (e.g. a selected/active state) as well as a static literal.
     #[prop(into, default = TextProp::default())]
     class: TextProp,
-    /// Direct click handler, bound as `on:click` on the `<button>` itself.
-    ///
-    /// Prefer this over spreading `on:click` when the button is rendered inside a
-    /// `<Portal>` (e.g. `Dialog`): Leptos's spread-onto-component forwarding does
-    /// not reliably attach a listener across the portal boundary, so a spread
-    /// `on:click` silently never fires there. This prop binds the handler directly
-    /// on the element, which works everywhere. Event delegation is off by default
-    /// in Leptos 0.8, so this coexists with any spread `on:click` (native listeners
-    /// stack) — existing spread call sites are unaffected.
+    /// Explicit click handler, bound as a direct `on:click` on the `<button>`
+    /// itself — an alternative to spreading `on:click` onto the component. Handy
+    /// when a caller wants the handler wired unambiguously to the button element
+    /// (e.g. `Dialog`'s header ✕). Event delegation is off by default in Leptos
+    /// 0.8, so this coexists with any spread `on:click` (native listeners stack) —
+    /// existing spread call sites are unaffected.
     #[prop(into, optional)]
     on_click: Option<Callback<()>>,
 ) -> impl IntoView {
