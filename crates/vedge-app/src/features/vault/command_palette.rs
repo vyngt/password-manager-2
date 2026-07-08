@@ -352,8 +352,11 @@ pub fn CommandPalette() -> impl IntoView {
                     spellcheck="false"
                     role="combobox"
                     aria-controls="cmdk-listbox"
-                    aria-expanded="true"
-                    aria-activedescendant=move || format!("cmdk-opt-{}", highlighted.get())
+                    aria-expanded=move || (!build_rows().is_empty()).to_string()
+                    aria-activedescendant=move || {
+                        (!build_rows().is_empty())
+                            .then(|| format!("cmdk-opt-{}", highlighted.get()))
+                    }
                     aria-label=move || t_string!(i18n, vault.palette_placeholder).to_string()
                     placeholder=move || t_string!(i18n, vault.palette_placeholder).to_string()
                     prop:value=move || query.get()
