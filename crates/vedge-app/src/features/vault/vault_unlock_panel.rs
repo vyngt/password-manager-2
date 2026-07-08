@@ -74,6 +74,7 @@ pub fn VaultUnlockPanel(
                                             </div>
                                         </div>
                                         <button
+                                            type="button"
                                             class="text-sm text-primary hover:underline"
                                             on:click=move |_: web_sys::MouseEvent| on_use_password.run(())
                                         >
@@ -124,6 +125,7 @@ pub fn VaultUnlockPanel(
                                         {move || {
                                             bio_enrolled.get().then(|| view! {
                                                 <button
+                                                    type="button"
                                                     class="mt-1 inline-flex items-center justify-center gap-1.5 text-sm text-primary hover:underline"
                                                     on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
                                                 >
