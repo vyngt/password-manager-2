@@ -35,6 +35,7 @@ use vedge_core::domain::vault::kdf_params::KdfParams;
 use vedge_core::domain::vault::payloads::{
     CommonMeta, EntryPayload, EntryType, LoginPayload, TagPayload,
 };
+use vedge_core::infrastructure::biometric::MemoryBiometricAuthenticator;
 use vedge_core::infrastructure::blob::FilesystemBlobStore;
 use vedge_core::infrastructure::clipboard::MemoryClipboardProvider;
 use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
@@ -63,6 +64,7 @@ pub struct Harness {
     pub crypto: Arc<XChaCha20CryptoProvider>,
     pub kdf: Arc<Argon2idKdfProvider>,
     pub keychain: Arc<MemoryKeychainProvider>,
+    pub biometric: Arc<MemoryBiometricAuthenticator>,
     pub repo: Arc<SqliteVaultRepository>,
     pub blob: Arc<FilesystemBlobStore>,
     pub clipboard: Arc<MemoryClipboardProvider>,
@@ -84,6 +86,7 @@ impl Harness {
         let crypto = Arc::new(XChaCha20CryptoProvider::new());
         let kdf = Arc::new(Argon2idKdfProvider::new());
         let keychain = Arc::new(MemoryKeychainProvider::new());
+        let biometric = Arc::new(MemoryBiometricAuthenticator::new());
         let clipboard = Arc::new(MemoryClipboardProvider::new());
 
         let master_password: Zeroizing<String> =
@@ -139,6 +142,7 @@ impl Harness {
             crypto,
             kdf,
             keychain,
+            biometric,
             repo,
             blob,
             clipboard,

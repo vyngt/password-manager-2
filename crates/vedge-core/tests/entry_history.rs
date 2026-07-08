@@ -17,7 +17,7 @@ use secrecy::{ExposeSecret, SecretString};
 use zeroize::Zeroizing;
 
 use vedge_core::application::vault::ports::{
-    KeyDerivationProvider, KeychainProvider, VaultRepository,
+    BiometricAuthenticator, KeyDerivationProvider, KeychainProvider, VaultRepository,
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
@@ -224,6 +224,7 @@ async fn history_decryptable_after_password_change() {
         &mut session,
         Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
         ChangePasswordInput {
             new_password: Zeroizing::new("new-master".into()),
             new_secret_key: None,

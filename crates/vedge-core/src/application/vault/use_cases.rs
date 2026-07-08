@@ -1,3 +1,4 @@
+pub mod biometric;
 pub mod change_password;
 pub mod copy_field;
 pub mod create_entry;
@@ -22,6 +23,7 @@ pub mod tag_ops;
 pub mod unlock_vault;
 pub mod update_entry;
 
+pub use biometric::enroll_biometric;
 pub use change_password::{ChangePasswordInput, change_password};
 pub use copy_field::{CopyFieldInput, FieldSelector, copy_field};
 pub use create_entry::{CreateEntryInput, CreateEntryOutput, create_entry};

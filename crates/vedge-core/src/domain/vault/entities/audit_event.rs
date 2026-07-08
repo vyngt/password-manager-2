@@ -22,6 +22,10 @@ pub enum AuditAction {
     /// the keychain-stored Secret Key. Distinguishes recovery from normal
     /// unlocks in the audit timeline.
     RecoveryUsed,
+    /// Vault was unlocked via a biometric gate (Windows Hello / Touch ID)
+    /// releasing the stored KEK, instead of the master password. Distinguishes
+    /// biometric unlocks from normal unlocks in the audit timeline.
+    BiometricUnlocked,
 }
 
 impl AuditAction {
@@ -42,6 +46,7 @@ impl AuditAction {
             Self::TagRenamed => "TagRenamed",
             Self::TagDeleted => "TagDeleted",
             Self::RecoveryUsed => "RecoveryUsed",
+            Self::BiometricUnlocked => "BiometricUnlocked",
         }
     }
 
@@ -62,6 +67,7 @@ impl AuditAction {
             "TagRenamed" => Self::TagRenamed,
             "TagDeleted" => Self::TagDeleted,
             "RecoveryUsed" => Self::RecoveryUsed,
+            "BiometricUnlocked" => Self::BiometricUnlocked,
             _ => return None,
         })
     }

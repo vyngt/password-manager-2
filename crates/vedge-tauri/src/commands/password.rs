@@ -44,6 +44,7 @@ pub async fn change_password(
         &mut guard,
         Arc::clone(&state.kdf),
         Arc::clone(&state.keychain),
+        Arc::clone(&state.biometric),
         ChangePasswordInput {
             new_password,
             new_secret_key,

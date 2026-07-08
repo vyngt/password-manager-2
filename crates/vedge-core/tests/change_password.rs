@@ -16,7 +16,9 @@ use secrecy::SecretString;
 use zeroize::Zeroizing;
 
 // Traits needed for trait-method lookup + trait-object coercions.
-use vedge_core::application::vault::ports::{KeyDerivationProvider, KeychainProvider};
+use vedge_core::application::vault::ports::{
+    BiometricAuthenticator, KeyDerivationProvider, KeychainProvider,
+};
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password, create_entry,
@@ -67,6 +69,7 @@ async fn rotate_password_then_unlock_with_new_only() {
         &mut session,
         Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
         ChangePasswordInput {
             new_password: Zeroizing::new("new-hunter2".into()),
             new_secret_key: None,
@@ -98,6 +101,7 @@ async fn rotate_secret_key_only() {
         &mut session,
         Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
         ChangePasswordInput {
             new_password: Zeroizing::new("correct horse battery staple".into()),
             new_secret_key: Some(Zeroizing::new(new_sk)),
@@ -143,6 +147,7 @@ async fn rotate_preserves_all_existing_entries_decrypted() {
         &mut session,
         Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
         ChangePasswordInput {
             new_password: Zeroizing::new("next-pw".into()),
             new_secret_key: None,

@@ -8,6 +8,7 @@ use vedge_ipc::EmergencyKitDto;
 use crate::api::call::{call, call_void};
 use crate::api::error::ApiError;
 
+#[allow(dead_code)] // wrapper not yet called by UI
 pub async fn export_emergency_kit(vault_path: &str) -> Result<EmergencyKitDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -18,6 +19,7 @@ pub async fn export_emergency_kit(vault_path: &str) -> Result<EmergencyKitDto, A
 
 /// Returns the raw PDF bytes. Shell-side PDF rendering is idempotent —
 /// each call produces a fresh document.
+#[allow(dead_code)] // wrapper not yet called by UI (the path-based `write_pdf` is used)
 pub async fn emergency_kit_pdf(vault_path: &str) -> Result<Vec<u8>, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {

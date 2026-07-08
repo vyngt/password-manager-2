@@ -100,6 +100,19 @@ pub enum VaultError {
     #[error("Secret Key not found in keychain")]
     KeychainEntryNotFound,
 
+    // --- biometric ---
+    #[error("biometric authentication is unavailable on this device")]
+    BiometricUnavailable,
+
+    #[error("no biometric enrollment for this vault")]
+    BiometricNotEnrolled,
+
+    #[error("biometric prompt was cancelled")]
+    BiometricCancelled,
+
+    #[error("biometric authenticator failure: {0}")]
+    BiometricFailed(String),
+
     #[error("storage failure")]
     Storage(#[source] StorageError),
 }

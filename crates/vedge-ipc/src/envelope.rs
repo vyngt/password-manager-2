@@ -17,6 +17,7 @@ pub mod kind {
     pub const NOT_FOUND: &str = "NotFound";
     pub const VAULT_NOT_OPEN: &str = "VaultNotOpen";
     pub const KEYCHAIN: &str = "Keychain";
+    pub const BIOMETRIC: &str = "Biometric";
     pub const STORAGE: &str = "Storage";
     pub const INVALID: &str = "Invalid";
     pub const ALREADY_EXISTS: &str = "AlreadyExists";
