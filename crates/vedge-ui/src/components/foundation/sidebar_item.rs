@@ -39,7 +39,11 @@ pub fn SidebarItem(
         _ => "",
     };
 
-    let disabled_cls = if disabled { "sidebar-item--disabled" } else { "" };
+    let disabled_cls = if disabled {
+        "sidebar-item--disabled"
+    } else {
+        ""
+    };
 
     let root_cls = move || {
         let selected_cls = if selected.get() {
@@ -48,7 +52,14 @@ pub fn SidebarItem(
             ""
         };
         let extra = class.get();
-        ["sidebar-item", indent_cls, selected_cls, disabled_cls, extra.as_str()].join(" ")
+        [
+            "sidebar-item",
+            indent_cls,
+            selected_cls,
+            disabled_cls,
+            extra.as_str(),
+        ]
+        .join(" ")
     };
 
     let aria_current = move || selected.get().then_some("page");

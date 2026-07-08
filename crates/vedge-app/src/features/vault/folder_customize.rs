@@ -9,8 +9,8 @@ use leptos::prelude::*;
 use leptos_icons::Icon;
 use vedge_ipc::IndexEntryDto;
 use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
-use vedge_ui::components::{Button, IconButton};
 use vedge_ui::components::form::color_picker::{ColorPicker, SwatchItem};
+use vedge_ui::components::{Button, IconButton};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
 /// Preset folder colors offered as `ColorPicker` swatches (also the default when
