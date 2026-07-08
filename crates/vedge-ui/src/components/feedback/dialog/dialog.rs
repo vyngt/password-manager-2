@@ -66,6 +66,10 @@ pub fn Dialog(
         // only reactive dependency stays `open`.
         let shown = mounted.get_untracked();
         let closing = data_state.get_untracked() == Some("closing");
+        // TEMP DIAGNOSTIC
+        web_sys::console::log_1(
+            &format!("[Dialog] effect: open={now} mounted={shown} closing={closing}").into(),
+        );
 
         if now && (!shown || closing) {
             // ---- ENTER ---- (open from hidden, or re-open while mid-close)
@@ -106,6 +110,7 @@ pub fn Dialog(
             );
         } else if !now && shown && !closing {
             // ---- EXIT ----
+            web_sys::console::log_1(&"[Dialog] EXIT branch → closing".into()); // TEMP
             ev_enter.fetch_add(1, Ordering::Relaxed);
             let ticket = ev_exit.fetch_add(1, Ordering::Relaxed) + 1;
 
@@ -117,6 +122,7 @@ pub fn Dialog(
                     if ev.load(Ordering::Relaxed) != ticket {
                         return;
                     }
+                    web_sys::console::log_1(&"[Dialog] EXIT done → mounted=false".into()); // TEMP
                     mounted.set(false);
                     data_state.set(None);
 
