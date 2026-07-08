@@ -59,6 +59,8 @@ pub fn Dialog(
     Effect::new(move |prev: Option<bool>| {
         let now = open.get();
         let was = prev.unwrap_or(false);
+        // TEMP DIAGNOSTIC — remove once the ✕ is confirmed.
+        web_sys::console::log_1(&format!("[Dialog] open effect: now={now} was={was}").into());
 
         if now && !was {
             // ---- ENTER ----

@@ -23,7 +23,16 @@ pub fn DialogHeader(children: Children) -> impl IntoView {
                             type="button"
                             class="icon-btn icon-btn--ghost icon-btn--sm dialog__close"
                             aria-label=move || ctx.close_label.get()
-                            on:click=move |_: web_sys::MouseEvent| ctx.on_close.run(())
+                            on:click=move |_: web_sys::MouseEvent| {
+                                // TEMP DIAGNOSTIC — remove once the ✕ is confirmed.
+                                web_sys::console::log_1(
+                                    &"[Dialog] ✕ clicked → running on_close".into(),
+                                );
+                                ctx.on_close.run(());
+                            }
+                            on:pointerdown=move |_: web_sys::PointerEvent| {
+                                web_sys::console::log_1(&"[Dialog] ✕ pointerdown".into());
+                            }
                         >
                             <Icon icon=i::FaXmarkSolid />
                         </button>
