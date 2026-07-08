@@ -37,6 +37,10 @@ const GROUPS: &[SidebarGroup] = &[
                 path: "/playground/copy-button",
             },
             SidebarItem {
+                name: "Empty State",
+                path: "/playground/empty-state",
+            },
+            SidebarItem {
                 name: "Icon Button",
                 path: "/playground/icon-button",
             },

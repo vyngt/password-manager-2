@@ -13,9 +13,11 @@ use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::{CreateTagDto, TagMetaDto};
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::select::{Select, SelectItem};
 use vedge_ui::components::{Button, Input};
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 /// Toggle `id` in a tag-id list: present → remove, absent → append. Order-stable
 /// for the kept ids; idempotent per direction.
@@ -57,12 +59,20 @@ pub fn TagAssign(
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let id_sv = StoredValue::new(entry_id);
     let ids_sv = StoredValue::new(initial);
     let new_name = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
-    let error = RwSignal::new(Option::<String>::None);
 
     // Assigned tags → removable chips (unresolved ids from deleted tags skipped;
     // color honored as text tint when present).
@@ -124,6 +134,7 @@ pub fn TagAssign(
                     options=options
                     value=Signal::derive(String::new)
                     placeholder=Signal::derive(move || t_string!(i18n, vault.tag_add).to_string())
+                    aria_label=Signal::derive(move || t_string!(i18n, vault.tag_add_aria).to_string())
                     on_change=Callback::new(move |id: String| {
                         on_tags.run((id_sv.get_value(), toggle_tag(&ids_sv.get_value(), &id)));
                     })
@@ -145,7 +156,6 @@ pub fn TagAssign(
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_tag_create).to_string();
         busy.set(true);
-        error.set(None);
         spawn_local(async move {
             let dto = CreateTagDto { name, color: None };
             match api::tag::create_tag(&vault_path, &dto).await {
@@ -158,7 +168,7 @@ pub fn TagAssign(
                     on_tags.run((id_sv.get_value(), ids));
                     on_catalog.run(());
                 }
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             busy.set(false);
         });
@@ -198,13 +208,6 @@ pub fn TagAssign(
                     }
                 }}
             </div>
-            {move || {
-                error
-                    .get()
-                    .map(|e| view! {
-                        <p class="text-sm" style="color:var(--color-danger-text)">{e}</p>
-                    })
-            }}
         </div>
     }
 }

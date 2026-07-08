@@ -105,7 +105,7 @@ pub fn VaultList(
             <div class="px-3.5 pb-2.5 pt-3.5">
                 <div class="mb-2.5 flex items-center gap-2">
                     <span class="flex h-5.5 w-5.5 items-center justify-center rounded-md bg-primary text-white">
-                        <Icon icon=i::FaShieldHalvedSolid width="13" height="13" />
+                        <Icon attr:aria-hidden="true" icon=i::FaShieldHalvedSolid width="13" height="13" />
                     </span>
                     <span class="text-sm font-semibold text-text-primary">
                         {move || t!(i18n, unlock.your_vaults)}
@@ -113,7 +113,7 @@ pub fn VaultList(
                 </div>
                 <div class="flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-2.5">
                     <span class="flex shrink-0 text-foreground/40">
-                        <Icon icon=i::FaMagnifyingGlassSolid width="13" height="13" />
+                        <Icon attr:aria-hidden="true" icon=i::FaMagnifyingGlassSolid width="13" height="13" />
                     </span>
                     <input
                         node_ref=input_ref
@@ -211,7 +211,7 @@ pub fn VaultList(
                                         class=("text-primary", move || is_selected.get())
                                         class=("text-foreground/40", move || !is_selected.get())
                                     >
-                                        <Icon icon=row_icon />
+                                        <Icon attr:aria-hidden="true" icon=row_icon />
                                     </span>
                                     <div class="min-w-0 flex-1">
                                         {move || {
@@ -329,7 +329,7 @@ pub fn VaultList(
                                                         );
                                                     }
                                                 >
-                                                    <Icon icon=i::FaPenSolid width="12" height="12" />
+                                                    <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="12" height="12" />
                                                 </button>
                                             </div>
                                         })

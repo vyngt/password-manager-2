@@ -4,6 +4,7 @@ use leptos::either::Either;
 use leptos::prelude::*;
 use std::collections::HashMap;
 use vedge_ipc::{IndexEntryDto, TagMetaDto};
+use vedge_ui::components::empty_state::EmptyState;
 use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, Variant};
 
@@ -43,8 +44,8 @@ pub fn VaultTable(
                 when=move || !items.get().is_empty()
                 fallback=move || {
                     view! {
-                        <div class="flex items-center justify-center h-full text-foreground/40 text-sm">
-                            {move || empty_label.get()}
+                        <div class="flex items-center justify-center h-full">
+                            <EmptyState icon=i::FaInboxSolid title=empty_label />
                         </div>
                     }
                 }
@@ -216,9 +217,9 @@ fn VaultTableRow(
                     }
                 >
                     {if is_fav {
-                        Either::Left(view! { <Icon icon=i::FaStarSolid /> })
+                        Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> })
                     } else {
-                        Either::Right(view! { <Icon icon=i::FaStarRegular /> })
+                        Either::Right(view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> })
                     }}
                 </IconButton>
             </td>
@@ -250,7 +251,7 @@ fn VaultTableRow(
                                         on_move_request.run(entry_for_move.clone());
                                     }
                                 >
-                                    <Icon icon=i::FaFolderOpenSolid />
+                                    <Icon attr:aria-hidden="true" icon=i::FaFolderOpenSolid />
                                 </IconButton>
                                 <IconButton
                                     aria_label=Signal::derive(move || t_string!(i18n, vault.delete).to_string())
@@ -261,7 +262,7 @@ fn VaultTableRow(
                                         on_delete.run(item_id.clone());
                                     }
                                 >
-                                    <Icon icon=i::BiTrashRegular />
+                                    <Icon attr:aria-hidden="true" icon=i::BiTrashRegular />
                                 </IconButton>
                             </div>
                         }

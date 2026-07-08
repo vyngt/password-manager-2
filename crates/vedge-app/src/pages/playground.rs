@@ -13,6 +13,7 @@ mod pg_date_picker;
 mod pg_date_time_picker;
 mod pg_dialog;
 mod pg_dropdown_menu;
+mod pg_empty_state;
 mod pg_file_upload;
 mod pg_form_field;
 mod pg_helper_text;

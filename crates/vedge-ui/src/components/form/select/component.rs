@@ -13,6 +13,7 @@ pub fn Select(
     #[prop(into, default = None)] value: Option<Signal<String>>,
     #[prop(optional, default = "")] default_value: &'static str,
     #[prop(into, default = TextProp::default())] placeholder: TextProp,
+    #[prop(into, default = TextProp::default())] aria_label: TextProp,
     #[prop(optional)] size: Size,
     #[prop(optional)] status: Status,
     #[prop(optional)] disabled: bool,
@@ -305,6 +306,10 @@ pub fn Select(
                 tabindex=if disabled { -1 } else { 0 }
                 aria-haspopup="listbox"
                 aria-expanded=move || is_open().to_string()
+                aria-label=move || {
+                    let v = aria_label.get();
+                    if v.is_empty() { None } else { Some(v) }
+                }
                 on:click=move |_: web_sys::MouseEvent| {
                     if disabled {
                         return;

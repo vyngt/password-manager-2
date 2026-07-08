@@ -12,6 +12,7 @@ use super::pg_date_picker::DatePickerPage;
 use super::pg_date_time_picker::DateTimePickerPage;
 use super::pg_dialog::DialogPage;
 use super::pg_dropdown_menu::DropdownMenuPage;
+use super::pg_empty_state::EmptyStatePage;
 use super::pg_file_upload::FileUploadPage;
 use super::pg_form_field::FormFieldPage;
 use super::pg_helper_text::HelperTextPage;
@@ -56,6 +57,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/badge") view=BadgePage />
             <Route path=path!("/button") view=ButtonPage />
             <Route path=path!("/copy-button") view=CopyButtonPage />
+            <Route path=path!("/empty-state") view=EmptyStatePage />
             <Route path=path!("/icon-button") view=IconButtonPage />
             <Route path=path!("/kbd") view=KbdPage />
             <Route path=path!("/progress-bar") view=ProgressBarPage />

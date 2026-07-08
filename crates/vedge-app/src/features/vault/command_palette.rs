@@ -30,6 +30,7 @@ use leptos_router::hooks::use_navigate;
 use std::collections::HashMap;
 use std::time::Duration;
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
+use vedge_ui::components::empty_state::EmptyState;
 use vedge_ui::components::feedback::Dialog;
 use vedge_ui::primitives::tokens::DialogSize;
 use wasm_bindgen::JsCast;
@@ -341,7 +342,7 @@ pub fn CommandPalette() -> impl IntoView {
             // Search header — search icon + input + esc badge.
             <div class="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
                 <span class="flex shrink-0 text-foreground/40">
-                    <Icon icon=i::FaMagnifyingGlassSolid width="16" height="16" />
+                    <Icon attr:aria-hidden="true" icon=i::FaMagnifyingGlassSolid width="16" height="16" />
                 </span>
                 <input
                     node_ref=input_ref
@@ -349,6 +350,13 @@ pub fn CommandPalette() -> impl IntoView {
                     type="text"
                     autocomplete="off"
                     spellcheck="false"
+                    role="combobox"
+                    aria-controls="cmdk-listbox"
+                    aria-expanded=move || (!build_rows().is_empty()).to_string()
+                    aria-activedescendant=move || {
+                        (!build_rows().is_empty())
+                            .then(|| format!("cmdk-opt-{}", highlighted.get()))
+                    }
                     aria-label=move || t_string!(i18n, vault.palette_placeholder).to_string()
                     placeholder=move || t_string!(i18n, vault.palette_placeholder).to_string()
                     prop:value=move || query.get()
@@ -364,15 +372,23 @@ pub fn CommandPalette() -> impl IntoView {
             </div>
 
             // Results.
-            <div node_ref=list_ref role="listbox" class="overflow-auto px-2 py-2 max-h-[360px]">
+            <div
+                node_ref=list_ref
+                id="cmdk-listbox"
+                role="listbox"
+                class="overflow-auto px-2 py-2 max-h-[360px]"
+            >
                 {move || {
                     let rows = build_rows();
                     if rows.is_empty() {
                         return Either::Left(
                             view! {
-                                <div class="px-3 py-8 text-center text-sm text-foreground/40">
-                                    {move || t!(i18n, vault.palette_empty)}
-                                </div>
+                                <EmptyState
+                                    icon=i::FaMagnifyingGlassSolid
+                                    title=Signal::derive(move || {
+                                        t_string!(i18n, vault.palette_empty).to_string()
+                                    })
+                                />
                             },
                         );
                     }
@@ -421,6 +437,7 @@ pub fn CommandPalette() -> impl IntoView {
                                         }
                                     })}
                                 <div
+                                    id=format!("cmdk-opt-{idx}")
                                     role="option"
                                     aria-selected=move || is_hl().then_some("true")
                                     class="relative flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm"
@@ -443,7 +460,7 @@ pub fn CommandPalette() -> impl IntoView {
                                         class=("text-primary", is_hl)
                                         class=("text-foreground/50", move || !is_hl())
                                     >
-                                        <Icon icon=icon width="16" height="16" />
+                                        <Icon attr:aria-hidden="true" icon=icon width="16" height="16" />
                                     </span>
                                     <span
                                         class="flex-1 truncate"

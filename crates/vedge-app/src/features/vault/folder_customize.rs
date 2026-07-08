@@ -84,7 +84,7 @@ pub fn FolderCustomize(
                                     class="flex shrink-0 text-foreground/50"
                                     style:color=move || color.get().unwrap_or_default()
                                 >
-                                    <Icon icon=icon_data width="16" height="16" />
+                                    <Icon attr:aria-hidden="true" icon=icon_data width="16" height="16" />
                                 </span>
                                 <span class="truncate">{name}</span>
                             </div>
@@ -132,11 +132,21 @@ pub fn FolderCustomize(
                                     let sel_a = key_s.clone();
                                     let sel_b = key_s.clone();
                                     let sel_c = key_s.clone();
+                                    let sel_p = key_s.clone();
+                                    // The icon key doubles as the accessible name — there's no
+                                    // localized per-icon string set, so the identifier is the
+                                    // best available label for this visual picker.
+                                    let label = key_s.clone();
                                     let ic = *ic;
                                     view! {
                                         <button
                                             type="button"
                                             class="flex items-center justify-center p-2 rounded border border-border hover:border-primary text-foreground/70"
+                                            aria-label=label
+                                            aria-pressed=move || {
+                                                (icon.get().as_deref() == Some(sel_p.as_str()))
+                                                    .then_some("true")
+                                            }
                                             class=(
                                                 "border-primary",
                                                 move || icon.get().as_deref() == Some(sel_a.as_str()),
@@ -153,7 +163,7 @@ pub fn FolderCustomize(
                                                 icon.set(Some(key_s.clone()));
                                             }
                                         >
-                                            <Icon icon=ic width="16" height="16" />
+                                            <Icon attr:aria-hidden="true" icon=ic width="16" height="16" />
                                         </button>
                                     }
                                 })

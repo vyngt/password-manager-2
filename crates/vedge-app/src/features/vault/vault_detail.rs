@@ -24,8 +24,10 @@ use vedge_ipc::{
     DocumentPayloadDto, EntryTypeDto, FieldSelectorDto, IndexEntryDto, PayloadDto, TagMetaDto,
 };
 use vedge_ui::components::Button;
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 use icondata as i;
 use leptos_icons::Icon;
@@ -56,6 +58,15 @@ pub fn VaultDetail(
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
     let ui = expect_context::<VaultUiState>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let entry_id = StoredValue::new(entry.id.clone());
     let fav_id = entry.id.clone();
@@ -91,7 +102,6 @@ pub fn VaultDetail(
 
     let editing = RwSignal::new(false);
     let saving = RwSignal::new(false);
-    let error = RwSignal::new(Option::<String>::None);
     let form = RwSignal::new(EntryFormData::new(EntryTypeDto::Login));
 
     // Document detail: reveal metadata (filename / mime / size) once on open so
@@ -123,14 +133,13 @@ pub fn VaultDetail(
         let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry_id.get_value();
         let err_prefix = untrack(|| t_string!(i18n, vault.err_reveal).to_string());
-        error.set(None);
         spawn_local(async move {
             match api::entry::get_entry(&vault_path, &id).await {
                 Ok(payload) => {
                     form.set(EntryFormData::from_payload(&payload));
                     editing.set(true);
                 }
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     };
@@ -151,7 +160,6 @@ pub fn VaultDetail(
 
     let cancel_edit = move |_: web_sys::MouseEvent| {
         editing.set(false);
-        error.set(None);
     };
 
     let save_edit = move |_: web_sys::MouseEvent| {
@@ -162,16 +170,15 @@ pub fn VaultDetail(
             Ok(p) => p,
             Err(EntryFormError::NameRequired) => return,
             Err(EntryFormError::InvalidExpiry) => {
-                error.set(Some(t_string!(i18n, vault.err_invalid_expiry).to_string()));
+                show_error(t_string!(i18n, vault.err_invalid_expiry).to_string());
                 return;
             }
             Err(EntryFormError::UnsupportedType) => {
-                error.set(Some(t_string!(i18n, vault.err_update).to_string()));
+                show_error(t_string!(i18n, vault.err_update).to_string());
                 return;
             }
         };
         saving.set(true);
-        error.set(None);
         let vault_path = active.path.get().unwrap_or_default();
         let id = entry_id.get_value();
         let err_prefix = t_string!(i18n, vault.err_update).to_string();
@@ -181,7 +188,7 @@ pub fn VaultDetail(
                     editing.set(false);
                     on_saved.run(());
                 }
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             saving.set(false);
         });
@@ -198,7 +205,6 @@ pub fn VaultDetail(
             .unwrap_or_else(|| doc_name_default.get_value());
         let dialog_title = t_string!(i18n, vault.export).to_string();
         let err_prefix = t_string!(i18n, vault.err_export).to_string();
-        error.set(None);
         spawn_local(async move {
             let opts = SaveDialogOptions {
                 title: Some(dialog_title),
@@ -210,11 +216,11 @@ pub fn VaultDetail(
                     if let Err(e) =
                         api::document::export_document_to_path(&vault_path, &id, &dest).await
                     {
-                        error.set(Some(format!("{err_prefix}{e}")));
+                        show_error(format!("{err_prefix}{e}"));
                     }
                 }
                 Ok(None) => {}
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     };
@@ -241,9 +247,9 @@ pub fn VaultDetail(
                         }
                     >
                         {if is_fav {
-                            Either::Left(view! { <Icon icon=i::FaStarSolid /> })
+                            Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> })
                         } else {
-                            Either::Right(view! { <Icon icon=i::FaStarRegular /> })
+                            Either::Right(view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> })
                         }}
                     </IconButton>
                     {has_history.then(|| view! {
@@ -257,7 +263,7 @@ pub fn VaultDetail(
                                 on_history_request.run(entry_for_history.clone());
                             }
                         >
-                            <Icon icon=i::FaClockRotateLeftSolid />
+                            <Icon attr:aria-hidden="true" icon=i::FaClockRotateLeftSolid />
                         </IconButton>
                     })}
                     <IconButton
@@ -279,20 +285,19 @@ pub fn VaultDetail(
                         <div class="grid grid-cols-2 gap-3 mt-3">
                             <FolderSelect data=form folders=folders exclude_id=move_exclude />
                         </div>
-                        {move || error.get().map(|e| view! {
-                            <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>
-                        })}
                         <div class="flex gap-2 justify-end mt-4">
                             <Button variant=Variant::Ghost size=Size::Sm on:click=cancel_edit>
                                 {move || t!(i18n, vault.cancel)}
                             </Button>
                             {move || {
-                                let busy = saving.get() || form.with(|d| d.name.trim().is_empty());
+                                let is_saving = saving.get();
+                                let busy = is_saving || form.with(|d| d.name.trim().is_empty());
                                 view! {
                                     <Button
                                         variant=Variant::Primary
                                         size=Size::Sm
                                         disabled=busy
+                                        loading=is_saving
                                         on:click=save_edit
                                     >
                                         {move || t!(i18n, vault.save)}
@@ -380,7 +385,7 @@ pub fn VaultDetail(
                                                             class="flex shrink-0 text-foreground/50"
                                                             style:color=color.unwrap_or_default()
                                                         >
-                                                            <Icon icon=icon_data width="12" height="12" />
+                                                            <Icon attr:aria-hidden="true" icon=icon_data width="12" height="12" />
                                                         </span>
                                                         {name}
                                                     </span>
@@ -473,9 +478,6 @@ pub fn VaultDetail(
                                 on_catalog=on_catalog
                             />
                         </div>
-                        {move || error.get().map(|e| view! {
-                            <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>
-                        })}
                     })
                 }
             }}

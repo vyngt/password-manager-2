@@ -16,7 +16,9 @@ use leptos::task::spawn_local;
 use vedge_ipc::{CommonMetaDto, EntryTypeDto};
 use vedge_ui::components::Button;
 use vedge_ui::components::Input;
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 /// Final path component (basename), splitting on both `/` and `\` so it works
 /// for native paths on every platform.
@@ -47,16 +49,23 @@ fn document_meta(name: String) -> CommonMetaDto {
 pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let src_path = RwSignal::new(Option::<String>::None);
     let name = RwSignal::new(String::new());
     let submitting = RwSignal::new(false);
-    let error = RwSignal::new(Option::<String>::None);
 
     let reset = move || {
         src_path.set(None);
         name.set(String::new());
-        error.set(None);
         submitting.set(false);
     };
 
@@ -69,7 +78,6 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
         // Read the locale string in the handler body (reactive owner present);
         // reading it inside `spawn_local` would warn.
         let dialog_title = t_string!(i18n, vault.attach_title).to_string();
-        error.set(None);
         spawn_local(async move {
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
@@ -81,7 +89,7 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                     src_path.set(Some(path));
                 }
                 Ok(None) => {}
-                Err(e) => error.set(Some(e.to_string())),
+                Err(e) => show_error(e.to_string()),
             }
         });
     };
@@ -103,7 +111,6 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
         let vault_path = active.path.get().unwrap_or_default();
 
         submitting.set(true);
-        error.set(None);
         spawn_local(async move {
             let meta = document_meta(entry_name);
             match api::document::import_document_from_path(&vault_path, &path, &meta).await {
@@ -114,8 +121,8 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                 }
                 // `DocumentTooLarge` collapses to `Invalid` on the wire; surface
                 // the friendly, localized message for that specific case.
-                Err(ApiError::Invalid(m)) if m.contains("too large") => error.set(Some(too_large)),
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(ApiError::Invalid(m)) if m.contains("too large") => show_error(too_large),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             submitting.set(false);
         });
@@ -149,16 +156,13 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                 </div>
             </Show>
 
-            {move || error.get().map(|e| view! {
-                <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>
-            })}
-
             <div class="flex gap-2 justify-end mt-3">
                 <Button variant=Variant::Ghost size=Size::Sm on:click=handle_cancel>
                     {move || t!(i18n, vault.cancel)}
                 </Button>
                 {move || {
-                    let busy = submitting.get()
+                    let saving = submitting.get();
+                    let busy = saving
                         || src_path.get().is_none()
                         || name.with(|n| n.trim().is_empty());
                     view! {
@@ -166,6 +170,7 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                             variant=Variant::Primary
                             size=Size::Sm
                             disabled=busy
+                            loading=saving
                             on:click=handle_attach
                         >
                             {move || t!(i18n, vault.attach_confirm)}
