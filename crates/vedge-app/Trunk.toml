@@ -9,3 +9,7 @@ ws_protocol = "ws"
 
 [tools]
 tailwindcss = "4.1.11"
+
+
+[watch]
+paths = ["src", "index.html", "../vedge-ui/src"]
