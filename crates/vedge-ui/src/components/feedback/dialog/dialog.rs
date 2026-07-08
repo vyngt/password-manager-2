@@ -56,14 +56,19 @@ pub fn Dialog(
     // Open/close driver — watches `open` and runs enter/exit lifecycles.
     let ev_enter = enter_ver.clone();
     let ev_exit = exit_ver.clone();
-    Effect::new(move |prev: Option<bool>| {
+    Effect::new(move |_| {
         let now = open.get();
-        let was = prev.unwrap_or(false);
-        // TEMP DIAGNOSTIC — remove once the ✕ is confirmed.
-        web_sys::console::log_1(&format!("[Dialog] open effect: now={now} was={was}").into());
+        // Detect transitions from the ACTUAL mount state, NOT the effect's threaded
+        // `prev` return value — `prev` proved unreliable (the EXIT branch never fired
+        // because `was` read `false` while the dialog was clearly mounted, so a
+        // `<Dialog>` close was silently a no-op). `mounted` / `data_state` are real
+        // signals that always reflect reality. Read them untracked so the effect's
+        // only reactive dependency stays `open`.
+        let shown = mounted.get_untracked();
+        let closing = data_state.get_untracked() == Some("closing");
 
-        if now && !was {
-            // ---- ENTER ----
+        if now && (!shown || closing) {
+            // ---- ENTER ---- (open from hidden, or re-open while mid-close)
             ev_exit.fetch_add(1, Ordering::Relaxed);
             let ticket = ev_enter.fetch_add(1, Ordering::Relaxed) + 1;
 
@@ -99,7 +104,7 @@ pub fn Dialog(
                 },
                 Duration::ZERO,
             );
-        } else if !now && was {
+        } else if !now && shown && !closing {
             // ---- EXIT ----
             ev_enter.fetch_add(1, Ordering::Relaxed);
             let ticket = ev_exit.fetch_add(1, Ordering::Relaxed) + 1;
@@ -130,8 +135,6 @@ pub fn Dialog(
                 Duration::from_millis(150),
             );
         }
-
-        now
     });
 
     // Ensure scroll-lock class is removed if the Dialog is unmounted
