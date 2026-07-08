@@ -17,9 +17,9 @@ use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::EntryTypeDto;
+use vedge_ui::components::Button;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::components::Button;
 use vedge_ui::components::select::{Select, SelectItem};
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 

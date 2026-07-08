@@ -23,10 +23,14 @@ use leptos_i18n::I18nContext;
 use leptos_icons::Icon;
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, HistoryEntryDto, IndexEntryDto, PayloadDto};
 use vedge_ui::components::Button;
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::foundation::badge::Badge;
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::primitives::tokens::{BadgeSize, BadgeVariant, DialogSize, Size, Variant};
+use vedge_ui::primitives::tokens::{
+    BadgeSize, BadgeVariant, DialogSize, Size, ToastVariant, Variant,
+};
 
 /// The version-history dialog. Shown while `target` is `Some`; `on_restored`
 /// fires after a successful restore so the page refreshes.
@@ -38,11 +42,26 @@ pub fn EntryHistory(
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
     let sec = expect_context::<SecurityPrefsCtx>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
+    let show_success = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Success)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let versions = RwSignal::new(Vec::<HistoryEntryDto>::new());
     let loading = RwSignal::new(false);
-    let err = RwSignal::new(Option::<String>::None);
-    let status = RwSignal::new(Option::<String>::None);
     // The single currently-revealed row: `(version, plaintext)`.
     let revealed = RwSignal::new(Option::<(u32, String)>::None);
     // Pending restore confirmation, holding the snapshot's `history_id`.
@@ -55,8 +74,6 @@ pub fn EntryHistory(
         };
         revealed.set(None);
         confirm.set(None);
-        err.set(None);
-        status.set(None);
         loading.set(true);
         let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry.id.clone();
@@ -64,7 +81,7 @@ pub fn EntryHistory(
         spawn_local(async move {
             match api::entry::list_history(&vault_path, &id).await {
                 Ok(rows) => versions.set(rows),
-                Err(e) => err.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             loading.set(false);
         });
@@ -99,7 +116,7 @@ pub fn EntryHistory(
                         revealed.set(Some((version, secret)));
                     }
                 }
-                Err(e) => err.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     };
@@ -122,8 +139,8 @@ pub fn EntryHistory(
                 None => api::entry::copy_field(&vault_path, &id, &field, Some(secs)).await,
             };
             match result {
-                Ok(()) => status.set(Some(copied)),
-                Err(e) => status.set(Some(format!("{err_prefix}{e}"))),
+                Ok(()) => show_success(copied),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     };
@@ -144,7 +161,7 @@ pub fn EntryHistory(
                     target.set(None);
                     on_restored.run(());
                 }
-                Err(e) => err.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     };
@@ -234,16 +251,6 @@ pub fn EntryHistory(
                                     </div>
                                 }
                             })
-                    }}
-
-                    {move || {
-                        err.get()
-                            .map(|e| view! { <p class="text-sm text-danger-text">{e}</p> })
-                    }}
-                    {move || {
-                        status
-                            .get()
-                            .map(|m| view! { <p class="text-sm text-text-secondary">{m}</p> })
                     }}
 
                     {move || {

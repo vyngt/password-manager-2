@@ -23,9 +23,9 @@ use leptos_i18n::I18nContext;
 use vedge_ipc::{
     DocumentPayloadDto, EntryTypeDto, FieldSelectorDto, IndexEntryDto, PayloadDto, TagMetaDto,
 };
+use vedge_ui::components::Button;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::components::Button;
 use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 

@@ -14,10 +14,10 @@ use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::{CommonMetaDto, EntryTypeDto};
-use vedge_ui::components::feedback::toast::provider::use_toast;
-use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::Button;
 use vedge_ui::components::Input;
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 /// Final path component (basename), splitting on both `/` and `\` so it works

@@ -191,9 +191,7 @@ pub fn SettingsPage() -> impl IntoView {
         },
         Tab {
             id: "appearance".to_string(),
-            label: Box::new(move || {
-                view! { {move || t!(i18n, settings.appearance)} }.into_any()
-            }),
+            label: Box::new(move || view! { {move || t!(i18n, settings.appearance)} }.into_any()),
             panel: Arc::new(|| view! { <ThemeList /> }.into_any()),
             disabled: false,
         },
