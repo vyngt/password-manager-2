@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
-use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait};
+use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, QueryOrder};
 
 use crate::application::app::ports::RecentVaultRepository;
 use crate::domain::app::entities::RecentVault;
@@ -31,7 +31,11 @@ fn db_err(e: sea_orm::DbErr) -> AppDbError {
 #[async_trait]
 impl RecentVaultRepository for SqliteRecentVaultRepository {
     async fn list(&self) -> Result<Vec<RecentVault>, AppDbError> {
+        // Recency is the single ordering key: newest `last_opened` first.
+        // Stored as RFC3339-UTC text, so lexical DESC == chronological DESC,
+        // and SQLite sorts NULL (never-opened rows) last under DESC.
         let rows = Entity::find()
+            .order_by_desc(Column::LastOpened)
             .all(self.conn.as_ref())
             .await
             .map_err(db_err)?;

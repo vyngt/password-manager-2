@@ -33,8 +33,11 @@ pub struct RecentVaultStatus {
 }
 
 /// List every recent vault, each tagged with whether its path exists on
-/// disk right now. Sorted in the order the repository returns (spec: by
-/// `sort_order ASC, last_opened DESC`).
+/// disk right now.
+///
+/// The repository returns rows newest-first by `last_opened DESC` (rows
+/// never opened — `NULL` — sort last); the shell re-sorts client-side to
+/// also push missing files to the bottom.
 #[instrument(skip_all)]
 pub async fn list_recent_vaults_with_status(
     repo: &dyn RecentVaultRepository,
@@ -68,9 +71,9 @@ pub async fn remove_recent_vault(
     repo.delete(id).await
 }
 
-/// Bump a recent-vault row's `last_opened` to now without touching sort
-/// order. For callers that just want the timestamp updated;
-/// [`touch_on_unlock`] is the version that also re-sorts.
+/// Bump a recent-vault row's `last_opened` to now. Recency (`last_opened
+/// DESC`) is the single ordering key, so this alone floats the row to the
+/// top on next list. Equivalent to [`touch_on_unlock`].
 #[instrument(skip_all, fields(id = %id))]
 pub async fn touch_recent_vault(
     repo: &dyn RecentVaultRepository,
@@ -97,6 +100,9 @@ pub struct AddRecentVaultInput {
 /// before persisting — catches obvious typos + non-database files at
 /// the boundary, without opening the DB. Full VEDG verification happens
 /// later when the user tries to unlock.
+///
+/// Stamps `last_opened = now()`: adding a vault means it was just created
+/// or just opened, so it should sort to the **top** of the recency list.
 #[instrument(skip_all, fields(path = %input.path.display()))]
 pub async fn add_recent_vault(
     repo: &dyn RecentVaultRepository,
@@ -156,59 +162,46 @@ pub async fn add_recent_vault(
         id: input.id,
         path: input.path,
         display_name,
-        last_opened: None,
+        last_opened: Some(now()),
         sort_order: input.sort_order,
     };
     repo.upsert(&vault).await
 }
 
+/// Rename a recent vault's display name.
+///
+/// Trims the input and rejects an all-whitespace name (unlike
+/// [`add_recent_vault`], which falls back to the file stem — a rename is
+/// an explicit edit, so an empty name is a user error, not a default). A
+/// file-opened vault is named from its file stem; this is the one
+/// "vault setting" that surface needs.
+#[instrument(skip_all, fields(id = %id))]
+pub async fn rename_recent_vault(
+    repo: &dyn RecentVaultRepository,
+    id: &str,
+    display_name: &str,
+) -> Result<(), AppDbError> {
+    let trimmed = display_name.trim();
+    if trimmed.is_empty() {
+        return Err(AppDbError::InvalidSettingValue {
+            key: "recent_vault.display_name".into(),
+            reason: "display name must not be empty".into(),
+        });
+    }
+    let mut vault = repo.get(id).await?;
+    vault.display_name = trimmed.to_owned();
+    repo.upsert(&vault).await
+}
+
 /// Called by the shell immediately after a successful unlock.
 ///
-/// Bumps the target row's `last_opened` to now and moves it to the top
-/// of the sort order by renumbering other rows. Rows are written via
-/// `upsert` one at a time — if the process crashes mid-flow the
-/// ordering may be non-contiguous but no data is lost.
+/// Bumps the target row's `last_opened` to now. Recency (`last_opened
+/// DESC`) is the single ordering key, so the freshly-opened vault rises
+/// to the top of the next list with no `sort_order` bookkeeping. Errors
+/// with [`AppDbError::RecentVaultNotFound`] if the id is unknown.
 #[instrument(skip_all, fields(id = %id))]
 pub async fn touch_on_unlock(repo: &dyn RecentVaultRepository, id: &str) -> Result<(), AppDbError> {
-    let mut rows = repo.list().await?;
-
-    // Locate target + confirm it exists.
-    let target_idx = rows
-        .iter()
-        .position(|r| r.id == id)
-        .ok_or_else(|| AppDbError::RecentVaultNotFound(id.to_owned()))?;
-
-    // 1. Always bump `last_opened` to now.
-    let when = now();
-    repo.touch_last_opened(id, when).await?;
-
-    // 2. Resort: target → 0; everyone else gets shifted in their
-    // existing relative order. Skip the reshuffle if target already has
-    // sort_order == 0 AND no other row shares that slot.
-    let already_top = rows.get(target_idx).is_some_and(|r| r.sort_order == 0)
-        && rows.iter().filter(|r| r.sort_order == 0).count() == 1;
-    if already_top {
-        return Ok(());
-    }
-
-    // Pull the target out, assign 0; assign 1.. to the rest in their
-    // existing order.
-    let target = rows.remove(target_idx);
-    let mut updated_target = target.clone();
-    updated_target.last_opened = Some(when);
-    updated_target.sort_order = 0;
-    repo.upsert(&updated_target).await?;
-
-    for (i, mut row) in rows.into_iter().enumerate() {
-        let new_order = i32::try_from(i.saturating_add(1)).unwrap_or(i32::MAX);
-        if row.sort_order == new_order {
-            continue;
-        }
-        row.sort_order = new_order;
-        repo.upsert(&row).await?;
-    }
-
-    Ok(())
+    repo.touch_last_opened(id, now()).await
 }
 
 /// Delete every recent-vault row whose path no longer resolves to a
@@ -237,7 +230,7 @@ mod tests {
     )]
 
     use super::*;
-    use crate::domain::shared::now;
+    use crate::domain::shared::{Timestamp, now};
     use crate::infrastructure::sqlite::app::{AppDbConnection, SqliteRecentVaultRepository};
     use std::sync::Arc;
 
@@ -248,6 +241,31 @@ mod tests {
             .unwrap();
         let repo = Arc::new(SqliteRecentVaultRepository::new(db.handle()));
         (dir, repo)
+    }
+
+    /// A fixed RFC3339-UTC instant for deterministic recency ordering.
+    fn ts(rfc3339: &str) -> Timestamp {
+        chrono::DateTime::parse_from_rfc3339(rfc3339)
+            .unwrap()
+            .with_timezone(&chrono::Utc)
+    }
+
+    /// Seed a row with an explicit `last_opened` (control recency ordering).
+    async fn seed_at(
+        repo: &dyn RecentVaultRepository,
+        id: &str,
+        path: std::path::PathBuf,
+        last_opened: Option<Timestamp>,
+    ) {
+        repo.upsert(&RecentVault {
+            id: id.into(),
+            path,
+            display_name: id.into(),
+            last_opened,
+            sort_order: 0,
+        })
+        .await
+        .unwrap();
     }
 
     #[tokio::test]
@@ -331,7 +349,41 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].display_name, "Work");
         assert_eq!(rows[0].path, vdb);
-        assert!(rows[0].last_opened.is_none());
+        // Adding stamps `last_opened = now()` so the vault sorts to the top.
+        assert!(rows[0].last_opened.is_some());
+    }
+
+    // ---- rename_recent_vault ------------------------------------------------
+
+    #[tokio::test]
+    async fn rename_recent_vault_persists() {
+        let (dir, repo) = fixture().await;
+        seed_at(&*repo, "v1", dir.path().join("v.vdb"), None).await;
+
+        rename_recent_vault(&*repo, "v1", "  My Vault  ")
+            .await
+            .unwrap();
+
+        // Trimmed and persisted.
+        assert_eq!(repo.get("v1").await.unwrap().display_name, "My Vault");
+    }
+
+    #[tokio::test]
+    async fn rename_rejects_empty() {
+        let (dir, repo) = fixture().await;
+        seed_at(&*repo, "v1", dir.path().join("v.vdb"), None).await;
+
+        let err = rename_recent_vault(&*repo, "v1", "   ").await.unwrap_err();
+        assert!(matches!(err, AppDbError::InvalidSettingValue { .. }));
+        // Original name left untouched (seed set it to the id).
+        assert_eq!(repo.get("v1").await.unwrap().display_name, "v1");
+    }
+
+    #[tokio::test]
+    async fn rename_errors_on_missing_id() {
+        let (_dir, repo) = fixture().await;
+        let err = rename_recent_vault(&*repo, "ghost", "X").await.unwrap_err();
+        assert!(matches!(err, AppDbError::RecentVaultNotFound(_)));
     }
 
     #[tokio::test]
@@ -429,23 +481,44 @@ mod tests {
     #[tokio::test]
     async fn touch_on_unlock_moves_to_top_and_stamps_last_opened() {
         let (dir, repo) = fixture().await;
-        let a = dir.path().join("a.vdb");
-        let b = dir.path().join("b.vdb");
-        let c = dir.path().join("c.vdb");
-        seed(&*repo, "a", a.clone(), 0).await;
-        seed(&*repo, "b", b.clone(), 1).await;
-        seed(&*repo, "c", c.clone(), 2).await;
+        seed_at(
+            &*repo,
+            "a",
+            dir.path().join("a.vdb"),
+            Some(ts("2020-01-01T00:00:00+00:00")),
+        )
+        .await;
+        seed_at(
+            &*repo,
+            "b",
+            dir.path().join("b.vdb"),
+            Some(ts("2021-01-01T00:00:00+00:00")),
+        )
+        .await;
+        seed_at(
+            &*repo,
+            "c",
+            dir.path().join("c.vdb"),
+            Some(ts("2022-01-01T00:00:00+00:00")),
+        )
+        .await;
 
-        touch_on_unlock(&*repo, "c").await.unwrap();
+        // Before: newest-first is c, b, a.
+        let before: Vec<_> = repo
+            .list()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
+        assert_eq!(before, ["c", "b", "a"]);
+
+        // Opening 'a' stamps now() (later than any seeded year) → floats to top.
+        touch_on_unlock(&*repo, "a").await.unwrap();
 
         let rows = repo.list().await.unwrap();
-        let by_id: std::collections::HashMap<_, _> =
-            rows.iter().map(|r| (r.id.as_str(), r)).collect();
-        assert_eq!(by_id["c"].sort_order, 0);
-        assert!(by_id["c"].last_opened.is_some());
-        // a + b pushed down by exactly one position.
-        assert_eq!(by_id["a"].sort_order, 1);
-        assert_eq!(by_id["b"].sort_order, 2);
+        assert_eq!(rows[0].id, "a");
+        assert!(rows[0].last_opened.is_some());
     }
 
     #[tokio::test]
@@ -456,17 +529,75 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn touch_on_unlock_on_top_row_is_noop_on_order() {
+    async fn touch_on_unlock_stamps_single_row() {
         let (dir, repo) = fixture().await;
-        let a = dir.path().join("a.vdb");
-        seed(&*repo, "a", a, 0).await;
+        seed_at(&*repo, "a", dir.path().join("a.vdb"), None).await;
 
         touch_on_unlock(&*repo, "a").await.unwrap();
 
         let rows = repo.list().await.unwrap();
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].sort_order, 0);
         assert!(rows[0].last_opened.is_some());
+    }
+
+    #[tokio::test]
+    async fn list_orders_by_recency_nulls_last() {
+        let (dir, repo) = fixture().await;
+        seed_at(
+            &*repo,
+            "mid",
+            dir.path().join("mid.vdb"),
+            Some(ts("2021-01-01T00:00:00+00:00")),
+        )
+        .await;
+        seed_at(
+            &*repo,
+            "new",
+            dir.path().join("new.vdb"),
+            Some(ts("2022-01-01T00:00:00+00:00")),
+        )
+        .await;
+        seed_at(&*repo, "never", dir.path().join("never.vdb"), None).await;
+
+        let order: Vec<_> = repo
+            .list()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
+        assert_eq!(order, ["new", "mid", "never"]);
+    }
+
+    #[tokio::test]
+    async fn created_vault_is_most_recent() {
+        let (dir, repo) = fixture().await;
+        // A previously-opened vault, long ago.
+        seed_at(
+            &*repo,
+            "old",
+            dir.path().join("old.vdb"),
+            Some(ts("2020-01-01T00:00:00+00:00")),
+        )
+        .await;
+
+        // Adding a brand-new vault stamps last_opened = now().
+        let fresh = dir.path().join("fresh.vdb");
+        write_sqlite_stub(&fresh);
+        add_recent_vault(
+            &*repo,
+            AddRecentVaultInput {
+                id: "fresh".into(),
+                path: fresh,
+                display_name: "Fresh".into(),
+                sort_order: 0,
+            },
+        )
+        .await
+        .unwrap();
+
+        let rows = repo.list().await.unwrap();
+        assert_eq!(rows[0].id, "fresh");
     }
 
     // ---- remove_stale_recents ----------------------------------------------

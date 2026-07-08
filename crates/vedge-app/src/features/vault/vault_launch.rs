@@ -1,35 +1,44 @@
-//! Returning-user launch screen (`/`). Lists recent vaults with on-disk
-//! status, unlocks the selected one (Secret Key resolved from the OS
-//! keychain by the core), sets the `ActiveVault` context, and lands at
-//! `/v/vault`. Single-active-vault model — the Lock control in the `/v`
-//! shell returns here.
+//! Returning-user launch screen (`/`) — the vault picker (2.8.1). A two-pane
+//! surface: a searchable, recency-sorted, keyboard-navigable list of the
+//! user's vaults ([`VaultList`]) on the left, and a focused unlock panel
+//! ([`VaultUnlockPanel`]) on the right (master password + 2.8 biometric).
+//! Unlocking sets the `ActiveVault` context and lands at `/v/vault`.
+//! Single-active-vault model — the Lock control in the `/v` shell returns here.
+//!
+//! This component is the orchestrator: it owns the recents state + all the
+//! signals/closures, deriving the visible list with the pure
+//! [`filter_sort_recents`] and threading callbacks to the two panes. Errors
+//! surface as `Danger` toasts.
 
 use crate::api;
 use crate::api::dialog::{DialogFilter, OpenDialogOptions};
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
+use crate::features::vault::recents_filter::filter_sort_recents;
+use crate::features::vault::vault_list::VaultList;
+use crate::features::vault::vault_unlock_panel::VaultUnlockPanel;
 use crate::i18n::*;
 use icondata as i;
-use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos_icons::Icon;
 use leptos_router::hooks::use_navigate;
+use std::time::Duration;
 use uuid::Uuid;
 use vedge_ipc::{RecentVaultDto, RecentVaultStatusDto, UnlockVaultInputDto};
-use vedge_ui::components::Button;
-use vedge_ui::components::Input;
-use vedge_ui::components::icon::Decrypt;
-use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::components::{Button, Spinner};
+use vedge_ui::primitives::tokens::{ToastVariant, Variant};
+use wasm_bindgen::JsCast;
 
-use leptos_icons::Icon;
-
-/// A chosen unlock target: a vault path, plus the recents `id` when it came
-/// from the recents list (`None` for a file picked via "Open other…").
+/// A chosen unlock target: a vault path + display name, plus the recents `id`
+/// when it came from the recents list (`None` for a file picked via "Open…").
 #[derive(Clone)]
-struct Selected {
-    path: String,
-    id: Option<String>,
+pub struct Selected {
+    pub path: String,
+    pub id: Option<String>,
+    pub display_name: String,
 }
 
 /// Derive a human display name from a vault path: the file stem without its
@@ -39,9 +48,22 @@ pub fn display_name_from_path(path: &str) -> String {
     name.strip_suffix(".vdb").unwrap_or(name).to_string()
 }
 
+/// Focus the master-password field after a vault is selected. A no-op if the
+/// biometric button is shown instead, or the panel isn't mounted yet.
+fn focus_password() {
+    let Some(doc) = web_sys::window().and_then(|w| w.document()) else {
+        return;
+    };
+    if let Some(el) = doc.get_element_by_id("master-password")
+        && let Some(html) = el.dyn_ref::<web_sys::HtmlElement>()
+    {
+        let _ = html.focus();
+    }
+}
+
 /// Record a just-unlocked vault in recents (touch an existing entry, or add a
-/// freshly-picked one). Shared by the password and biometric unlock paths. A plain
-/// async fn — no reactive owner, so safe to `.await` inside `spawn_local`.
+/// freshly-picked one). Shared by the password and biometric unlock paths. A
+/// plain async fn — no reactive owner, so safe to `.await` inside `spawn_local`.
 async fn record_unlock(sel: &Selected) {
     match &sel.id {
         Some(id) => {
@@ -51,7 +73,7 @@ async fn record_unlock(sel: &Selected) {
             let dto = RecentVaultDto {
                 id: Uuid::new_v4().to_string(),
                 path: sel.path.clone(),
-                display_name: display_name_from_path(&sel.path),
+                display_name: sel.display_name.clone(),
                 last_opened: None,
                 sort_order: 0,
             };
@@ -64,31 +86,45 @@ async fn record_unlock(sel: &Selected) {
 pub fn VaultLaunch() -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
 
     let recents = RwSignal::new(Vec::<RecentVaultStatusDto>::new());
     let loading = RwSignal::new(true);
+    let query = RwSignal::new(String::new());
     let selected = RwSignal::new(Option::<Selected>::None);
     let pw = RwSignal::new(String::new());
-    let error = RwSignal::new(Option::<String>::None);
     let unlocking = RwSignal::new(false);
 
-    // Biometric unlock: `bio_available` is device-wide (checked once); `bio_enrolled`
-    // is per-selected-vault. When enrolled, the Hello button is shown by default and
+    // Biometric: `bio_available` is device-wide (checked once); `bio_enrolled`
+    // is per-selected-vault. When enrolled, the Hello button shows by default;
     // `show_password` reveals the password fallback on demand.
     let bio_available = RwSignal::new(false);
     let bio_enrolled = RwSignal::new(false);
     let show_password = RwSignal::new(true);
 
+    // The visible list: pure filter + recency/missing-last sort over recents.
+    let filtered = Signal::derive(move || filter_sort_recents(&recents.get(), &query.get()));
+
+    // Danger-toast helper. Called from event handlers *and* `spawn_local`
+    // futures, so it reads its dismiss label via `untrack` (owner-less async).
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, unlock.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
+
     let refresh_recents = move || {
         loading.set(true);
-        // `refresh_recents` is called from an Effect *and* from inside
-        // `spawn_local` (on Remove); `untrack` reads the current locale string
-        // safely in both (a `spawn_local` future has no reactive owner).
+        // Called from an Effect *and* from inside `spawn_local`; `untrack`
+        // reads the current locale string safely in both.
         let err_prefix = untrack(|| t_string!(i18n, unlock.err_recents).to_string());
         spawn_local(async move {
             match api::recent::list_recent_vaults_with_status().await {
                 Ok(list) => recents.set(list),
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             loading.set(false);
         });
@@ -98,7 +134,7 @@ pub fn VaultLaunch() -> impl IntoView {
         refresh_recents();
     });
 
-    // Check biometric availability once on mount (device-wide, vault-independent).
+    // Biometric availability once on mount (device-wide, vault-independent).
     Effect::new(move |_| {
         spawn_local(async move {
             let avail = api::biometric::available().await.unwrap_or(false);
@@ -106,8 +142,8 @@ pub fn VaultLaunch() -> impl IntoView {
         });
     });
 
-    // Re-check enrollment whenever the selected vault (or availability) changes. When a
-    // vault is enrolled, default to the biometric button (hide the password row).
+    // Re-check enrollment whenever the selection (or availability) changes.
+    // When enrolled, default to the biometric button (hide the password row).
     Effect::new(move |_| {
         let sel = selected.get();
         let avail = bio_available.get();
@@ -130,19 +166,74 @@ pub fn VaultLaunch() -> impl IntoView {
 
     let on_select = Callback::new(move |sel: Selected| {
         selected.set(Some(sel));
-        error.set(None);
+        set_timeout(focus_password, Duration::from_millis(30));
     });
 
     let on_remove = Callback::new(move |id: String| {
-        // Read `selected` in the handler body — inside `spawn_local` it's
-        // owner-less and would trip the reactive-context warning.
-        let clear_selection = selected.get().and_then(|s| s.id).as_deref() == Some(id.as_str());
+        // Read `selected` in the handler body (owner-less inside `spawn_local`).
+        let clear = selected.get().and_then(|s| s.id).as_deref() == Some(id.as_str());
         spawn_local(async move {
             let _ = api::recent::remove_recent_vault(&id).await;
-            if clear_selection {
+            if clear {
                 selected.set(None);
             }
             refresh_recents();
+        });
+    });
+
+    // Re-point a missing vault: pick the moved file, re-add it (preserving the
+    // display name → floats to top with a fresh `last_opened`), drop the stale
+    // row. Reuses add + remove; no path-update command needed.
+    let on_locate = Callback::new(move |id: String| {
+        let existing_name = recents
+            .get_untracked()
+            .into_iter()
+            .find(|r| r.vault.id == id)
+            .map(|r| r.vault.display_name);
+        let dialog_title = t_string!(i18n, unlock.open_file).to_string();
+        let err_prefix = t_string!(i18n, unlock.err_open).to_string();
+        spawn_local(async move {
+            let opts = OpenDialogOptions {
+                title: Some(dialog_title),
+                filters: vec![DialogFilter {
+                    name: "VEdge Vault".to_string(),
+                    extensions: vec!["vdb".to_string()],
+                }],
+            };
+            match api::dialog::open(&opts).await {
+                Ok(Some(path)) => {
+                    let display_name =
+                        existing_name.unwrap_or_else(|| display_name_from_path(&path));
+                    let dto = RecentVaultDto {
+                        id: Uuid::new_v4().to_string(),
+                        path,
+                        display_name,
+                        last_opened: None,
+                        sort_order: 0,
+                    };
+                    // Re-point only if the chosen file is a real vault; the
+                    // stale row stays put (with an error) otherwise.
+                    match api::recent::add_recent_vault(&dto).await {
+                        Ok(()) => {
+                            let _ = api::recent::remove_recent_vault(&id).await;
+                            refresh_recents();
+                        }
+                        Err(e) => show_error(format!("{err_prefix}{e}")),
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => show_error(format!("{err_prefix}{e}")),
+            }
+        });
+    });
+
+    let on_rename_commit = Callback::new(move |(id, name): (String, String)| {
+        let err_prefix = untrack(|| t_string!(i18n, unlock.err_rename).to_string());
+        spawn_local(async move {
+            match api::recent::rename_recent_vault(&id, &name).await {
+                Ok(()) => refresh_recents(),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
+            }
         });
     });
 
@@ -154,12 +245,10 @@ pub fn VaultLaunch() -> impl IntoView {
         if password.is_empty() || unlocking.get() {
             return;
         }
-        error.set(None);
         unlocking.set(true);
         let nav = use_navigate();
-        // Read locale-dependent strings in the handler (which has a reactive
-        // owner); reading them inside `spawn_local` is outside any owner and
-        // trips Leptos's "accessed outside a reactive tracking context" warning.
+        // Read locale-dependent strings in the handler (owner present); reading
+        // them inside `spawn_local` trips the reactive-context warning.
         let msg_wrong = t_string!(i18n, unlock.wrong_password).to_string();
         let msg_keychain = t_string!(i18n, unlock.keychain_missing).to_string();
         let msg_failed = t_string!(i18n, unlock.unlock_failed).to_string();
@@ -175,16 +264,16 @@ pub fn VaultLaunch() -> impl IntoView {
                     active.path.set(Some(sel.path.clone()));
                     nav("/v/vault", Default::default());
                 }
-                Err(ApiError::WrongCredentials) => error.set(Some(msg_wrong)),
-                Err(ApiError::Keychain(_)) => error.set(Some(msg_keychain)),
-                Err(e) => error.set(Some(format!("{msg_failed}{e}"))),
+                Err(ApiError::WrongCredentials) => show_error(msg_wrong),
+                Err(ApiError::Keychain(_)) => show_error(msg_keychain),
+                Err(e) => show_error(format!("{msg_failed}{e}")),
             }
             unlocking.set(false);
         });
     };
 
-    // Unlock via the biometric gate (Windows Hello / Touch ID). No master password;
-    // any failure reveals the password fallback with an error hint.
+    // Unlock via the biometric gate (Windows Hello). No master password; any
+    // failure reveals the password fallback with an error toast.
     let do_bio_unlock = move || {
         let Some(sel) = selected.get() else {
             return;
@@ -192,7 +281,6 @@ pub fn VaultLaunch() -> impl IntoView {
         if unlocking.get() {
             return;
         }
-        error.set(None);
         unlocking.set(true);
         let nav = use_navigate();
         let msg_failed = t_string!(i18n, unlock.err_biometric).to_string();
@@ -205,16 +293,16 @@ pub fn VaultLaunch() -> impl IntoView {
                 }
                 Err(_) => {
                     show_password.set(true);
-                    error.set(Some(msg_failed));
+                    show_error(msg_failed);
                 }
             }
             unlocking.set(false);
         });
     };
 
-    let open_other = move || {
-        error.set(None);
-        let dialog_title = t_string!(i18n, unlock.open_other).to_string();
+    // Open a vault file not in recents → select it into the unlock panel.
+    let on_open_file = Callback::new(move |()| {
+        let dialog_title = t_string!(i18n, unlock.open_file).to_string();
         let err_prefix = t_string!(i18n, unlock.err_open).to_string();
         spawn_local(async move {
             let opts = OpenDialogOptions {
@@ -226,242 +314,103 @@ pub fn VaultLaunch() -> impl IntoView {
             };
             match api::dialog::open(&opts).await {
                 Ok(Some(path)) => {
-                    let existing_id = recents
+                    let existing = recents
                         .get_untracked()
                         .into_iter()
-                        .find(|r| r.vault.path == path)
-                        .map(|r| r.vault.id);
+                        .find(|r| r.vault.path == path);
+                    let (id, display_name) = match existing {
+                        Some(r) => (Some(r.vault.id), r.vault.display_name),
+                        None => (None, display_name_from_path(&path)),
+                    };
                     selected.set(Some(Selected {
                         path,
-                        id: existing_id,
+                        id,
+                        display_name,
                     }));
+                    set_timeout(focus_password, Duration::from_millis(30));
                 }
                 Ok(None) => {}
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
-    };
+    });
 
-    let go_onboarding = move |_: web_sys::MouseEvent| {
-        let nav = use_navigate();
-        nav("/onboarding", Default::default());
-    };
+    let on_new = Callback::new(move |()| {
+        use_navigate()("/onboarding", Default::default());
+    });
+    let on_unlock = Callback::new(move |()| do_unlock());
+    let on_bio_unlock = Callback::new(move |()| do_bio_unlock());
+    let on_use_password = Callback::new(move |()| show_password.set(true));
 
     let empty_state = move || {
         view! {
-            <div class="flex flex-col items-center gap-3 text-center">
-                <p class="text-sm text-foreground/50">{move || t!(i18n, unlock.no_recents)}</p>
-                <Button variant=Variant::Primary on:click=go_onboarding>
-                    {move || t!(i18n, unlock.create_first)}
-                </Button>
+            <div class="flex w-[420px] max-w-full flex-col items-center gap-4 rounded-xl border border-border bg-surface p-10 text-center shadow-lg">
+                <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-3xl">
+                    <Icon icon=i::FaFileShieldSolid />
+                </span>
+                <div>
+                    <div class="text-lg font-semibold text-text-primary">
+                        {move || t!(i18n, unlock.no_vaults_title)}
+                    </div>
+                    <div class="mt-1 text-sm text-foreground/60">
+                        {move || t!(i18n, unlock.no_vaults_body)}
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <Button variant=Variant::Primary on:click=move |_: web_sys::MouseEvent| on_new.run(())>
+                        {move || t!(i18n, unlock.new_vault)}
+                    </Button>
+                    <Button
+                        variant=Variant::Secondary
+                        on:click=move |_: web_sys::MouseEvent| on_open_file.run(())
+                    >
+                        {move || t!(i18n, unlock.open_file)}
+                    </Button>
+                </div>
             </div>
         }
     };
 
     view! {
-        <div class="mx-auto flex h-full w-full max-w-xl flex-col justify-center gap-4 p-8">
-            <h1 class="text-center text-lg font-semibold text-text-primary">
-                {move || t!(i18n, unlock.select_vault)}
-            </h1>
-
+        <div class="flex h-full w-full items-center justify-center p-6">
             <Show
                 when=move || !loading.get()
                 fallback=move || {
                     view! {
-                        <div class="text-center text-sm text-foreground/40">
-                            {move || t!(i18n, unlock.loading)}
+                        <div class="flex items-center justify-center">
+                            <Spinner label=Signal::derive(move || {
+                                t_string!(i18n, unlock.loading).to_string()
+                            }) />
                         </div>
                     }
                 }
             >
                 <Show when=move || !recents.get().is_empty() fallback=empty_state>
-                    <div class="flex flex-col gap-2">
-                        <For
-                            each=move || recents.get()
-                            key=|r| r.vault.id.clone()
-                            children=move |rec| {
-                                view! {
-                                    <VaultCard
-                                        rec=rec
-                                        on_select=on_select
-                                        on_remove=on_remove
-                                        selected=selected
-                                    />
-                                }
-                            }
+                    <div class="flex h-[496px] w-[680px] max-w-full overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+                        <VaultList
+                            filtered=filtered
+                            query=query
+                            selected=selected
+                            on_select=on_select
+                            on_rename_commit=on_rename_commit
+                            on_remove=on_remove
+                            on_locate=on_locate
+                            on_new=on_new
+                            on_open_file=on_open_file
+                        />
+                        <VaultUnlockPanel
+                            selected=selected
+                            pw=pw
+                            unlocking=unlocking
+                            bio_enrolled=bio_enrolled
+                            show_password=show_password
+                            on_unlock=on_unlock
+                            on_bio_unlock=on_bio_unlock
+                            on_use_password=on_use_password
                         />
                     </div>
                 </Show>
             </Show>
-
-            {move || selected.get().map(|sel| {
-                if bio_enrolled.get() && !show_password.get() {
-                    Either::Left(view! {
-                        <div class="flex flex-col items-center gap-3 py-2">
-                            <button
-                                class="flex h-24 w-24 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-primary text-5xl transition-colors hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled=move || unlocking.get()
-                                on:click=move |_: web_sys::MouseEvent| do_bio_unlock()
-                            >
-                                <Icon icon=i::FaFingerprintSolid />
-                            </button>
-                            <div class="text-center">
-                                <div class="text-sm font-medium text-text-primary">
-                                    {move || t!(i18n, unlock.biometric_unlock_cta)}
-                                </div>
-                                <div class="text-xs text-foreground/50">
-                                    {move || t!(i18n, unlock.biometric_touch_hint)}
-                                </div>
-                                <div class="mt-1 text-xs font-jetbrains-mono text-foreground/40">
-                                    {display_name_from_path(&sel.path)}
-                                </div>
-                            </div>
-                            <button
-                                class="text-sm text-foreground/60 hover:text-foreground"
-                                on:click=move |_: web_sys::MouseEvent| show_password.set(true)
-                            >
-                                {move || t!(i18n, unlock.use_master_password)}
-                            </button>
-                        </div>
-                    })
-                } else {
-                    Either::Right(view! {
-                        <div
-                            class="flex w-full"
-                            on:keydown=move |ev: web_sys::KeyboardEvent| {
-                                if ev.key() == "Enter" {
-                                    do_unlock();
-                                }
-                            }
-                        >
-                            <Input
-                                id="master-password"
-                                placeholder=Signal::derive(move || {
-                                    t_string!(i18n, unlock.master_password).to_string()
-                                })
-                                size=Size::Lg
-                                input_type="password"
-                                value=Signal::derive(move || pw.get())
-                                on_input=Callback::new(move |v: String| pw.set(v))
-                                class="flex-1 rounded-r-none border-r-0"
-                            />
-                            {move || {
-                                let busy = unlocking.get();
-                                view! {
-                                    <IconButton
-                                        aria_label=Signal::derive(move || {
-                                            t_string!(i18n, unlock.unlock).to_string()
-                                        })
-                                        variant=Variant::Primary
-                                        size=Size::Lg
-                                        loading=busy
-                                        class="rounded-l-none"
-                                        on:click=move |_: web_sys::MouseEvent| do_unlock()
-                                    >
-                                        <Icon icon=Decrypt />
-                                    </IconButton>
-                                }
-                            }}
-                        </div>
-                    })
-                }
-            })}
-
-            {move || error.get().map(|e| view! {
-                <p class="text-center text-sm" style="color:var(--color-danger-text)">{e}</p>
-            })}
-
-            <div class="flex justify-center gap-2">
-                <Button variant=Variant::Ghost on:click=go_onboarding>
-                    {move || t!(i18n, unlock.create_vault)}
-                </Button>
-                <Button
-                    variant=Variant::Ghost
-                    on:click=move |_: web_sys::MouseEvent| open_other()
-                >
-                    {move || t!(i18n, unlock.open_other)}
-                </Button>
-            </div>
-        </div>
-    }
-}
-
-#[component]
-fn VaultCard(
-    rec: RecentVaultStatusDto,
-    on_select: Callback<Selected>,
-    on_remove: Callback<String>,
-    selected: RwSignal<Option<Selected>>,
-) -> impl IntoView {
-    let i18n = use_i18n();
-
-    let exists = rec.exists;
-    let path = rec.vault.path.clone();
-    let id = rec.vault.id.clone();
-    let display_name = rec.vault.display_name.clone();
-    let last_opened = rec.vault.last_opened.clone();
-
-    let sel_path = path.clone();
-    let is_selected = move || selected.get().map(|s| s.path) == Some(sel_path.clone());
-
-    let base = if exists {
-        "flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors cursor-pointer hover:bg-primary/5"
-    } else {
-        "flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors opacity-60"
-    };
-    let cls = move || {
-        let edge = if is_selected() {
-            "border-primary"
-        } else {
-            "border-border"
-        };
-        format!("{base} {edge}")
-    };
-
-    let click_path = path.clone();
-    let click_id = id.clone();
-    let remove_id = id;
-
-    view! {
-        <div
-            class=cls
-            on:click=move |_: web_sys::MouseEvent| {
-                if exists {
-                    on_select.run(Selected {
-                        path: click_path.clone(),
-                        id: Some(click_id.clone()),
-                    });
-                }
-            }
-        >
-            <div class="min-w-0">
-                <div class="truncate text-sm text-text-primary">{display_name}</div>
-                <div class="truncate text-xs font-jetbrains-mono text-foreground/50">{path}</div>
-                {last_opened.map(|lo| view! {
-                    <div class="text-xs text-foreground/40">
-                        {move || t!(i18n, unlock.last_opened)}
-                        " "
-                        {lo}
-                    </div>
-                })}
-            </div>
-            {(!exists).then(|| view! {
-                <div class="flex shrink-0 items-center gap-2">
-                    <span class="text-xs" style="color:var(--color-danger-text)">
-                        {move || t!(i18n, unlock.file_missing)}
-                    </span>
-                    <Button
-                        variant=Variant::Ghost
-                        size=Size::Sm
-                        on:click=move |ev: web_sys::MouseEvent| {
-                            ev.stop_propagation();
-                            on_remove.run(remove_id.clone());
-                        }
-                    >
-                        {move || t!(i18n, unlock.remove)}
-                    </Button>
-                </div>
-            })}
         </div>
     }
 }
