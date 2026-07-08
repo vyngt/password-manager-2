@@ -10,13 +10,15 @@
 use crate::api;
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::*;
+use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos_icons::Icon;
 use vedge_ipc::{CreateTagDto, TagMetaDto};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::select::{Select, SelectItem};
-use vedge_ui::components::{Button, Input};
+use vedge_ui::components::{Button, IconButton, Input};
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 /// Toggle `id` in a tag-id list: present → remove, absent → append. Order-stable
@@ -96,10 +98,13 @@ pub fn TagAssign(
                         style=style
                     >
                         <span class="truncate max-w-[10rem]">{name}</span>
-                        <button
-                            type="button"
-                            class="leading-none hover:text-danger"
-                            aria-label=move || t_string!(i18n, vault.tag_remove).to_string()
+                        <IconButton
+                            variant=Variant::Ghost
+                            size=Size::Xs
+                            class="hover:text-danger"
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.tag_remove).to_string()
+                            })
                             on:click=move |_: web_sys::MouseEvent| {
                                 on_tags
                                     .run((
@@ -108,8 +113,8 @@ pub fn TagAssign(
                                     ));
                             }
                         >
-                            <span aria-hidden="true">"✕"</span>
-                        </button>
+                            <Icon attr:aria-hidden="true" icon=i::FaXmarkSolid />
+                        </IconButton>
                     </span>
                 })
             })
