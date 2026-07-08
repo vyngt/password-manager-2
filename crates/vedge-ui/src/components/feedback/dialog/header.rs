@@ -16,12 +16,18 @@ pub fn DialogHeader(children: Children) -> impl IntoView {
                 .closeable
                 .then(|| {
                     view! {
+                        // `on_click=` (a direct binding on IconButton's `<button>`),
+                        // NOT spread `on:click=`: the Dialog renders inside a
+                        // `<Portal>`, and Leptos's spread-onto-component forwarding
+                        // does not attach a listener across the portal boundary — a
+                        // spread `on:click` here silently never fires (the ✕ wouldn't
+                        // close). Do not "simplify" this back to `on:click`.
                         <IconButton
                             aria_label=ctx.close_label
                             variant=Variant::Ghost
                             size=Size::Sm
                             class="dialog__close"
-                            on:click=move |_: web_sys::MouseEvent| ctx.on_close.run(())
+                            on_click=ctx.on_close
                         >
                             <Icon icon=i::FaXmarkSolid />
                         </IconButton>
