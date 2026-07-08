@@ -81,13 +81,15 @@ pub fn VaultDetail(
         else {
             return;
         };
-        let in_drawer = target
-            .closest("[data-detail-drawer]")
+        // Ignore clicks inside the drawer itself, on a table row (which switches the
+        // selection), or inside any overlay opened from it (an edit/move/history
+        // dialog, or a toast) — those must not dismiss the drawer.
+        let ignore = target
+            .closest("[data-detail-drawer], [data-entry-row], .dialog-scrim, .toast-group")
             .ok()
             .flatten()
             .is_some();
-        let on_row = target.closest("[data-entry-row]").ok().flatten().is_some();
-        if !in_drawer && !on_row {
+        if !ignore {
             on_close.run(());
         }
     });
