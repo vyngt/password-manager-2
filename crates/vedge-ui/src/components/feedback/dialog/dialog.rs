@@ -1,8 +1,6 @@
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::DialogSize;
 use leptos::prelude::*;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 use wasm_bindgen::JsCast;
 
@@ -31,14 +29,14 @@ pub fn Dialog(
     #[prop(into, default = TextProp::from("Close"))] close_label: TextProp,
     children: ChildrenFn,
 ) -> impl IntoView {
-    let mounted = RwSignal::new(false);
+    // Animation state only (`None` | `"open"`); visibility is driven directly by
+    // `open` (see the `<Show>` below), NOT by an internal `mounted` signal — that
+    // internal signal desynced from the on-screen dialog when the component
+    // re-rendered, leaving dialogs that couldn't be closed.
     let data_state = RwSignal::new(Option::<&'static str>::None);
 
     let (title_id, set_title_id) = signal(Option::<String>::None);
     let (body_id, set_body_id) = signal(Option::<String>::None);
-
-    let enter_ver = Arc::new(AtomicU32::new(0));
-    let exit_ver = Arc::new(AtomicU32::new(0));
 
     let previously_focused: StoredValue<Option<web_sys::HtmlElement>> = StoredValue::new(None);
     let dialog_ref = NodeRef::<leptos::html::Div>::new();
@@ -54,41 +52,19 @@ pub fn Dialog(
     });
 
     // Open/close driver — watches `open` and runs enter/exit lifecycles.
-    let ev_enter = enter_ver.clone();
-    let ev_exit = exit_ver.clone();
+    // Side effects only — visibility is the `<Show when=open>` below. On open:
+    // capture focus, lock scroll, and flip `data_state` to "open" next tick (after
+    // mount) so the enter keyframe runs + focus lands. On close: reset + unlock +
+    // restore focus. No internal `mounted`/exit-animation state to desync.
     Effect::new(move |_| {
-        let now = open.get();
-        // Detect transitions from the ACTUAL mount state, NOT the effect's threaded
-        // `prev` return value — `prev` proved unreliable (the EXIT branch never fired
-        // because `was` read `false` while the dialog was clearly mounted, so a
-        // `<Dialog>` close was silently a no-op). `mounted` / `data_state` are real
-        // signals that always reflect reality. Read them untracked so the effect's
-        // only reactive dependency stays `open`.
-        let shown = mounted.get_untracked();
-        let closing = data_state.get_untracked() == Some("closing");
-        // TEMP DIAGNOSTIC
-        web_sys::console::log_1(
-            &format!("[Dialog] effect: open={now} mounted={shown} closing={closing}").into(),
-        );
-
-        if now && (!shown || closing) {
-            // ---- ENTER ---- (open from hidden, or re-open while mid-close)
-            ev_exit.fetch_add(1, Ordering::Relaxed);
-            let ticket = ev_enter.fetch_add(1, Ordering::Relaxed) + 1;
-
-            // Capture currently focused element for restoration on close.
+        if open.get() {
             let active_el = web_sys::window()
                 .and_then(|w| w.document())
                 .and_then(|d| d.active_element())
                 .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok());
             previously_focused.set_value(active_el);
 
-            // Mount immediately; data_state stays None for one tick so CSS
-            // starts from the pre-animation state.
             data_state.set(None);
-            mounted.set(true);
-
-            // Lock body scroll.
             if let Some(body) = web_sys::window()
                 .and_then(|w| w.document())
                 .and_then(|d| d.body())
@@ -96,50 +72,25 @@ pub fn Dialog(
                 let _ = body.class_list().add_1("dialog-scroll-lock");
             }
 
-            // Next tick: flip to "open" so keyframes run; then move focus.
-            let ev = ev_enter.clone();
             set_timeout(
                 move || {
-                    if ev.load(Ordering::Relaxed) != ticket {
-                        return;
-                    }
                     data_state.set(Some("open"));
                     focus_first_focusable(dialog_ref);
                 },
                 Duration::ZERO,
             );
-        } else if !now && shown && !closing {
-            // ---- EXIT ----
-            web_sys::console::log_1(&"[Dialog] EXIT branch → closing".into()); // TEMP
-            ev_enter.fetch_add(1, Ordering::Relaxed);
-            let ticket = ev_exit.fetch_add(1, Ordering::Relaxed) + 1;
-
-            data_state.set(Some("closing"));
-
-            let ev = ev_exit.clone();
-            set_timeout(
-                move || {
-                    if ev.load(Ordering::Relaxed) != ticket {
-                        return;
-                    }
-                    web_sys::console::log_1(&"[Dialog] EXIT done → mounted=false".into()); // TEMP
-                    mounted.set(false);
-                    data_state.set(None);
-
-                    if let Some(body) = web_sys::window()
-                        .and_then(|w| w.document())
-                        .and_then(|d| d.body())
-                    {
-                        let _ = body.class_list().remove_1("dialog-scroll-lock");
-                    }
-
-                    if let Some(el) = previously_focused.get_value() {
-                        let _ = el.focus();
-                        previously_focused.set_value(None);
-                    }
-                },
-                Duration::from_millis(150),
-            );
+        } else {
+            data_state.set(None);
+            if let Some(body) = web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.body())
+            {
+                let _ = body.class_list().remove_1("dialog-scroll-lock");
+            }
+            if let Some(el) = previously_focused.get_value() {
+                let _ = el.focus();
+                previously_focused.set_value(None);
+            }
         }
     });
 
@@ -157,7 +108,7 @@ pub fn Dialog(
     let size_cls = size.dialog_class();
 
     view! {
-        <Show when=move || mounted.get()>
+        <Show when=move || open.get()>
             <leptos::portal::Portal>
                 <div
                     class="dialog-scrim"
