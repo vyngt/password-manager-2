@@ -20,10 +20,12 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use vedge_ipc::ThemeDto;
-use vedge_ui::components::Button;
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::form::color_picker::ColorPicker;
-use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
+use vedge_ui::components::{Button, Input};
+use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
 use vedge_ui::theme::{ThemeConfig, derive_tokens, validate_tokens};
 
 /// What the editor is opened for. `editing = true` → update the `source` custom
@@ -44,6 +46,15 @@ pub fn ThemeEditor(
     on_saved: Callback<()>,
 ) -> impl IntoView {
     let i18n = use_i18n();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, settings.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let name = RwSignal::new(String::new());
     let background = RwSignal::new(String::new());
@@ -52,7 +63,7 @@ pub fn ThemeEditor(
     let danger = RwSignal::new(String::new());
     let warning = RwSignal::new(String::new());
     let success = RwSignal::new(String::new());
-    let err = RwSignal::new(Option::<String>::None);
+    let saving = RwSignal::new(false);
 
     // Seed the draft each time the dialog opens.
     Effect::new(move |_| {
@@ -64,7 +75,6 @@ pub fn ThemeEditor(
             danger.set(t.seed.danger.clone().unwrap_or_default());
             warning.set(t.seed.warning.clone().unwrap_or_default());
             success.set(t.seed.success.clone().unwrap_or_default());
-            err.set(None);
         }
     });
 
@@ -112,14 +122,15 @@ pub fn ThemeEditor(
     let close = Callback::new(move |()| target.set(None));
 
     let save = move |_: web_sys::MouseEvent| {
+        if saving.get_untracked() {
+            return;
+        }
         let Some(t) = target.get_untracked() else {
             return;
         };
         let name_val = name.get_untracked().trim().to_owned();
         if name_val.is_empty() {
-            err.set(Some(
-                t_string!(i18n, settings.theme_name_required).to_string(),
-            ));
+            show_error(t_string!(i18n, settings.theme_name_required).to_string());
             return;
         }
         let cfg = config_from_fields(
@@ -133,6 +144,7 @@ pub fn ThemeEditor(
         let err_prefix = t_string!(i18n, settings.err_theme_save).to_string();
         let editing = t.editing;
         let source_id = t.source.as_ref().map(|d| d.id.clone());
+        saving.set(true);
         spawn_local(async move {
             let result = if editing {
                 let id = source_id.unwrap_or_default();
@@ -147,8 +159,9 @@ pub fn ThemeEditor(
                     target.set(None);
                     on_saved.run(());
                 }
-                Err(e) => err.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
+            saving.set(false);
         });
     };
 
@@ -184,10 +197,10 @@ pub fn ThemeEditor(
                         <div class="text-xs text-text-tertiary mb-1">
                             {move || t!(i18n, settings.theme_name)}
                         </div>
-                        <input
-                            class="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-text-primary"
-                            prop:value=move || name.get()
-                            on:input:target=move |ev| name.set(ev.target().value())
+                        <Input
+                            id="theme-name"
+                            value=Signal::derive(move || name.get())
+                            on_input=Callback::new(move |v: String| name.set(v))
                         />
                     </div>
 
@@ -271,7 +284,7 @@ pub fn ThemeEditor(
                             </span>
                             <span class="inline-flex items-center gap-1.5 text-text-primary text-xs">
                                 <span class="text-primary">
-                                    <Icon icon=i::FaGlobeSolid />
+                                    <Icon attr:aria-hidden="true" icon=i::FaGlobeSolid />
                                 </span>
                                 "Web"
                             </span>
@@ -304,7 +317,7 @@ pub fn ThemeEditor(
                                         <span class=format!(
                                             "inline-flex items-center gap-1.5 text-xs {color}",
                                         )>
-                                            <Icon icon=icon />
+                                            <Icon attr:aria-hidden="true" icon=icon />
                                             <span>{format!("{label} · {word}")}</span>
                                         </span>
                                     }
@@ -318,11 +331,6 @@ pub fn ThemeEditor(
                             })
                     }}
 
-                    {move || {
-                        err.get()
-                            .map(|e| view! { <p class="text-sm text-danger-text">{e}</p> })
-                    }}
-
                     <div class="flex justify-end gap-2 border-t border-border pt-3">
                         <Button
                             variant=Variant::Ghost
@@ -331,9 +339,20 @@ pub fn ThemeEditor(
                         >
                             {move || t!(i18n, settings.cancel)}
                         </Button>
-                        <Button variant=Variant::Primary size=Size::Sm on:click=save>
-                            {save_label}
-                        </Button>
+                        {move || {
+                            let is_saving = saving.get();
+                            view! {
+                                <Button
+                                    variant=Variant::Primary
+                                    size=Size::Sm
+                                    disabled=is_saving
+                                    loading=is_saving
+                                    on:click=save
+                                >
+                                    {save_label}
+                                </Button>
+                            }
+                        }}
                     </div>
                 </div>
             </DialogBody>

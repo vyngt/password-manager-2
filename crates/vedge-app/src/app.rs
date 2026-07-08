@@ -4,7 +4,9 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::api;
-use crate::features::settings::security_prefs::{self, SecurityPrefs, SecurityPrefsCtx};
+use crate::features::settings::security_prefs::{
+    self, SecurityPrefs, SecurityPrefsCtx, SecurityPrefsLoaded,
+};
 use crate::features::settings::theme_util::theme_config_from_dto;
 use crate::features::vault::context::ActiveVault;
 use crate::features::window_panel::WindowPanel;
@@ -63,11 +65,14 @@ pub fn App() -> impl IntoView {
     // delay). Loaded once from `app_settings` and provided as a live context the
     // AutoLock hook, the Settings section, and both clipboard copy sites read.
     let security = SecurityPrefsCtx(RwSignal::new(SecurityPrefs::default()));
+    let security_loaded = SecurityPrefsLoaded(RwSignal::new(false));
     provide_context(security);
+    provide_context(security_loaded);
     Effect::new(move |_| {
         // No tracked reads → runs exactly once after mount.
         spawn_local(async move {
             security.0.set(security_prefs::load().await);
+            security_loaded.0.set(true);
         });
     });
 

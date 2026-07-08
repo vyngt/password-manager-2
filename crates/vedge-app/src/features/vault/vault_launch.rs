@@ -21,14 +21,13 @@ use crate::i18n::*;
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use leptos_icons::Icon;
 use leptos_router::hooks::use_navigate;
 use std::time::Duration;
 use uuid::Uuid;
 use vedge_ipc::{RecentVaultDto, RecentVaultStatusDto, UnlockVaultInputDto};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::components::{Button, Spinner};
+use vedge_ui::components::{Button, EmptyState, Spinner};
 use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 use wasm_bindgen::JsCast;
 
@@ -344,29 +343,29 @@ pub fn VaultLaunch() -> impl IntoView {
 
     let empty_state = move || {
         view! {
-            <div class="flex w-[420px] max-w-full flex-col items-center gap-4 rounded-xl border border-border bg-surface p-10 text-center shadow-lg">
-                <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-3xl">
-                    <Icon icon=i::FaFileShieldSolid />
-                </span>
-                <div>
-                    <div class="text-lg font-semibold text-text-primary">
-                        {move || t!(i18n, unlock.no_vaults_title)}
+            <div class="w-[420px] max-w-full rounded-xl border border-border bg-surface p-6 shadow-lg">
+                <EmptyState
+                    icon=i::FaFileShieldSolid
+                    title=Signal::derive(move || t_string!(i18n, unlock.no_vaults_title).to_string())
+                    description=Signal::derive(move || {
+                        t_string!(i18n, unlock.no_vaults_body).to_string()
+                    })
+                >
+                    <div class="flex gap-2">
+                        <Button
+                            variant=Variant::Primary
+                            on:click=move |_: web_sys::MouseEvent| on_new.run(())
+                        >
+                            {move || t!(i18n, unlock.new_vault)}
+                        </Button>
+                        <Button
+                            variant=Variant::Secondary
+                            on:click=move |_: web_sys::MouseEvent| on_open_file.run(())
+                        >
+                            {move || t!(i18n, unlock.open_file)}
+                        </Button>
                     </div>
-                    <div class="mt-1 text-sm text-foreground/60">
-                        {move || t!(i18n, unlock.no_vaults_body)}
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <Button variant=Variant::Primary on:click=move |_: web_sys::MouseEvent| on_new.run(())>
-                        {move || t!(i18n, unlock.new_vault)}
-                    </Button>
-                    <Button
-                        variant=Variant::Secondary
-                        on:click=move |_: web_sys::MouseEvent| on_open_file.run(())
-                    >
-                        {move || t!(i18n, unlock.open_file)}
-                    </Button>
-                </div>
+                </EmptyState>
             </div>
         }
     };

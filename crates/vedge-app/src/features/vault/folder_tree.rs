@@ -486,7 +486,7 @@ pub fn FolderTree(
                         aria-label=move || t_string!(i18n, vault.folder_new).to_string()
                         on:click=move |_: web_sys::MouseEvent| show_new.update(|v| *v = !*v)
                     >
-                        <Icon icon=i::FaPlusSolid width="12" height="12" />
+                        <Icon attr:aria-hidden="true" icon=i::FaPlusSolid width="12" height="12" />
                     </button>
                 </div>
 
@@ -530,7 +530,7 @@ pub fn FolderTree(
                 on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
                 on:drop=drop_on_root
             >
-                <span class="flex shrink-0"><Icon icon=i::FaLayerGroupSolid width="14" height="14" /></span>
+                <span class="flex shrink-0"><Icon attr:aria-hidden="true" icon=i::FaLayerGroupSolid width="14" height="14" /></span>
                 <span class="flex-1 truncate">{move || t!(i18n, vault.folder_root)}</span>
                 <span class="shrink-0 text-[10px] text-foreground/40">{move || counts.get().0}</span>
             </button>
@@ -550,7 +550,7 @@ pub fn FolderTree(
                 on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
                 on:drop=drop_on_root
             >
-                <span class="flex shrink-0"><Icon icon=i::FaInboxSolid width="14" height="14" /></span>
+                <span class="flex shrink-0"><Icon attr:aria-hidden="true" icon=i::FaInboxSolid width="14" height="14" /></span>
                 <span class="flex-1 truncate">{move || t!(i18n, vault.folder_unfiled)}</span>
                 <span class="shrink-0 text-[10px] text-foreground/40">{move || counts.get().1}</span>
             </button>
@@ -649,11 +649,11 @@ pub fn FolderTree(
                                             {move || {
                                                 if collapsed.get().contains(&col_id) {
                                                     leptos::either::Either::Left(
-                                                        view! { <Icon icon=i::FaChevronRightSolid width="10" height="10" /> },
+                                                        view! { <Icon attr:aria-hidden="true" icon=i::FaChevronRightSolid width="10" height="10" /> },
                                                     )
                                                 } else {
                                                     leptos::either::Either::Right(
-                                                        view! { <Icon icon=i::FaChevronDownSolid width="10" height="10" /> },
+                                                        view! { <Icon attr:aria-hidden="true" icon=i::FaChevronDownSolid width="10" height="10" /> },
                                                     )
                                                 }
                                             }}
@@ -667,7 +667,7 @@ pub fn FolderTree(
                                 class="flex shrink-0 text-foreground/50"
                                 style:color=move || icon_color.clone().unwrap_or_default()
                             >
-                                <Icon icon=icon_data width="14" height="14" />
+                                <Icon attr:aria-hidden="true" icon=icon_data width="14" height="14" />
                             </span>
                             {move || {
                                 if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
@@ -720,7 +720,7 @@ pub fn FolderTree(
                                     on_customize.run(cust_id.clone());
                                 }
                             >
-                                <Icon icon=i::FaPaletteSolid width="10" height="10" />
+                                <Icon attr:aria-hidden="true" icon=i::FaPaletteSolid width="10" height="10" />
                             </button>
                             <button
                                 type="button"
@@ -732,7 +732,7 @@ pub fn FolderTree(
                                     rename_value.set(start_nm.clone());
                                 }
                             >
-                                <Icon icon=i::FaPenSolid width="10" height="10" />
+                                <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="10" height="10" />
                             </button>
                             <button
                                 type="button"
@@ -743,7 +743,7 @@ pub fn FolderTree(
                                     on_delete.run(del_id.clone());
                                 }
                             >
-                                <Icon icon=i::BiTrashRegular width="10" height="10" />
+                                <Icon attr:aria-hidden="true" icon=i::BiTrashRegular width="10" height="10" />
                             </button>
                         </div>
                     }
@@ -816,7 +816,7 @@ pub fn FolderBreadcrumb(
                                         class="flex shrink-0"
                                         style:color=color.unwrap_or_default()
                                     >
-                                        <Icon icon=icon_data width="11" height="11" />
+                                        <Icon attr:aria-hidden="true" icon=icon_data width="11" height="11" />
                                     </span>
                                     {pname}
                                 </button>

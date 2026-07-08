@@ -69,6 +69,14 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
         _ => t_string!(i18n, nav.vault).to_string(),
     });
     let go = move |_: web_sys::MouseEvent| use_navigate()(item.path, Default::default());
+    // Keyboard activation for the `role="button"` divs (Enter / Space), so the
+    // nav isn't mouse-only.
+    let go_key = move |ev: web_sys::KeyboardEvent| {
+        if matches!(ev.key().as_str(), "Enter" | " ") {
+            ev.prevent_default();
+            use_navigate()(item.path, Default::default());
+        }
+    };
 
     view! {
         {move || {
@@ -76,21 +84,35 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
             if collapsed.get() {
                 // Collapsed: icon only, text pops out on hover (Tooltip). The
                 // Tooltip trigger is an inline-flex span (content-width), so a
-                // full-width flex wrapper centers it in the rail.
+                // full-width flex wrapper centers it in the rail. The row carries
+                // its own `aria-label` since the icon is decorative.
                 Either::Left(view! {
                     <div class="flex justify-center">
                         <Tooltip placement=Placement::Right arrow=true content=label>
-                            <div role="button" tabindex="0" class=nav_item_class(active, true) on:click=go>
-                                <Icon icon=item.icon width="18" height="18" />
+                            <div
+                                role="button"
+                                tabindex="0"
+                                aria-label=move || label.get()
+                                class=nav_item_class(active, true)
+                                on:click=go
+                                on:keydown=go_key
+                            >
+                                <Icon attr:aria-hidden="true" icon=item.icon width="18" height="18" />
                             </div>
                         </Tooltip>
                     </div>
                 })
             } else {
-                // Expanded: icon + text label.
+                // Expanded: icon + text label (the text is the accessible name).
                 Either::Right(view! {
-                    <div role="button" tabindex="0" class=nav_item_class(active, false) on:click=go>
-                        <Icon icon=item.icon width="18" height="18" />
+                    <div
+                        role="button"
+                        tabindex="0"
+                        class=nav_item_class(active, false)
+                        on:click=go
+                        on:keydown=go_key
+                    >
+                        <Icon attr:aria-hidden="true" icon=item.icon width="18" height="18" />
                         <span class="truncate">{move || label.get()}</span>
                     </div>
                 })
@@ -117,7 +139,7 @@ fn Sidebar() -> impl IntoView {
                 class=("justify-center", move || collapsed.get())
             >
                 <span class="flex items-center justify-center w-7 h-7 rounded-md bg-primary text-white shrink-0">
-                    <Icon icon=ui_icon::Pm width="16" height="16" />
+                    <Icon attr:aria-hidden="true" icon=ui_icon::Pm width="16" height="16" />
                 </span>
                 <Show when=move || !collapsed.get()>
                     <span class="text-[15px] font-semibold text-text-primary tracking-tight truncate">
@@ -144,9 +166,9 @@ fn Sidebar() -> impl IntoView {
                 >
                     <Show
                         when=move || collapsed.get()
-                        fallback=|| view! { <Icon icon=icondata::FaChevronLeftSolid width="14" height="14" /> }
+                        fallback=|| view! { <Icon attr:aria-hidden="true" icon=icondata::FaChevronLeftSolid width="14" height="14" /> }
                     >
-                        <Icon icon=icondata::FaChevronRightSolid width="14" height="14" />
+                        <Icon attr:aria-hidden="true" icon=icondata::FaChevronRightSolid width="14" height="14" />
                     </Show>
                 </button>
             </div>
@@ -179,7 +201,7 @@ fn LockButton(collapsed: RwSignal<bool>) -> impl IntoView {
                     <div class="flex justify-center">
                         <Tooltip placement=Placement::Right arrow=true content=label>
                             <button class=nav_button_class(true) on:click=on_lock aria-label=move || label.get()>
-                                <Icon icon=icondata::FaLockSolid width="18" height="18" />
+                                <Icon attr:aria-hidden="true" icon=icondata::FaLockSolid width="18" height="18" />
                             </button>
                         </Tooltip>
                     </div>
@@ -187,7 +209,7 @@ fn LockButton(collapsed: RwSignal<bool>) -> impl IntoView {
             } else {
                 Either::Right(view! {
                     <button class=nav_button_class(false) on:click=on_lock aria-label=move || label.get()>
-                        <Icon icon=icondata::FaLockSolid width="18" height="18" />
+                        <Icon attr:aria-hidden="true" icon=icondata::FaLockSolid width="18" height="18" />
                         <span class="truncate">{move || label.get()}</span>
                     </button>
                 })

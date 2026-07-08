@@ -16,9 +16,11 @@ use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::{CreateTagDto, IndexEntryDto, RenameTagDto, TagMetaDto};
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::{Button, Input};
-use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
+use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
 
 #[component]
 pub fn TagManager(
@@ -31,10 +33,18 @@ pub fn TagManager(
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let new_name = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
-    let error = RwSignal::new(Option::<String>::None);
 
     let close = Callback::new(move |()| open.set(false));
 
@@ -49,7 +59,6 @@ pub fn TagManager(
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_tag_create).to_string();
         busy.set(true);
-        error.set(None);
         spawn_local(async move {
             let dto = CreateTagDto { name, color: None };
             match api::tag::create_tag(&vault_path, &dto).await {
@@ -57,7 +66,7 @@ pub fn TagManager(
                     new_name.set(String::new());
                     on_changed.run(());
                 }
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             busy.set(false);
         });
@@ -122,14 +131,6 @@ pub fn TagManager(
                             }
                         />
                     </div>
-
-                    {move || {
-                        error
-                            .get()
-                            .map(|e| view! {
-                                <p class="text-sm" style="color:var(--color-danger-text)">{e}</p>
-                            })
-                    }}
                 </div>
             </DialogBody>
         </Dialog>
@@ -144,6 +145,15 @@ fn TagManagerRow(
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let tag_id = StoredValue::new(tag.id.clone());
     // How many loaded entries reference this tag (shown in the delete warning).
@@ -164,11 +174,9 @@ fn TagManagerRow(
     let confirming = RwSignal::new(false);
     let edit_name = RwSignal::new(tag.name.clone());
     let busy = RwSignal::new(false);
-    let error = RwSignal::new(Option::<String>::None);
 
     let start_rename = move |_: web_sys::MouseEvent| {
         edit_name.set(name_sv.get_value());
-        error.set(None);
         editing.set(true);
     };
     let cancel_rename = move |_: web_sys::MouseEvent| editing.set(false);
@@ -185,7 +193,6 @@ fn TagManagerRow(
         let id = tag_id.get_value();
         let err_prefix = t_string!(i18n, vault.err_tag_rename).to_string();
         busy.set(true);
-        error.set(None);
         spawn_local(async move {
             let dto = RenameTagDto {
                 tag_id: id,
@@ -196,14 +203,13 @@ fn TagManagerRow(
                     editing.set(false);
                     on_changed.run(());
                 }
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             busy.set(false);
         });
     };
 
     let ask_delete = move |_: web_sys::MouseEvent| {
-        error.set(None);
         confirming.set(true);
     };
     let cancel_delete = move |_: web_sys::MouseEvent| confirming.set(false);
@@ -216,12 +222,11 @@ fn TagManagerRow(
         let id = tag_id.get_value();
         let err_prefix = t_string!(i18n, vault.err_tag_delete).to_string();
         busy.set(true);
-        error.set(None);
         spawn_local(async move {
             match api::tag::delete_tag(&vault_path, &id).await {
                 // The row disappears when the refreshed catalog omits it.
                 Ok(()) => on_changed.run(()),
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             busy.set(false);
         });
@@ -305,13 +310,6 @@ fn TagManagerRow(
                         </div>
                     })
                 }
-            }}
-            {move || {
-                error
-                    .get()
-                    .map(|e| view! {
-                        <p class="text-xs" style="color:var(--color-danger-text)">{e}</p>
-                    })
             }}
         </div>
     }

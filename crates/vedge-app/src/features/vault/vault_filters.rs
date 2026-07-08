@@ -239,6 +239,9 @@ pub fn VaultFilters(
                             placeholder=Signal::derive(move || {
                                 t_string!(i18n, vault.filter_type).to_string()
                             })
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.filter_type_aria).to_string()
+                            })
                             on_change=Callback::new(move |key: String| {
                                 entry_type
                                     .set(if key.is_empty() { None } else { Some(type_from_key(&key)) });
@@ -264,6 +267,9 @@ pub fn VaultFilters(
                             placeholder=Signal::derive(move || {
                                 t_string!(i18n, vault.filter_tag).to_string()
                             })
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.filter_tag_aria).to_string()
+                            })
                             on_change=Callback::new(move |id: String| {
                                 tag_id.set(if id.is_empty() { None } else { Some(id) });
                             })
@@ -284,6 +290,9 @@ pub fn VaultFilters(
                             options=options
                             value=Signal::derive(move || {
                                 if trashed_view.get() { "trash" } else { "active" }.to_owned()
+                            })
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.filter_view_aria).to_string()
                             })
                             on_change=Callback::new(move |v: String| trashed_view.set(v == "trash"))
                         />
@@ -306,6 +315,9 @@ pub fn VaultFilters(
                             value=Signal::derive(move || sort_to_key(sort.get()).to_owned())
                             placeholder=Signal::derive(move || {
                                 t_string!(i18n, vault.sort_label).to_string()
+                            })
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.sort_aria).to_string()
                             })
                             on_change=Callback::new(move |v: String| sort.set(sort_from_key(&v)))
                         />
