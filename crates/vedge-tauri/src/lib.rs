@@ -116,6 +116,7 @@ pub fn run() {
             commands::recent::remove_recent_vault,
             commands::recent::touch_recent_vault,
             commands::recent::touch_recent_vault_on_unlock,
+            commands::recent::rename_recent_vault,
             commands::recent::remove_stale_recent_vaults,
             // ---- app.db: settings + themes ----
             commands::settings::get_app_setting,
