@@ -143,19 +143,19 @@ pub fn BiometricSetting() -> impl IntoView {
                     <div class="flex flex-col gap-2 rounded-lg border border-border bg-foreground/5 p-3 text-xs text-text-secondary">
                         <div class="flex gap-2">
                             <span class="text-primary shrink-0 mt-0.5">
-                                <Icon icon=i::FaMicrochipSolid />
+                                <Icon attr:aria-hidden="true" icon=i::FaMicrochipSolid />
                             </span>
                             <span>{move || t!(i18n, settings.biometric_note_hw)}</span>
                         </div>
                         <div class="flex gap-2">
                             <span class="text-primary shrink-0 mt-0.5">
-                                <Icon icon=i::FaKeySolid />
+                                <Icon attr:aria-hidden="true" icon=i::FaKeySolid />
                             </span>
                             <span>{move || t!(i18n, settings.biometric_note_fallback)}</span>
                         </div>
                         <div class="flex gap-2">
                             <span class="text-primary shrink-0 mt-0.5">
-                                <Icon icon=i::FaDesktopSolid />
+                                <Icon attr:aria-hidden="true" icon=i::FaDesktopSolid />
                             </span>
                             <span>{move || t!(i18n, settings.biometric_note_device)}</span>
                         </div>

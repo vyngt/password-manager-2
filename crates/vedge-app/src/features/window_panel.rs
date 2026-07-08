@@ -47,7 +47,7 @@ pub fn WindowPanel() -> impl IntoView {
             >
                 <div class="flex gap-2 justify-center">
                     <div class="flex flex-col justify-center">
-                        <div class="text-[30px]">
+                        <div class="text-[30px]" aria-hidden="true">
                             <Icon icon=VEdge />
                         </div>
                     </div>

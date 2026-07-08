@@ -108,7 +108,7 @@ pub fn SmartFolders(
                     aria-label=move || t_string!(i18n, vault.smart_save).to_string()
                     on:click=move |_: web_sys::MouseEvent| show_save.update(|v| *v = !*v)
                 >
-                    <Icon icon=i::FaPlusSolid width="12" height="12" />
+                    <Icon attr:aria-hidden="true" icon=i::FaPlusSolid width="12" height="12" />
                 </button>
             </div>
 
@@ -163,7 +163,7 @@ pub fn SmartFolders(
                     view! {
                         <div class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5">
                             <span class="flex shrink-0 text-foreground/50">
-                                <Icon icon=i::FaFilterSolid width="12" height="12" />
+                                <Icon attr:aria-hidden="true" icon=i::FaFilterSolid width="12" height="12" />
                             </span>
                             {move || {
                                 if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
@@ -221,7 +221,7 @@ pub fn SmartFolders(
                                     rename_value.set(start_nm.clone());
                                 }
                             >
-                                <Icon icon=i::FaPenSolid width="10" height="10" />
+                                <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="10" height="10" />
                             </button>
                             <button
                                 type="button"
@@ -232,7 +232,7 @@ pub fn SmartFolders(
                                     on_delete.run(del_id.clone());
                                 }
                             >
-                                <Icon icon=i::BiTrashRegular width="10" height="10" />
+                                <Icon attr:aria-hidden="true" icon=i::BiTrashRegular width="10" height="10" />
                             </button>
                         </div>
                     }

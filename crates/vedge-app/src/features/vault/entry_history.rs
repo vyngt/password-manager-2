@@ -174,7 +174,7 @@ pub fn EntryHistory(
                 <DialogTitle>
                     <span class="flex items-center gap-2">
                         <span class="text-text-secondary">
-                            <Icon icon=i::FaClockRotateLeftSolid />
+                            <Icon attr:aria-hidden="true" icon=i::FaClockRotateLeftSolid />
                         </span>
                         <span>{title}</span>
                         {move || {
@@ -289,7 +289,7 @@ pub fn EntryHistory(
 
                     <div class="flex items-start gap-1.5 pt-2 mt-1 border-t border-border text-xs text-text-tertiary">
                         <span class="mt-0.5">
-                            <Icon icon=i::FaLockSolid />
+                            <Icon attr:aria-hidden="true" icon=i::FaLockSolid />
                         </span>
                         <span>{move || t!(i18n, vault.history_kept_note)}</span>
                     </div>
@@ -394,9 +394,9 @@ fn history_row(
                                 >
                                     {move || {
                                         if revealed.get().map(|(rv, _)| rv) == Some(version) {
-                                            Either::Left(view! { <Icon icon=i::FaEyeSlashSolid /> })
+                                            Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaEyeSlashSolid /> })
                                         } else {
-                                            Either::Right(view! { <Icon icon=i::FaEyeSolid /> })
+                                            Either::Right(view! { <Icon attr:aria-hidden="true" icon=i::FaEyeSolid /> })
                                         }
                                     }}
                                 </IconButton>
@@ -416,7 +416,7 @@ fn history_row(
                                         do_copy(hid.clone(), field.clone());
                                     }
                                 >
-                                    <Icon icon=i::FaCopySolid />
+                                    <Icon attr:aria-hidden="true" icon=i::FaCopySolid />
                                 </IconButton>
                             }
                         })}

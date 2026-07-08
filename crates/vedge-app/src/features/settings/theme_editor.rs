@@ -284,7 +284,7 @@ pub fn ThemeEditor(
                             </span>
                             <span class="inline-flex items-center gap-1.5 text-text-primary text-xs">
                                 <span class="text-primary">
-                                    <Icon icon=i::FaGlobeSolid />
+                                    <Icon attr:aria-hidden="true" icon=i::FaGlobeSolid />
                                 </span>
                                 "Web"
                             </span>
@@ -317,7 +317,7 @@ pub fn ThemeEditor(
                                         <span class=format!(
                                             "inline-flex items-center gap-1.5 text-xs {color}",
                                         )>
-                                            <Icon icon=icon />
+                                            <Icon attr:aria-hidden="true" icon=icon />
                                             <span>{format!("{label} · {word}")}</span>
                                         </span>
                                     }

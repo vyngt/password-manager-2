@@ -247,9 +247,9 @@ pub fn VaultDetail(
                         }
                     >
                         {if is_fav {
-                            Either::Left(view! { <Icon icon=i::FaStarSolid /> })
+                            Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> })
                         } else {
-                            Either::Right(view! { <Icon icon=i::FaStarRegular /> })
+                            Either::Right(view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> })
                         }}
                     </IconButton>
                     {has_history.then(|| view! {
@@ -263,7 +263,7 @@ pub fn VaultDetail(
                                 on_history_request.run(entry_for_history.clone());
                             }
                         >
-                            <Icon icon=i::FaClockRotateLeftSolid />
+                            <Icon attr:aria-hidden="true" icon=i::FaClockRotateLeftSolid />
                         </IconButton>
                     })}
                     <IconButton
@@ -385,7 +385,7 @@ pub fn VaultDetail(
                                                             class="flex shrink-0 text-foreground/50"
                                                             style:color=color.unwrap_or_default()
                                                         >
-                                                            <Icon icon=icon_data width="12" height="12" />
+                                                            <Icon attr:aria-hidden="true" icon=icon_data width="12" height="12" />
                                                         </span>
                                                         {name}
                                                     </span>

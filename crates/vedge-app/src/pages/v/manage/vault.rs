@@ -28,7 +28,7 @@ use std::collections::HashMap;
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::components::Button;
+use vedge_ui::components::{Button, Spinner};
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 #[component]
@@ -725,8 +725,8 @@ pub fn VaultPage() -> impl IntoView {
                     when=move || !loading.get()
                     fallback=move || {
                         view! {
-                            <div class="flex-1 flex items-center justify-center text-foreground/40 text-sm">
-                                {move || t!(i18n, vault.loading)}
+                            <div class="flex-1 flex items-center justify-center">
+                                <Spinner />
                             </div>
                         }
                     }

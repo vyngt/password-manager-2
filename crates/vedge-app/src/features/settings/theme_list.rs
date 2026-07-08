@@ -170,7 +170,7 @@ pub fn ThemeList() -> impl IntoView {
                     on:click=move |_: web_sys::MouseEvent| on_new.run(())
                 >
                     <span class="inline-flex items-center gap-1.5">
-                        <Icon icon=i::FaPlusSolid />
+                        <Icon attr:aria-hidden="true" icon=i::FaPlusSolid />
                         {move || t!(i18n, settings.theme_new)}
                     </span>
                 </Button>
@@ -294,7 +294,7 @@ fn ThemeRow(
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_duplicate.run(d_dup.clone())
             >
-                <Icon icon=i::FaCopySolid />
+                <Icon attr:aria-hidden="true" icon=i::FaCopySolid />
             </IconButton>
         }
             .into_any()
@@ -305,21 +305,21 @@ fn ThemeRow(
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_edit.run(d_edit.clone())
             >
-                <Icon icon=i::FaPenSolid />
+                <Icon attr:aria-hidden="true" icon=i::FaPenSolid />
             </IconButton>
             <IconButton
                 aria_label=Signal::derive(move || t_string!(i18n, settings.theme_duplicate).to_string())
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_duplicate.run(d_dup.clone())
             >
-                <Icon icon=i::FaCopySolid />
+                <Icon attr:aria-hidden="true" icon=i::FaCopySolid />
             </IconButton>
             <IconButton
                 aria_label=Signal::derive(move || t_string!(i18n, settings.theme_delete).to_string())
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_delete.run(d_del.clone())
             >
-                <Icon icon=i::FaTrashSolid />
+                <Icon attr:aria-hidden="true" icon=i::FaTrashSolid />
             </IconButton>
         }
             .into_any()

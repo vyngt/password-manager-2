@@ -34,7 +34,7 @@ pub fn VaultUnlockPanel(
                 None => Either::Left(view! {
                     <div class="flex flex-col items-center gap-3 text-foreground/40">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-subtle text-2xl">
-                            <Icon icon=i::FaFileShieldSolid />
+                            <Icon attr:aria-hidden="true" icon=i::FaFileShieldSolid />
                         </span>
                         <p class="max-w-[220px] text-sm">
                             {move || t!(i18n, unlock.select_vault)}
@@ -43,7 +43,7 @@ pub fn VaultUnlockPanel(
                 }),
                 Some(sel) => Either::Right(view! {
                     <span class="mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-2xl">
-                        <Icon icon=i::FaFileShieldSolid />
+                        <Icon attr:aria-hidden="true" icon=i::FaFileShieldSolid />
                     </span>
                     <div class="text-lg font-semibold text-text-primary">{sel.display_name.clone()}</div>
                     <div class="mb-5 max-w-full truncate text-xs font-jetbrains-mono text-foreground/40">
@@ -55,11 +55,15 @@ pub fn VaultUnlockPanel(
                                 Either::Left(view! {
                                     <div class="flex flex-col items-center gap-3">
                                         <button
+                                            type="button"
                                             class="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-primary text-3xl transition-colors hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            aria-label=move || {
+                                                t_string!(i18n, unlock.biometric_unlock_cta).to_string()
+                                            }
                                             disabled=move || unlocking.get()
                                             on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
                                         >
-                                            <Icon icon=i::FaFingerprintSolid />
+                                            <Icon attr:aria-hidden="true" icon=i::FaFingerprintSolid />
                                         </button>
                                         <div>
                                             <div class="text-sm font-medium text-text-primary">
@@ -123,7 +127,7 @@ pub fn VaultUnlockPanel(
                                                     class="mt-1 inline-flex items-center justify-center gap-1.5 text-sm text-primary hover:underline"
                                                     on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
                                                 >
-                                                    <Icon icon=i::FaFingerprintSolid width="13" height="13" />
+                                                    <Icon attr:aria-hidden="true" icon=i::FaFingerprintSolid width="13" height="13" />
                                                     {move || t!(i18n, unlock.biometric_unlock_cta)}
                                                 </button>
                                             })
