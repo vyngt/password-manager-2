@@ -23,8 +23,10 @@ use crate::features::vault::secret_display::SecretDisplay;
 use crate::features::vault::vault_launch::display_name_from_path;
 use crate::i18n::*;
 
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{Button, Checkbox, Input, PasswordStrengthMeter, Step, StepIndicator};
-use vedge_ui::primitives::tokens::Variant;
+use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 
 /// Minimum strength (0–4) required to leave the password step.
 const MIN_STRENGTH: u8 = 2;
@@ -33,6 +35,23 @@ const MIN_STRENGTH: u8 = 2;
 pub fn VaultSetup() -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, onboarding.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
+    let show_success = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, onboarding.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Success)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let current_step = RwSignal::new(0usize);
     let path = RwSignal::new(String::new());
@@ -40,11 +59,9 @@ pub fn VaultSetup() -> impl IntoView {
     let confirm = RwSignal::new(String::new());
     let creating = RwSignal::new(false);
     let created = RwSignal::new(false);
-    let error = RwSignal::new(Option::<String>::None);
     let secret = RwSignal::new(String::new());
     let keychain_ok = RwSignal::new(true);
     let acknowledged = RwSignal::new(false);
-    let kit_msg = RwSignal::new(Option::<String>::None);
 
     let strength = Memo::new(move |_| password_score(&pw.get()));
 
@@ -186,9 +203,6 @@ pub fn VaultSetup() -> impl IntoView {
                                 })
                             />
                         </div>
-                        {move || error.get().map(|e| view! {
-                            <p class="text-sm" style="color:var(--color-danger-text)">{e}</p>
-                        })}
                         <div class="flex justify-between">
                             <Button variant=Variant::Ghost on:click=move |_| current_step.set(0)>
                                 {move || t!(i18n, onboarding.back)}
@@ -204,7 +218,6 @@ pub fn VaultSetup() -> impl IntoView {
                                                 return;
                                             }
                                             creating.set(true);
-                                            error.set(None);
                                             let vault_path = path.get();
                                             let master_password = pw.get();
                                             let msg_exists =
@@ -238,10 +251,10 @@ pub fn VaultSetup() -> impl IntoView {
                                                             .await;
                                                     }
                                                     Err(ApiError::AlreadyExists) => {
-                                                        error.set(Some(msg_exists));
+                                                        show_error(msg_exists);
                                                     }
                                                     Err(e) => {
-                                                        error.set(Some(format!("{msg_create}{e}")));
+                                                        show_error(format!("{msg_create}{e}"));
                                                     }
                                                 }
                                                 creating.set(false);
@@ -265,7 +278,7 @@ pub fn VaultSetup() -> impl IntoView {
                             <SecretDisplay value=Signal::derive(move || secret.get()) />
                         </div>
                         {move || (!keychain_ok.get()).then(|| view! {
-                            <p class="text-sm" style="color:var(--color-warning-text)">
+                            <p class="text-sm text-warning-text">
                                 {move || t!(i18n, onboarding.keychain_warning)}
                             </p>
                         })}
@@ -273,7 +286,6 @@ pub fn VaultSetup() -> impl IntoView {
                             <Button
                                 variant=Variant::Secondary
                                 on:click=move |_| {
-                                    kit_msg.set(None);
                                     let vault_path = path.get();
                                     let dialog_title =
                                         t_string!(i18n, onboarding.save_kit_dialog_title)
@@ -303,15 +315,15 @@ pub fn VaultSetup() -> impl IntoView {
                                                 )
                                                 .await
                                                 {
-                                                    Ok(()) => kit_msg.set(Some(msg_saved)),
-                                                    Err(e) => kit_msg.set(Some(format!(
-                                                        "{msg_kit_err}{e}"
-                                                    ))),
+                                                    Ok(()) => show_success(msg_saved),
+                                                    Err(e) => {
+                                                        show_error(format!("{msg_kit_err}{e}"))
+                                                    }
                                                 }
                                             }
                                             Ok(None) => {}
                                             Err(e) => {
-                                                kit_msg.set(Some(format!("{msg_dialog_err}{e}")))
+                                                show_error(format!("{msg_dialog_err}{e}"))
                                             }
                                         }
                                     });
@@ -319,9 +331,6 @@ pub fn VaultSetup() -> impl IntoView {
                             >
                                 {move || t!(i18n, onboarding.download_kit)}
                             </Button>
-                            {move || kit_msg.get().map(|m| view! {
-                                <span class="text-sm text-text-secondary">{m}</span>
-                            })}
                         </div>
                         <div class="flex items-center gap-2 text-sm text-text-primary">
                             <Checkbox

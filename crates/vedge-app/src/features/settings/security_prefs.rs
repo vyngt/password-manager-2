@@ -53,6 +53,12 @@ impl Default for SecurityPrefs {
 #[derive(Clone, Copy)]
 pub struct SecurityPrefsCtx(pub RwSignal<SecurityPrefs>);
 
+/// Flipped to `true` once [`load`] resolves. The Settings **Security** section
+/// gates its controls behind this (with a `Spinner` fallback) so they don't
+/// flash the [`SecurityPrefs::default`] seed before the persisted values arrive.
+#[derive(Clone, Copy)]
+pub struct SecurityPrefsLoaded(pub RwSignal<bool>);
+
 /// Load the persisted prefs, falling back to [`SecurityPrefs::default`] when the
 /// key is absent or unreadable.
 pub async fn load() -> SecurityPrefs {

@@ -84,6 +84,9 @@ pub fn FolderMove(
                             <Select
                                 options=options
                                 value=Signal::derive(move || chosen.get().unwrap_or_default())
+                                aria_label=Signal::derive(move || {
+                                    t_string!(i18n, vault.folder_move_dest_aria).to_string()
+                                })
                                 on_change=Callback::new(move |v: String| {
                                     chosen.set(if v.is_empty() { None } else { Some(v) });
                                 })
@@ -143,6 +146,7 @@ pub fn FolderSelect(
                     <Select
                         options=options
                         value=Signal::derive(move || data.with(|d| d.folder_id.clone().unwrap_or_default()))
+                        aria_label=Signal::derive(move || t_string!(i18n, vault.folder_label).to_string())
                         on_change=Callback::new(move |v: String| {
                             data.update(|d| d.folder_id = if v.is_empty() { None } else { Some(v) });
                         })

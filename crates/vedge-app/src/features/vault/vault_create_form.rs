@@ -17,9 +17,11 @@ use crate::i18n::*;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::EntryTypeDto;
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::Button;
 use vedge_ui::components::select::{Select, SelectItem};
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 #[component]
 pub fn VaultCreateForm(
@@ -31,14 +33,21 @@ pub fn VaultCreateForm(
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let data = RwSignal::new(EntryFormData::new(EntryTypeDto::Login));
     let submitting = RwSignal::new(false);
-    let error = RwSignal::new(Option::<String>::None);
 
     let handle_cancel = move |_| {
         data.set(EntryFormData::new(EntryTypeDto::Login));
-        error.set(None);
         show.set(false);
     };
 
@@ -52,17 +61,16 @@ pub fn VaultCreateForm(
             Ok(p) => p,
             Err(EntryFormError::NameRequired) => return,
             Err(EntryFormError::InvalidExpiry) => {
-                error.set(Some(t_string!(i18n, vault.err_invalid_expiry).to_string()));
+                show_error(t_string!(i18n, vault.err_invalid_expiry).to_string());
                 return;
             }
             Err(EntryFormError::UnsupportedType) => {
-                error.set(Some(t_string!(i18n, vault.err_save).to_string()));
+                show_error(t_string!(i18n, vault.err_save).to_string());
                 return;
             }
         };
 
         submitting.set(true);
-        error.set(None);
         let vault_path = active.path.get().unwrap_or_default();
         let err_prefix = t_string!(i18n, vault.err_save).to_string();
 
@@ -73,7 +81,7 @@ pub fn VaultCreateForm(
                     show.set(false);
                     on_created.run(());
                 }
-                Err(e) => error.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             submitting.set(false);
         });
@@ -98,6 +106,7 @@ pub fn VaultCreateForm(
                             options=options
                             value=Signal::derive(move || data.with(|d| type_to_key(&d.entry_type).to_owned()))
                             placeholder=Signal::derive(move || t_string!(i18n, vault.type_picker).to_string())
+                            aria_label=Signal::derive(move || t_string!(i18n, vault.type_picker_aria).to_string())
                             on_change=Callback::new(move |key: String| {
                                 data.update(|d| *d = d.switch_type(type_from_key(&key)));
                             })
@@ -112,21 +121,19 @@ pub fn VaultCreateForm(
 
             <EntryForm data=data />
 
-            {move || error.get().map(|e| view! {
-                <p class="text-sm mt-3" style="color:var(--color-danger-text)">{e}</p>
-            })}
-
             <div class="flex gap-2 justify-end mt-3">
                 <Button variant=Variant::Ghost size=Size::Sm on:click=handle_cancel>
                     {move || t!(i18n, vault.cancel)}
                 </Button>
                 {move || {
-                    let busy = submitting.get() || data.with(|d| d.name.trim().is_empty());
+                    let saving = submitting.get();
+                    let busy = saving || data.with(|d| d.name.trim().is_empty());
                     view! {
                         <Button
                             variant=Variant::Primary
                             size=Size::Sm
                             disabled=busy
+                            loading=saving
                             on:click=handle_save
                         >
                             {move || t!(i18n, vault.save)}

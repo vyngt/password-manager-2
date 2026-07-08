@@ -26,8 +26,10 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use std::collections::HashMap;
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::Button;
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 #[component]
 pub fn VaultPage() -> impl IntoView {
@@ -35,6 +37,25 @@ pub fn VaultPage() -> impl IntoView {
     let active = expect_context::<ActiveVault>();
     let ui = expect_context::<VaultUiState>();
     let sec = expect_context::<SecurityPrefsCtx>();
+    let toast = use_toast();
+    // Toast helpers — read the localized dismiss label `untrack`ed so they're
+    // safe to call from both event handlers and `spawn_local` futures.
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
+    let show_success = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Success)
+                .dismiss_label(dismiss),
+        );
+    };
 
     let items = RwSignal::new(Vec::<IndexEntryDto>::new());
     let loading = RwSignal::new(false);
@@ -49,7 +70,6 @@ pub fn VaultPage() -> impl IntoView {
             .get()
             .and_then(|id| items.get().into_iter().find(|e| e.id == id))
     });
-    let status_msg = RwSignal::new(Option::<String>::None);
 
     // Filter / sort facets (client-side over the loaded metadata).
     let entry_type = RwSignal::new(Option::<EntryTypeDto>::None);
@@ -144,7 +164,7 @@ pub fn VaultPage() -> impl IntoView {
             };
             match result {
                 Ok(list) => items.set(list),
-                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             loading.set(false);
         });
@@ -275,7 +295,7 @@ pub fn VaultPage() -> impl IntoView {
                     }
                     refresh();
                 }
-                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     });
@@ -306,7 +326,7 @@ pub fn VaultPage() -> impl IntoView {
                         en.is_favorite = !next;
                     }
                 });
-                status_msg.set(Some(format!("{err_prefix}{e}")));
+                show_error(format!("{err_prefix}{e}"));
             }
         });
     });
@@ -350,7 +370,7 @@ pub fn VaultPage() -> impl IntoView {
                         }
                     });
                 }
-                status_msg.set(Some(format!("{err_prefix}{e}")));
+                show_error(format!("{err_prefix}{e}"));
             }
         });
     });
@@ -368,8 +388,8 @@ pub fn VaultPage() -> impl IntoView {
         let secs = sec.0.get_untracked().clipboard_clear_seconds;
         spawn_local(async move {
             match api::entry::copy_field(&vault_path, &id, &field, Some(secs)).await {
-                Ok(()) => status_msg.set(Some(copied_msg)),
-                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                Ok(()) => show_success(copied_msg),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     });
@@ -408,7 +428,7 @@ pub fn VaultPage() -> impl IntoView {
                         }
                     });
                 }
-                status_msg.set(Some(format!("{err_prefix}{e}")));
+                show_error(format!("{err_prefix}{e}"));
             }
         });
     });
@@ -459,7 +479,7 @@ pub fn VaultPage() -> impl IntoView {
                             }
                         }
                     });
-                    status_msg.set(Some(format!("{err_prefix}{e}")));
+                    show_error(format!("{err_prefix}{e}"));
                     return;
                 }
             }
@@ -502,7 +522,7 @@ pub fn VaultPage() -> impl IntoView {
         spawn_local(async move {
             match api::entry::create_entry(&vault_path, &payload).await {
                 Ok(_id) => refresh(),
-                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     });
@@ -523,13 +543,13 @@ pub fn VaultPage() -> impl IntoView {
                     d.name = name;
                     if let Ok(p) = d.to_payload() {
                         if let Err(e) = api::entry::update_entry(&vault_path, &id, &p).await {
-                            status_msg.set(Some(format!("{err_prefix}{e}")));
+                            show_error(format!("{err_prefix}{e}"));
                         } else {
                             refresh();
                         }
                     }
                 }
-                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     });
@@ -555,13 +575,13 @@ pub fn VaultPage() -> impl IntoView {
                         d.icon = icon;
                         if let Ok(p) = d.to_payload() {
                             if let Err(e) = api::entry::update_entry(&vault_path, &id, &p).await {
-                                status_msg.set(Some(format!("{err_prefix}{e}")));
+                                show_error(format!("{err_prefix}{e}"));
                             } else {
                                 refresh();
                             }
                         }
                     }
-                    Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                    Err(e) => show_error(format!("{err_prefix}{e}")),
                 }
             });
         },
@@ -575,7 +595,7 @@ pub fn VaultPage() -> impl IntoView {
         spawn_local(async move {
             for id in ids {
                 if let Err(e) = api::entry::soft_delete_entry(&vault_path, &id).await {
-                    status_msg.set(Some(format!("{err_prefix}{e}")));
+                    show_error(format!("{err_prefix}{e}"));
                     break;
                 }
             }
@@ -601,7 +621,7 @@ pub fn VaultPage() -> impl IntoView {
                     folder_delete_target.set(None);
                     refresh();
                 }
-                Err(e) => status_msg.set(Some(format!("{err_prefix}{e}"))),
+                Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
     });
@@ -667,10 +687,6 @@ pub fn VaultPage() -> impl IntoView {
             />
             <FolderCustomize target=customize_target on_apply=on_customize_apply />
             <EntryHistory target=history_target on_restored=on_saved />
-
-            {move || status_msg.get().map(|m| view! {
-                <p class="text-sm text-text-secondary">{m}</p>
-            })}
 
             <Show when=move || ui.show_create.get()>
                 <VaultCreateForm show=ui.show_create on_created=on_created folders=folders />
