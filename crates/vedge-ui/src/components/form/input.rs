@@ -30,6 +30,13 @@ pub fn Input(
     #[prop(into, default = TextProp::default())]
     aria_label: TextProp,
     #[prop(optional, default = "")] aria_describedby: &'static str,
+    /// `autocomplete` attribute (e.g. `"off"`); omitted when empty.
+    #[prop(optional, default = "")]
+    autocomplete: &'static str,
+    /// `spellcheck` attribute (e.g. `"false"` for search / technical fields);
+    /// omitted when empty (browser default).
+    #[prop(optional, default = "")]
+    spellcheck: &'static str,
     #[prop(into, default = TextProp::default())] clear_label: TextProp,
     #[prop(into, default = TextProp::default())] reveal_label: TextProp,
     #[prop(into, default = TextProp::default())] hide_label: TextProp,
@@ -149,6 +156,8 @@ pub fn Input(
                 id=id
                 type=effective_type
                 autofocus=autofocus
+                autocomplete=(!autocomplete.is_empty()).then_some(autocomplete)
+                spellcheck=(!spellcheck.is_empty()).then_some(spellcheck)
                 disabled=disabled
                 readonly=read_only
                 prop:value=move || value.map(|s| s.get()).unwrap_or_default()

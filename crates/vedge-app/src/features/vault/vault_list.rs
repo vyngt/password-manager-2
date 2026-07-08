@@ -114,6 +114,8 @@ pub fn VaultList(
                 <Input
                     id="vault-search"
                     input_ref=input_ref
+                    autocomplete="off"
+                    spellcheck="false"
                     leading_icon=Box::new(|| {
                         view! { <Icon icon=i::FaMagnifyingGlassSolid width="13" height="13" /> }
                             .into_any()
