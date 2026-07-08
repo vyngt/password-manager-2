@@ -1,0 +1,39 @@
+@layer components {
+  /* ============================================================
+     Custom scrollbars — a thin, token-driven scrollbar that follows the
+     theme Rust injects at :root (light or dark), replacing the native OS one.
+
+     Scoped to `::-webkit-scrollbar` only: both target webviews are WebKit-family
+     (WebView2 = Chromium on Windows, WKWebView on macOS) and honour it. We
+     deliberately do NOT set `scrollbar-width`/`scrollbar-color` — in recent
+     Chromium those disable the `::-webkit-scrollbar` pseudo-elements, which would
+     drop this custom styling. No transitions here, so reduced-motion is moot.
+     ============================================================ */
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* The 2px transparent border + padding-box clip insets the thumb so it reads
+     as a slim pill inside the 10px gutter rather than filling it. */
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}

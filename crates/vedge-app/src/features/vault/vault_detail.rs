@@ -230,7 +230,7 @@ pub fn VaultDetail(
     };
 
     view! {
-        <aside class="w-80 shrink-0 border border-border rounded-lg p-4 bg-primary-muted overflow-auto">
+        <aside class="w-80 min-w-0 border border-border rounded-lg p-4 bg-primary-muted overflow-auto">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-semibold text-text-secondary">
                     {move || t!(i18n, vault.detail_title)}
