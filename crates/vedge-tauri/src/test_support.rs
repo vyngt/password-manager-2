@@ -32,6 +32,8 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
         RecentVaultRepository, ThemeRepository,
     };
     use vedge_core::application::vault::ports::{BlobStoreFactory, VaultRepositoryFactory};
+    use vedge_core::application::vault::ports::BiometricAuthenticator;
+    use vedge_core::infrastructure::biometric::MemoryBiometricAuthenticator;
     use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
     use vedge_core::infrastructure::clipboard::MemoryClipboardProvider;
     use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
@@ -45,6 +47,8 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
     let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
     let kdf: Arc<dyn KeyDerivationProvider> = Arc::new(Argon2idKdfProvider::new());
     let keychain: Arc<dyn KeychainProvider> = Arc::new(MemoryKeychainProvider::new());
+    let biometric: Arc<dyn BiometricAuthenticator> =
+        Arc::new(MemoryBiometricAuthenticator::new());
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(MemoryClipboardProvider::new());
 
     let db = AppDbConnection::open(&dir.path().join("app.db"))
@@ -83,6 +87,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
         crypto,
         kdf,
         keychain,
+        biometric,
         clipboard,
         recent_vaults,
         app_settings,

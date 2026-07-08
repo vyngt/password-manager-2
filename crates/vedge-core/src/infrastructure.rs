@@ -1,3 +1,4 @@
+pub mod biometric;
 pub mod blob;
 pub mod clipboard;
 pub mod crypto;

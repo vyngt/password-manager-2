@@ -35,6 +35,8 @@ pub enum ApiError {
     VaultNotOpen(String),
     #[error("keychain error: {0}")]
     Keychain(String),
+    #[error("biometric error: {0}")]
+    Biometric(String),
     #[error("storage failure: {0}")]
     Storage(String),
     #[error("invalid input: {0}")]
@@ -83,6 +85,7 @@ impl ApiError {
             envelope::kind::NOT_FOUND => Self::NotFound(msg),
             envelope::kind::VAULT_NOT_OPEN => Self::VaultNotOpen(msg),
             envelope::kind::KEYCHAIN => Self::Keychain(msg),
+            envelope::kind::BIOMETRIC => Self::Biometric(msg),
             envelope::kind::STORAGE => Self::Storage(msg),
             envelope::kind::INVALID => Self::Invalid(msg),
             envelope::kind::ALREADY_EXISTS => Self::AlreadyExists,
@@ -124,6 +127,14 @@ mod tests {
     fn maps_not_found_with_message() {
         match ApiError::from_envelope(env("NotFound", Some("entry x"))) {
             ApiError::NotFound(m) => assert_eq!(m, "entry x"),
+            other => panic!("unexpected: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn maps_biometric_with_message() {
+        match ApiError::from_envelope(env("Biometric", Some("no biometric enrollment"))) {
+            ApiError::Biometric(m) => assert_eq!(m, "no biometric enrollment"),
             other => panic!("unexpected: {other:?}"),
         }
     }

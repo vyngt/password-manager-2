@@ -36,6 +36,7 @@ pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
     call_void("lock_vault", &Args { vault_path }).await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI
 pub async fn is_unlocked(vault_path: &str) -> Result<bool, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -60,6 +61,10 @@ pub async fn list_trashed(vault_path: &str) -> Result<Vec<IndexEntryDto>, ApiErr
     call("list_trashed", &Args { vault_path }).await
 }
 
+// The three server-side query wrappers below are superseded by the client-side
+// `filter_and_sort` (slice 2.2) over the already-decrypted index — kept as the ready-made
+// API if a deep/secret-payload search is ever added.
+#[allow(dead_code)]
 pub async fn search(vault_path: &str, query: &str) -> Result<Vec<IndexEntryDto>, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -69,6 +74,7 @@ pub async fn search(vault_path: &str, query: &str) -> Result<Vec<IndexEntryDto>,
     call("search", &Args { vault_path, query }).await
 }
 
+#[allow(dead_code)]
 pub async fn by_tag(vault_path: &str, tag_id: &str) -> Result<Vec<IndexEntryDto>, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -78,6 +84,7 @@ pub async fn by_tag(vault_path: &str, tag_id: &str) -> Result<Vec<IndexEntryDto>
     call("by_tag", &Args { vault_path, tag_id }).await
 }
 
+#[allow(dead_code)]
 pub async fn by_folder(
     vault_path: &str,
     folder_id: Option<&str>,
@@ -98,6 +105,7 @@ pub async fn by_folder(
     .await
 }
 
+#[allow(dead_code)]
 pub async fn by_domain(vault_path: &str, domain: &str) -> Result<Vec<IndexEntryDto>, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {

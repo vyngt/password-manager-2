@@ -10,6 +10,7 @@
 //! house pattern in `vault_filters`): the `t_string!` reads are then tracked —
 //! no owner-less warning — and the labels relocalize on a language switch.
 
+use crate::features::settings::biometric_setting::BiometricSetting;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx};
 use crate::features::settings::theme_list::ThemeList;
 use crate::i18n::*;
@@ -174,6 +175,9 @@ pub fn SettingsPage() -> impl IntoView {
                                         }}
                                     </div>
                                 </div>
+
+                                // ---- Biometric unlock (slice 2.8) -----------------
+                                <BiometricSetting />
 
                                 <Show when=move || saved.get()>
                                     <div class="inline-flex items-center gap-1.5 text-xs text-success-text mt-4">

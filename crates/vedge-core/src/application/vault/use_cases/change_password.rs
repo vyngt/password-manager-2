@@ -13,7 +13,9 @@
 //!    fails the whole batch rolls back so the vault never lands in a
 //!    mixed-KEK state.
 //! 5. Write the new Secret Key to the keychain if it changed.
-//! 6. Swap `session.kek` for the new KEK.
+//! 6. Swap `session.kek` for the new KEK; if biometric unlock is enrolled, re-store the
+//!    *new* KEK behind the gate. The old stored KEK is now stale (it can't unwrap the
+//!    freshly-rewrapped DEKs), so a biometric unlock would fail until re-enrolled.
 //! 7. Audit `PasswordChanged`.
 //!
 //! ## Ciphertext is untouched
@@ -28,6 +30,7 @@ use std::sync::Arc;
 use tracing::instrument;
 use zeroize::Zeroizing;
 
+use crate::application::vault::ports::biometric::BiometricAuthenticator;
 use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::session::VaultSession;
@@ -49,6 +52,7 @@ pub async fn change_password(
     session: &mut VaultSession,
     kdf: Arc<dyn KeyDerivationProvider>,
     keychain: Arc<dyn KeychainProvider>,
+    biometric: Arc<dyn BiometricAuthenticator>,
     input: ChangePasswordInput,
 ) -> Result<(), VaultError> {
     // ---- 1. Resolve Secret Key ----------------------------------------------
@@ -108,6 +112,14 @@ pub async fn change_password(
     session.kek = SecretMem::new(*new_kek_z)?;
     drop(new_kek_z);
     session.config = new_config;
+
+    // ---- 6b. Refresh the biometric-gated KEK if enrolled --------------------
+    // The stored KEK is now stale (the DEKs were re-wrapped under the new KEK). Re-store
+    // the new KEK so biometric unlock keeps working. Done after the atomic commit so a
+    // rollback never leaves the gate holding a KEK the DB doesn't match.
+    if biometric.is_enrolled(session.vault_id())? {
+        biometric.enroll(session.vault_id(), session.kek.expose())?;
+    }
 
     // ---- 7. Audit ------------------------------------------------------------
     super::create_entry::append_audit(session, AuditAction::PasswordChanged, None).await?;

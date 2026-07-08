@@ -8,6 +8,7 @@ use vedge_ipc::{RecentVaultDto, RecentVaultStatusDto};
 use crate::api::call::{call_noargs, call_void};
 use crate::api::error::ApiError;
 
+#[allow(dead_code)] // wrapper not yet called by UI (the status variant is used instead)
 pub async fn list_recent_vaults() -> Result<Vec<RecentVaultDto>, ApiError> {
     call_noargs("list_recent_vaults").await
 }
@@ -32,6 +33,7 @@ pub async fn remove_recent_vault(id: &str) -> Result<(), ApiError> {
     call_void("remove_recent_vault", &Args { id }).await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI (the on-unlock variant is used instead)
 pub async fn touch_recent_vault(id: &str) -> Result<(), ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -48,6 +50,7 @@ pub async fn touch_recent_vault_on_unlock(id: &str) -> Result<(), ApiError> {
     call_void("touch_recent_vault_on_unlock", &Args { id }).await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI
 pub async fn remove_stale_recent_vaults() -> Result<u64, ApiError> {
     call_noargs("remove_stale_recent_vaults").await
 }

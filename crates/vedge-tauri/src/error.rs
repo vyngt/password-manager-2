@@ -42,6 +42,12 @@ pub enum CommandError {
     #[error("keychain error: {0}")]
     Keychain(String),
 
+    /// Biometric authenticator (Windows Hello / Touch ID) was unavailable, not
+    /// enrolled, or the prompt was cancelled/failed. Collapsed into one variant —
+    /// the shell falls back to the master-password path regardless of which.
+    #[error("biometric error: {0}")]
+    Biometric(String),
+
     /// Persistence layer failure (`SQLite`, filesystem).
     #[error("storage failure: {0}")]
     Storage(String),
@@ -83,6 +89,11 @@ impl From<VaultError> for CommandError {
             VaultError::KeychainUnavailable
             | VaultError::KeychainAccessDenied
             | VaultError::KeychainEntryNotFound => Self::Keychain(e.to_string()),
+
+            VaultError::BiometricUnavailable
+            | VaultError::BiometricNotEnrolled
+            | VaultError::BiometricCancelled
+            | VaultError::BiometricFailed(_) => Self::Biometric(e.to_string()),
 
             VaultError::Storage(inner) => Self::Storage(storage_detail(&inner)),
 

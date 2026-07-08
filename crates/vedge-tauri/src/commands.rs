@@ -1,6 +1,7 @@
 //! Tauri command modules. Each sub-module exposes `#[tauri::command]`
 //! functions that `run()` wires into the `invoke_handler!` in Phase 10.
 
+pub mod biometric;
 pub mod device;
 pub mod document;
 pub mod emergency_kit;

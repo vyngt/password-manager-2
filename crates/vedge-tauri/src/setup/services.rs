@@ -24,10 +24,11 @@ use vedge_core::application::app::ports::{
     ThemeRepository,
 };
 use vedge_core::application::vault::ports::{
-    BlobStoreFactory, ClipboardProvider, CryptoProvider, KeyDerivationProvider, KeychainProvider,
-    VaultRepositoryFactory,
+    BiometricAuthenticator, BlobStoreFactory, ClipboardProvider, CryptoProvider,
+    KeyDerivationProvider, KeychainProvider, VaultRepositoryFactory,
 };
 use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
+use vedge_core::infrastructure::biometric::platform_authenticator;
 use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
 use vedge_core::infrastructure::clipboard::ArboardClipboardProvider;
 use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
@@ -100,6 +101,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
     let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
     let kdf: Arc<dyn KeyDerivationProvider> = Arc::new(Argon2idKdfProvider::new());
     let keychain: Arc<dyn KeychainProvider> = Arc::new(OsKeychainProvider::new());
+    let biometric: Arc<dyn BiometricAuthenticator> = platform_authenticator(Arc::clone(&crypto));
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(ArboardClipboardProvider::new()?);
 
     // Pre-wire the unlock use case so per-vault repo/blob construction is
@@ -127,6 +129,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         crypto,
         kdf,
         keychain,
+        biometric,
         clipboard,
         recent_vaults,
         app_settings,
@@ -177,6 +180,10 @@ mod tests {
         // swap to the in-memory variant here.
         let keychain: Arc<dyn KeychainProvider> =
             Arc::new(vedge_core::infrastructure::keychain::MemoryKeychainProvider::new());
+        // Real biometric hardware isn't reachable in tests — use the in-memory variant.
+        let biometric: Arc<dyn BiometricAuthenticator> = Arc::new(
+            vedge_core::infrastructure::biometric::MemoryBiometricAuthenticator::new(),
+        );
         // Clipboard can fail in CI / headless — use the in-memory variant.
         let clipboard: Arc<dyn ClipboardProvider> =
             Arc::new(vedge_core::infrastructure::clipboard::MemoryClipboardProvider::new());
@@ -204,6 +211,7 @@ mod tests {
             crypto,
             kdf,
             keychain,
+            biometric,
             clipboard,
             recent_vaults,
             app_settings,

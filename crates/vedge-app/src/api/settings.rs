@@ -28,6 +28,7 @@ pub async fn set_app_setting(key: &str, value: &Value) -> Result<(), ApiError> {
     call_void("set_app_setting", &Args { key, value }).await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI
 pub async fn delete_app_setting(key: &str) -> Result<(), ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -36,6 +37,7 @@ pub async fn delete_app_setting(key: &str) -> Result<(), ApiError> {
     call_void("delete_app_setting", &Args { key }).await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI
 pub async fn list_app_settings(prefix: &str) -> Result<Vec<AppSettingDto>, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -50,6 +52,7 @@ pub async fn list_themes() -> Result<Vec<ThemeDto>, ApiError> {
     call_noargs("list_themes").await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI
 pub async fn get_theme(id: &str) -> Result<ThemeDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
