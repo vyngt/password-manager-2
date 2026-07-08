@@ -28,6 +28,7 @@ use windows::Security::Credentials::{
     KeyCredentialCreationOption, KeyCredentialManager, KeyCredentialStatus,
 };
 use windows::Security::Cryptography::CryptographicBuffer;
+use windows::Win32::UI::WindowsAndMessaging::{ASFW_ANY, AllowSetForegroundWindow};
 use windows::core::HSTRING;
 
 use crate::application::vault::ports::biometric::BiometricAuthenticator;
@@ -78,6 +79,19 @@ fn win_err(context: &str, e: &windows::core::Error) -> VaultError {
     VaultError::BiometricFailed(format!("{context}: {e}"))
 }
 
+/// Let the Windows Hello credential broker (a separate system process) bring its prompt
+/// to the foreground. The ceremony runs off the UI thread, so without this the dialog can
+/// open *behind* the app window and the user has to click it before authenticating.
+/// Best-effort — it only takes effect while our process is foreground, which it is at the
+/// moment the user clicks Enable / Unlock.
+// The one FFI call in the crate: a raw Win32 binding with no safe wrapper. Scoped-allow
+// the workspace `-D unsafe_code` here rather than opting the whole crate out.
+#[allow(unsafe_code)]
+fn allow_hello_foreground() {
+    // SAFETY: a plain Win32 call with a constant argument; the result is ignored.
+    drop(unsafe { AllowSetForegroundWindow(ASFW_ANY) });
+}
+
 /// Derive the 32-byte wrap key from a Hello signature: `SHA-256(domain ‖ signature)`.
 fn wrap_key_from_signature(sig: &[u8]) -> Zeroizing<[u8; 32]> {
     let mut hasher = Sha256::new();
@@ -90,6 +104,7 @@ fn wrap_key_from_signature(sig: &[u8]) -> Zeroizing<[u8; 32]> {
 /// `create` is true. Shows the Windows Hello prompt. Returns the raw signature bytes.
 fn sign_challenge(name: &HSTRING, create: bool) -> Result<Zeroizing<Vec<u8>>, VaultError> {
     let credential = if create {
+        allow_hello_foreground();
         let result = KeyCredentialManager::RequestCreateAsync(
             name,
             KeyCredentialCreationOption::ReplaceExisting,
@@ -126,6 +141,7 @@ fn sign_challenge(name: &HSTRING, create: bool) -> Result<Zeroizing<Vec<u8>>, Va
 
     let challenge = CryptographicBuffer::CreateFromByteArray(CHALLENGE)
         .map_err(|e| win_err("CreateFromByteArray", &e))?;
+    allow_hello_foreground();
     let sign_result = credential
         .RequestSignAsync(&challenge)
         .map_err(|e| win_err("RequestSignAsync", &e))?

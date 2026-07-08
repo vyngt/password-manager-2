@@ -15,7 +15,8 @@ pub mod tauri;
 // shell's `#[tauri::command]` surface. The store-data UI (Phase 1) consumes only
 // a subset so far, so the not-yet-used wrappers are kept and `dead_code`-allowed
 // rather than deleted — they're the ready-made API for later phases.
-#[allow(dead_code)]
+// Unlike the sibling mirrors below, every `biometric::*` wrapper is used (unlock screen
+// + settings), so this module is NOT `dead_code`-allowed.
 pub mod biometric;
 #[allow(dead_code)]
 pub mod device;

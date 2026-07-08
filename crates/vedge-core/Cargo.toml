@@ -53,6 +53,9 @@ windows = { version = "0.61", features = [
     "Security_Credentials",
     "Security_Cryptography",
     "Storage_Streams",
+    # AllowSetForegroundWindow — let the Hello broker surface its prompt over the app.
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
 ] }
 
 [dev-dependencies]
