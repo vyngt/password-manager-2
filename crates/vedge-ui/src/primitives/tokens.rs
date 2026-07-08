@@ -8,6 +8,10 @@ pub enum Variant {
     Ghost,
     Danger,
     Warning,
+    /// Text link — transparent, no chrome, underline on hover. For inline
+    /// actions styled as links (e.g. "use master password"). Buttons only;
+    /// `IconButton` falls back to `Ghost`.
+    Link,
 }
 
 impl Variant {
@@ -18,6 +22,7 @@ impl Variant {
             Variant::Ghost => "btn--ghost",
             Variant::Danger => "btn--danger",
             Variant::Warning => "btn--warning",
+            Variant::Link => "btn--link",
         }
     }
 
@@ -28,17 +33,22 @@ impl Variant {
             Variant::Ghost => "icon-btn--ghost",
             Variant::Danger => "icon-btn--danger",
             Variant::Warning => "icon-btn--warning",
+            // Icon buttons have no link style; fall back to ghost.
+            Variant::Link => "icon-btn--ghost",
         }
     }
 }
 
 /// Physical scale — controls height, font-size, padding.
 /// Derived from the typography + spacing system:
+///   xs = 20px — compact icon actions in dense rows (IconButton only; other
+///        components treat it as `Sm`)
 ///   sm = 28px = 16px line-height + 2×6px padding
 ///   md = 36px = 20px line-height + 2×8px padding
 ///   lg = 44px = 24px line-height + 2×10px padding
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Size {
+    Xs,
     Sm,
     #[default]
     Md,
@@ -48,7 +58,8 @@ pub enum Size {
 impl Size {
     pub fn btn_class(&self) -> &'static str {
         match self {
-            Size::Sm => "btn--sm",
+            // No text-button `xs`; degrade to `sm` (xs is for icon actions).
+            Size::Xs | Size::Sm => "btn--sm",
             Size::Md => "btn--md",
             Size::Lg => "btn--lg",
         }
@@ -56,6 +67,7 @@ impl Size {
 
     pub fn icon_btn_class(&self) -> &'static str {
         match self {
+            Size::Xs => "icon-btn--xs",
             Size::Sm => "icon-btn--sm",
             Size::Md => "icon-btn--md",
             Size::Lg => "icon-btn--lg",
@@ -64,7 +76,7 @@ impl Size {
 
     pub fn spinner_class(&self) -> &'static str {
         match self {
-            Size::Sm => "spinner--sm",
+            Size::Xs | Size::Sm => "spinner--sm",
             Size::Md => "spinner--md",
             Size::Lg => "spinner--lg",
         }
@@ -72,7 +84,7 @@ impl Size {
 
     pub fn input_root_class(&self) -> &'static str {
         match self {
-            Size::Sm => "input-root--sm",
+            Size::Xs | Size::Sm => "input-root--sm",
             Size::Md => "",
             Size::Lg => "input-root--lg",
         }
@@ -80,7 +92,7 @@ impl Size {
 
     pub fn number_input_class(&self) -> &'static str {
         match self {
-            Size::Sm => "number-input--sm",
+            Size::Xs | Size::Sm => "number-input--sm",
             Size::Md => "",
             Size::Lg => "number-input--lg",
         }
@@ -88,14 +100,14 @@ impl Size {
 
     pub fn segmented_class(&self) -> &'static str {
         match self {
-            Size::Sm => "segmented--sm",
+            Size::Xs | Size::Sm => "segmented--sm",
             Size::Md | Size::Lg => "segmented--md",
         }
     }
 
     pub fn textarea_class(&self) -> &'static str {
         match self {
-            Size::Sm => "textarea--sm",
+            Size::Xs | Size::Sm => "textarea--sm",
             Size::Md => "",
             Size::Lg => "textarea--lg",
         }
@@ -103,7 +115,7 @@ impl Size {
 
     pub fn select_trigger_class(&self) -> &'static str {
         match self {
-            Size::Sm => "select-trigger--sm",
+            Size::Xs | Size::Sm => "select-trigger--sm",
             Size::Md => "",
             Size::Lg => "select-trigger--lg",
         }
@@ -111,21 +123,21 @@ impl Size {
 
     pub fn color_picker_trigger_class(&self) -> &'static str {
         match self {
-            Size::Sm => "color-picker-trigger--sm",
+            Size::Xs | Size::Sm => "color-picker-trigger--sm",
             Size::Md | Size::Lg => "",
         }
     }
 
     pub fn color_picker_trigger_only_class(&self) -> &'static str {
         match self {
-            Size::Sm => "color-picker-trigger-only--sm",
+            Size::Xs | Size::Sm => "color-picker-trigger-only--sm",
             Size::Md | Size::Lg => "",
         }
     }
 
     pub fn date_picker_trigger_class(&self) -> &'static str {
         match self {
-            Size::Sm => "datepicker-trigger--sm",
+            Size::Xs | Size::Sm => "datepicker-trigger--sm",
             Size::Md => "",
             Size::Lg => "datepicker-trigger--lg",
         }
@@ -133,7 +145,7 @@ impl Size {
 
     pub fn progress_track_class(&self) -> &'static str {
         match self {
-            Size::Sm => "progress__track--sm",
+            Size::Xs | Size::Sm => "progress__track--sm",
             Size::Md => "progress__track--md",
             Size::Lg => "progress__track--lg",
         }
@@ -141,7 +153,7 @@ impl Size {
 
     pub fn slider_root_class(&self) -> &'static str {
         match self {
-            Size::Sm => "slider-root--sm",
+            Size::Xs | Size::Sm => "slider-root--sm",
             Size::Md => "slider-root--md",
             Size::Lg => "slider-root--lg",
         }
@@ -149,7 +161,7 @@ impl Size {
 
     pub fn qrcode_class(&self) -> &'static str {
         match self {
-            Size::Sm => "qrcode--sm",
+            Size::Xs | Size::Sm => "qrcode--sm",
             Size::Md => "qrcode--md",
             Size::Lg => "qrcode--lg",
         }
@@ -157,7 +169,7 @@ impl Size {
 
     pub fn accordion_trigger_class(&self) -> &'static str {
         match self {
-            Size::Sm | Size::Md => "",
+            Size::Xs | Size::Sm | Size::Md => "",
             Size::Lg => "accordion__trigger--lg",
         }
     }

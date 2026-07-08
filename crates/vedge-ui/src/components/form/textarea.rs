@@ -28,12 +28,12 @@ pub fn Textarea(
 
     // Line-height and padding per size (must match CSS exactly)
     let line_height: f64 = match size {
-        Size::Sm => 16.0,
+        Size::Xs | Size::Sm => 16.0,
         Size::Md => 20.0,
         Size::Lg => 24.0,
     };
     let padding_y: f64 = match size {
-        Size::Sm => 6.0,
+        Size::Xs | Size::Sm => 6.0,
         Size::Md => 8.0,
         Size::Lg => 10.0,
     };
