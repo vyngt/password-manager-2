@@ -1,6 +1,4 @@
 use super::dialog::DialogContext;
-use crate::components::foundation::icon_button::IconButton;
-use crate::primitives::tokens::{Size, Variant};
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
@@ -15,15 +13,20 @@ pub fn DialogHeader(children: Children) -> impl IntoView {
             {ctx
                 .closeable
                 .then(|| {
+                    // A plain <button> with a DIRECT `on:click` (not an <IconButton>
+                    // with a spread handler) so the close reliably fires from inside
+                    // the portal + ChildrenFn nesting; `dialog__close` gives it a
+                    // stacking context so nothing in the header can cover it. Styled
+                    // with the icon-button classes so it looks identical.
                     view! {
-                        <IconButton
-                            aria_label=ctx.close_label
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_| ctx.on_close.run(())
+                        <button
+                            type="button"
+                            class="icon-btn icon-btn--ghost icon-btn--sm dialog__close"
+                            aria-label=move || ctx.close_label.get()
+                            on:click=move |_: web_sys::MouseEvent| ctx.on_close.run(())
                         >
                             <Icon icon=i::FaXmarkSolid />
-                        </IconButton>
+                        </button>
                     }
                 })}
         </div>

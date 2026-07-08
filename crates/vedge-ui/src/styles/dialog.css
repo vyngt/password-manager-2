@@ -54,6 +54,13 @@
     min-width: 0;
   }
 
+  /* The close button sits above the header content — a defensive stacking
+     context so an overflowing title / decoration can never intercept its click. */
+  .dialog__close {
+    position: relative;
+    z-index: 1;
+  }
+
   .dialog__title {
     font-family: var(--font-sans);
     font-size: var(--text-lg);
