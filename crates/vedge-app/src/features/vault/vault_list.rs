@@ -13,7 +13,7 @@ use leptos::prelude::*;
 use leptos_icons::Icon;
 use std::time::Duration;
 use vedge_ipc::RecentVaultStatusDto;
-use vedge_ui::components::Button;
+use vedge_ui::components::{Button, IconButton, Input};
 use vedge_ui::primitives::tokens::{Size, Variant};
 use wasm_bindgen::JsCast;
 
@@ -111,26 +111,24 @@ pub fn VaultList(
                         {move || t!(i18n, unlock.your_vaults)}
                     </span>
                 </div>
-                <div class="flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-2.5">
-                    <span class="flex shrink-0 text-foreground/40">
-                        <Icon attr:aria-hidden="true" icon=i::FaMagnifyingGlassSolid width="13" height="13" />
-                    </span>
-                    <input
-                        node_ref=input_ref
-                        class="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-foreground/40"
-                        type="text"
-                        autocomplete="off"
-                        spellcheck="false"
-                        aria-label=move || t_string!(i18n, unlock.search_vaults).to_string()
-                        placeholder=move || t_string!(i18n, unlock.search_vaults).to_string()
-                        prop:value=move || query.get()
-                        on:input:target=move |ev| {
-                            query.set(ev.target().value());
-                            highlighted.set(0);
-                        }
-                        on:keydown=on_key
-                    />
-                </div>
+                <Input
+                    id="vault-search"
+                    input_ref=input_ref
+                    leading_icon=Box::new(|| {
+                        view! { <Icon icon=i::FaMagnifyingGlassSolid width="13" height="13" /> }
+                            .into_any()
+                    })
+                    aria_label=Signal::derive(move || t_string!(i18n, unlock.search_vaults).to_string())
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, unlock.search_vaults).to_string()
+                    })
+                    value=Signal::derive(move || query.get())
+                    on_input=Callback::new(move |v: String| {
+                        query.set(v);
+                        highlighted.set(0);
+                    })
+                    on:keydown=on_key
+                />
             </div>
 
             // Scrollable list.
@@ -226,23 +224,23 @@ pub fn VaultList(
                                                 == Some(editing_check_id.as_str())
                                             {
                                                 Either::Left(view! {
-                                                    <input
-                                                        node_ref=rename_ref
-                                                        class="w-full rounded border border-primary bg-surface px-1 py-0.5 text-[13px] text-text-primary outline-none"
-                                                        type="text"
-                                                        prop:value=move || rename_draft.get()
-                                                        aria-label=move || {
+                                                    <Input
+                                                        id="vault-rename"
+                                                        input_ref=rename_ref
+                                                        class="w-full"
+                                                        aria_label=Signal::derive(move || {
                                                             t_string!(i18n, unlock.vault_rename).to_string()
-                                                        }
-                                                        placeholder=move || {
+                                                        })
+                                                        placeholder=Signal::derive(move || {
                                                             t_string!(i18n, unlock.vault_rename_placeholder)
                                                                 .to_string()
-                                                        }
+                                                        })
+                                                        value=Signal::derive(move || rename_draft.get())
+                                                        on_input=Callback::new(move |v: String| {
+                                                            rename_draft.set(v)
+                                                        })
                                                         on:click=move |ev: web_sys::MouseEvent| {
                                                             ev.stop_propagation()
-                                                        }
-                                                        on:input:target=move |ev| {
-                                                            rename_draft.set(ev.target().value())
                                                         }
                                                         on:keydown=move |ev: web_sys::KeyboardEvent| {
                                                             match ev.key().as_str() {
@@ -265,8 +263,8 @@ pub fn VaultList(
                                                                 _ => {}
                                                             }
                                                         }
-                                                        on:blur=move |_: web_sys::FocusEvent| {
-                                                            // Guard against the unmount-blur double-fire
+                                                        on:focusout=move |_: web_sys::FocusEvent| {
+                                                            // Guard against the unmount-focusout double-fire
                                                             // after Enter/Escape already cleared editing.
                                                             if editing_id.get().as_deref()
                                                                 == Some(blur_id.as_str())
@@ -309,11 +307,13 @@ pub fn VaultList(
                                         Either::Left(view! {
                                             <div class="flex shrink-0 items-center gap-1.5">
                                                 {recency_view}
-                                                <button
-                                                    class="text-foreground/40 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-                                                    aria-label=move || {
+                                                <IconButton
+                                                    variant=Variant::Ghost
+                                                    size=Size::Xs
+                                                    class="text-foreground/40 opacity-0 transition-opacity group-hover:opacity-100"
+                                                    aria_label=Signal::derive(move || {
                                                         t_string!(i18n, unlock.vault_rename).to_string()
-                                                    }
+                                                    })
                                                     on:click=move |ev: web_sys::MouseEvent| {
                                                         ev.stop_propagation();
                                                         editing_id.set(Some(start_id.clone()));
@@ -330,7 +330,7 @@ pub fn VaultList(
                                                     }
                                                 >
                                                     <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="12" height="12" />
-                                                </button>
+                                                </IconButton>
                                             </div>
                                         })
                                     } else {

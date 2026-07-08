@@ -25,6 +25,10 @@ pub fn Input(
     #[prop(optional, default = "")] suffix: &'static str,
     #[prop(into, default = None)] on_input: Option<Callback<String>>,
     #[prop(optional)] required: bool,
+    /// Accessible name for the native `<input>` (for fields with no visible
+    /// `<label>`, e.g. an inline rename or a search box).
+    #[prop(into, default = TextProp::default())]
+    aria_label: TextProp,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(into, default = TextProp::default())] clear_label: TextProp,
     #[prop(into, default = TextProp::default())] reveal_label: TextProp,
@@ -149,6 +153,10 @@ pub fn Input(
                 readonly=read_only
                 prop:value=move || value.map(|s| s.get()).unwrap_or_default()
                 placeholder=move || placeholder.map(|s| s.get()).unwrap_or_default()
+                aria-label=move || {
+                    let v = aria_label.get();
+                    if v.is_empty() { None } else { Some(v) }
+                }
                 aria-invalid=aria_invalid
                 aria-describedby=aria_describedby_attr
                 aria-required=aria_required_attr
