@@ -32,10 +32,12 @@ pub fn Input(
     /// Optional external ref to the native `<input>`. When supplied, callers can
     /// imperatively `focus()`/`select()` the element (e.g. inline rename fields).
     /// Reconciled with the internal ref so the search clear-button still refocuses.
-    #[prop(into, default = None)] input_ref: Option<NodeRef<leptos::html::Input>>,
+    #[prop(into, default = None)]
+    input_ref: Option<NodeRef<leptos::html::Input>>,
     /// Focus the field on mount (HTML `autofocus`). Useful for fields revealed by
     /// a `<Show>`/`Either` (new-folder, inline rename) that should grab focus.
-    #[prop(optional)] autofocus: bool,
+    #[prop(optional)]
+    autofocus: bool,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     // Dev assertions

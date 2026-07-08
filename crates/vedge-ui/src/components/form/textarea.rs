@@ -17,7 +17,8 @@ pub fn Textarea(
     #[prop(into, default = None)] on_change: Option<Callback<String>>,
     /// When the signal is `true`, masks the content like a password field
     /// (`-webkit-text-security`) — e.g. an SSH PEM block behind a reveal toggle.
-    #[prop(into, default = None)] masked: Option<Signal<bool>>,
+    #[prop(into, default = None)]
+    masked: Option<Signal<bool>>,
     #[prop(optional, default = "")] class: &'static str,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional)] required: bool,

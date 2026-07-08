@@ -77,9 +77,8 @@ pub fn VaultDetail(
     // Exclude this folder (+ its descendants) from its own parent picker so an
     // edit can't build a cycle; non-folder entries get every folder as a target.
     // `StoredValue` so the edit `Dialog`'s (re-callable) body can clone it.
-    let move_exclude = StoredValue::new(
-        (entry.entry_type == EntryTypeDto::Folder).then(|| entry.id.clone()),
-    );
+    let move_exclude =
+        StoredValue::new((entry.entry_type == EntryTypeDto::Folder).then(|| entry.id.clone()));
     let tag_entry_id = entry.id.clone();
     let tag_ids = entry.tag_ids.clone();
     let name = entry.name.clone();
@@ -283,10 +282,8 @@ pub fn VaultDetail(
 
             {move || {
                 // Edit now happens in the roomy `<Dialog>` below; while editing,
-                // the compact read aside collapses to just its header.
-                if editing.get() {
-                    Either::Left(view! {})
-                } else {
+                // the compact read aside collapses to just its header (renders None).
+                (!editing.get()).then(|| {
                     let name = name.clone();
                     let url = url.clone();
                     let updated = updated.clone();
@@ -296,7 +293,7 @@ pub fn VaultDetail(
                     let tag_entry_id = tag_entry_id.clone();
                     let folder_of = folder_of.clone();
                     let entry_for_move = entry_for_move.clone();
-                    Either::Right(view! {
+                    view! {
                         <dl class="flex flex-col gap-2 text-sm">
                             <div>
                                 <dt class="text-foreground/50 text-xs uppercase tracking-wider">
@@ -458,8 +455,8 @@ pub fn VaultDetail(
                                 on_catalog=on_catalog
                             />
                         </div>
-                    })
-                }
+                    }
+                })
             }}
         </aside>
 
