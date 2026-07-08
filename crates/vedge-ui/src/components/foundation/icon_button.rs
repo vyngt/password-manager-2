@@ -12,17 +12,21 @@ pub fn IconButton(
     #[prop(optional)] disabled: bool,
     #[prop(optional)] loading: bool,
     #[prop(optional, default = "button")] button_type: &'static str,
-    #[prop(optional, default = "")] class: &'static str,
+    /// Extra classes. `TextProp` so consumers can pass a reactive `Signal<String>`
+    /// (e.g. a selected/active state) as well as a static literal.
+    #[prop(into, default = TextProp::default())]
+    class: TextProp,
 ) -> impl IntoView {
     let is_disabled = disabled || loading;
 
-    let cls = [
+    // Static base; the (possibly reactive) `class` prop is appended in the render
+    // closure so a selected/active class can update without rebuilding the button.
+    let base = [
         "icon-btn",
         variant.icon_btn_class(),
         size.icon_btn_class(),
         shape.icon_btn_class(),
         if loading { "icon-btn--loading" } else { "" },
-        class,
     ]
     .join(" ");
 
@@ -31,7 +35,10 @@ pub fn IconButton(
     view! {
         <button
             type=button_type
-            class=cls
+            class=move || {
+                let extra = class.get();
+                if extra.is_empty() { base.clone() } else { format!("{base} {extra}") }
+            }
             disabled=is_disabled
             aria-label=move || aria_label.get()
             aria-busy=aria_busy_attr
