@@ -32,6 +32,7 @@ use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
 
 use icondata as i;
 use leptos_icons::Icon;
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn VaultDetail(
@@ -68,6 +69,29 @@ pub fn VaultDetail(
                 .dismiss_label(dismiss),
         );
     };
+
+    // Click-outside-to-close: dismiss the drawer on a click outside it — but NOT on
+    // a table row (a row click switches the selected entry instead), so you can keep
+    // browsing entries with the drawer open. Uses mousedown so the exclusion happens
+    // before the row's own click handler runs.
+    let close_handle = window_event_listener(leptos::ev::mousedown, move |ev| {
+        let Some(target) = ev
+            .target()
+            .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+        else {
+            return;
+        };
+        let in_drawer = target
+            .closest("[data-detail-drawer]")
+            .ok()
+            .flatten()
+            .is_some();
+        let on_row = target.closest("[data-entry-row]").ok().flatten().is_some();
+        if !in_drawer && !on_row {
+            on_close.run(());
+        }
+    });
+    on_cleanup(move || close_handle.remove());
 
     let entry_id = StoredValue::new(entry.id.clone());
     let fav_id = entry.id.clone();
@@ -232,7 +256,10 @@ pub fn VaultDetail(
         // Right-side drawer: absolutely positioned over the table (its parent row
         // is `relative`), so it never competes for column width. Opaque bg +
         // shadow lift it off the list; dismiss via the header ✕ (`on_close`).
-        <aside class="absolute inset-y-0 right-0 z-20 w-80 border-l border-border bg-primary-muted p-4 shadow-2xl overflow-auto animate-[drawer-in_180ms_ease-out]">
+        <aside
+            data-detail-drawer="true"
+            class="absolute inset-y-0 right-0 z-20 w-80 border-l border-border bg-primary-muted p-4 shadow-2xl overflow-auto animate-[drawer-in_180ms_ease-out]"
+        >
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-semibold text-text-secondary">
                     {move || t!(i18n, vault.detail_title)}

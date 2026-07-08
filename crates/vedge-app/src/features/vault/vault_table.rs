@@ -161,6 +161,7 @@ fn VaultTableRow(
 
     view! {
         <tr
+            data-entry-row="true"
             class="border-b border-secondary/10 hover:bg-primary/5 transition-colors cursor-pointer"
             class=("border-t-2", move || drag_over.get())
             class=("border-t-primary", move || drag_over.get())
