@@ -80,6 +80,7 @@ pub async fn soft_delete_entry(vault_path: &str, entry_id: &str) -> Result<(), A
     .await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI (trash restore is API-only today)
 pub async fn restore_entry(vault_path: &str, entry_id: &str) -> Result<(), ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -96,6 +97,7 @@ pub async fn restore_entry(vault_path: &str, entry_id: &str) -> Result<(), ApiEr
     .await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI (permanent delete is API-only today)
 pub async fn hard_delete_entry(vault_path: &str, entry_id: &str) -> Result<(), ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {

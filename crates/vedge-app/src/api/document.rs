@@ -16,6 +16,7 @@ use crate::api::error::ApiError;
 
 /// Import a document. Bytes cross as `Vec<u8>` (Tauri handles the
 /// wire-format conversion).
+#[allow(dead_code)] // wrapper not yet called by UI (the path-based import is used instead)
 pub async fn import_document(
     vault_path: &str,
     filename: &str,
@@ -44,6 +45,7 @@ pub async fn import_document(
     .await
 }
 
+#[allow(dead_code)] // wrapper not yet called by UI (the path-based export is used instead)
 pub async fn export_document(
     vault_path: &str,
     entry_id: &str,

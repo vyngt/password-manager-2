@@ -11,34 +11,31 @@ pub mod call;
 pub mod error;
 pub mod tauri;
 
-// The per-domain command wrappers below are a **complete** typed mirror of the
-// shell's `#[tauri::command]` surface. The store-data UI (Phase 1) consumes only
-// a subset so far, so the not-yet-used wrappers are kept and `dead_code`-allowed
-// rather than deleted — they're the ready-made API for later phases.
-// Unlike the sibling mirrors below, every `biometric::*` wrapper is used (unlock screen
-// + settings), so this module is NOT `dead_code`-allowed.
+// The per-domain command wrappers are a **complete** typed mirror of the shell's
+// `#[tauri::command]` surface — a ready-made API for every command. Not everything is
+// wired to UI yet, so a subset is unused. Rather than a blanket module-level allow (which
+// would also hide a wrapper that *becomes* dead after a refactor), unused wrappers in a
+// partially-wired module are marked `#[allow(dead_code)]` **per function**; only modules
+// whose *every* wrapper is still unused carry a module-level allow (below).
 pub mod biometric;
+pub mod dialog;
+pub mod document;
+pub mod emergency_kit;
+pub mod entry;
+pub mod recent;
+pub mod settings;
+pub mod tag;
+pub mod vault;
+pub mod window;
+
+// Wholly-parked subsystems — no UI calls any wrapper yet, so there are no wired functions
+// whose future death a per-function allow would protect. A single module allow is honest
+// here; drop it the moment the first wrapper gets wired (then switch to per-function).
 #[allow(dead_code)]
 pub mod device;
-pub mod dialog;
-#[allow(dead_code)]
-pub mod document;
-#[allow(dead_code)]
-pub mod emergency_kit;
-#[allow(dead_code)]
-pub mod entry;
 #[allow(dead_code)]
 pub mod maintenance;
 #[allow(dead_code)]
 pub mod password;
 #[allow(dead_code)]
-pub mod recent;
-#[allow(dead_code)]
 pub mod recovery;
-#[allow(dead_code)]
-pub mod settings;
-#[allow(dead_code)]
-pub mod tag;
-#[allow(dead_code)]
-pub mod vault;
-pub mod window;
