@@ -26,10 +26,10 @@ pub use application::app::use_cases::{
     delete_app_setting, delete_custom_theme, delete_extension_session, delete_known_device,
     duplicate_theme, get_app_setting, get_theme, list_app_settings, list_extension_sessions,
     list_known_devices, list_recent_vaults, list_recent_vaults_with_status, list_themes,
-    remove_recent_vault, remove_stale_recents, resolve_active_theme, set_active_theme,
-    set_app_setting, touch_extension_session_last_active, touch_known_device_last_seen,
-    touch_on_unlock, touch_recent_vault, update_custom_theme, upsert_extension_session,
-    upsert_known_device, validate_hex_color,
+    remove_recent_vault, remove_stale_recents, rename_recent_vault, resolve_active_theme,
+    set_active_theme, set_app_setting, touch_extension_session_last_active,
+    touch_known_device_last_seen, touch_on_unlock, touch_recent_vault, update_custom_theme,
+    upsert_extension_session, upsert_known_device, validate_hex_color,
 };
 pub use application::vault::session::VaultSession;
 pub use application::vault::use_cases::{
@@ -39,12 +39,11 @@ pub use application::vault::use_cases::{
     MaintenanceReport, RecoverVaultInput, RecoveryOutcome, UnlockVault, UnlockVaultInput,
     UpdateEntryInput, change_password, copy_field, copy_history_field, create_entry, create_tag,
     delete_tag, enroll_biometric, entries_by_domain, entries_by_folder, entries_by_tag,
-    export_document,
-    export_emergency_kit, get_entry, get_history_value, hard_delete_entry, import_document,
-    list_active_entries, list_history, list_tags, list_trashed_entries, lock_vault, move_entry,
-    normalize_tag_name, recover_vault, rename_tag, restore_entry, restore_from_history,
-    run_maintenance, search_entries, set_favorite, set_sort_order, set_tags, soft_delete_entry,
-    update_entry,
+    export_document, export_emergency_kit, get_entry, get_history_value, hard_delete_entry,
+    import_document, list_active_entries, list_history, list_tags, list_trashed_entries,
+    lock_vault, move_entry, normalize_tag_name, recover_vault, rename_tag, restore_entry,
+    restore_from_history, run_maintenance, search_entries, set_favorite, set_sort_order, set_tags,
+    soft_delete_entry, update_entry,
 };
 pub use domain::vault::emergency_kit::EmergencyKitContent;
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};

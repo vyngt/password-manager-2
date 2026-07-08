@@ -23,8 +23,8 @@ pub use known_device_ops::{
 };
 pub use recent_vault_ops::{
     AddRecentVaultInput, RecentVaultStatus, SQLITE_MAGIC, add_recent_vault, list_recent_vaults,
-    list_recent_vaults_with_status, remove_recent_vault, remove_stale_recents, touch_on_unlock,
-    touch_recent_vault,
+    list_recent_vaults_with_status, remove_recent_vault, remove_stale_recents, rename_recent_vault,
+    touch_on_unlock, touch_recent_vault,
 };
 pub use theme_ops::{
     ACTIVE_THEME_SETTING_KEY, CreateCustomThemeInput, DEFAULT_THEME_ID, UpdateCustomThemeInput,

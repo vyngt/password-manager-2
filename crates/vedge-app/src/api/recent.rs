@@ -33,6 +33,16 @@ pub async fn remove_recent_vault(id: &str) -> Result<(), ApiError> {
     call_void("remove_recent_vault", &Args { id }).await
 }
 
+/// Rename a recent vault's display name (inline edit in the vault picker).
+pub async fn rename_recent_vault(id: &str, display_name: &str) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        id: &'a str,
+        display_name: &'a str,
+    }
+    call_void("rename_recent_vault", &Args { id, display_name }).await
+}
+
 #[allow(dead_code)] // wrapper not yet called by UI (the on-unlock variant is used instead)
 pub async fn touch_recent_vault(id: &str) -> Result<(), ApiError> {
     #[derive(Serialize)]

@@ -15,7 +15,8 @@ use vedge_core::{
     list_recent_vaults as list_recent_vaults_core,
     list_recent_vaults_with_status as list_recent_vaults_with_status_core,
     remove_recent_vault as remove_recent_vault_core,
-    remove_stale_recents as remove_stale_recents_core, touch_on_unlock as touch_on_unlock_core,
+    remove_stale_recents as remove_stale_recents_core,
+    rename_recent_vault as rename_recent_vault_core, touch_on_unlock as touch_on_unlock_core,
     touch_recent_vault as touch_recent_vault_core,
 };
 
@@ -85,8 +86,8 @@ pub async fn touch_recent_vault(
     Ok(())
 }
 
-/// Bump `last_opened` + move to top. Called by the shell after a
-/// successful unlock.
+/// Bump `last_opened` — recency floats the row to the top. Called by the
+/// shell after a successful unlock.
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(id = %id))]
 pub async fn touch_recent_vault_on_unlock(
@@ -94,6 +95,19 @@ pub async fn touch_recent_vault_on_unlock(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
     touch_on_unlock_core(&*state.recent_vaults, &id).await?;
+    Ok(())
+}
+
+/// Rename a recent vault's display name (inline edit in the vault picker).
+/// Rejects an empty/whitespace name.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(id = %id))]
+pub async fn rename_recent_vault(
+    id: String,
+    display_name: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    rename_recent_vault_core(&*state.recent_vaults, &id, &display_name).await?;
     Ok(())
 }
 
