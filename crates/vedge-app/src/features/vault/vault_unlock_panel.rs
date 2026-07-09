@@ -73,12 +73,12 @@ pub fn VaultUnlockPanel(
                                                 {move || t!(i18n, unlock.biometric_touch_hint)}
                                             </div>
                                         </div>
-                                        <button
-                                            class="text-sm text-primary hover:underline"
+                                        <Button
+                                            variant=Variant::Link
                                             on:click=move |_: web_sys::MouseEvent| on_use_password.run(())
                                         >
                                             {move || t!(i18n, unlock.use_master_password)}
-                                        </button>
+                                        </Button>
                                     </div>
                                 })
                             } else {
@@ -123,13 +123,14 @@ pub fn VaultUnlockPanel(
                                         }}
                                         {move || {
                                             bio_enrolled.get().then(|| view! {
-                                                <button
-                                                    class="mt-1 inline-flex items-center justify-center gap-1.5 text-sm text-primary hover:underline"
+                                                <Button
+                                                    variant=Variant::Link
+                                                    class="mt-1 gap-1.5"
                                                     on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
                                                 >
                                                     <Icon attr:aria-hidden="true" icon=i::FaFingerprintSolid width="13" height="13" />
                                                     {move || t!(i18n, unlock.biometric_unlock_cta)}
-                                                </button>
+                                                </Button>
                                             })
                                         }}
                                     </div>

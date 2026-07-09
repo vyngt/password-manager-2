@@ -84,7 +84,7 @@ pub fn VaultSetup() -> impl IntoView {
     });
 
     view! {
-        <div class="mx-auto flex h-full w-full max-w-xl flex-col gap-6 p-8">
+        <div class="mx-auto flex h-full w-full max-w-xl flex-col gap-6 overflow-y-auto p-8">
             <h1 class="text-xl font-semibold text-text-primary">
                 {move || t!(i18n, onboarding.heading)}
             </h1>

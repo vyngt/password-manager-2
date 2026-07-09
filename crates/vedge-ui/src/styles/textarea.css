@@ -77,6 +77,13 @@
     cursor: default;
   }
 
+  /* ---- Masked — hides content like a password field (e.g. an SSH PEM block).
+     `-webkit-text-security` is honoured by both target webviews (WebView2 =
+     Chromium, WKWebView = WebKit). Toggle this class to reveal/hide. ---- */
+  .textarea--masked {
+    -webkit-text-security: disc;
+  }
+
   /* ---- Reduced motion ---- */
   @media (prefers-reduced-motion: reduce) {
     .textarea { transition-duration: 0.01ms !important; }

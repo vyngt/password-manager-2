@@ -20,7 +20,8 @@ pub fn DialogHeader(children: Children) -> impl IntoView {
                             aria_label=ctx.close_label
                             variant=Variant::Ghost
                             size=Size::Sm
-                            on:click=move |_| ctx.on_close.run(())
+                            class="dialog__close"
+                            on_click=ctx.on_close
                         >
                             <Icon icon=i::FaXmarkSolid />
                         </IconButton>

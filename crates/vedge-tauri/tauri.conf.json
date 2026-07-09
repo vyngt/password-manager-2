@@ -50,6 +50,8 @@
       {
         "fullscreen": false,
         "height": 600,
+        "minHeight": 600,
+        "minWidth": 960,
         "resizable": true,
         "title": "VEdge",
         "width": 1180,

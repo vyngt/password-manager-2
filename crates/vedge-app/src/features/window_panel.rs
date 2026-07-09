@@ -59,6 +59,7 @@ pub fn WindowPanel() -> impl IntoView {
             <div class="flex grow" data-tauri-drag-region=true></div>
             <div class="flex flex-col justify-center" style=handle_inner_color>
                 <button
+                    type="button"
                     class="px-2 text-xs font-semibold opacity-60 hover:opacity-100 cursor-pointer uppercase tracking-wide"
                     on:click=move |_| {
                         let new_locale = match i18n.get_locale() {
@@ -84,7 +85,12 @@ pub fn WindowPanel() -> impl IntoView {
                         });
                     })
                 >
-                    <Icon icon=i::FaWindowMinimizeSolid />
+                    // aria-hidden on a wrapping <span>, not the <Icon>: `attr:` on an
+                    // <Icon> passed through TooltipIconButton's boxed children trips a
+                    // Leptos RPIT capture bound. The button's tooltip/label names it.
+                    <span aria-hidden="true">
+                        <Icon icon=i::FaWindowMinimizeSolid />
+                    </span>
                 </TooltipIconButton>
                 <TooltipIconButton
                     label=Signal::derive(move || t_string!(i18n, window.maximize).to_string())
@@ -105,12 +111,14 @@ pub fn WindowPanel() -> impl IntoView {
                         });
                     })
                 >
-                    <Show
-                        when=move || is_maximized.get()
-                        fallback=move || view! { <Icon icon=i::FaWindowMaximizeSolid /> }
-                    >
-                        <Icon icon=i::FaWindowRestoreSolid />
-                    </Show>
+                    <span aria-hidden="true">
+                        <Show
+                            when=move || is_maximized.get()
+                            fallback=move || view! { <Icon icon=i::FaWindowMaximizeSolid /> }
+                        >
+                            <Icon icon=i::FaWindowRestoreSolid />
+                        </Show>
+                    </span>
                 </TooltipIconButton>
                 <TooltipIconButton
                     label=Signal::derive(move || t_string!(i18n, window.close).to_string())
@@ -125,7 +133,9 @@ pub fn WindowPanel() -> impl IntoView {
                         });
                     })
                 >
-                    <Icon icon=i::FaXmarkSolid />
+                    <span aria-hidden="true">
+                        <Icon icon=i::FaXmarkSolid />
+                    </span>
                 </TooltipIconButton>
             </div>
         </header>

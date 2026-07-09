@@ -1,8 +1,6 @@
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::DialogSize;
 use leptos::prelude::*;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 use wasm_bindgen::JsCast;
 
@@ -31,53 +29,49 @@ pub fn Dialog(
     #[prop(into, default = TextProp::from("Close"))] close_label: TextProp,
     children: ChildrenFn,
 ) -> impl IntoView {
-    let mounted = RwSignal::new(false);
+    // Animation state only (`None` | `"open"`); visibility is driven directly by
+    // `open` (see the `<Show>` below), NOT by an internal `mounted` signal — that
+    // internal signal desynced from the on-screen dialog when the component
+    // re-rendered, leaving dialogs that couldn't be closed.
     let data_state = RwSignal::new(Option::<&'static str>::None);
 
     let (title_id, set_title_id) = signal(Option::<String>::None);
     let (body_id, set_body_id) = signal(Option::<String>::None);
 
-    let enter_ver = Arc::new(AtomicU32::new(0));
-    let exit_ver = Arc::new(AtomicU32::new(0));
-
     let previously_focused: StoredValue<Option<web_sys::HtmlElement>> = StoredValue::new(None);
     let dialog_ref = NodeRef::<leptos::html::Div>::new();
     let children_stored = StoredValue::new(children);
 
-    // Provide context for sub-components.
-    provide_context(DialogContext {
+    // Context for sub-components (DialogHeader/Title/Body/Footer). MUST be
+    // provided via the explicit `<Provider>` scope around the dialog subtree in
+    // the view below — NOT `provide_context` here in the component body. When it
+    // was provided from the body, the context leaked across sibling Dialog
+    // instances: with several Dialogs mounted on one page, every DialogHeader
+    // resolved the LAST-mounted Dialog's context, so the ✕ closed the wrong
+    // (already-closed) dialog and the visible one never dismissed. Verified via
+    // a headless-CDP instance-tagged trace (see docs/dialog_analyze.md).
+    let dialog_ctx = DialogContext {
         on_close,
         closeable,
         close_label,
         set_title_id,
         set_body_id,
-    });
+    };
 
     // Open/close driver — watches `open` and runs enter/exit lifecycles.
-    let ev_enter = enter_ver.clone();
-    let ev_exit = exit_ver.clone();
-    Effect::new(move |prev: Option<bool>| {
-        let now = open.get();
-        let was = prev.unwrap_or(false);
-
-        if now && !was {
-            // ---- ENTER ----
-            ev_exit.fetch_add(1, Ordering::Relaxed);
-            let ticket = ev_enter.fetch_add(1, Ordering::Relaxed) + 1;
-
-            // Capture currently focused element for restoration on close.
+    // Side effects only — visibility is the `<Show when=open>` below. On open:
+    // capture focus, lock scroll, and flip `data_state` to "open" next tick (after
+    // mount) so the enter keyframe runs + focus lands. On close: reset + unlock +
+    // restore focus. No internal `mounted`/exit-animation state to desync.
+    Effect::new(move |_| {
+        if open.get() {
             let active_el = web_sys::window()
                 .and_then(|w| w.document())
                 .and_then(|d| d.active_element())
                 .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok());
             previously_focused.set_value(active_el);
 
-            // Mount immediately; data_state stays None for one tick so CSS
-            // starts from the pre-animation state.
             data_state.set(None);
-            mounted.set(true);
-
-            // Lock body scroll.
             if let Some(body) = web_sys::window()
                 .and_then(|w| w.document())
                 .and_then(|d| d.body())
@@ -85,51 +79,26 @@ pub fn Dialog(
                 let _ = body.class_list().add_1("dialog-scroll-lock");
             }
 
-            // Next tick: flip to "open" so keyframes run; then move focus.
-            let ev = ev_enter.clone();
             set_timeout(
                 move || {
-                    if ev.load(Ordering::Relaxed) != ticket {
-                        return;
-                    }
                     data_state.set(Some("open"));
                     focus_first_focusable(dialog_ref);
                 },
                 Duration::ZERO,
             );
-        } else if !now && was {
-            // ---- EXIT ----
-            ev_enter.fetch_add(1, Ordering::Relaxed);
-            let ticket = ev_exit.fetch_add(1, Ordering::Relaxed) + 1;
-
-            data_state.set(Some("closing"));
-
-            let ev = ev_exit.clone();
-            set_timeout(
-                move || {
-                    if ev.load(Ordering::Relaxed) != ticket {
-                        return;
-                    }
-                    mounted.set(false);
-                    data_state.set(None);
-
-                    if let Some(body) = web_sys::window()
-                        .and_then(|w| w.document())
-                        .and_then(|d| d.body())
-                    {
-                        let _ = body.class_list().remove_1("dialog-scroll-lock");
-                    }
-
-                    if let Some(el) = previously_focused.get_value() {
-                        let _ = el.focus();
-                        previously_focused.set_value(None);
-                    }
-                },
-                Duration::from_millis(150),
-            );
+        } else {
+            data_state.set(None);
+            if let Some(body) = web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.body())
+            {
+                let _ = body.class_list().remove_1("dialog-scroll-lock");
+            }
+            if let Some(el) = previously_focused.get_value() {
+                let _ = el.focus();
+                previously_focused.set_value(None);
+            }
         }
-
-        now
     });
 
     // Ensure scroll-lock class is removed if the Dialog is unmounted
@@ -145,9 +114,15 @@ pub fn Dialog(
 
     let size_cls = size.dialog_class();
 
+    // Structure: Portal (permanently mounted) > Provider (per-instance context
+    // scope) > Show (visibility). The Portal is never torn down on close — the
+    // <Show> adds/removes the scrim inside the portal container, a plain DOM
+    // child swap. The Provider guarantees DialogHeader/Title/Body/Footer resolve
+    // THIS dialog's context (see the comment on `dialog_ctx` above).
     view! {
-        <Show when=move || mounted.get()>
-            <leptos::portal::Portal>
+        <leptos::portal::Portal>
+            <leptos::context::Provider value=dialog_ctx>
+            <Show when=move || open.get()>
                 <div
                     class="dialog-scrim"
                     data-state=move || data_state.get()
@@ -184,8 +159,9 @@ pub fn Dialog(
                         {move || children_stored.with_value(|c| c())}
                     </div>
                 </div>
-            </leptos::portal::Portal>
-        </Show>
+            </Show>
+            </leptos::context::Provider>
+        </leptos::portal::Portal>
     }
 }
 

@@ -159,6 +159,7 @@ fn Sidebar() -> impl IntoView {
                     <LockButton collapsed=collapsed />
                 </div>
                 <button
+                    type="button"
                     class="w-full h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-primary/5 transition-colors"
                     aria-label=move || toggle_label.get()
                     title=move || toggle_label.get()
@@ -200,7 +201,7 @@ fn LockButton(collapsed: RwSignal<bool>) -> impl IntoView {
                 Either::Left(view! {
                     <div class="flex justify-center">
                         <Tooltip placement=Placement::Right arrow=true content=label>
-                            <button class=nav_button_class(true) on:click=on_lock aria-label=move || label.get()>
+                            <button type="button" class=nav_button_class(true) on:click=on_lock aria-label=move || label.get()>
                                 <Icon attr:aria-hidden="true" icon=icondata::FaLockSolid width="18" height="18" />
                             </button>
                         </Tooltip>
@@ -208,7 +209,7 @@ fn LockButton(collapsed: RwSignal<bool>) -> impl IntoView {
                 })
             } else {
                 Either::Right(view! {
-                    <button class=nav_button_class(false) on:click=on_lock aria-label=move || label.get()>
+                    <button type="button" class=nav_button_class(false) on:click=on_lock aria-label=move || label.get()>
                         <Icon attr:aria-hidden="true" icon=icondata::FaLockSolid width="18" height="18" />
                         <span class="truncate">{move || label.get()}</span>
                     </button>

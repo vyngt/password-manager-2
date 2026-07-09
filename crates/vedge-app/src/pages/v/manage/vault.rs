@@ -700,7 +700,10 @@ pub fn VaultPage() -> impl IntoView {
                 <DocumentAttach show=show_attach on_attached=on_created />
             </Show>
 
-            <div class="flex-1 flex gap-4 min-h-0">
+            // `relative` so the detail renders as a right-side drawer overlaying
+            // the table (see VaultDetail) instead of competing for column width —
+            // the folder tree + table now get the full row.
+            <div class="relative flex-1 flex gap-4 min-h-0">
                 <Show when=move || !trashed_view.get()>
                     <FolderTree
                         items=Signal::derive(move || items.get())

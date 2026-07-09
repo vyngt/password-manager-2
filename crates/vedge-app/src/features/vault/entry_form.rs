@@ -11,13 +11,16 @@
 //! field set over a single `RwSignal<EntryFormData>`.
 
 use crate::i18n::*;
+use icondata as i;
 use leptos::prelude::*;
+use leptos_icons::Icon;
 use vedge_ipc::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, CommonMetaDto, EntryTypeDto, EnvVarDto,
     EnvVarsPayloadDto, FolderPayloadDto, IdentityPayloadDto, LoginPayloadDto, NotePayloadDto,
     PayloadDto, SshKeyPayloadDto,
 };
 use vedge_ui::components::Button;
+use vedge_ui::components::IconButton;
 use vedge_ui::components::Input;
 use vedge_ui::components::form::date_picker::{
     DatePicker, DatePickerValue, DatePickerVariant, YearMonth,
@@ -552,6 +555,60 @@ macro_rules! secret_field {
     }};
 }
 
+/// The SSH private key (PEM) field: a roomy `col-span-2` multi-line monospace
+/// textarea with a reveal toggle — unlike the single-line masked `secret_field!`,
+/// a PEM block needs several lines. Masking is display-only
+/// (`-webkit-text-security` via `.textarea--masked`); the plaintext already lives
+/// in the model (loaded by a `get_entry` reveal), so the toggle never re-fetches.
+#[component]
+fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
+    let i18n = use_i18n();
+    let (revealed, set_revealed) = signal(false);
+
+    view! {
+        <div class="col-span-2">
+            <div class="flex items-center justify-between mb-1">
+                <label for="ef-ssh-priv" class="text-xs text-foreground/60">
+                    {move || t!(i18n, vault.field_private_key)}
+                </label>
+                <IconButton
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    aria_label=Signal::derive(move || {
+                        if revealed.get() {
+                            t_string!(i18n, vault.hide).to_string()
+                        } else {
+                            t_string!(i18n, vault.reveal).to_string()
+                        }
+                    })
+                    on:click=move |_| set_revealed.update(|r| *r = !*r)
+                >
+                    // No `attr:aria-hidden` on these two icons: it trips a Leptos
+                    // RPIT capture bound at this `<Show>`-returned position, and the
+                    // IconButton's `aria_label` already names the control (matches the
+                    // design-system `Input` password toggle).
+                    <Show
+                        when=move || revealed.get()
+                        fallback=|| view! { <Icon icon=i::FaEyeSolid /> }
+                    >
+                        <Icon icon=i::FaEyeSlashSolid />
+                    </Show>
+                </IconButton>
+            </div>
+            <Textarea
+                id="ef-ssh-priv"
+                rows=4
+                max_rows=12
+                class="font-jetbrains-mono"
+                masked=Signal::derive(move || !revealed.get())
+                placeholder=Signal::derive(move || t_string!(i18n, vault.field_private_key).to_string())
+                value=Signal::derive(move || data.with(|d| d.ssh_private_key.clone()))
+                on_change=Callback::new(move |v: String| data.update(|d| d.ssh_private_key = v))
+            />
+        </div>
+    }
+}
+
 /// Renders the field set for the current entry type over a single
 /// `RwSignal<EntryFormData>`. The structural branch is driven by a `Memo` on
 /// `entry_type` so typing in a field never rebuilds the input tree (which would
@@ -586,7 +643,7 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                     {secret_field!(data, i18n, "ef-pin", pin, field_pin)}
                 }.into_any(),
                 EntryTypeDto::SshKey => view! {
-                    {secret_field!(data, i18n, "ef-ssh-priv", ssh_private_key, field_private_key)}
+                    <SshPrivateKeyField data=data />
                     {secret_field!(data, i18n, "ef-ssh-pass", ssh_passphrase, field_passphrase)}
                     {text_field!(data, i18n, "ef-ssh-pub", ssh_public_key, field_public_key)}
                     {text_field!(data, i18n, "ef-ssh-fp", ssh_fingerprint, field_fingerprint)}
