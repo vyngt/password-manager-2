@@ -1,0 +1,80 @@
+# cargo-deny — VEdge supply-chain gate.
+#
+# Run: `cargo deny check` (or `mise audit`, which also runs `cargo audit`).
+# Documented in docs/testing.md. Every `ignore` below carries a RUSTSEC id, a
+# reason, and an implicit review-by note — no silent ignores.
+
+[graph]
+# The desktop platforms VEdge targets. Scopes the checks to what actually ships.
+targets = [
+    "x86_64-pc-windows-msvc",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+]
+all-features = false
+
+# ---------------------------------------------------------------------------
+# Security advisories (RUSTSEC). All *vulnerabilities* are hard errors.
+# ---------------------------------------------------------------------------
+[advisories]
+# Only flag `unmaintained` crates that a workspace member depends on directly —
+# not the deep transitive GUI/PDF/tauri tree (gtk3, unic-*, paste, fxhash, …),
+# which we can't upgrade and which carry no known vulnerability.
+unmaintained = "workspace"
+yanked = "warn"
+ignore = [
+    # printpdf 0.7 cluster — reached ONLY by the Emergency-Kit PDF *export*. VEdge
+    # *generates* PDFs; it never parses untrusted PDF/XML, so these parse-side
+    # DoS / stack-overflow vectors are not reachable. A printpdf bump that clears
+    # them is tracked in the Phase-3 backlog. Review by 2026-10-01.
+    { id = "RUSTSEC-2026-0187", reason = "lopdf via printpdf 0.7 — we only generate PDFs, never parse untrusted ones" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml via printpdf 0.7 — PDF generation path, no untrusted XML parsed" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml via printpdf 0.7 — PDF generation path, no untrusted XML parsed" },
+]
+
+# ---------------------------------------------------------------------------
+# Duplicate versions / wildcards.
+# ---------------------------------------------------------------------------
+[bans]
+# The crypto version spread (rand_core/getrandom/digest/sha2 at multiple majors)
+# is STRUCTURAL — it's the price of mixing the RustCrypto-0.10-era AEAD stack
+# (rand_core 0.6 / cipher 0.4 / digest 0.10) with vedge-core's newer hash pins
+# (digest 0.11) and rand 0.10. See crates/vedge-core/Cargo.toml. Surface new
+# duplicates without failing the gate. (The sealing crates — chacha20poly1305,
+# aes, aes-kw, zeroize, subtle — are single-version.)
+multiple-versions = "warn"
+# `libsqlite3-sys = "*"` is intentional (enable the `bundled` feature on whatever
+# version sqlx/sea-orm resolves).
+wildcards = "allow"
+
+# ---------------------------------------------------------------------------
+# Licenses — permissive allowlist. No GPL/AGPL/LGPL-only anywhere (verified).
+# ---------------------------------------------------------------------------
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "MPL-2.0",              # weak/file-level copyleft (a few crates) — accepted
+    "BSL-1.0",
+    "CC0-1.0",
+    "Unlicense",
+    "0BSD",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.9
+# VEdge's own crates set no `license` field.
+private = { ignore = true }
+
+# ---------------------------------------------------------------------------
+# Sources — crates.io only.
+# ---------------------------------------------------------------------------
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

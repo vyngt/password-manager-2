@@ -1,361 +1,176 @@
-# VEdge Password Manager - Architecture Documentation
+# VEdge — Architecture
 
-## Overview
+VEdge is a **local-first, offline** password manager built with **Rust + Tauri v2** (desktop shell) and
+**Leptos 0.8 / WASM** (CSR frontend). There is no server and no cloud: a vault is a single encrypted
+file on disk, unlocked with a master password (+ a device Secret Key), and every secret is encrypted
+**at the application level, per entry** — the database file itself is plaintext SQLite.
 
-VEdge is a modern, secure password manager built with Rust and Tauri, featuring a clean architecture that separates concerns across multiple components. The application follows a layered architecture pattern with clear boundaries between the user interface, business logic, and data persistence layers.
+This document describes the shipped (v3) architecture. It is kept in sync with the code; every crypto
+claim below is drawn from `crates/vedge-core`. The canonical, deeper specs live in the design vault
+(`03 Specs/10 Core/10.3 - Key Hierarchy`, `20.0/20.2 Database`).
 
-## Architecture Diagram
+## Workspace layout
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        VEdge Application                        │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │    App      │    │  Frontend   │    │     UI      │         │
-│  │ (Tauri)     │◄──►│ (Leptos)    │◄──►│ (Components)│         │
-│  │             │    │             │    │             │         │
-│  └─────────────┘    └─────────────┘    └─────────────┘         │
-│         │                   │                   │               │
-│         ▼                   ▼                   ▼               │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │                    Backend (Business Logic)                 │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │ │
-│  │  │   Domain    │  │  Use Cases  │  │Infrastructure│         │ │
-│  │  │             │  │             │  │             │         │ │
-│  │  │ • Entities  │  │ • Vault     │  │ • Data      │         │ │
-│  │  │ • Services  │  │ • Utilities │  │ • Services  │         │ │
-│  │  │ • Repos     │  │             │  │             │         │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘         │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-│         │                                                       │
-│         ▼                                                       │
-│  ┌─────────────┐    ┌─────────────┐                            │
-│  │   Codegen   │    │   SQLite    │                            │
-│  │ (Macros)    │    │ (Database)  │                            │
-│  └─────────────┘    └─────────────┘                            │
-└─────────────────────────────────────────────────────────────────┘
-```
+A single Cargo workspace of seven crates:
 
-## Component Architecture
-
-### 1. App (`/app`) - Tauri Application Layer
-
-**Purpose**: Desktop application wrapper and system integration
-
-**Key Responsibilities**:
-
-- Tauri application setup and configuration
-- System-level integrations (notifications, file system, clipboard, etc.)
-- Command handling and API exposure
-- Application state management
-- Plugin management
-
-**Key Files**:
-
-- `src/lib.rs` - Main application entry point and setup
-- `src/commands/` - Tauri commands for frontend-backend communication
-- `src/config/` - Application configuration and settings
-- `src/store/` - Application state management
-- `tauri.conf.json` - Tauri configuration
-
-**Dependencies**:
-
-- Tauri 2.x with various plugins (shell, notification, dialog, etc.)
-- Backend crate for business logic
-- Tokio for async runtime
-
-### 2. Frontend (`/frontend`) - User Interface Layer
-
-**Purpose**: Web-based user interface built with Leptos
-
-**Key Responsibilities**:
-
-- User interface rendering and interaction
-- State management for UI components
-- API communication with backend
-- Routing and navigation
-- Feature-specific logic (authentication, window management)
-
-**Key Files**:
-
-- `src/main.rs` - Application entry point
-- `src/app.rs` - Main application component
-- `src/pages/` - Page components
-- `src/features/` - Feature-specific modules
-- `src/stores/` - State management
-- `src/api/` - Backend communication
-
-**Dependencies**:
-
-- Leptos 0.8.3 (CSR mode)
-- Leptos Router for navigation
-- Reactive Stores for state management
-- UI crate for shared components
-- Web-sys for DOM manipulation
-
-**Build Configuration**:
-
-- Trunk for building and serving
-- Tailwind CSS 4.1.11 for styling
-- Development server on port 1420
-
-### 3. UI (`/ui`) - Shared Component Library
-
-**Purpose**: Reusable UI components and design system
-
-**Key Responsibilities**:
-
-- Shared component library
-- Design system implementation
-- Styling and theming
-- Component variants and states
-
-**Key Components**:
-
-- `components/button/` - Button component with variants
-- `components/input/` - Input field components
-- `components/icon/` - Icon system
-- `components/toast/` - Notification system
-- `components/modal/` - Modal dialogs
-- `primitives/color/` - Color system
-
-**Dependencies**:
-
-- Leptos for component framework
-- Leptos Icons for icon system
-- Web-sys for DOM interactions
-
-### 4. Backend (`/backend`) - Business Logic Layer
-
-**Purpose**: Core business logic, domain models, and data access
-
-**Architecture Pattern**: Clean Architecture with clear separation of concerns
-
-#### 4.1 Domain Layer (`business/domain/`)
-
-**Entities**:
-
-- `vault_item.rs` - Password vault item entity
-- `folder.rs` - Folder organization entity
-- `theme.rs` - Theme and color scheme entity
-
-**Services**:
-
-- `vault.rs` - Vault management service
-- `utilities.rs` - Utility services
-
-**Repositories**:
-
-- `vault_item.rs` - Vault item data access interface
-
-#### 4.2 Use Cases Layer (`business/usecases/`)
-
-**Vault Operations**:
-
-- `unlock_vault.rs` - Vault authentication
-- `create_vault_item.rs` - Create new vault items
-- `update_vault_item.rs` - Update existing items
-- `delete_vault_item.rs` - Remove vault items
-- `get_vault_item.rs` - Retrieve specific items
-- `list_vault_items.rs` - List all vault items
-- `change_key_vault.rs` - Change vault master key
-
-**Utilities**:
-
-- `generate_password.rs` - Password generation logic
-
-#### 4.3 Infrastructure Layer (`infra/`)
-
-**Data Layer**:
-
-- SQLite database with SQLCipher encryption
-- Sea-ORM for database operations
-- Migration system for schema management
-- Repository implementations
-
-**Service Layer**:
-
-- `vault.rs` - Vault service implementation
-- `password_generator.rs` - Password generation service
-
-**Key Dependencies**:
-
-- Sea-ORM with SQLite support
-- SQLCipher for database encryption
-- Argon2 for password hashing
-- AES-GCM for encryption
-- Chrono for date/time handling
-- UUID for unique identifiers
-
-### 5. Codegen (`/codegen`) - Code Generation
-
-**Purpose**: Procedural macros for code generation
-
-**Key Features**:
-
-- `StringEnum` derive macro for string-based enums
-- Custom code generation utilities
-
-**Dependencies**:
-
-- proc-macro2, quote, syn for macro development
-
-## Data Flow
-
-### 1. User Interaction Flow
+| Crate | Role |
+|---|---|
+| **`vedge-core`** | All business logic — domain model, use-cases, crypto, and storage. Clean-architecture layers `application/` · `domain/` · `infrastructure/`. No async runtime or UI of its own. |
+| **`vedge-tauri`** | The Tauri v2 desktop shell (the app binary). A thin adapter: `#[tauri::command]` handlers, `AppState` (session registry), DTO conversions, PDF/emergency-kit rendering. Zero business logic. |
+| **`vedge-ipc`** | The serde wire types shared frontend ↔ shell (DTOs + `ErrorEnvelope` + b64/timestamp helpers). Compiles to `wasm32`; no `vedge-core`/`tauri` deps. |
+| **`vedge-app`** | The Leptos **CSR** frontend application — pages, features, routing (`leptos_router`), i18n (`leptos_i18n`), and typed `api::*` wrappers over `invoke()`. |
+| **`vedge-ui`** | The Leptos **CSR** design-system component library (`foundation`/`form`/`feedback`/`data_display`/`icon`) + theme engine. |
+| **`vedge-codegen`** | Proc-macros (e.g. `#[derive(StringEnum)]`). |
+| **`vedge-e2e`** | WebDriver end-to-end harness (`tauri-driver` + `thirtyfour`); `publish = false`, opt-in / `#[ignore]`-gated. |
 
 ```
-User Action → Frontend Component → API Call → Tauri Command → Backend Use Case → Domain Service → Repository → Database
+┌──────────────────────────── Desktop window (Tauri v2) ─────────────────────────┐
+│  vedge-app (Leptos CSR)  ──uses──▶  vedge-ui (design system)                    │
+│        │                                                                        │
+│        │  api::* wrappers  →  window.__TAURI__.invoke(cmd, args)                │
+│        ▼                                                                        │
+│  ══════════════════ IPC boundary: vedge-ipc DTOs (serde) ══════════════════     │
+│        ▼                                                                        │
+│  vedge-tauri  (#[tauri::command] handlers · AppState · DTO⇄domain conversions)  │
+│        │                                                                        │
+│        ▼                                                                        │
+│  vedge-core   application/ (use-cases, VaultSession)                            │
+│               domain/      (payloads, index, recovery, key hierarchy, AAD)      │
+│               infrastructure/ (crypto · Sea-ORM SQLite · keychain · clipboard)  │
+│        │                                                                        │
+│        ▼                                                                        │
+│  app.db  (settings/themes/recents — Sea-ORM)     vault.vdb  (encrypted entries) │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Authentication Flow
+## `vedge-core` — Clean Architecture
+
+- **`domain/`** — pure types and rules, no I/O. Vault: the entry `payloads/` (login, card, note,
+  api_key, ssh_key, env_vars, identity, document, folder, tag), the in-memory `index`, `recovery`
+  (Emergency Kit / Secret Key encoding), `aad`, `kdf_params`, `crypto_constants`, and the SQLite
+  `entities/` (`vault_config`, `entry_row`, `tag_row`, `entry_history_row`, `audit_event`).
+- **`application/`** — use-cases orchestrating the domain over **ports** (traits): `UnlockVault`,
+  `create_entry`/`update_entry`/`soft_delete`/`restore`/`hard_delete`, `copy_field`, `move_entry`, the
+  tag ops, `import/export_document`, `change_password`, `run_maintenance`, plus `VaultSession` (the
+  live, unlocked session). Ports abstract crypto, KDF, keychain, clipboard, blob store, and repos.
+- **`infrastructure/`** — the adapters: RustCrypto (`crypto/`), Sea-ORM SQLite repos (`sqlite/`),
+  OS keychain (`keyring`), clipboard (`arboard`), and the filesystem blob store.
+
+## Security architecture
+
+The whole point of VEdge: **secrets are encrypted at rest, per entry, and keys live only in locked RAM
+during a session.** There is no full-database encryption (no SQLCipher) — the SQLite file is plaintext
+and holds ciphertext columns.
+
+### Key hierarchy — unlock
 
 ```
-1. User enters master password
-2. Frontend sends unlock request via Tauri command
-3. Backend derives KEK from master password + salt using KDF (Argon2)
-4. Backend uses KEK to decrypt the stored DEK
-5. Backend uses DEK to decrypt the database file
-6. If successful, vault is unlocked and session established
-7. User can access vault items (database operations use DEK)
-8. Keys (KEK, DEK) exist only in RAM during session
+master password ─┐
+                 ├─(1) HKDF-SHA256 "2SKD"──▶ 32-byte preprocessed input ─┐
+16-byte Secret ──┘   (ikm=password, salt=Secret Key,                    │
+      Key            info="vedge-v1-2skd")                               │
+                                                                        (2) Argon2id
+per-vault 32-byte salt ─────────────────────────────────────────────────┘  (v1.3; default
+                                                                            m=256 MiB, t=3, p=4)
+                                                                            → 32-byte master key
+                             (3) HKDF-SHA256 expand (from master key):
+                                   • info="vedge-v1-kek"    → KEK (Key Encryption Key)
+                                   • info="vedge-v1-verify" → verify-hash
+                                   • info="vedge-v1-sync-auth" → sync-auth subkey (reserved)
 ```
 
-### 3. Vault Item Management
+1. **2SKD** — the master password (IKM) and the 16-byte **Secret Key** (HKDF salt) are combined by
+   HKDF-SHA256 into one 32-byte input. The Secret Key is a device-held random value (shown to the user
+   in the Emergency Kit as `A3-XXXXX-…`), so a stolen vault file **plus** a guessed password is still
+   not enough — the attacker also needs the Secret Key.
+2. **Argon2id** (v1.3) runs over the 2SKD output + a per-vault 32-byte salt to produce the 32-byte
+   **master key**. The Argon2 parameters (`m`, `t`, `p`) are stored **per vault**, so they can be
+   upgraded over time. This step runs on a blocking thread.
+3. **HKDF-SHA256** expands the master key into subkeys: the **KEK**, a **verify-hash**, and a reserved
+   sync-auth subkey. On unlock the verify-hash is compared **in constant time** against the stored value
+   **before any secret material is loaded** — a wrong password fails here, cheaply, with no oracle.
 
-```
-1. User creates/updates vault item
-2. Data is stored in SQLite database (already encrypted at file level by DEK)
-3. Database operations use the in-memory DEK for encryption/decryption
-4. UI reflects changes through reactive state management
-5. All data remains encrypted at rest via database-level encryption
-```
+The KEK is held in a `SecretMem` region (see below) for the life of the session; the master key and
+2SKD output are `Zeroizing` and dropped immediately.
 
-## Security Architecture
+### Per-entry encryption
 
-### Multi-Layer Encryption Strategy
+- Each entry carries a **per-entry, per-write Data Encryption Key (DEK)** — a fresh 32-byte key is
+  generated on every create/update (no key reuse across versions). The DEK is **wrapped with AES-KW
+  (AES Key Wrap, RFC 3394)** under the session KEK, yielding the 40-byte `dek_wrapped` stored on the
+  row.
+- The entry payload (serialized JSON of the secret fields) is sealed with **XChaCha20-Poly1305** under
+  the DEK: a 24-byte XNonce + a 16-byte Poly1305 tag. The **associated data (AAD)** binds the
+  ciphertext to its identity: `AAD = 16-byte entry ULID ‖ u64-LE version`, so a row can't be swapped or
+  rolled back to a different entry/version without failing decryption.
+- **Tags** are sealed with XChaCha20-Poly1305 **directly under the KEK** (no DEK), with `AAD = 16-byte
+  tag ULID`. **Document blobs** use a per-entry DEK with `AAD = entry ULID ‖ "blob"`.
 
-The application implements a sophisticated two-layer encryption system for maximum security:
+At rest a row is `{ dek_wrapped, nonce, ciphertext, … }`. Unlock unwraps each DEK with the KEK, then
+opens each payload; lock zeroizes the KEK and the decrypted in-memory index.
 
-#### Layer 1: Database-Level Encryption (DEK)
+### Key-material handling
 
-- **DEK (Data Encryption Key)**: Encrypts the entire database file
-- **SQLCipher**: Provides full database encryption using the DEK
-- **Database Protection**: The entire SQLite database is encrypted at the file level
+- **`SecretMem<T>`** — a page-aligned, heap-pinned region that is `mlock`ed (via the `region` crate) so
+  the KEK never lands in swap / `pagefile.sys`, and is zeroized on `Drop`. The KEK lives here.
+- **`secrecy::SecretString`** wraps the plaintext secret fields inside payloads (passwords, TOTP seeds,
+  card numbers, API secrets, note bodies, SSH keys, …) so they don't linger in `String`s and never
+  print in `Debug`.
+- **`VaultSession`** owns the mlock'd KEK + the in-memory `VaultIndex`; it is `!Clone`, its `Drop`
+  unconditionally zeroizes, and its `Debug` never reveals secrets. Locking drops the session.
 
-#### Layer 2: Key Management (KEK)
+### Recovery & biometric unlock
 
-- **KEK (Key Encryption Key)**: Encrypts the DEK for secure storage
-- **KDF (Key Derivation Function)**: Derives KEK from master password
-- **Master Password + Salt + KDF → KEK**: Secure key derivation process
-- **Encrypted DEK Storage**: DEK is stored encrypted using KEK
+- **Emergency Kit / recovery:** the Secret Key is encoded as a checksummed Crockford-base32 string
+  (`A3-XXXXX-…`) the user records; recovery re-supplies it to unlock without the keychain.
+- **Biometric (Windows Hello / Touch ID):** an alternate `unlock_with_kek` path releases the KEK from
+  the OS-protected store after a biometric check and validates it against ciphertext — skipping the KDF.
+  The master password remains a fallback. (Windows Hello is shipped; macOS Touch ID is a follow-up.)
 
-#### Encryption Flow
+## Storage at rest
 
-```
-1. Master Password + Salt + KDF → KEK (Key Encryption Key)
-2. KEK → Decrypt DEK → DEK (Data Encryption Key) [RAM Only]
-3. DEK → Encrypt/Decrypt entire database file
-4. KEK and DEK exist only in RAM during session
-```
+- **Plain, bundled SQLite** (`libsqlite3-sys` with the bundled SQLite compiled in) accessed through
+  **Sea-ORM 1.1.20** (→ `sqlx-sqlite`). **No SQLCipher**, no file-level DB encryption — confidentiality
+  comes entirely from the per-row application-level AEAD above.
+- **Two databases, same Sea-ORM stack:**
+  - **`app.db`** — non-secret app state: settings, themes, recent vaults, known devices. One shared
+    connection, its own migrator.
+  - **the vault `*.vdb`** — the encrypted entries, tags, per-entry history, `vault_config` (KDF params,
+    salts, verify-hash), and the audit log. Its own connection + migrator, opened on unlock.
 
-### Data Protection
+The in-memory `VaultIndex` is a decrypted projection (names, types, folders, tags, timestamps) rebuilt
+from the payloads on unlock; it never persists plaintext.
 
-- **Full Database Encryption**: Entire database file is encrypted with DEK
-- **Key Separation**: KEK and DEK are separate keys with different purposes
-- **RAM-Only Keys**: Encryption keys exist only in memory during active session
-- **Secure Key Derivation**: Argon2-based KDF for master password processing
-- **No Plaintext Storage**: No sensitive data stored in plaintext anywhere
-- **Session-Based Security**: Keys are cleared from memory when vault is locked
+## IPC boundary
 
-## Development Workflow
+The frontend never touches `vedge-core` directly. It calls typed `api::*` wrappers in `vedge-app` that
+`invoke()` `#[tauri::command]`s in `vedge-tauri`; both sides serialize with the **`vedge-ipc`** DTOs.
+Command errors cross as a `{kind, message}` `ErrorEnvelope`. Plaintext secrets stay backend-side
+wherever possible (e.g. copy-to-clipboard is a backend command with auto-clear); the one sanctioned,
+audited exception is the explicit "reveal" (`get_entry`).
 
-### Build Process
+## Frontend
 
-1. **Frontend**: Trunk builds Leptos application to WASM
-2. **Backend**: Cargo compiles Rust backend
-3. **App**: Tauri bundles everything into desktop application
-4. **UI**: Shared components are compiled with frontend
+- **`vedge-app`** — Leptos CSR: pages under `/` (launch/unlock) and `/v` (the unlocked vault:
+  list/detail/edit, search, command palette, folders, settings). State is signals/stores + a few
+  well-scoped contexts (`ActiveVault`, `VaultUiState`, `SecurityPrefsCtx`, `ThemeState`).
+- **`vedge-ui`** — the reusable component library and the OKLCH theme engine (light/dark/custom themes,
+  injected as CSS custom properties). CSR-only; styles live in `styles/*.css` under `@layer components`.
 
-### Development Server
+## Technology stack
 
-- Frontend development server runs on `http://localhost:1420`
-- Hot reload enabled for rapid development
-- Tauri development mode with live frontend updates
+- **Language / shell:** Rust 2024, Tauri v2, Trunk (frontend bundler), Tailwind-style utility CSS.
+- **Frontend:** Leptos 0.8 (CSR), `leptos_router`, `leptos_i18n`, `reactive_stores`, `icondata`.
+- **Crypto (RustCrypto):** `argon2` (Argon2id), `hkdf` + `sha2` (HKDF-SHA256), `chacha20poly1305`
+  (XChaCha20-Poly1305), `aes` + `aes-kw` (AES Key Wrap), `hmac` (recovery checksum), `zeroize`,
+  `secrecy`, `subtle`, `region` (mlock), `rand`.
+- **Storage:** Sea-ORM 1.1.20 + `sqlx-sqlite` + bundled `libsqlite3-sys`.
+- **Platform:** `keyring` (OS credential store), `arboard` (clipboard), `printpdf` (emergency-kit PDF),
+  `totp-rs` (TOTP), `windows` (Windows Hello).
 
-## Technology Stack
+## Testing & gates
 
-### Core Technologies
-
-- **Rust**: Primary language for backend and desktop app
-- **Tauri 2.x**: Desktop application framework
-- **Leptos 0.8.3**: Frontend framework (CSR mode)
-- **SQLite + SQLCipher**: Encrypted database
-- **Sea-ORM**: Database ORM and migrations
-
-### Key Libraries
-
-- **Argon2**: Password hashing
-- **AES-GCM**: Symmetric encryption
-- **Tokio**: Async runtime
-- **Serde**: Serialization/deserialization
-- **UUID**: Unique identifier generation
-- **Chrono**: Date/time handling
-
-### Development Tools
-
-- **Trunk**: Frontend build tool
-- **Tailwind CSS**: Styling framework
-- **Cargo**: Rust package manager and build system
-
-## Project Structure Benefits
-
-### 1. Separation of Concerns
-
-- Clear boundaries between UI, business logic, and data layers
-- Independent development and testing of components
-- Easy to maintain and extend
-
-### 2. Reusability
-
-- Shared UI components across the application
-- Reusable business logic and use cases
-- Modular architecture allows for easy feature additions
-
-### 3. Security
-
-- Encrypted data storage at multiple levels
-- Secure key management
-- No sensitive data in frontend code
-
-### 4. Performance
-
-- Native desktop application performance
-- Efficient Rust backend
-- Optimized WASM frontend
-
-### 5. Developer Experience
-
-- Hot reload for rapid development
-- Type safety across the entire stack
-- Clear project structure and documentation
-
-## Future Considerations
-
-### Scalability
-
-- Architecture supports adding new features easily
-- Database migrations handle schema evolution
-- Component-based UI allows for feature modules
-
-### Extensibility
-
-- Plugin system through Tauri
-- Modular backend allows for new use cases
-- Shared UI components support design system evolution
-
-### Maintenance
-
-- Clear separation makes debugging easier
-- Comprehensive error handling
-- Structured logging and monitoring capabilities
+Four testing layers (host `cargo test` · wasm wire-codec · manual `cargo tauri dev` smoke · WebDriver
+e2e) plus the CI gates (`fmt` / `leptosfmt` / `clippy -D warnings` whole-workspace / `wasm` check) and a
+supply-chain gate (`cargo audit` + `cargo deny`). See [`docs/testing.md`](docs/testing.md) and
+[`README.md`](README.md#development) for the commands (`mise ci`, `mise audit`, `mise e2e`).
