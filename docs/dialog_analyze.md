@@ -114,9 +114,11 @@ re-testing overlays against whenever the lock is deliberately updated — it jus
    semantics are clarified, **prefer `<Provider>` scopes for any per-instance context in
    `vedge-ui`** (audit: Toast provides at app level — singleton, unaffected; check any future
    per-instance contexts).
-2. **Trunk watch:** `crates/vedge-app/Trunk.toml` still lacks
-   `[watch] paths = ["src", "index.html", "../vedge-ui/src"]` — the stale-build trap that derailed
-   several rounds. Add it.
+2. **Trunk watch:** `[watch] paths = ["src", "index.html", "../vedge-ui/src"]` is committed in
+   `Trunk.toml` (`2c0b6b0`), but a `trunk serve --config …` launched from the repo root did NOT
+   pick up `vedge-ui` edits during this investigation — trunk appears to resolve the watch paths
+   against the CWD, not the config file. Launch trunk from `crates/vedge-app/` (as `cargo tauri
+   dev` does) or verify rebuilds by watching the served bundle hash change.
 3. **Exit animation:** the birth implementation's 150 ms exit fade remains dropped (visibility is
    `<Show when=open>`). If wanted later, it can be rebuilt safely on this now-correct base.
 4. **Rig:** the CDP scripts (matrix / stress / grid) live at
