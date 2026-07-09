@@ -42,27 +42,21 @@ pub fn Dialog(
     let dialog_ref = NodeRef::<leptos::html::Div>::new();
     let children_stored = StoredValue::new(children);
 
-    // Defer the close one macrotask so the `<Portal>` teardown never runs
-    // synchronously from within a portaled event handler. Closing from a
-    // deeply-nested (type-erased) element inside the Portal — the header ✕ —
-    // otherwise flips `open` but fails to unmount the Portal DOM (the
-    // concrete-view backdrop happens to work). This mirrors the deferred unmount
-    // every other Portal overlay uses (Popover / ColorPicker). Keeping `<Show>`
-    // gated on the external `open` (no internal `mounted`) avoids the desync a
-    // prior internal-visibility-signal implementation hit.
-    let request_close = Callback::new(move |()| {
-        set_timeout(move || on_close.run(()), Duration::ZERO);
-    });
-
-    // Provide context for sub-components. The ✕ closes via `request_close`
-    // (deferred) so its in-portal click doesn't tear the Portal down synchronously.
-    provide_context(DialogContext {
-        on_close: request_close,
+    // Context for sub-components (DialogHeader/Title/Body/Footer). MUST be
+    // provided via the explicit `<Provider>` scope around the dialog subtree in
+    // the view below — NOT `provide_context` here in the component body. When it
+    // was provided from the body, the context leaked across sibling Dialog
+    // instances: with several Dialogs mounted on one page, every DialogHeader
+    // resolved the LAST-mounted Dialog's context, so the ✕ closed the wrong
+    // (already-closed) dialog and the visible one never dismissed. Verified via
+    // a headless-CDP instance-tagged trace (see docs/dialog_analyze.md).
+    let dialog_ctx = DialogContext {
+        on_close,
         closeable,
         close_label,
         set_title_id,
         set_body_id,
-    });
+    };
 
     // Open/close driver — watches `open` and runs enter/exit lifecycles.
     // Side effects only — visibility is the `<Show when=open>` below. On open:
@@ -120,9 +114,15 @@ pub fn Dialog(
 
     let size_cls = size.dialog_class();
 
+    // Structure: Portal (permanently mounted) > Provider (per-instance context
+    // scope) > Show (visibility). The Portal is never torn down on close — the
+    // <Show> adds/removes the scrim inside the portal container, a plain DOM
+    // child swap. The Provider guarantees DialogHeader/Title/Body/Footer resolve
+    // THIS dialog's context (see the comment on `dialog_ctx` above).
     view! {
-        <Show when=move || open.get()>
-            <leptos::portal::Portal>
+        <leptos::portal::Portal>
+            <leptos::context::Provider value=dialog_ctx>
+            <Show when=move || open.get()>
                 <div
                     class="dialog-scrim"
                     data-state=move || data_state.get()
@@ -132,7 +132,7 @@ pub fn Dialog(
                         }
                         if let (Some(t), Some(c)) = (ev.target(), ev.current_target()) {
                             if js_sys::Object::is(t.as_ref(), c.as_ref()) {
-                                request_close.run(());
+                                on_close.run(());
                             }
                         }
                     }
@@ -140,7 +140,7 @@ pub fn Dialog(
                         match ev.key().as_str() {
                             "Escape" if closeable => {
                                 ev.prevent_default();
-                                request_close.run(());
+                                on_close.run(());
                             }
                             "Tab" => trap_tab(&ev, dialog_ref),
                             _ => {}
@@ -159,8 +159,9 @@ pub fn Dialog(
                         {move || children_stored.with_value(|c| c())}
                     </div>
                 </div>
-            </leptos::portal::Portal>
-        </Show>
+            </Show>
+            </leptos::context::Provider>
+        </leptos::portal::Portal>
     }
 }
 
