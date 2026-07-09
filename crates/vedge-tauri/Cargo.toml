@@ -4,6 +4,7 @@ version     = "3.0.0"
 description = "Vedge Tauri shell"
 authors     = ["VyNT <vyngt@outlook.com>"]
 edition     = "2024"
+publish     = false
 default-run = "vedge-tauri"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

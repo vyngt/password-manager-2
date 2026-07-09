@@ -16,13 +16,14 @@
 # ---------------------------------------------------------------------------
 
 [tasks.setup]
-description = "One-time dev setup: wasm target + trunk + tauri-cli + leptosfmt"
+description = "One-time dev setup: wasm target + trunk + tauri-cli + leptosfmt + supply-chain tools"
 run = [
   "rustup target add wasm32-unknown-unknown",
   "cargo install trunk --locked",
   "cargo install tauri-cli --locked",
   "cargo install tauri-driver --locked",
   "cargo install leptosfmt --locked",
+  "cargo install cargo-audit cargo-deny --locked",
 ]
 
 # ---------------------------------------------------------------------------
@@ -76,6 +77,24 @@ description = "Clippy gate — whole workspace under -D warnings (vedge-e2e excl
 # excluded — it's unwrap-heavy harness code that deliberately opts out, matching the
 # `test` gate.
 run = "cargo clippy --workspace --exclude vedge-e2e --all-targets -- -D warnings"
+
+# ---------------------------------------------------------------------------
+# Supply-chain audit
+# ---------------------------------------------------------------------------
+
+[tasks.audit]
+description = "Supply-chain gate — cargo-deny (advisories/bans/licenses/sources), build-graph aware"
+# `cargo deny check` IS the gate. It is target + feature + build-graph aware, so it
+# reports advisories only for crates we actually compile. Config: /deny.toml.
+#
+# `cargo audit` is installed (mise setup) but deliberately NOT run in the gate: it
+# scans the raw Cargo.lock feature-union and over-reports crates that are NOT in our
+# build — e.g. `rsa` (RUSTSEC-2023-0071) and `quinn-proto` (RUSTSEC-2026-0185), both
+# of which `cargo tree -i` confirms are unused (feature-gated behind sqlx/quic
+# features we never enable). Gating on those would mean writing misleading `ignore`s
+# for CVEs in crypto crates we don't even compile. Run `cargo audit` manually for a
+# raw-lockfile view. Needs network (RustSec DB). Not in `ci`; see docs/testing.md.
+run = "cargo deny check"
 
 # ---------------------------------------------------------------------------
 # Test

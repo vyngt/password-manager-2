@@ -2,6 +2,7 @@
 name = "vedge-core"
 version = "0.1.0"
 edition = "2024"
+publish = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -12,7 +13,19 @@ ulid = "1"
 async-trait = "0.1"
 libsqlite3-sys = { version = "*", features = ["bundled"] }
 
-# Crypto stack — pinned to the RustCrypto 0.10 ecosystem (rand_core 0.6 era).
+# Crypto stack (RustCrypto + friends), pinned to the versions the vault ships on.
+# These pins are deliberate; `cargo deny` (see /deny.toml) is configured to accept
+# the version spread they produce rather than churn them:
+#   - AEAD:     chacha20poly1305 0.10  (pulls the aead 0.5 / cipher 0.4 / rand_core 0.6 era)
+#   - key wrap: aes 0.9 + aes-kw 0.3   (cipher 0.5)
+#   - hash/KDF: sha2 0.11 + hkdf 0.13 + hmac 0.13  (digest 0.11)
+#   - argon2 0.5, subtle 2, zeroize 1, secrecy 0.10, region 3 (mlock)
+#   - rand 0.10 is a SEPARATE lineage (rand_core 0.10) from the AEAD stack above.
+# Mixing the AEAD stack (rand_core 0.6 / cipher 0.4 / digest 0.10) with the newer
+# hash pins (digest 0.11) and rand 0.10 is why rand_core/getrandom/digest/sha2
+# resolve at multiple versions in Cargo.lock — structural, not a mistake. That's
+# why `[bans] multiple-versions` is `warn`, not `deny`. The actual *sealing* crates
+# (chacha20poly1305, aes, aes-kw, zeroize, subtle) are single-version.
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc", "getrandom"] }
 aes = "0.9"
 aes-kw = "0.3"
