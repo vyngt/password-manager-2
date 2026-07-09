@@ -135,3 +135,66 @@ re-testing overlays against whenever the lock is deliberately updated — it jus
   rustfmt clean on touched files.
 - Remaining human smoke: the Tauri app itself (Manage-tags ✕, edit-entry dialog ✕, history dialog ✕)
   — expected to pass identically (same WebView engine family as the rig's headless Edge).
+
+## 7. Why the leak happens — the context model, explained
+
+Leptos context is **not keyed by component**. It lives in the reactive **owner tree**:
+
+- `provide_context(v)` means: *insert `v` (keyed by its Rust type) into the context map of
+  whatever `Owner` is current at this moment.*
+- `expect_context::<T>()` means: *starting from the `Owner` current at the call site, walk up
+  the ancestor chain and return the first `T` found.*
+
+The intuitive "nearest provider wins" model silently depends on two invariants:
+
+1. **Ancestry** — the owner that received the provide is an *ancestor* of every owner in which the
+   component's descendants later call `expect_context` (so they can find it at all).
+2. **Isolation** — that owner is *not shared* with sibling instances (so sibling provides go into
+   *different* maps instead of overwriting one another).
+
+Older Leptos (0.6) passed an explicit `Scope` through every component, which made these boundaries
+visible and per-instance. In 0.7/0.8 owners are implicit and are created by **reactive nodes** —
+effects, memos, control-flow branches, `Suspense`, `<Provider>` — *not* reliably by every
+`#[component]` function call. A component body is "just a function" that runs under whatever owner
+is current while the parent's view is being built.
+
+In our composition — a page statically mounting 12 `<Dialog>`s, each Dialog rendering type-erased
+`ChildrenFn` children inside a `<Portal>` (which re-roots rendering via `mount_to` inside an
+`Effect`) and a `<Show>` — invariant **2** broke: the owner receiving each Dialog's body
+`provide_context` was effectively shared, so twelve provides of the *same type*
+(`DialogContext`) overwrote one another — **last write wins** — and every `DialogHeader`'s lookup
+resolved Dialog#11's map. (Which exact hop of the owner chain misroutes — the eager component-body
+execution, the erased-children owner, or the portal's `mount_to` root — is the open upstream
+question in §5.1; the misrouting itself is proven by the instance-tagged trace in §2.)
+
+`<Provider value=…>` fixes this **by construction**, not by luck: it is a *view-tree element* that
+creates a dedicated child owner exactly around the wrapped subtree and provides the value there.
+Both invariants become structural: the provider owner is an ancestor of precisely (and only) the
+wrapped children, so each dialog's descendants must pass through *their own* provider first, and
+sibling providers live in disjoint owners. There is nothing left to depend on about how component
+bodies map to owners.
+
+## 8. Guideline — context in `vedge-ui` components
+
+**Rule: any context that is *per-instance* — provided by a component that can be mounted more than
+once per page — MUST be provided with an explicit `<Provider value=…>` wrapping exactly the subtree
+that consumes it. Never `provide_context()` from the `#[component]` body for such types.**
+
+- **Litmus test:** *"Could two live instances of this component exist in one page?"* Dialog,
+  any compound Header/Body/Footer pattern, cards, rows, popovers → yes → `<Provider>`.
+  It doesn't matter that "only one dialog is open at a time" — **mounted** is what counts, and
+  every `<Dialog>` in a view is mounted even while closed.
+- **App-level singletons** (ToastProvider, ThemeState, i18n, `VaultUiState`) may keep body
+  `provide_context`: with exactly one provider of the type there is no last-write-wins hazard.
+  Provide them once, near the root, unconditionally.
+- **Portals:** place the `<Provider>` *inside* the portal content
+  (`Portal > Provider > …`), so the `mount_to` re-rooting cannot bypass it. This is the shipped
+  Dialog structure.
+- **Consumers:** a sub-component that `expect_context`s a per-instance type is only valid inside
+  its provider's subtree — say so in its doc comment (a panic means "mounted outside X").
+- **Diagnosing context-identity bugs:** tag logs with a per-instance id (`static AtomicU32`)
+  *before* trusting any trace — untagged logs from N instances are indistinguishable, and that
+  ambiguity cost this bug five wrong fixes. The headless-CDP rig (§5.4) turns each hypothesis
+  into a minutes-long A/B test.
+- **Review checklist addition:** any new `provide_context` in a PR → ask "multiple live instances
+  possible?" If yes, require the `<Provider>` form.
