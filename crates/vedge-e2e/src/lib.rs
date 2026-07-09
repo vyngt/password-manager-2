@@ -357,12 +357,31 @@ impl Session {
     }
 
     /// Clear a field and type into it.
+    ///
+    /// Clearing (`text == ""`) is done by setting the value and dispatching a
+    /// real `input` event via JS: a bare WebDriver `clear()` doesn't reliably
+    /// fire `input`, so a *controlled* Leptos input (`prop:value` +
+    /// `on:input:target`) never sees the change and re-applies its old value on
+    /// the next tick. Typing fires `input` per keystroke, so that path is fine.
     pub async fn fill_id(&self, id: &str, text: &str) -> Result<()> {
         let el = self.by_id(id).await?;
         el.clear().await.ok();
-        el.send_keys(text)
-            .await
-            .with_context(|| format!("type into #{id}"))?;
+        if text.is_empty() {
+            self.driver()
+                .execute(
+                    "const el = document.getElementById(arguments[0]); \
+                     if (el) { el.value = ''; \
+                     el.dispatchEvent(new Event('input', { bubbles: true })); \
+                     el.dispatchEvent(new Event('change', { bubbles: true })); }",
+                    vec![json!(id)],
+                )
+                .await
+                .with_context(|| format!("clear #{id}"))?;
+        } else {
+            el.send_keys(text)
+                .await
+                .with_context(|| format!("type into #{id}"))?;
+        }
         Ok(())
     }
 
