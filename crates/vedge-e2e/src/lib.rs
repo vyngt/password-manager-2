@@ -393,6 +393,36 @@ impl Session {
         Ok(())
     }
 
+    /// Click an element by `aria-label` using a **scripted** `.click()`. Needed
+    /// for visually-hidden controls — e.g. a custom checkbox whose native
+    /// `<input>` carries the label but is `sr-only`, which WebDriver refuses to
+    /// click as "not interactable". The scripted click still toggles state and
+    /// fires the `change` handler. (Waits for the element to appear first.)
+    pub async fn js_click_aria(&self, label: &str) -> Result<()> {
+        self.wait_for(
+            By::XPath(format!("//*[@aria-label={}]", xpath_literal(label))),
+            Duration::from_secs(10),
+        )
+        .await
+        .with_context(|| format!("element with aria-label {label:?} (js-click)"))?;
+        let script = r#"
+            const label = arguments[0];
+            const el = document.querySelector('[aria-label="' + label + '"]');
+            if (!el) { return "not-found"; }
+            el.click();
+            return "ok";
+        "#;
+        let ret = self
+            .driver()
+            .execute(script, vec![json!(label)])
+            .await
+            .with_context(|| format!("js-click aria {label:?}"))?;
+        if ret.json().as_str() == Some("not-found") {
+            bail!("no element with aria-label {label:?} for js-click");
+        }
+        Ok(())
+    }
+
     /// Dismiss the top-most modal Dialog by sending Escape to it (the Dialog
     /// closes on Escape). Best-effort: a no-op if no dialog is open. Call this
     /// after asserting a modal's content so it doesn't cover later interactions.

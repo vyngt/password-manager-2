@@ -85,7 +85,10 @@ async fn daily_loop() -> Result<()> {
         )
         .await
         .context("wizard: Secret Key screen (acknowledge checkbox)")?;
-    session.click_aria(ui::ACK_ARIA).await?;
+    // The ack is a custom checkbox: its native <input> is sr-only, so a plain
+    // WebDriver click is "not interactable". Scripted click toggles it + fires
+    // on:change, which enables Finish.
+    session.js_click_aria(ui::ACK_ARIA).await?;
     session
         .click_button_text(ui::FINISH)
         .await
