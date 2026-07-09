@@ -3,6 +3,7 @@
 //! Kept Leptos-free so it's host-testable: the picker derives its visible
 //! list from `filter_sort_recents(&recents, &query)` inside a `Memo`.
 
+use crate::features::vault::timestamps::ts_millis;
 use vedge_ipc::RecentVaultStatusDto;
 
 /// Filter recents by a free-text query (matched against display name +
@@ -32,11 +33,12 @@ pub fn filter_sort_recents(
         // 1. Existing files first (missing sink to the bottom).
         b.exists
             .cmp(&a.exists)
-            // 2. Most-recent first. `last_opened` is RFC3339-UTC text, so a
-            //    lexical compare is chronological; `None` (never opened)
-            //    orders before `Some` under `Ord`, so comparing b-vs-a puts
-            //    the newest first and never-opened last.
-            .then_with(|| recency_key(b).cmp(&recency_key(a)))
+            // 2. Most-recent first. `last_opened` is an RFC-3339 DTO *string*, so
+            //    it is parsed to the absolute instant before comparison — never
+            //    lexically (a variable-width / non-`Z` form would sort by text).
+            //    `None`/unparseable → `i64::MIN`, so comparing b-vs-a puts the
+            //    newest first and never-opened last. See [`super::timestamps`].
+            .then_with(|| recency_millis(b).cmp(&recency_millis(a)))
             // 3. Stable, human-friendly tiebreak.
             .then_with(|| {
                 a.vault
@@ -48,8 +50,10 @@ pub fn filter_sort_recents(
     out
 }
 
-fn recency_key(r: &RecentVaultStatusDto) -> Option<&str> {
-    r.vault.last_opened.as_deref()
+/// `last_opened` parsed to epoch millis for recency ordering; never-opened /
+/// unparseable → `i64::MIN` (oldest). See [`super::timestamps::ts_millis`].
+fn recency_millis(r: &RecentVaultStatusDto) -> i64 {
+    r.vault.last_opened.as_deref().map_or(i64::MIN, ts_millis)
 }
 
 #[cfg(test)]
@@ -168,6 +172,30 @@ mod tests {
             ),
         ];
         assert_eq!(ids(&filter_sort_recents(&items, "")), ["opened", "never"]);
+    }
+
+    #[test]
+    fn recency_orders_by_instant_not_text() {
+        // Regression guard: `"12:…+02:00"` (10:00Z) is textually greater than
+        // `"11:…Z"` (11:00Z) but is the EARLIER instant. Instant-based recency
+        // must put the `Z` value (later) first; the old lexical compare failed this.
+        let items = vec![
+            row(
+                "earlier",
+                "Earlier",
+                "/e.vdb",
+                Some("2026-07-05T12:00:00.000+02:00"), // 10:00 UTC
+                true,
+            ),
+            row(
+                "later",
+                "Later",
+                "/l.vdb",
+                Some("2026-07-05T11:00:00.000Z"), // 11:00 UTC
+                true,
+            ),
+        ];
+        assert_eq!(ids(&filter_sort_recents(&items, "")), ["later", "earlier"]);
     }
 
     #[test]
