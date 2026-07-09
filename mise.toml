@@ -21,6 +21,7 @@ run = [
   "rustup target add wasm32-unknown-unknown",
   "cargo install trunk --locked",
   "cargo install tauri-cli --locked",
+  "cargo install tauri-driver --locked",
   "cargo install leptosfmt --locked",
 ]
 
@@ -84,11 +85,28 @@ run = "cargo clippy -p vedge-ui --all-targets"
 
 [tasks.test]
 description = "Workspace test gate (lib + bins + tests; doctests excluded)"
-run = "cargo test --workspace --lib --bins --tests"
+# `vedge-e2e` is excluded: it depends on a running `tauri-driver` + a display and
+# is `#[ignore]`-gated. Excluding it keeps the default gate from *compiling* its
+# WebDriver deps on every run. Its scenario runs via the `e2e` task below.
+run = "cargo test --workspace --exclude vedge-e2e --lib --bins --tests"
 
 [tasks.test-app]
 description = "Fast frontend host tests only"
 run = "cargo test -p vedge-app"
+
+[tasks.e2e]
+description = "End-to-end WebDriver run (tauri-driver + thirtyfour; needs a display + platform driver)"
+dir = "crates/vedge-tauri"
+# 1. Build the frontend as DEBUG wasm (NO --release) so the Leptos
+#    reactive-context warning is compiled in for the console-clean guard.
+# 2. Embed dist/ into the host binary with `custom-protocol` (a plain
+#    `cargo build` would run in dev mode and load devUrl → blank window).
+# 3. The harness spawns `tauri-driver` itself; run serial (single-instance).
+run = [
+  "trunk build --config ../vedge-app/Trunk.toml",
+  "cargo build -p vedge-tauri --features custom-protocol",
+  "cargo test -p vedge-e2e -- --ignored --test-threads=1",
+]
 
 # ---------------------------------------------------------------------------
 # Frontend wasm type-check
