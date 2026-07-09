@@ -58,6 +58,10 @@ pub fn WindowPanel() -> impl IntoView {
             </div>
             <div class="flex grow" data-tauri-drag-region=true></div>
             <div class="flex flex-col justify-center" style=handle_inner_color>
+                // Design-system exception (OS titlebar chrome): the locale toggle's color
+                // inherits the computed titlebar foreground (`handle_inner_color`). Ghost
+                // `Button` forces a fixed height + text-secondary and `Link` forces
+                // --color-primary, neither able to take the dynamic chrome color. Kept raw.
                 <button
                     type="button"
                     class="px-2 text-xs font-semibold opacity-60 hover:opacity-100 cursor-pointer uppercase tracking-wide"
