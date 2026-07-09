@@ -379,15 +379,18 @@ async fn pick_non_active_theme(s: &Session) -> Result<String> {
 // ---------------------------------------------------------------------------
 
 async fn assert_unlocked(s: &Session, vault: &str, expected: bool) -> Result<()> {
-    let got = s
-        .invoke("is_unlocked", json!({ "vault_path": vault }))
-        .await?
-        .as_bool()
-        .context("is_unlocked returned non-bool")?;
-    if got != expected {
-        bail!("is_unlocked = {got}, expected {expected}");
-    }
-    Ok(())
+    // Unlock runs Argon2 asynchronously (a second or two), so poll rather than
+    // reading is_unlocked once. Transient invoke errors during the lock/unlock
+    // transition count as "not yet".
+    wait_until(Duration::from_secs(25), || async {
+        Ok(s.invoke("is_unlocked", json!({ "vault_path": vault }))
+            .await
+            .ok()
+            .and_then(|v| v.as_bool())
+            == Some(expected))
+    })
+    .await
+    .with_context(|| format!("is_unlocked should become {expected}"))
 }
 
 async fn list_entries(s: &Session, vault: &str) -> Result<Vec<Value>> {
