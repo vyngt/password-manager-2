@@ -51,7 +51,7 @@ pub fn TagInput(
     // --- helpers -----------------------------------------------------------
 
     let add_tag = move |raw: String| {
-        let tag = raw.trim().to_string();
+        let tag = raw.trim().to_owned();
         if tag.is_empty() {
             return;
         }
@@ -119,11 +119,11 @@ pub fn TagInput(
                 for token in before.split(',') {
                     let t = token.trim();
                     if !t.is_empty() {
-                        add_tag(t.to_string());
+                        add_tag(t.to_owned());
                     }
                 }
                 // Skip the comma itself (`after` starts with `,`)
-                let remainder = after.get(1..).unwrap_or("").to_string();
+                let remainder = after.get(1..).unwrap_or("").to_owned();
                 input_text.set(remainder);
                 // Also write the value back to the DOM input so it visually clears.
                 if let Some(el) = input_ref.get_untracked() {
@@ -198,10 +198,10 @@ pub fn TagInput(
         };
         if text.contains(',') || text.contains('\n') {
             ev.prevent_default();
-            for token in text.split(|c| c == ',' || c == '\n') {
+            for token in text.split([',', '\n']) {
                 let t = token.trim();
                 if !t.is_empty() {
-                    add_tag(t.to_string());
+                    add_tag(t.to_owned());
                 }
             }
         }

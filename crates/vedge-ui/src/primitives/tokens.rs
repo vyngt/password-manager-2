@@ -1,6 +1,6 @@
 /// Semantic variant — expresses intent, not visual style.
 /// The token system maps each variant to colors via CSS custom properties.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Variant {
     Primary,
     #[default]
@@ -17,36 +17,36 @@ pub enum Variant {
 impl Variant {
     pub fn btn_class(&self) -> &'static str {
         match self {
-            Variant::Primary => "btn--primary",
-            Variant::Secondary => "btn--secondary",
-            Variant::Ghost => "btn--ghost",
-            Variant::Danger => "btn--danger",
-            Variant::Warning => "btn--warning",
-            Variant::Link => "btn--link",
+            Self::Primary => "btn--primary",
+            Self::Secondary => "btn--secondary",
+            Self::Ghost => "btn--ghost",
+            Self::Danger => "btn--danger",
+            Self::Warning => "btn--warning",
+            Self::Link => "btn--link",
         }
     }
 
     pub fn icon_btn_class(&self) -> &'static str {
         match self {
-            Variant::Primary => "icon-btn--primary",
-            Variant::Secondary => "icon-btn--secondary",
-            Variant::Ghost => "icon-btn--ghost",
-            Variant::Danger => "icon-btn--danger",
-            Variant::Warning => "icon-btn--warning",
-            // Icon buttons have no link style; fall back to ghost.
-            Variant::Link => "icon-btn--ghost",
+            Self::Primary => "icon-btn--primary",
+            Self::Secondary => "icon-btn--secondary",
+            Self::Danger => "icon-btn--danger",
+            Self::Warning => "icon-btn--warning",
+            // Icon buttons have no link style; Link falls back to ghost.
+            Self::Ghost | Self::Link => "icon-btn--ghost",
         }
     }
 }
 
 /// Physical scale — controls height, font-size, padding.
+///
 /// Derived from the typography + spacing system:
-///   xs = 20px — compact icon actions in dense rows (IconButton only; other
+///   xs = 20px — compact icon actions in dense rows (`IconButton` only; other
 ///        components treat it as `Sm`)
 ///   sm = 28px = 16px line-height + 2×6px padding
 ///   md = 36px = 20px line-height + 2×8px padding
 ///   lg = 44px = 24px line-height + 2×10px padding
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Size {
     Xs,
     Sm,
@@ -59,126 +59,126 @@ impl Size {
     pub fn btn_class(&self) -> &'static str {
         match self {
             // No text-button `xs`; degrade to `sm` (xs is for icon actions).
-            Size::Xs | Size::Sm => "btn--sm",
-            Size::Md => "btn--md",
-            Size::Lg => "btn--lg",
+            Self::Xs | Self::Sm => "btn--sm",
+            Self::Md => "btn--md",
+            Self::Lg => "btn--lg",
         }
     }
 
     pub fn icon_btn_class(&self) -> &'static str {
         match self {
-            Size::Xs => "icon-btn--xs",
-            Size::Sm => "icon-btn--sm",
-            Size::Md => "icon-btn--md",
-            Size::Lg => "icon-btn--lg",
+            Self::Xs => "icon-btn--xs",
+            Self::Sm => "icon-btn--sm",
+            Self::Md => "icon-btn--md",
+            Self::Lg => "icon-btn--lg",
         }
     }
 
     pub fn spinner_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "spinner--sm",
-            Size::Md => "spinner--md",
-            Size::Lg => "spinner--lg",
+            Self::Xs | Self::Sm => "spinner--sm",
+            Self::Md => "spinner--md",
+            Self::Lg => "spinner--lg",
         }
     }
 
     pub fn input_root_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "input-root--sm",
-            Size::Md => "",
-            Size::Lg => "input-root--lg",
+            Self::Xs | Self::Sm => "input-root--sm",
+            Self::Md => "",
+            Self::Lg => "input-root--lg",
         }
     }
 
     pub fn number_input_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "number-input--sm",
-            Size::Md => "",
-            Size::Lg => "number-input--lg",
+            Self::Xs | Self::Sm => "number-input--sm",
+            Self::Md => "",
+            Self::Lg => "number-input--lg",
         }
     }
 
     pub fn segmented_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "segmented--sm",
-            Size::Md | Size::Lg => "segmented--md",
+            Self::Xs | Self::Sm => "segmented--sm",
+            Self::Md | Self::Lg => "segmented--md",
         }
     }
 
     pub fn textarea_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "textarea--sm",
-            Size::Md => "",
-            Size::Lg => "textarea--lg",
+            Self::Xs | Self::Sm => "textarea--sm",
+            Self::Md => "",
+            Self::Lg => "textarea--lg",
         }
     }
 
     pub fn select_trigger_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "select-trigger--sm",
-            Size::Md => "",
-            Size::Lg => "select-trigger--lg",
+            Self::Xs | Self::Sm => "select-trigger--sm",
+            Self::Md => "",
+            Self::Lg => "select-trigger--lg",
         }
     }
 
     pub fn color_picker_trigger_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "color-picker-trigger--sm",
-            Size::Md | Size::Lg => "",
+            Self::Xs | Self::Sm => "color-picker-trigger--sm",
+            Self::Md | Self::Lg => "",
         }
     }
 
     pub fn color_picker_trigger_only_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "color-picker-trigger-only--sm",
-            Size::Md | Size::Lg => "",
+            Self::Xs | Self::Sm => "color-picker-trigger-only--sm",
+            Self::Md | Self::Lg => "",
         }
     }
 
     pub fn date_picker_trigger_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "datepicker-trigger--sm",
-            Size::Md => "",
-            Size::Lg => "datepicker-trigger--lg",
+            Self::Xs | Self::Sm => "datepicker-trigger--sm",
+            Self::Md => "",
+            Self::Lg => "datepicker-trigger--lg",
         }
     }
 
     pub fn progress_track_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "progress__track--sm",
-            Size::Md => "progress__track--md",
-            Size::Lg => "progress__track--lg",
+            Self::Xs | Self::Sm => "progress__track--sm",
+            Self::Md => "progress__track--md",
+            Self::Lg => "progress__track--lg",
         }
     }
 
     pub fn slider_root_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "slider-root--sm",
-            Size::Md => "slider-root--md",
-            Size::Lg => "slider-root--lg",
+            Self::Xs | Self::Sm => "slider-root--sm",
+            Self::Md => "slider-root--md",
+            Self::Lg => "slider-root--lg",
         }
     }
 
     pub fn qrcode_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm => "qrcode--sm",
-            Size::Md => "qrcode--md",
-            Size::Lg => "qrcode--lg",
+            Self::Xs | Self::Sm => "qrcode--sm",
+            Self::Md => "qrcode--md",
+            Self::Lg => "qrcode--lg",
         }
     }
 
     pub fn accordion_trigger_class(&self) -> &'static str {
         match self {
-            Size::Xs | Size::Sm | Size::Md => "",
-            Size::Lg => "accordion__trigger--lg",
+            Self::Xs | Self::Sm | Self::Md => "",
+            Self::Lg => "accordion__trigger--lg",
         }
     }
 }
 
 /// Field status — communicates validation state visually.
-/// Used by form components (Label, Input, HelperText) to mirror
+/// Used by form components (Label, Input, `HelperText`) to mirror
 /// the associated control's validation result.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Status {
     #[default]
     Default,
@@ -190,64 +190,64 @@ pub enum Status {
 impl Status {
     pub fn label_class(&self) -> &'static str {
         match self {
-            Status::Default => "",
-            Status::Error => "label--error",
-            Status::Success => "label--success",
-            Status::Warning => "label--warning",
+            Self::Default => "",
+            Self::Error => "label--error",
+            Self::Success => "label--success",
+            Self::Warning => "label--warning",
         }
     }
 
     pub fn input_root_class(&self) -> &'static str {
         match self {
-            Status::Default => "",
-            Status::Error => "input-root--error",
-            Status::Success => "input-root--success",
-            Status::Warning => "input-root--warning",
+            Self::Default => "",
+            Self::Error => "input-root--error",
+            Self::Success => "input-root--success",
+            Self::Warning => "input-root--warning",
         }
     }
 
     pub fn helper_text_class(&self) -> &'static str {
         match self {
-            Status::Default => "",
-            Status::Error => "helper-text--error",
-            Status::Success => "helper-text--success",
-            Status::Warning => "helper-text--warning",
+            Self::Default => "",
+            Self::Error => "helper-text--error",
+            Self::Success => "helper-text--success",
+            Self::Warning => "helper-text--warning",
         }
     }
 
     pub fn number_input_class(&self) -> &'static str {
         match self {
-            Status::Default => "",
-            Status::Error => "number-input--error",
-            Status::Success => "number-input--success",
-            Status::Warning => "number-input--warning",
+            Self::Default => "",
+            Self::Error => "number-input--error",
+            Self::Success => "number-input--success",
+            Self::Warning => "number-input--warning",
         }
     }
 
     pub fn textarea_class(&self) -> &'static str {
         match self {
-            Status::Default => "",
-            Status::Error => "textarea--error",
-            Status::Success => "textarea--success",
-            Status::Warning => "textarea--warning",
+            Self::Default => "",
+            Self::Error => "textarea--error",
+            Self::Success => "textarea--success",
+            Self::Warning => "textarea--warning",
         }
     }
 
     pub fn select_trigger_class(&self) -> &'static str {
         match self {
-            Status::Default => "",
-            Status::Error => "select-trigger--error",
-            Status::Success => "select-trigger--success",
-            Status::Warning => "select-trigger--warning",
+            Self::Default => "",
+            Self::Error => "select-trigger--error",
+            Self::Success => "select-trigger--success",
+            Self::Warning => "select-trigger--warning",
         }
     }
 
     pub fn date_picker_trigger_class(&self) -> &'static str {
         match self {
-            Status::Default => "",
-            Status::Error => "datepicker-trigger--error",
-            Status::Success => "datepicker-trigger--success",
-            Status::Warning => "datepicker-trigger--warning",
+            Self::Default => "",
+            Self::Error => "datepicker-trigger--error",
+            Self::Success => "datepicker-trigger--success",
+            Self::Warning => "datepicker-trigger--warning",
         }
     }
 }
@@ -257,7 +257,7 @@ impl Status {
 ///   rounded-sm = --radius-sm   (4px)
 ///   rounded    = --radius      (6px) — default
 ///   pill       = --radius-full (9999px)
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Shape {
     Square,
     RoundedSm,
@@ -269,25 +269,25 @@ pub enum Shape {
 impl Shape {
     pub fn btn_class(&self) -> &'static str {
         match self {
-            Shape::Square => "btn--square",
-            Shape::RoundedSm => "btn--rounded-sm",
-            Shape::Rounded => "btn--rounded",
-            Shape::Pill => "btn--pill",
+            Self::Square => "btn--square",
+            Self::RoundedSm => "btn--rounded-sm",
+            Self::Rounded => "btn--rounded",
+            Self::Pill => "btn--pill",
         }
     }
 
     pub fn icon_btn_class(&self) -> &'static str {
         match self {
-            Shape::Square => "icon-btn--square",
-            Shape::RoundedSm => "icon-btn--rounded-sm",
-            Shape::Rounded => "icon-btn--rounded",
-            Shape::Pill => "icon-btn--pill",
+            Self::Square => "icon-btn--square",
+            Self::RoundedSm => "icon-btn--rounded-sm",
+            Self::Rounded => "icon-btn--rounded",
+            Self::Pill => "icon-btn--pill",
         }
     }
 }
 
 /// Badge color variant — semantic, independent of interactive Variant.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BadgeVariant {
     #[default]
     Default,
@@ -300,17 +300,17 @@ pub enum BadgeVariant {
 impl BadgeVariant {
     pub fn badge_class(&self) -> &'static str {
         match self {
-            BadgeVariant::Default => "badge--default",
-            BadgeVariant::Info => "badge--info",
-            BadgeVariant::Success => "badge--success",
-            BadgeVariant::Warning => "badge--warning",
-            BadgeVariant::Danger => "badge--danger",
+            Self::Default => "badge--default",
+            Self::Info => "badge--info",
+            Self::Success => "badge--success",
+            Self::Warning => "badge--warning",
+            Self::Danger => "badge--danger",
         }
     }
 }
 
 /// Badge physical scale — only two sizes (no lg).
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BadgeSize {
     Sm,
     #[default]
@@ -320,14 +320,14 @@ pub enum BadgeSize {
 impl BadgeSize {
     pub fn badge_class(&self) -> &'static str {
         match self {
-            BadgeSize::Sm => "badge--sm",
-            BadgeSize::Md => "badge--md",
+            Self::Sm => "badge--sm",
+            Self::Md => "badge--md",
         }
     }
 }
 
 /// Badge shape — pill (default), square, or dot (indicator only).
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BadgeShape {
     #[default]
     Pill,
@@ -338,15 +338,15 @@ pub enum BadgeShape {
 impl BadgeShape {
     pub fn badge_class(&self) -> &'static str {
         match self {
-            BadgeShape::Pill => "badge--pill",
-            BadgeShape::Square => "badge--square",
-            BadgeShape::Dot => "badge--dot",
+            Self::Pill => "badge--pill",
+            Self::Square => "badge--square",
+            Self::Dot => "badge--dot",
         }
     }
 }
 
 /// Badge appearance — solid (muted bg) or outline (transparent + border).
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BadgeAppearance {
     #[default]
     Solid,
@@ -356,14 +356,14 @@ pub enum BadgeAppearance {
 impl BadgeAppearance {
     pub fn badge_class(&self) -> &'static str {
         match self {
-            BadgeAppearance::Solid => "badge--solid",
-            BadgeAppearance::Outline => "badge--outline",
+            Self::Solid => "badge--solid",
+            Self::Outline => "badge--outline",
         }
     }
 }
 
 /// Binary-size control — Checkbox and Toggle only have two sizes.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum CheckboxSize {
     Sm,
     #[default]
@@ -373,21 +373,21 @@ pub enum CheckboxSize {
 impl CheckboxSize {
     pub fn checkbox_class(&self) -> &'static str {
         match self {
-            CheckboxSize::Sm => "checkbox--sm",
-            CheckboxSize::Md => "checkbox--md",
+            Self::Sm => "checkbox--sm",
+            Self::Md => "checkbox--md",
         }
     }
 
     pub fn toggle_class(&self) -> &'static str {
         match self {
-            CheckboxSize::Sm => "toggle--sm",
-            CheckboxSize::Md => "toggle--md",
+            Self::Sm => "toggle--sm",
+            Self::Md => "toggle--md",
         }
     }
 }
 
 /// Separator orientation.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Orientation {
     #[default]
     Horizontal,
@@ -397,28 +397,28 @@ pub enum Orientation {
 impl Orientation {
     pub fn separator_class(&self) -> &'static str {
         match self {
-            Orientation::Horizontal => "separator--horizontal",
-            Orientation::Vertical => "separator--vertical",
+            Self::Horizontal => "separator--horizontal",
+            Self::Vertical => "separator--vertical",
         }
     }
 
     pub fn radio_group_class(&self) -> &'static str {
         match self {
-            Orientation::Horizontal => "radio-group--horizontal",
-            Orientation::Vertical => "radio-group--vertical",
+            Self::Horizontal => "radio-group--horizontal",
+            Self::Vertical => "radio-group--vertical",
         }
     }
 
     pub fn step_indicator_class(&self) -> &'static str {
         match self {
-            Orientation::Horizontal => "step-indicator--horizontal",
-            Orientation::Vertical => "step-indicator--vertical",
+            Self::Horizontal => "step-indicator--horizontal",
+            Self::Vertical => "step-indicator--vertical",
         }
     }
 }
 
 /// Floating element placement — preferred side relative to trigger.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Placement {
     #[default]
     Top,
@@ -430,16 +430,16 @@ pub enum Placement {
 impl Placement {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Placement::Top => "top",
-            Placement::Bottom => "bottom",
-            Placement::Left => "left",
-            Placement::Right => "right",
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+            Self::Left => "left",
+            Self::Right => "right",
         }
     }
 }
 
 /// Toast semantic variant — drives background, icon, and accent color.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ToastVariant {
     #[default]
     Default,
@@ -451,17 +451,17 @@ pub enum ToastVariant {
 impl ToastVariant {
     pub fn toast_class(&self) -> &'static str {
         match self {
-            ToastVariant::Default => "toast--default",
-            ToastVariant::Success => "toast--success",
-            ToastVariant::Warning => "toast--warning",
-            ToastVariant::Danger => "toast--danger",
+            Self::Default => "toast--default",
+            Self::Success => "toast--success",
+            Self::Warning => "toast--warning",
+            Self::Danger => "toast--danger",
         }
     }
 }
 
 /// Horizontal text alignment for tabular data.
 /// Start (default) = left in LTR, right in RTL. End = the inverse.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Align {
     #[default]
     Start,
@@ -471,15 +471,15 @@ pub enum Align {
 impl Align {
     pub fn data_table_th_class(&self) -> &'static str {
         match self {
-            Align::Start => "",
-            Align::End => "data-table__th--end",
+            Self::Start => "",
+            Self::End => "data-table__th--end",
         }
     }
 
     pub fn data_table_td_class(&self) -> &'static str {
         match self {
-            Align::Start => "",
-            Align::End => "data-table__td--end",
+            Self::Start => "",
+            Self::End => "data-table__td--end",
         }
     }
 }
@@ -494,15 +494,15 @@ pub enum SortDirection {
 impl SortDirection {
     pub fn as_aria(&self) -> &'static str {
         match self {
-            SortDirection::Asc => "ascending",
-            SortDirection::Desc => "descending",
+            Self::Asc => "ascending",
+            Self::Desc => "descending",
         }
     }
 }
 
-/// ProgressBar fill variant — determinate progress only (not for indeterminate loading,
+/// `ProgressBar` fill variant — determinate progress only (not for indeterminate loading,
 /// which belongs to Spinner).
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ProgressVariant {
     #[default]
     Default,
@@ -513,15 +513,15 @@ pub enum ProgressVariant {
 impl ProgressVariant {
     pub fn progress_fill_class(&self) -> &'static str {
         match self {
-            ProgressVariant::Default => "",
-            ProgressVariant::Success => "progress__fill--success",
-            ProgressVariant::Danger => "progress__fill--danger",
+            Self::Default => "",
+            Self::Success => "progress__fill--success",
+            Self::Danger => "progress__fill--danger",
         }
     }
 }
 
 /// Avatar diameter scale — five sizes (spec adds `xs` + `xl` beyond the base Size scale).
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum AvatarSize {
     Xs,
     Sm,
@@ -534,17 +534,17 @@ pub enum AvatarSize {
 impl AvatarSize {
     pub fn avatar_class(&self) -> &'static str {
         match self {
-            AvatarSize::Xs => "avatar-root--xs",
-            AvatarSize::Sm => "avatar-root--sm",
-            AvatarSize::Md => "avatar-root--md",
-            AvatarSize::Lg => "avatar-root--lg",
-            AvatarSize::Xl => "avatar-root--xl",
+            Self::Xs => "avatar-root--xs",
+            Self::Sm => "avatar-root--sm",
+            Self::Md => "avatar-root--md",
+            Self::Lg => "avatar-root--lg",
+            Self::Xl => "avatar-root--xl",
         }
     }
 }
 
 /// Avatar presence indicator — communicates availability.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AvatarStatus {
     Online,
     Away,
@@ -555,26 +555,26 @@ pub enum AvatarStatus {
 impl AvatarStatus {
     pub fn avatar_class(&self) -> &'static str {
         match self {
-            AvatarStatus::Online => "avatar-status--online",
-            AvatarStatus::Away => "avatar-status--away",
-            AvatarStatus::Busy => "avatar-status--busy",
-            AvatarStatus::Offline => "avatar-status--offline",
+            Self::Online => "avatar-status--online",
+            Self::Away => "avatar-status--away",
+            Self::Busy => "avatar-status--busy",
+            Self::Offline => "avatar-status--offline",
         }
     }
 
     pub fn aria_label(&self) -> &'static str {
         match self {
-            AvatarStatus::Online => "Status: online",
-            AvatarStatus::Away => "Status: away",
-            AvatarStatus::Busy => "Status: busy",
-            AvatarStatus::Offline => "Status: offline",
+            Self::Online => "Status: online",
+            Self::Away => "Status: away",
+            Self::Busy => "Status: busy",
+            Self::Offline => "Status: offline",
         }
     }
 }
 
 /// Dialog max-width scale. Separate from `Size` because `Full` (viewport-fill)
 /// is a dialog-specific concept that does not fit the sm/md/lg typography scale.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum DialogSize {
     Sm,
     #[default]
@@ -586,10 +586,10 @@ pub enum DialogSize {
 impl DialogSize {
     pub fn dialog_class(&self) -> &'static str {
         match self {
-            DialogSize::Sm => "dialog--sm",
-            DialogSize::Md => "dialog--md",
-            DialogSize::Lg => "dialog--lg",
-            DialogSize::Full => "dialog--full",
+            Self::Sm => "dialog--sm",
+            Self::Md => "dialog--md",
+            Self::Lg => "dialog--lg",
+            Self::Full => "dialog--full",
         }
     }
 }

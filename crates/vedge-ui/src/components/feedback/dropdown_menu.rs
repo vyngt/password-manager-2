@@ -22,7 +22,7 @@ pub enum MenuItemVariant {
 
 /// A single action in a menu.
 ///
-/// Icons are passed as `icondata::Icon` descriptors (rendered via leptos_icons).
+/// Icons are passed as `icondata::Icon` descriptors (rendered via `leptos_icons`).
 /// Shortcuts are plain strings, rendered automatically inside a `<Kbd>` element.
 /// For fully custom item content, render your own menu rather than this
 /// composite.
@@ -101,7 +101,7 @@ pub fn DropdownMenu(
             .map(|el| -> web_sys::HtmlElement { el.into() })
     });
 
-    let do_close = Callback::new(move |_: ()| {
+    let do_close = Callback::new(move |(): ()| {
         set_open.set(false);
         if let Some(cb) = on_close {
             cb.run(());
@@ -192,7 +192,7 @@ pub fn DropdownMenu(
 }
 
 /// Shared menu-panel state, built once at the parent component's setup.
-/// Used by both DropdownMenu and ContextMenu.
+/// Used by both `DropdownMenu` and `ContextMenu`.
 #[derive(Clone, Copy)]
 pub struct MenuState {
     pub items: StoredValue<Vec<MenuSection>>,
@@ -307,7 +307,9 @@ pub fn MenuPanelBody(
                 return;
             }
             k if k.chars().count() == 1 => {
-                let ch = k.chars().next().unwrap();
+                let Some(ch) = k.chars().next() else {
+                    return;
+                };
                 if !ch.is_alphanumeric() {
                     return;
                 }
@@ -338,7 +340,7 @@ pub fn MenuPanelBody(
 
                 let ticket =
                     typeahead_ver.with_value(|ver| ver.fetch_add(1, Ordering::Relaxed)) + 1;
-                let ver_clone = typeahead_ver.with_value(|ver| ver.clone());
+                let ver_clone = typeahead_ver.with_value(std::clone::Clone::clone);
                 set_timeout(
                     move || {
                         if ver_clone.load(Ordering::Relaxed) == ticket {
@@ -413,7 +415,7 @@ fn render_sections(
                             focusable_counter += 1;
                         }
                         nodes.push(render_menu_item(
-                            item.clone(),
+                            item,
                             this_idx,
                             is_focusable,
                             focused_idx,
@@ -428,7 +430,7 @@ fn render_sections(
 }
 
 fn render_menu_item(
-    item: MenuItem,
+    item: &MenuItem,
     focusable_idx: usize,
     is_focusable: bool,
     focused_idx: RwSignal<Option<usize>>,
@@ -452,7 +454,7 @@ fn render_menu_item(
     let is_active =
         Signal::derive(move || is_focusable && focused_idx.get() == Some(focusable_idx));
     let tabindex = move || if is_active.get() { "0" } else { "-1" };
-    let aria_disabled = if !is_focusable { Some("true") } else { None };
+    let aria_disabled = if is_focusable { None } else { Some("true") };
     let data_idx_attr = if is_focusable {
         Some(focusable_idx.to_string())
     } else {

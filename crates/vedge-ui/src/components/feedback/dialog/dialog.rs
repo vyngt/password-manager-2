@@ -193,9 +193,8 @@ fn trap_tab(ev: &web_sys::KeyboardEvent, dialog_ref: NodeRef<leptos::html::Div>)
     };
     let el: &web_sys::HtmlElement = &root;
 
-    let list = match el.query_selector_all(FOCUSABLE_SELECTOR) {
-        Ok(l) => l,
-        Err(_) => return,
+    let Ok(list) = el.query_selector_all(FOCUSABLE_SELECTOR) else {
+        return;
     };
 
     let len = list.length();
@@ -226,8 +225,7 @@ fn trap_tab(ev: &web_sys::KeyboardEvent, dialog_ref: NodeRef<leptos::html::Div>)
         matches!((active.as_ref(), last.as_ref()), (Some(a), Some(l)) if same_identity(a, l));
     let is_root = active
         .as_ref()
-        .map(|a| js_sys::Object::is(a.as_ref(), el.as_ref()))
-        .unwrap_or(false);
+        .is_some_and(|a| js_sys::Object::is(a.as_ref(), el.as_ref()));
 
     if ev.shift_key() {
         if is_first || is_root {

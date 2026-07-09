@@ -15,8 +15,8 @@ pub fn Checkbox(
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let internal = RwSignal::new(default_checked);
-    let is_checked = move || checked.map(|s| s.get()).unwrap_or_else(|| internal.get());
-    let is_indeterminate = move || indeterminate.map(|s| s.get()).unwrap_or(false);
+    let is_checked = move || checked.map_or_else(|| internal.get(), |s| s.get());
+    let is_indeterminate = move || indeterminate.is_some_and(|s| s.get());
 
     let input_ref = NodeRef::<leptos::html::Input>::new();
 
@@ -89,7 +89,7 @@ pub fn Checkbox(
             }
             .into_any()
         } else {
-            view! {}.into_any()
+            ().into_any()
         }
     };
 

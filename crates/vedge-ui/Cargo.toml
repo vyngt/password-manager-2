@@ -20,7 +20,5 @@ icondata_core = "0.1.0"
 chrono = { version = "0.4.44", default-features = false, features = ["clock", "wasmbind"] }
 qrcodegen = "1.8"
 
-# TODO(lint-adoption): opt into `[lints] workspace = true` after the UI-layer
-# cleanup pass. Current snapshot: ~310 errors, ~914 warnings — mostly
-# arithmetic_side_effects (pixel math) and indexing_slicing (DOM code).
-# See docs/CoreTracking.md §"Lint adoption".
+[lints]
+workspace = true

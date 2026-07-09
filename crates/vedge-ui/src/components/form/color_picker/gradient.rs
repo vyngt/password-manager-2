@@ -15,8 +15,8 @@ pub(super) fn Gradient(
     let update_from_pointer = move |ev: &PointerEvent| {
         if let Some(el) = gradient_ref.get() {
             let rect = el.get_bounding_client_rect();
-            let x = ((ev.client_x() as f64 - rect.left()) / rect.width()).clamp(0.0, 1.0);
-            let y = ((ev.client_y() as f64 - rect.top()) / rect.height()).clamp(0.0, 1.0);
+            let x = ((f64::from(ev.client_x()) - rect.left()) / rect.width()).clamp(0.0, 1.0);
+            let y = ((f64::from(ev.client_y()) - rect.top()) / rect.height()).clamp(0.0, 1.0);
             hsv.update(|c| {
                 c.s = x * 100.0;
                 c.v = (1.0 - y) * 100.0;

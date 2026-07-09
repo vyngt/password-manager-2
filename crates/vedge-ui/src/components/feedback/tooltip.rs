@@ -66,15 +66,15 @@ pub fn Tooltip(
     };
 
     // Show: position → mount → animate on next tick
-    let sv = show_ver.clone();
-    let hv = hide_ver.clone();
+    let sv = Arc::clone(&show_ver);
+    let hv = Arc::clone(&hide_ver);
     let do_show = move || {
         hv.fetch_add(1, Ordering::Relaxed);
         update_position();
         data_state.set(None);
         mounted.set(true);
         let ver = sv.load(Ordering::Relaxed);
-        let sv2 = sv.clone();
+        let sv2 = Arc::clone(&sv);
         set_timeout(
             move || {
                 if sv2.load(Ordering::Relaxed) == ver {
@@ -86,13 +86,13 @@ pub fn Tooltip(
     };
 
     // Hide: exit animation → unmount after 150ms
-    let sv = show_ver.clone();
-    let hv = hide_ver.clone();
+    let sv = Arc::clone(&show_ver);
+    let hv = Arc::clone(&hide_ver);
     let do_hide = move || {
         sv.fetch_add(1, Ordering::Relaxed);
         data_state.set(Some("closed"));
         let ver = hv.load(Ordering::Relaxed);
-        let hv2 = hv.clone();
+        let hv2 = Arc::clone(&hv);
         set_timeout(
             move || {
                 if hv2.load(Ordering::Relaxed) == ver {
@@ -105,8 +105,8 @@ pub fn Tooltip(
     };
 
     // Hover: show after configurable delay
-    let sv = show_ver.clone();
-    let hv = hide_ver.clone();
+    let sv = Arc::clone(&show_ver);
+    let hv = Arc::clone(&hide_ver);
     let do_show_c = do_show.clone();
     let on_mouseenter = move |_| {
         let ver = sv.fetch_add(1, Ordering::Relaxed) + 1;
@@ -114,7 +114,7 @@ pub fn Tooltip(
         if delay == 0 {
             do_show_c();
         } else {
-            let sv2 = sv.clone();
+            let sv2 = Arc::clone(&sv);
             let ds = do_show_c.clone();
             set_timeout(
                 move || {
@@ -122,19 +122,19 @@ pub fn Tooltip(
                         ds();
                     }
                 },
-                Duration::from_millis(delay as u64),
+                Duration::from_millis(u64::from(delay)),
             );
         }
     };
 
     // Mouse leave: 100ms grace period before hiding
-    let sv = show_ver.clone();
-    let hv = hide_ver.clone();
+    let sv = Arc::clone(&show_ver);
+    let hv = Arc::clone(&hide_ver);
     let do_hide_c = do_hide.clone();
     let on_mouseleave = move |_| {
         sv.fetch_add(1, Ordering::Relaxed);
         let ver = hv.fetch_add(1, Ordering::Relaxed) + 1;
-        let hv2 = hv.clone();
+        let hv2 = Arc::clone(&hv);
         let dh = do_hide_c.clone();
         set_timeout(
             move || {
@@ -147,8 +147,8 @@ pub fn Tooltip(
     };
 
     // Focus: immediate show (0ms delay for keyboard)
-    let sv = show_ver.clone();
-    let hv = hide_ver.clone();
+    let sv = Arc::clone(&show_ver);
+    let hv = Arc::clone(&hide_ver);
     let do_show_c2 = do_show.clone();
     let on_focusin = move |_| {
         sv.fetch_add(1, Ordering::Relaxed);

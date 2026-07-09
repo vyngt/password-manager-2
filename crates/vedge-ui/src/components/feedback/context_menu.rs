@@ -29,7 +29,7 @@ pub fn ContextMenu(
 
     let state = MenuState::new(items);
 
-    let do_close_and_restore = Callback::new(move |_: ()| {
+    let do_close_and_restore = Callback::new(move |(): ()| {
         set_open.set(false);
         if let Some(cb) = on_close {
             cb.run(());
@@ -54,8 +54,8 @@ pub fn ContextMenu(
             return;
         }
         ev.prevent_default();
-        let x = ev.client_x() as f64;
-        let y = ev.client_y() as f64;
+        let x = f64::from(ev.client_x());
+        let y = f64::from(ev.client_y());
         click_point.set(Some((x, y)));
 
         // Capture focused element for restoration on close.

@@ -9,7 +9,7 @@ use leptos_icons::Icon;
 use std::collections::BTreeSet;
 
 /// Which pagination model the consumer is driving.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum PaginationModel {
     /// Total page count is known — renders page numbers, summary label,
     /// and items-per-page select.
@@ -51,12 +51,13 @@ pub fn Pagination(
     let root_cls = ["pagination", class].join(" ");
 
     // ---- Left zone: items-per-page select ----
-    let show_size_control = page_size_options.len() >= 2 && page_size.is_some();
-    let size_control = show_size_control.then(|| {
-        let ps = page_size.unwrap();
+    // `page_size` is `Some` and there are ≥2 options → render the control (and move
+    // `page_size_options` into the closure, consuming it).
+    let has_size_options = page_size_options.len() >= 2;
+    let size_control = page_size.filter(|_| has_size_options).map(move |ps| {
         let value_sig: Signal<String> = Signal::derive(move || ps.get().to_string());
         let select_items: Vec<SelectItem> = page_size_options
-            .iter()
+            .into_iter()
             .map(|n| SelectItem::option(n.to_string(), n.to_string()))
             .collect();
         let on_select_change = on_page_size_change.map(|cb| {
@@ -98,7 +99,7 @@ pub fn Pagination(
                             let current = p.get().max(1);
                             let start = (current - 1) * size + 1;
                             let end = (current * size).min(total);
-                            format!("{}\u{2013}{} of {}", start, end, total)
+                            format!("{start}\u{2013}{end} of {total}")
                         }}
                     </span>
                 }
@@ -115,7 +116,7 @@ pub fn Pagination(
                         <PrevButton
                             label=prev_label
                             disabled=Signal::derive(move || disabled || page.get() <= 1)
-                            on_click=Callback::new(move |_: ()| {
+                            on_click=Callback::new(move |(): ()| {
                                 let p = page.get_untracked();
                                 if p > 1 {
                                     if let Some(cb) = on_page_change {
@@ -132,7 +133,7 @@ pub fn Pagination(
                             disabled=Signal::derive(move || {
                                 disabled || page.get() >= total_pages.get()
                             })
-                            on_click=Callback::new(move |_: ()| {
+                            on_click=Callback::new(move |(): ()| {
                                 let p = page.get_untracked();
                                 let tp = total_pages.get_untracked();
                                 if p < tp {
@@ -150,7 +151,7 @@ pub fn Pagination(
                         <PrevButton
                             label=prev_label
                             disabled=Signal::derive(move || disabled || page.get() <= 1)
-                            on_click=Callback::new(move |_: ()| {
+                            on_click=Callback::new(move |(): ()| {
                                 let p = page.get_untracked();
                                 if p > 1 {
                                     if let Some(cb) = on_page_change {
@@ -221,7 +222,7 @@ pub fn Pagination(
                             disabled=Signal::derive(move || {
                                 disabled || page.get() >= total_pages.get()
                             })
-                            on_click=Callback::new(move |_: ()| {
+                            on_click=Callback::new(move |(): ()| {
                                 let p = page.get_untracked();
                                 let tp = total_pages.get_untracked();
                                 if p < tp {
@@ -240,7 +241,7 @@ pub fn Pagination(
                 <PrevButton
                     label=prev_label
                     disabled=Signal::derive(move || disabled || !has_prev_page.get())
-                    on_click=Callback::new(move |_: ()| {
+                    on_click=Callback::new(move |(): ()| {
                         if has_prev_page.get_untracked() {
                             if let Some(cb) = on_prev {
                                 cb.run(());
@@ -251,7 +252,7 @@ pub fn Pagination(
                 <NextButton
                     label=next_label
                     disabled=Signal::derive(move || disabled || !has_next_page.get())
-                    on_click=Callback::new(move |_: ()| {
+                    on_click=Callback::new(move |(): ()| {
                         if has_next_page.get_untracked() {
                             if let Some(cb) = on_next {
                                 cb.run(());

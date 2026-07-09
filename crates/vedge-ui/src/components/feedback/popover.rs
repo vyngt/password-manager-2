@@ -44,7 +44,10 @@ enum Align {
 
 impl PopoverPlacement {
     fn parts(self) -> (Side, Align) {
-        use PopoverPlacement::*;
+        use PopoverPlacement::{
+            Bottom, BottomEnd, BottomStart, Left, LeftEnd, LeftStart, Right, RightEnd, RightStart,
+            Top, TopEnd, TopStart,
+        };
         match self {
             Top => (Side::Top, Align::Center),
             TopStart => (Side::Top, Align::Start),
@@ -62,7 +65,10 @@ impl PopoverPlacement {
     }
 
     fn from_parts(side: Side, align: Align) -> Self {
-        use PopoverPlacement::*;
+        use PopoverPlacement::{
+            Bottom, BottomEnd, BottomStart, Left, LeftEnd, LeftStart, Right, RightEnd, RightStart,
+            Top, TopEnd, TopStart,
+        };
         match (side, align) {
             (Side::Top, Align::Center) => Top,
             (Side::Top, Align::Start) => TopStart,
@@ -82,7 +88,10 @@ impl PopoverPlacement {
     /// Stable kebab-case string used as a `data-placement` attribute to
     /// drive the CSS entrance animation direction.
     pub fn data_attr(self) -> &'static str {
-        use PopoverPlacement::*;
+        use PopoverPlacement::{
+            Bottom, BottomEnd, BottomStart, Left, LeftEnd, LeftStart, Right, RightEnd, RightStart,
+            Top, TopEnd, TopStart,
+        };
         match self {
             Top => "top",
             TopStart => "top-start",
@@ -135,7 +144,7 @@ pub fn Popover(
     let enter_ver = Arc::new(AtomicU32::new(0));
     let exit_ver = Arc::new(AtomicU32::new(0));
 
-    let do_reposition = Callback::new(move |_: ()| {
+    let do_reposition = Callback::new(move |(): ()| {
         // Resolve anchor rect: `anchor_point` wins when present, else fall
         // back to element anchor.
         let anchor_rl = if let Some((x, y)) = anchor_point.get_untracked() {
@@ -207,23 +216,17 @@ pub fn Popover(
                         return;
                     };
 
-                    let in_panel = panel_ref
-                        .get_untracked()
-                        .map(|p| {
-                            let node: &web_sys::Node = p.unchecked_ref();
-                            node.contains(Some(&target_node))
-                        })
-                        .unwrap_or(false);
+                    let in_panel = panel_ref.get_untracked().is_some_and(|p| {
+                        let node: &web_sys::Node = p.unchecked_ref();
+                        node.contains(Some(&target_node))
+                    });
                     if in_panel {
                         return;
                     }
-                    let in_anchor = anchor
-                        .get_untracked()
-                        .map(|a| {
-                            let node: &web_sys::Node = a.unchecked_ref();
-                            node.contains(Some(&target_node))
-                        })
-                        .unwrap_or(false);
+                    let in_anchor = anchor.get_untracked().is_some_and(|a| {
+                        let node: &web_sys::Node = a.unchecked_ref();
+                        node.contains(Some(&target_node))
+                    });
                     if in_anchor {
                         return;
                     }
@@ -255,7 +258,7 @@ pub fn Popover(
             );
             let _ = document
                 .add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref());
-            let doc = document.clone();
+            let doc = document;
             let cleanup: Box<dyn FnOnce()> = Box::new(move || {
                 let _ = doc.remove_event_listener_with_callback(
                     "keydown",
@@ -295,7 +298,7 @@ pub fn Popover(
             });
             let _ =
                 window.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
-            let win = window.clone();
+            let win = window;
             let cleanup: Box<dyn FnOnce()> = Box::new(move || {
                 let _ = win.remove_event_listener_with_callback(
                     "resize",
@@ -307,8 +310,8 @@ pub fn Popover(
         }
     };
 
-    let ev_enter = enter_ver.clone();
-    let ev_exit = exit_ver.clone();
+    let ev_enter = enter_ver;
+    let ev_exit = exit_ver;
     Effect::new(move |prev: Option<bool>| {
         let now = open.get();
         let was = prev.unwrap_or(false);
@@ -327,7 +330,7 @@ pub fn Popover(
             data_state.set(None);
             mounted.set(true);
 
-            let ev = ev_enter.clone();
+            let ev = Arc::clone(&ev_enter);
             set_timeout(
                 move || {
                     if ev.load(Ordering::Relaxed) != ticket {
@@ -346,7 +349,7 @@ pub fn Popover(
             data_state.set(Some("closing"));
             detach_listeners();
 
-            let ev = ev_exit.clone();
+            let ev = Arc::clone(&ev_exit);
             set_timeout(
                 move || {
                     if ev.load(Ordering::Relaxed) != ticket {
@@ -434,9 +437,8 @@ fn handle_tab(
         return;
     };
     let el: &web_sys::HtmlElement = root.unchecked_ref();
-    let list = match el.query_selector_all(FOCUSABLE_SELECTOR) {
-        Ok(l) => l,
-        Err(_) => return,
+    let Ok(list) = el.query_selector_all(FOCUSABLE_SELECTOR) else {
+        return;
     };
     let len = list.length();
     if len == 0 {
@@ -462,9 +464,7 @@ fn handle_tab(
     let is_first = matches!((active.as_ref(), first.as_ref()), (Some(a), Some(f)) if same(a, f));
     let is_last = matches!((active.as_ref(), last.as_ref()), (Some(a), Some(l)) if same(a, l));
 
-    if ev.shift_key() && is_first {
-        on_close.run(());
-    } else if !ev.shift_key() && is_last {
+    if (ev.shift_key() && is_first) || (!ev.shift_key() && is_last) {
         on_close.run(());
     }
     // Otherwise, Tab moves between items inside the panel — default behavior.

@@ -22,7 +22,7 @@ impl Default for TextProp {
 
 impl From<&'static str> for TextProp {
     fn from(s: &'static str) -> Self {
-        Self(Signal::stored(s.to_string()))
+        Self(Signal::stored(s.to_owned()))
     }
 }
 

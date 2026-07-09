@@ -20,7 +20,7 @@ impl Default for HsvColor {
 }
 
 /// Output color format for the consumer.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ColorFormat {
     #[default]
     Hex,
@@ -29,7 +29,7 @@ pub enum ColorFormat {
 }
 
 /// Trigger display mode.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum TriggerMode {
     #[default]
     SwatchInput,
@@ -37,7 +37,7 @@ pub enum TriggerMode {
 }
 
 /// Preset color swatch item.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SwatchItem {
     pub value: String,
     pub label: Option<String>,
@@ -77,9 +77,9 @@ pub fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
 
 /// Convert RGB (0–255 each) to HSV (h: 0–360, s: 0–100, v: 0–100).
 pub fn rgb_to_hsv(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
-    let r = r as f64 / 255.0;
-    let g = g as f64 / 255.0;
-    let b = b as f64 / 255.0;
+    let r = f64::from(r) / 255.0;
+    let g = f64::from(g) / 255.0;
+    let b = f64::from(b) / 255.0;
     let max = r.max(g).max(b);
     let min = r.min(g).min(b);
     let delta = max - min;
@@ -148,7 +148,7 @@ impl HsvColor {
             }
             expanded
         } else {
-            hex.to_string()
+            hex.to_owned()
         };
 
         if hex.len() != 6 && hex.len() != 8 {
@@ -159,7 +159,7 @@ impl HsvColor {
         let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
         let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
         let a = if hex.len() == 8 {
-            u8::from_str_radix(&hex[6..8], 16).ok()? as f64 / 255.0 * 100.0
+            f64::from(u8::from_str_radix(&hex[6..8], 16).ok()?) / 255.0 * 100.0
         } else {
             100.0
         };
@@ -184,11 +184,11 @@ impl HsvColor {
             return None;
         }
 
-        let r: u8 = parts[0].trim().parse().ok()?;
-        let g: u8 = parts[1].trim().parse().ok()?;
-        let b: u8 = parts[2].trim().parse().ok()?;
+        let r: u8 = parts.first()?.trim().parse().ok()?;
+        let g: u8 = parts.get(1)?.trim().parse().ok()?;
+        let b: u8 = parts.get(2)?.trim().parse().ok()?;
         let a = if parts.len() == 4 {
-            let a_val: f64 = parts[3].trim().parse().ok()?;
+            let a_val: f64 = parts.get(3)?.trim().parse().ok()?;
             if a_val <= 1.0 { a_val * 100.0 } else { a_val }
         } else {
             100.0
@@ -218,11 +218,11 @@ impl HsvColor {
             return None;
         }
 
-        let h: f64 = parts[0].trim().parse().ok()?;
-        let s_hsl: f64 = parts[1].trim().parse().ok()?;
-        let l: f64 = parts[2].trim().parse().ok()?;
+        let h: f64 = parts.first()?.trim().parse().ok()?;
+        let s_hsl: f64 = parts.get(1)?.trim().parse().ok()?;
+        let l: f64 = parts.get(2)?.trim().parse().ok()?;
         let a = if parts.len() == 4 {
-            let a_val: f64 = parts[3].trim().parse().ok()?;
+            let a_val: f64 = parts.get(3)?.trim().parse().ok()?;
             if a_val <= 1.0 { a_val * 100.0 } else { a_val }
         } else {
             100.0
@@ -237,9 +237,9 @@ impl HsvColor {
         let (r, g, b) = hsv_to_rgb(self.h, self.s, self.v);
         if alpha_enabled && self.a < 100.0 {
             let a = (self.a / 100.0 * 255.0).round() as u8;
-            format!("#{:02X}{:02X}{:02X}{:02X}", r, g, b, a)
+            format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
         } else {
-            format!("#{:02X}{:02X}{:02X}", r, g, b)
+            format!("#{r:02X}{g:02X}{b:02X}")
         }
     }
 
@@ -248,9 +248,9 @@ impl HsvColor {
         let (r, g, b) = hsv_to_rgb(self.h, self.s, self.v);
         if alpha_enabled && self.a < 100.0 {
             let a = (self.a / 100.0 * 10.0).round() / 10.0; // one decimal place
-            format!("rgba({}, {}, {}, {})", r, g, b, a)
+            format!("rgba({r}, {g}, {b}, {a})")
         } else {
-            format!("rgb({}, {}, {})", r, g, b)
+            format!("rgb({r}, {g}, {b})")
         }
     }
 
@@ -262,9 +262,9 @@ impl HsvColor {
         let l = l.round() as i32;
         if alpha_enabled && self.a < 100.0 {
             let a = (self.a / 100.0 * 10.0).round() / 10.0;
-            format!("hsla({}, {}%, {}%, {})", h, s, l, a)
+            format!("hsla({h}, {s}%, {l}%, {a})")
         } else {
-            format!("hsl({}, {}%, {}%)", h, s, l)
+            format!("hsl({h}, {s}%, {l}%)")
         }
     }
 
@@ -289,7 +289,7 @@ impl HsvColor {
     }
 }
 
-/// Parse any supported color string into HsvColor.
+/// Parse any supported color string into `HsvColor`.
 /// Tries hex first, then rgb, then hsl.
 pub fn parse_color_value(value: &str) -> Option<HsvColor> {
     HsvColor::from_hex(value)
@@ -309,7 +309,7 @@ mod tests {
         for hex in colors {
             let hsv = HsvColor::from_hex(hex).unwrap();
             let out = hsv.to_hex(false);
-            assert_eq!(hex, out, "roundtrip failed for {}", hex);
+            assert_eq!(hex, out, "roundtrip failed for {hex}");
         }
     }
 

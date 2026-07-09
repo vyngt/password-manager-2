@@ -83,7 +83,7 @@ pub fn Input(
     // Use the caller's ref when provided; otherwise create our own. Either way the
     // component binds this ref to the native input, so `handle_clear` (search) and
     // any external `focus()`/`select()` operate on the same element.
-    let input_ref = input_ref.unwrap_or_else(NodeRef::<leptos::html::Input>::new);
+    let input_ref = input_ref.unwrap_or_default();
 
     let is_password = input_type == "password";
     let is_search = input_type == "search";
@@ -97,7 +97,7 @@ pub fn Input(
         }
     };
 
-    let has_value = move || value.map(|s| !s.get().is_empty()).unwrap_or(false);
+    let has_value = move || value.is_some_and(|s| !s.get().is_empty());
 
     // Root class
     let root_cls = [
@@ -178,11 +178,13 @@ pub fn Input(
             } else if status != Status::Default {
                 let icon_data = match status {
                     Status::Error => i::FaCircleExclamationSolid,
-                    Status::Success => i::FaCircleCheckSolid,
                     Status::Warning => i::FaTriangleExclamationSolid,
-                    Status::Default => unreachable!(),
+                    Status::Success | Status::Default => i::FaCircleCheckSolid,
                 };
                 Some(
+                    // `Status::Default` is unreachable here (guarded by
+                    // `status != Status::Default` above); it shares the Success icon as a
+                    // benign, non-panicking fallback.
                     view! {
                         <span class="input-status-icon">
                             <Icon icon=icon_data />
@@ -227,10 +229,9 @@ pub fn Input(
                     }
                         .into_any(),
                 )
-            } else if let Some(icon) = trailing_icon {
-                Some(view! { <span class="input-icon">{icon()}</span> }.into_any())
             } else {
-                None
+                trailing_icon
+                    .map(|icon| view! { <span class="input-icon">{icon()}</span> }.into_any())
             }}
         </div>
     }

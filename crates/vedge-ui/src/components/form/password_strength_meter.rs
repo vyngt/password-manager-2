@@ -19,7 +19,7 @@ pub fn PasswordStrengthMeter(
     }
 
     #[cfg(debug_assertions)]
-    if level_labels.with_untracked(|ll| ll.iter().any(|l| l.is_empty())) {
+    if level_labels.with_untracked(|ll| ll.iter().any(std::string::String::is_empty)) {
         web_sys::console::error_1(
             &"PasswordStrengthMeter: all entries in `level_labels` are required for i18n.".into(),
         );
@@ -27,12 +27,12 @@ pub fn PasswordStrengthMeter(
 
     let label_text = move || match score.get() {
         0 => String::new(),
-        n => level_labels.with(|ll| ll[(n as usize - 1).min(3)].clone()),
+        n => level_labels.with(|ll| ll.get((n as usize - 1).min(3)).cloned().unwrap_or_default()),
     };
 
     let aria_valuetext = move || match score.get() {
         0 => String::new(),
-        n => level_labels.with(|ll| ll[(n as usize - 1).min(3)].clone()),
+        n => level_labels.with(|ll| ll.get((n as usize - 1).min(3)).cloned().unwrap_or_default()),
     };
 
     let root_cls = ["strength-meter", class].join(" ");

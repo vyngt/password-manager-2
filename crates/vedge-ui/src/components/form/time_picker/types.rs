@@ -56,8 +56,8 @@ pub fn from_12h(hours_12: u8, is_pm: bool) -> u8 {
 }
 
 pub fn is_before(a: TimeValue, b: TimeValue) -> bool {
-    let lhs = (a.hours as u16) * 60 + (a.minutes as u16);
-    let rhs = (b.hours as u16) * 60 + (b.minutes as u16);
+    let lhs = u16::from(a.hours) * 60 + u16::from(a.minutes);
+    let rhs = u16::from(b.hours) * 60 + u16::from(b.minutes);
     lhs < rhs
 }
 
@@ -91,9 +91,9 @@ pub fn h12_hours_second_digit(first: u8, d: u8) -> u8 {
     let combined = first * 10 + d;
     if (1..=12).contains(&combined) {
         combined
-    } else if combined == 0 {
-        d
     } else {
+        // Second digit forms no valid 1–12 hour (including the leading-zero case) →
+        // treat the digit as the hour on its own.
         d
     }
 }

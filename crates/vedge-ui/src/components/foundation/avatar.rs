@@ -101,10 +101,10 @@ pub fn Avatar(
             </button>
         })
     } else {
-        let label = if !name.is_empty() {
-            name
-        } else {
+        let label = if name.is_empty() {
             String::from("User avatar")
+        } else {
+            name
         };
         Either::Right(view! {
             <span class=root_cls role="img" aria-label=label>

@@ -25,7 +25,7 @@ pub fn TimePicker(
 ) -> impl IntoView {
     let internal = RwSignal::new(default_value);
     let effective: Memo<Option<TimeValue>> =
-        Memo::new(move |_| value.map(|s| s.get()).unwrap_or_else(|| internal.get()));
+        Memo::new(move |_| value.map_or_else(|| internal.get(), |s| s.get()));
     let active = RwSignal::<Option<Segment>>::new(None);
     let pending = RwSignal::<Option<(Segment, u8)>>::new(None);
 
@@ -69,18 +69,17 @@ pub fn TimePicker(
                     let h24 = match format {
                         TimeFormat::H24 => d,
                         TimeFormat::H12 => {
-                            let (_, is_pm) =
-                                current.map(|v| to_12h(v.hours)).unwrap_or((12, false));
+                            let (_, is_pm) = current.map_or((12, false), |v| to_12h(v.hours));
                             from_12h(if d == 0 { 12 } else { d }, is_pm)
                         }
                     };
                     Some(TimeValue {
                         hours: h24,
-                        minutes: current.map(|v| v.minutes).unwrap_or(0),
+                        minutes: current.map_or(0, |v| v.minutes),
                     })
                 }
                 Segment::Minutes => Some(TimeValue {
-                    hours: current.map(|v| v.hours).unwrap_or(0),
+                    hours: current.map_or(0, |v| v.hours),
                     minutes: d,
                 }),
                 Segment::AmPm => current,
@@ -98,7 +97,7 @@ pub fn TimePicker(
 
     let set_hours_24 = move |new_h24: u8| {
         let current = effective.get_untracked();
-        let minutes = current.map(|v| v.minutes).unwrap_or(0);
+        let minutes = current.map_or(0, |v| v.minutes);
         emit(Some(TimeValue {
             hours: new_h24.min(23),
             minutes,
@@ -107,7 +106,7 @@ pub fn TimePicker(
 
     let set_minutes = move |new_m: u8| {
         let current = effective.get_untracked();
-        let hours = current.map(|v| v.hours).unwrap_or(0);
+        let hours = current.map_or(0, |v| v.hours);
         emit(Some(TimeValue {
             hours,
             minutes: new_m.min(59),
@@ -134,7 +133,7 @@ pub fn TimePicker(
                 ev.prevent_default();
                 pending.set(None);
                 let current = effective.get_untracked();
-                let h = current.map(|v| v.hours).unwrap_or(0);
+                let h = current.map_or(0, |v| v.hours);
                 let new_h = (h + 1) % 24;
                 set_hours_24(new_h);
             }
@@ -142,7 +141,7 @@ pub fn TimePicker(
                 ev.prevent_default();
                 pending.set(None);
                 let current = effective.get_untracked();
-                let h = current.map(|v| v.hours).unwrap_or(0);
+                let h = current.map_or(0, |v| v.hours);
                 let new_h = if h == 0 { 23 } else { h - 1 };
                 set_hours_24(new_h);
             }
@@ -150,12 +149,7 @@ pub fn TimePicker(
                 ev.prevent_default();
                 clear_segment(Segment::Hours);
             }
-            k if k.len() == 1
-                && k.chars()
-                    .next()
-                    .map(|c| c.is_ascii_digit())
-                    .unwrap_or(false) =>
-            {
+            k if k.len() == 1 && k.chars().next().is_some_and(|c| c.is_ascii_digit()) => {
                 ev.prevent_default();
                 let d = k.parse::<u8>().unwrap_or(0);
                 let pend = pending.get_untracked();
@@ -180,7 +174,7 @@ pub fn TimePicker(
                         pending.set(None);
                         let h12 = h12_hours_second_digit(first, d);
                         let current = effective.get_untracked();
-                        let is_pm = current.map(|v| to_12h(v.hours).1).unwrap_or(false);
+                        let is_pm = current.is_some_and(|v| to_12h(v.hours).1);
                         let h24 = from_12h(if h12 == 0 { 12 } else { h12 }, is_pm);
                         set_hours_24(h24);
                         focus_segment(Segment::Minutes);
@@ -192,7 +186,7 @@ pub fn TimePicker(
                         DigitOutcome::Commit(v) => {
                             pending.set(None);
                             let current = effective.get_untracked();
-                            let is_pm = current.map(|v| to_12h(v.hours).1).unwrap_or(false);
+                            let is_pm = current.is_some_and(|v| to_12h(v.hours).1);
                             set_hours_24(from_12h(v, is_pm));
                             focus_segment(Segment::Minutes);
                         }
@@ -211,15 +205,15 @@ pub fn TimePicker(
                 ev.prevent_default();
                 pending.set(None);
                 let current = effective.get_untracked();
-                let m = current.map(|v| v.minutes).unwrap_or(0);
-                let new_m = ((m as u16 + step as u16) % 60) as u8;
+                let m = current.map_or(0, |v| v.minutes);
+                let new_m = ((u16::from(m) + u16::from(step)) % 60) as u8;
                 set_minutes(new_m);
             }
             "ArrowDown" => {
                 ev.prevent_default();
                 pending.set(None);
                 let current = effective.get_untracked();
-                let m = current.map(|v| v.minutes).unwrap_or(0);
+                let m = current.map_or(0, |v| v.minutes);
                 let new_m = if m >= step { m - step } else { 60 - (step - m) };
                 set_minutes(new_m.min(59));
             }
@@ -227,12 +221,7 @@ pub fn TimePicker(
                 ev.prevent_default();
                 clear_segment(Segment::Minutes);
             }
-            k if k.len() == 1
-                && k.chars()
-                    .next()
-                    .map(|c| c.is_ascii_digit())
-                    .unwrap_or(false) =>
-            {
+            k if k.len() == 1 && k.chars().next().is_some_and(|c| c.is_ascii_digit()) => {
                 ev.prevent_default();
                 let d = k.parse::<u8>().unwrap_or(0);
                 let pend = pending.get_untracked();
@@ -270,7 +259,7 @@ pub fn TimePicker(
             "ArrowUp" | "ArrowDown" => {
                 ev.prevent_default();
                 let current = effective.get_untracked();
-                let is_pm = current.map(|v| to_12h(v.hours).1).unwrap_or(false);
+                let is_pm = current.is_some_and(|v| to_12h(v.hours).1);
                 set_ampm(!is_pm);
             }
             "a" | "A" => {
@@ -299,10 +288,10 @@ pub fn TimePicker(
                 TimeFormat::H24 => format!("{:02}", v.hours),
                 TimeFormat::H12 => {
                     let (h12, _) = to_12h(v.hours);
-                    format!("{:02}", h12)
+                    format!("{h12:02}")
                 }
             },
-            None => "--".to_string(),
+            None => "--".to_owned(),
         }
     };
 
@@ -312,23 +301,23 @@ pub fn TimePicker(
         }
         match effective.get() {
             Some(v) => format!("{:02}", v.minutes),
-            None => "--".to_string(),
+            None => "--".to_owned(),
         }
     };
 
     let ampm_display = move || match effective.get() {
         Some(v) => {
             let (_, is_pm) = to_12h(v.hours);
-            if is_pm { "PM" } else { "AM" }.to_string()
+            if is_pm { "PM" } else { "AM" }.to_owned()
         }
-        None => "--".to_string(),
+        None => "--".to_owned(),
     };
 
     // ---- ARIA helpers ----
     let hours_valuenow = move || match effective.get() {
         Some(v) => match format {
-            TimeFormat::H24 => v.hours as i32,
-            TimeFormat::H12 => to_12h(v.hours).0 as i32,
+            TimeFormat::H24 => i32::from(v.hours),
+            TimeFormat::H12 => i32::from(to_12h(v.hours).0),
         },
         None => 0,
     };
@@ -338,40 +327,34 @@ pub fn TimePicker(
             TimeFormat::H24 => format!("{} hours", v.hours),
             TimeFormat::H12 => format!("{} hours", to_12h(v.hours).0),
         },
-        None => "unset".to_string(),
+        None => "unset".to_owned(),
     };
 
-    let minutes_valuenow = move || effective.get().map(|v| v.minutes as i32).unwrap_or(0);
+    let minutes_valuenow = move || effective.get().map_or(0, |v| i32::from(v.minutes));
 
     let minutes_valuetext = move || match effective.get() {
         Some(v) => format!("{} minutes", v.minutes),
-        None => "unset".to_string(),
+        None => "unset".to_owned(),
     };
 
     let ampm_valuenow = move || match effective.get() {
-        Some(v) => {
-            if to_12h(v.hours).1 {
-                1
-            } else {
-                0
-            }
-        }
+        Some(v) => i32::from(to_12h(v.hours).1),
         None => 0,
     };
 
     let ampm_valuetext = move || match effective.get() {
         Some(v) => {
             let (_, is_pm) = to_12h(v.hours);
-            if is_pm { "PM" } else { "AM" }.to_string()
+            if is_pm { "PM" } else { "AM" }.to_owned()
         }
-        None => "unset".to_string(),
+        None => "unset".to_owned(),
     };
 
     // ---- Out-of-range visual ----
     let is_out_of_range = Memo::new(move |_| match effective.get() {
         Some(v) => {
-            let below = min_time.map(|m| is_before(v, m)).unwrap_or(false);
-            let above = max_time.map(|m| is_before(m, v)).unwrap_or(false);
+            let below = min_time.is_some_and(|m| is_before(v, m));
+            let above = max_time.is_some_and(|m| is_before(m, v));
             below || above
         }
         None => false,
