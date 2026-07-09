@@ -142,8 +142,8 @@ async fn daily_loop() -> Result<()> {
         })
         .context("a prior-version snapshot should exist after the edit")?;
 
-    // Open the history panel (UI) and confirm the prior version renders.
-    open_entry(&session, &github_id).await?;
+    // Open the history panel from the (still-open) detail drawer and confirm the
+    // prior version renders. Don't re-click the row — it would toggle the drawer.
     session
         .click_aria(ui::VERSION_HISTORY)
         .await
