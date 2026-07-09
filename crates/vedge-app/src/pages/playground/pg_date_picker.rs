@@ -1,4 +1,4 @@
-use crate::i18n::*;
+use crate::i18n::{t_string, use_i18n};
 use chrono::{Datelike, Duration, NaiveDate, Weekday};
 use leptos::prelude::*;
 use vedge_ui::components::form::date_picker::{
@@ -23,11 +23,15 @@ fn next_30_days() -> (NaiveDate, NaiveDate) {
 }
 
 fn weekends_in_month(anchor: NaiveDate) -> Vec<NaiveDate> {
-    let first = NaiveDate::from_ymd_opt(anchor.year(), anchor.month(), 1).unwrap();
+    // month is 1..=12 by construction, so these are unreachable; `NaiveDate::MIN`
+    // is a total fallback that avoids a panic in this demo helper.
+    let first = NaiveDate::from_ymd_opt(anchor.year(), anchor.month(), 1).unwrap_or(NaiveDate::MIN);
     let last_day = if anchor.month() == 12 {
-        NaiveDate::from_ymd_opt(anchor.year() + 1, 1, 1).unwrap() - Duration::days(1)
+        NaiveDate::from_ymd_opt(anchor.year() + 1, 1, 1).unwrap_or(NaiveDate::MIN)
+            - Duration::days(1)
     } else {
-        NaiveDate::from_ymd_opt(anchor.year(), anchor.month() + 1, 1).unwrap() - Duration::days(1)
+        NaiveDate::from_ymd_opt(anchor.year(), anchor.month() + 1, 1).unwrap_or(NaiveDate::MIN)
+            - Duration::days(1)
     };
     let mut out = Vec::new();
     let mut d = first;
@@ -50,14 +54,14 @@ pub fn DatePickerPage() -> impl IntoView {
     let range_val = RwSignal::new(DatePickerValue::Range(DateRange::default()));
     let month_val = RwSignal::new(DatePickerValue::Month(None));
 
-    let locale_sig = RwSignal::new("en-US".to_string());
+    let locale_sig = RwSignal::new("en-US".to_owned());
 
     let (min_date, max_date) = next_30_days();
     let weekends = Signal::stored(weekends_in_month(today()));
 
     let single_readout = move || match single_val.get() {
         DatePickerValue::Single(Some(d)) => format_date(d),
-        _ => "(none)".to_string(),
+        _ => "(none)".to_owned(),
     };
     let range_readout = move || match range_val.get() {
         DatePickerValue::Range(DateRange {
@@ -72,25 +76,25 @@ pub fn DatePickerPage() -> impl IntoView {
         }) => {
             format!("{} → …", format_date(s))
         }
-        _ => "(none)".to_string(),
+        _ => "(none)".to_owned(),
     };
     let month_readout = move || match month_val.get() {
         DatePickerValue::Month(Some(YearMonth { year, month })) => format!("{year}-{month:02}"),
-        _ => "(none)".to_string(),
+        _ => "(none)".to_owned(),
     };
 
     let loc_sig = Signal::derive(move || locale_sig.get());
 
     let set_locale =
-        move |code: &'static str| move |_: web_sys::MouseEvent| locale_sig.set(code.to_string());
+        move |code: &'static str| move |_: web_sys::MouseEvent| locale_sig.set(code.to_owned());
 
     let locale_btn_cls = move |code: &'static str| {
         Signal::derive(move || {
             let active = locale_sig.get() == code;
             if active {
-                "px-3 py-1 text-xs font-medium rounded border border-primary bg-primary text-primary-foreground".to_string()
+                "px-3 py-1 text-xs font-medium rounded border border-primary bg-primary text-primary-foreground".to_owned()
             } else {
-                "px-3 py-1 text-xs font-medium rounded border border-border bg-background text-text-primary hover:bg-surface-2 transition-colors".to_string()
+                "px-3 py-1 text-xs font-medium rounded border border-border bg-background text-text-primary hover:bg-surface-2 transition-colors".to_owned()
             }
         })
     };
@@ -98,44 +102,44 @@ pub fn DatePickerPage() -> impl IntoView {
     view! {
         <div class="p-6 max-w-4xl mx-auto space-y-6">
             <h1 class="text-xl font-semibold text-text-primary">
-                {move || t_string!(i18n, date_picker.heading).to_string()}
+                {move || t_string!(i18n, date_picker.heading).to_owned()}
             </h1>
 
             <Section title="Variants">
                 <div class="grid grid-cols-3 gap-3">
                     <div class="space-y-1">
                         <Label html_for="v-single">
-                            {move || t_string!(i18n, date_picker.single_label).to_string()}
+                            {move || t_string!(i18n, date_picker.single_label).to_owned()}
                         </Label>
                         <DatePicker
                             id="v-single"
                             variant=DatePickerVariant::Single
                             placeholder=Signal::derive(move || {
-                                t_string!(i18n, date_picker.select_date).to_string()
+                                t_string!(i18n, date_picker.select_date).to_owned()
                             })
                         />
                     </div>
                     <div class="space-y-1">
                         <Label html_for="v-range">
-                            {move || t_string!(i18n, date_picker.range_label).to_string()}
+                            {move || t_string!(i18n, date_picker.range_label).to_owned()}
                         </Label>
                         <DatePicker
                             id="v-range"
                             variant=DatePickerVariant::Range
                             placeholder=Signal::derive(move || {
-                                t_string!(i18n, date_picker.select_range).to_string()
+                                t_string!(i18n, date_picker.select_range).to_owned()
                             })
                         />
                     </div>
                     <div class="space-y-1">
                         <Label html_for="v-month">
-                            {move || t_string!(i18n, date_picker.month_label).to_string()}
+                            {move || t_string!(i18n, date_picker.month_label).to_owned()}
                         </Label>
                         <DatePicker
                             id="v-month"
                             variant=DatePickerVariant::Month
                             placeholder=Signal::derive(move || {
-                                t_string!(i18n, date_picker.select_month).to_string()
+                                t_string!(i18n, date_picker.select_month).to_owned()
                             })
                         />
                     </div>
@@ -147,34 +151,34 @@ pub fn DatePickerPage() -> impl IntoView {
                     <DatePicker
                         id="size-sm"
                         size=Size::Sm
-                        placeholder=Signal::stored("Small".to_string())
+                        placeholder=Signal::stored("Small".to_owned())
                     />
-                    <DatePicker id="size-md" placeholder=Signal::stored("Medium".to_string()) />
+                    <DatePicker id="size-md" placeholder=Signal::stored("Medium".to_owned()) />
                     <DatePicker
                         id="size-lg"
                         size=Size::Lg
-                        placeholder=Signal::stored("Large".to_string())
+                        placeholder=Signal::stored("Large".to_owned())
                     />
                 </div>
             </Section>
 
             <Section title="Status">
                 <div class="space-y-3 max-w-md">
-                    <DatePicker id="s-default" placeholder=Signal::stored("Default".to_string()) />
+                    <DatePicker id="s-default" placeholder=Signal::stored("Default".to_owned()) />
                     <DatePicker
                         id="s-error"
                         status=Status::Error
-                        placeholder=Signal::stored("Error".to_string())
+                        placeholder=Signal::stored("Error".to_owned())
                     />
                     <DatePicker
                         id="s-success"
                         status=Status::Success
-                        placeholder=Signal::stored("Success".to_string())
+                        placeholder=Signal::stored("Success".to_owned())
                     />
                     <DatePicker
                         id="s-warning"
                         status=Status::Warning
-                        placeholder=Signal::stored("Warning".to_string())
+                        placeholder=Signal::stored("Warning".to_owned())
                     />
                 </div>
             </Section>
@@ -193,13 +197,13 @@ pub fn DatePickerPage() -> impl IntoView {
                 <div class="space-y-4 max-w-md">
                     <div class="space-y-1">
                         <Label html_for="minmax">
-                            {move || t_string!(i18n, date_picker.min_max_note).to_string()}
+                            {move || t_string!(i18n, date_picker.min_max_note).to_owned()}
                         </Label>
                         <DatePicker id="minmax" min_date=min_date max_date=max_date />
                     </div>
                     <div class="space-y-1">
                         <Label html_for="disabled-dates">
-                            {move || t_string!(i18n, date_picker.disabled_dates_note).to_string()}
+                            {move || t_string!(i18n, date_picker.disabled_dates_note).to_owned()}
                         </Label>
                         <DatePicker id="disabled-dates" disabled_dates=weekends />
                     </div>
@@ -217,7 +221,7 @@ pub fn DatePickerPage() -> impl IntoView {
                             on_change=Callback::new(move |v: DatePickerValue| single_val.set(v))
                         />
                         <p class="text-xs text-text-tertiary">
-                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "
+                            {move || t_string!(i18n, date_picker.value_prefix).to_owned()}" "
                             {single_readout}
                         </p>
                     </div>
@@ -230,7 +234,7 @@ pub fn DatePickerPage() -> impl IntoView {
                             on_change=Callback::new(move |v: DatePickerValue| range_val.set(v))
                         />
                         <p class="text-xs text-text-tertiary">
-                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "
+                            {move || t_string!(i18n, date_picker.value_prefix).to_owned()}" "
                             {range_readout}
                         </p>
                     </div>
@@ -243,7 +247,7 @@ pub fn DatePickerPage() -> impl IntoView {
                             on_change=Callback::new(move |v: DatePickerValue| month_val.set(v))
                         />
                         <p class="text-xs text-text-tertiary">
-                            {move || t_string!(i18n, date_picker.value_prefix).to_string()}" "
+                            {move || t_string!(i18n, date_picker.value_prefix).to_owned()}" "
                             {month_readout}
                         </p>
                     </div>

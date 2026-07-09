@@ -6,7 +6,7 @@
 //! `on_select`. Keyboard model mirrors the 2.3 command palette.
 
 use crate::features::vault::vault_launch::Selected;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::either::Either;
 use leptos::prelude::*;
@@ -19,7 +19,7 @@ use wasm_bindgen::JsCast;
 
 /// Short display of an RFC3339 timestamp: just the `YYYY-MM-DD` date part.
 fn short_date(rfc3339: &str) -> String {
-    rfc3339.get(..10).unwrap_or(rfc3339).to_string()
+    rfc3339.get(..10).unwrap_or(rfc3339).to_owned()
 }
 
 /// Scroll the option at `idx` into view within the list (keyboard nav).
@@ -126,10 +126,10 @@ pub fn VaultList(
                             .into_any()
                     })
                     aria_label=Signal::derive(move || {
-                        t_string!(i18n, unlock.search_vaults).to_string()
+                        t_string!(i18n, unlock.search_vaults).to_owned()
                     })
                     placeholder=Signal::derive(move || {
-                        t_string!(i18n, unlock.search_vaults).to_string()
+                        t_string!(i18n, unlock.search_vaults).to_owned()
                     })
                     value=Signal::derive(move || query.get())
                     on_input=Callback::new(move |v: String| {
@@ -178,13 +178,13 @@ pub fn VaultList(
                             let click_name = name.clone();
                             let editing_check_id = id.clone();
                             let disp_name = name.clone();
-                            let disp_path = path.clone();
+                            let disp_path = path;
                             let start_id = id.clone();
-                            let start_name = name.clone();
+                            let start_name = name;
                             let commit_id_kd = id.clone();
                             let commit_id_blur = id.clone();
                             let loc_id = id.clone();
-                            let rem_id = id.clone();
+                            let rem_id = id;
 
                             // `Copy` Memo so the flag can be read in several
                             // view positions without moving a captured String.
@@ -246,24 +246,24 @@ pub fn VaultList(
                                                             input_ref=rename_ref
                                                             class="w-full"
                                                             aria_label=Signal::derive(move || {
-                                                                t_string!(i18n, unlock.vault_rename).to_string()
+                                                                t_string!(i18n, unlock.vault_rename).to_owned()
                                                             })
                                                             placeholder=Signal::derive(move || {
-                                                                t_string!(i18n, unlock.vault_rename_placeholder).to_string()
+                                                                t_string!(i18n, unlock.vault_rename_placeholder).to_owned()
                                                             })
                                                             value=Signal::derive(move || rename_draft.get())
                                                             on_input=Callback::new(move |v: String| {
-                                                                rename_draft.set(v)
+                                                                rename_draft.set(v);
                                                             })
                                                             on:click=move |ev: web_sys::MouseEvent| {
-                                                                ev.stop_propagation()
+                                                                ev.stop_propagation();
                                                             }
                                                             on:keydown=move |ev: web_sys::KeyboardEvent| {
                                                                 match ev.key().as_str() {
                                                                     "Enter" => {
                                                                         ev.prevent_default();
                                                                         editing_id.set(None);
-                                                                        let t = rename_draft.get().trim().to_string();
+                                                                        let t = rename_draft.get().trim().to_owned();
                                                                         if !t.is_empty() {
                                                                             on_rename_commit.run((kd_id.clone(), t));
                                                                         }
@@ -278,7 +278,7 @@ pub fn VaultList(
                                                             on:focusout=move |_: web_sys::FocusEvent| {
                                                                 if editing_id.get().as_deref() == Some(blur_id.as_str()) {
                                                                     editing_id.set(None);
-                                                                    let t = rename_draft.get().trim().to_string();
+                                                                    let t = rename_draft.get().trim().to_owned();
                                                                     if !t.is_empty() {
                                                                         on_rename_commit.run((blur_id.clone(), t));
                                                                     }
@@ -309,8 +309,8 @@ pub fn VaultList(
                                     </div>
                                     {if exists {
                                         let recency_view = recency
-                                            .clone()
                                             .map(|d| {
+
                                                 view! {
                                                     <span class="text-[11px] text-foreground/40">{d}</span>
                                                 }
@@ -324,7 +324,7 @@ pub fn VaultList(
                                                         size=Size::Xs
                                                         class="text-foreground/40 opacity-0 transition-opacity group-hover:opacity-100"
                                                         aria_label=Signal::derive(move || {
-                                                            t_string!(i18n, unlock.vault_rename).to_string()
+                                                            t_string!(i18n, unlock.vault_rename).to_owned()
                                                         })
                                                         on:click=move |ev: web_sys::MouseEvent| {
                                                             ev.stop_propagation();

@@ -4,7 +4,7 @@
 //! update_entry` round-trip (see `vault.rs::on_customize`).
 
 use super::folder_tree::{FOLDER_ICONS, folder_icon_from_key};
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use vedge_ipc::IndexEntryDto;
@@ -36,7 +36,7 @@ pub fn FolderCustomize(
     Effect::new(move |_| {
         if let Some(e) = target.get() {
             color.set(e.color.clone());
-            icon.set(e.icon.clone());
+            icon.set(e.icon);
         }
     });
 
@@ -65,7 +65,7 @@ pub fn FolderCustomize(
             open=Signal::derive(move || target.get().is_some())
             on_close=close
             size=DialogSize::Sm
-            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>{move || t!(i18n, vault.folder_customize_title)}</DialogTitle>
@@ -148,7 +148,7 @@ pub fn FolderCustomize(
                                                 if icon.get().as_deref() == Some(sel_cls.as_str()) {
                                                     format!("{base} border-primary text-primary bg-primary/10")
                                                 } else {
-                                                    base.to_string()
+                                                    base.to_owned()
                                                 }
                                             })
                                             on:click=move |_: web_sys::MouseEvent| {

@@ -4,7 +4,7 @@
 //! Shows a placeholder until a vault is chosen from the list.
 
 use crate::features::vault::vault_launch::Selected;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::either::Either;
 use leptos::prelude::*;
@@ -55,7 +55,7 @@ pub fn VaultUnlockPanel(
                                 {sel.display_name.clone()}
                             </div>
                             <div class="mb-5 max-w-full truncate text-xs font-jetbrains-mono text-foreground/40">
-                                {sel.path.clone()}
+                                {sel.path}
                             </div>
                             <div class="w-full max-w-[280px]">
                                 {move || {
@@ -71,7 +71,7 @@ pub fn VaultUnlockPanel(
                                                         type="button"
                                                         class="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-primary text-3xl transition-colors hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         aria-label=move || {
-                                                            t_string!(i18n, unlock.biometric_unlock_cta).to_string()
+                                                            t_string!(i18n, unlock.biometric_unlock_cta).to_owned()
                                                         }
                                                         disabled=move || unlocking.get()
                                                         on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
@@ -89,7 +89,7 @@ pub fn VaultUnlockPanel(
                                                     <Button
                                                         variant=Variant::Link
                                                         on:click=move |_: web_sys::MouseEvent| {
-                                                            on_use_password.run(())
+                                                            on_use_password.run(());
                                                         }
                                                     >
                                                         {move || t!(i18n, unlock.use_master_password)}
@@ -113,15 +113,15 @@ pub fn VaultUnlockPanel(
                                                         input_type="password"
                                                         size=Size::Lg
                                                         placeholder=Signal::derive(move || {
-                                                            t_string!(i18n, unlock.master_password).to_string()
+                                                            t_string!(i18n, unlock.master_password).to_owned()
                                                         })
                                                         value=Signal::derive(move || pw.get())
                                                         on_input=Callback::new(move |v: String| pw.set(v))
                                                         reveal_label=Signal::derive(move || {
-                                                            t_string!(i18n, onboarding.show_password).to_string()
+                                                            t_string!(i18n, onboarding.show_password).to_owned()
                                                         })
                                                         hide_label=Signal::derive(move || {
-                                                            t_string!(i18n, onboarding.hide_password).to_string()
+                                                            t_string!(i18n, onboarding.hide_password).to_owned()
                                                         })
                                                     />
                                                     {move || {

@@ -99,7 +99,7 @@ fn InteractiveSection() -> impl IntoView {
                                     if *c > 0 {
                                         *c -= 1;
                                     }
-                                })
+                                });
                         }
                     >
                         "Back"
@@ -111,12 +111,14 @@ fn InteractiveSection() -> impl IntoView {
                     >
                         = max
                         on:click=move |_|
-                        {current
-                            .update(|c| {
-                                if *c < max {
-                                    *c += 1;
-                                }
-                            })}
+                        {
+                            current
+                                .update(|c| {
+                                    if *c < max {
+                                        *c += 1;
+                                    }
+                                });
+                        }
                         >
                         "Next"
                     </button>

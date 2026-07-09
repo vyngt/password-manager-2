@@ -1,4 +1,4 @@
-use crate::i18n::*;
+use crate::i18n::{t_string, use_i18n};
 use leptos::prelude::*;
 use vedge_ui::components::Input;
 use vedge_ui::components::form::label::Label;
@@ -9,13 +9,13 @@ use super::common::Section;
 #[component]
 pub fn PasswordStrengthMeterPage() -> impl IntoView {
     let i18n = use_i18n();
-    let sl = Signal::derive(move || t_string!(i18n, playground.password_strength).to_string());
+    let sl = Signal::derive(move || t_string!(i18n, playground.password_strength).to_owned());
     let ll = Signal::derive(move || {
         [
-            t_string!(i18n, playground.strength_weak).to_string(),
-            t_string!(i18n, playground.strength_fair).to_string(),
-            t_string!(i18n, playground.strength_strong).to_string(),
-            t_string!(i18n, playground.strength_very_strong).to_string(),
+            t_string!(i18n, playground.strength_weak).to_owned(),
+            t_string!(i18n, playground.strength_fair).to_owned(),
+            t_string!(i18n, playground.strength_strong).to_owned(),
+            t_string!(i18n, playground.strength_very_strong).to_owned(),
         ]
     });
     let (strength_pw, set_strength_pw) = signal(String::new());
@@ -86,14 +86,14 @@ pub fn PasswordStrengthMeterPage() -> impl IntoView {
                         <Input
                             id="strength-pw"
                             input_type="password"
-                            placeholder=Signal::stored("Type to see strength".to_string())
+                            placeholder=Signal::stored("Type to see strength".to_owned())
                             value=Signal::derive(move || strength_pw.get())
                             on_input=Callback::new(move |v: String| set_strength_pw.set(v))
                             reveal_label=Signal::derive(move || {
-                                t_string!(i18n, playground.show_password).to_string()
+                                t_string!(i18n, playground.show_password).to_owned()
                             })
                             hide_label=Signal::derive(move || {
-                                t_string!(i18n, playground.hide_password).to_string()
+                                t_string!(i18n, playground.hide_password).to_owned()
                             })
                         />
                     </div>

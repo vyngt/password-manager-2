@@ -47,8 +47,7 @@ pub fn Slider(
     let internal = RwSignal::new(default_value.clamp(min, max));
     let current = Memo::new(move |_| {
         value
-            .map(|s| s.get())
-            .unwrap_or_else(|| internal.get())
+            .map_or_else(|| internal.get(), |s| s.get())
             .clamp(min, max)
     });
 
@@ -99,7 +98,7 @@ pub fn Slider(
             let _ = el.set_pointer_capture(ev.pointer_id());
         }
         dragging.set(true);
-        let raw = value_from_pointer_x(ev.client_x() as f64);
+        let raw = value_from_pointer_x(f64::from(ev.client_x()));
         commit(raw, false);
     };
 
@@ -107,7 +106,7 @@ pub fn Slider(
         if !dragging.get_untracked() {
             return;
         }
-        let raw = value_from_pointer_x(ev.client_x() as f64);
+        let raw = value_from_pointer_x(f64::from(ev.client_x()));
         commit(raw, false);
     };
 
@@ -119,7 +118,7 @@ pub fn Slider(
         if let Some(el) = track_ref.get() {
             let _ = el.release_pointer_capture(ev.pointer_id());
         }
-        let raw = value_from_pointer_x(ev.client_x() as f64);
+        let raw = value_from_pointer_x(f64::from(ev.client_x()));
         commit(raw, true);
     };
 

@@ -44,7 +44,11 @@ use super::pg_tooltip::TooltipPage;
 use super::pg_tooltip_icon_button::TooltipIconButtonPage;
 use super::theme::ThemePage;
 use leptos::prelude::*;
-use leptos_router::{MatchNestedRoutes, components::*, path};
+use leptos_router::{
+    MatchNestedRoutes,
+    components::{ParentRoute, Route},
+    path,
+};
 
 #[component(transparent)]
 pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {

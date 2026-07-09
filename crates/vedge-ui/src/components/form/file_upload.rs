@@ -19,14 +19,14 @@ use web_sys::{DragEvent, Event, HtmlInputElement};
 // Public types
 // -------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum FileUploadVariant {
     #[default]
     Single,
     Multiple,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum FileStatus {
     #[default]
     Idle,
@@ -63,7 +63,7 @@ pub enum FileChangeEvent {
     Cancelled { id: String },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValidationReason {
     Type,
     Size,
@@ -107,7 +107,7 @@ fn matches_accept(accept: &str, mime: &str, name: &str) -> bool {
         }
         let lower_pat = pat.to_ascii_lowercase();
         if let Some(prefix) = lower_pat.strip_suffix("/*") {
-            if !lower_mime.is_empty() && lower_mime.starts_with(&format!("{}/", prefix)) {
+            if !lower_mime.is_empty() && lower_mime.starts_with(&format!("{prefix}/")) {
                 return true;
             }
         } else if lower_pat.starts_with('.') {
@@ -138,7 +138,7 @@ fn matches_accept_mime_only(accept: &str, mime: &str) -> bool {
         }
         let lower_pat = pat.to_ascii_lowercase();
         if let Some(prefix) = lower_pat.strip_suffix("/*") {
-            if !lower_mime.is_empty() && lower_mime.starts_with(&format!("{}/", prefix)) {
+            if !lower_mime.is_empty() && lower_mime.starts_with(&format!("{prefix}/")) {
                 return true;
             }
         } else if lower_pat.starts_with('.') {
@@ -150,7 +150,7 @@ fn matches_accept_mime_only(accept: &str, mime: &str) -> bool {
     has_ext_rule
 }
 
-fn files_from_filelist(list: web_sys::FileList) -> Vec<web_sys::File> {
+fn files_from_filelist(list: &web_sys::FileList) -> Vec<web_sys::File> {
     let len = list.length();
     let mut out = Vec::with_capacity(len as usize);
     for idx in 0..len {
@@ -173,7 +173,7 @@ fn auto_hint(accept: &str, max_size: Option<u64>, up_to: &str) -> String {
     let mut parts: Vec<String> = Vec::new();
     let trimmed = accept.trim();
     if !trimmed.is_empty() && trimmed != "*" && trimmed != "*/*" {
-        parts.push(trimmed.to_string());
+        parts.push(trimmed.to_owned());
     }
     if let Some(m) = max_size {
         parts.push(format!("{} {}", up_to, format_bytes(m)));
@@ -235,8 +235,7 @@ pub fn FileUpload(
 
     let effective_len = move || effective_items().len() as u32;
 
-    let is_max_reached =
-        move || is_multiple && max_files.map(|m| effective_len() >= m).unwrap_or(false);
+    let is_max_reached = move || is_multiple && max_files.is_some_and(|m| effective_len() >= m);
 
     // Compact zone = single mode with 1 file present
     let is_compact = move || variant == FileUploadVariant::Single && !effective_items().is_empty();
@@ -261,7 +260,7 @@ pub fn FileUpload(
             Some(1)
         };
 
-        for f in raw.into_iter() {
+        for f in raw {
             // Type check
             if !matches_accept(accept, &f.type_(), &f.name()) {
                 emit_validation_error(f, ValidationReason::Type);
@@ -301,7 +300,11 @@ pub fn FileUpload(
         }
 
         let announce = if accepted.len() == 1 {
-            format!("{} {}", accepted[0].name(), text_or(added_message, "added"))
+            let name = accepted
+                .first()
+                .map(web_sys::File::name)
+                .unwrap_or_default();
+            format!("{} {}", name, text_or(added_message, "added"))
         } else {
             format!(
                 "{} {}",
@@ -329,18 +332,21 @@ pub fn FileUpload(
     // ---------- Input change handler ----------
     let handle_input_change = move |ev: Targeted<Event, HtmlInputElement>| {
         let input = ev.target();
-        let files = input.files().map(files_from_filelist).unwrap_or_default();
+        let files = input
+            .files()
+            .map(|l| files_from_filelist(&l))
+            .unwrap_or_default();
         commit_files(files);
         // Reset input value so selecting the same file again still fires change
         input.set_value("");
     };
 
     // ---------- Drag handlers ----------
-    let flash_ver = invalid_flash_ver.clone();
+    let flash_ver = invalid_flash_ver;
     let trigger_invalid_flash = move || {
         let ver = flash_ver.fetch_add(1, Ordering::Relaxed) + 1;
         drag_state.set(DragState::Invalid);
-        let fv = flash_ver.clone();
+        let fv = Arc::clone(&flash_ver);
         set_timeout(
             move || {
                 if fv.load(Ordering::Relaxed) == ver {
@@ -413,7 +419,7 @@ pub fn FileUpload(
         let raw_files = ev
             .data_transfer()
             .and_then(|dt| dt.files())
-            .map(files_from_filelist)
+            .map(|l| files_from_filelist(&l))
             .unwrap_or_default();
 
         // Detect all-invalid-by-type case for the 600ms flash
@@ -451,7 +457,7 @@ pub fn FileUpload(
     let handle_remove = move |item: FileItem| {
         let was_uploading = item.status == FileStatus::Uploading;
         let filename = item.file.name();
-        let id = item.id.clone();
+        let id = item.id;
 
         if items.is_none() {
             internal_items.update(|v| v.retain(|it| it.id != id));
@@ -565,7 +571,7 @@ pub fn FileUpload(
                                 view! {
                                     <CompactItem
                                         id=item.id.clone()
-                                        file=item.file.clone()
+                                        file=item.file
                                         items_sig=items_sig
                                         allow_cancel=allow_cancel
                                         disabled=disabled
@@ -592,7 +598,7 @@ pub fn FileUpload(
                             view! {
                                 <FileRow
                                     id=item.id.clone()
-                                    file=item.file.clone()
+                                    file=item.file
                                     items_sig=items_sig
                                     allow_cancel=allow_cancel
                                     disabled=disabled
@@ -643,20 +649,20 @@ fn FileRow(
         let id = id_stored.get_value();
         items_sig.with(|v| v.iter().find(|it| it.id == id).cloned())
     };
-    let status = move || lookup().map(|it| it.status).unwrap_or(FileStatus::Idle);
+    let status = move || lookup().map_or(FileStatus::Idle, |it| it.status);
     let progress_sig: Signal<f64> =
-        Signal::derive(move || lookup().and_then(|it| it.progress).unwrap_or(0) as f64);
-    let error_text = move || lookup().and_then(|it| it.error.clone()).unwrap_or_default();
-    let show_remove = move || !(status() == FileStatus::Uploading && !allow_cancel);
+        Signal::derive(move || f64::from(lookup().and_then(|it| it.progress).unwrap_or(0)));
+    let error_text = move || lookup().and_then(|it| it.error).unwrap_or_default();
+    let show_remove = move || status() != FileStatus::Uploading || allow_cancel;
 
-    let size_text_c = size_text.clone();
+    let size_text_c = size_text;
 
     view! {
         <div class="file-upload__item">
             <span class="file-upload__item-icon" aria-hidden="true">
                 <Icon icon=i::FaFileSolid />
             </span>
-            <span class="file-upload__item-name" title=name.clone()>
+            <span class="file-upload__item-name" title=name>
                 {name.clone()}
             </span>
             <span class="file-upload__item-status">
@@ -760,19 +766,19 @@ fn CompactItem(
         let id = id_stored.get_value();
         items_sig.with(|v| v.iter().find(|it| it.id == id).cloned())
     };
-    let status = move || lookup().map(|it| it.status).unwrap_or(FileStatus::Idle);
+    let status = move || lookup().map_or(FileStatus::Idle, |it| it.status);
     let progress_sig: Signal<f64> =
-        Signal::derive(move || lookup().and_then(|it| it.progress).unwrap_or(0) as f64);
-    let error_text = move || lookup().and_then(|it| it.error.clone()).unwrap_or_default();
-    let show_remove = move || !(status() == FileStatus::Uploading && !allow_cancel);
+        Signal::derive(move || f64::from(lookup().and_then(|it| it.progress).unwrap_or(0)));
+    let error_text = move || lookup().and_then(|it| it.error).unwrap_or_default();
+    let show_remove = move || status() != FileStatus::Uploading || allow_cancel;
 
-    let size_text_c = size_text.clone();
+    let size_text_c = size_text;
 
     view! {
         <span class="file-upload__zone-icon" aria-hidden="true">
             <Icon icon=i::FaFileSolid />
         </span>
-        <span class="file-upload__compact-name" title=name.clone()>
+        <span class="file-upload__compact-name" title=name>
             {name.clone()}
         </span>
         {move || match status() {

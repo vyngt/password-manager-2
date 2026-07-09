@@ -30,24 +30,24 @@ pub fn theme_config_from_dto(dto: &ThemeDto) -> ThemeConfig {
 /// "omitted → engine default").
 #[must_use]
 pub fn config_from_fields(
-    background: String,
-    foreground: String,
-    primary: String,
-    danger: String,
-    warning: String,
-    success: String,
+    background: &str,
+    foreground: &str,
+    primary: &str,
+    danger: &str,
+    warning: &str,
+    success: &str,
 ) -> ThemeConfig {
     ThemeConfig {
-        background,
-        foreground,
-        primary,
+        background: background.to_owned(),
+        foreground: foreground.to_owned(),
+        primary: primary.to_owned(),
         danger: non_empty(danger),
         warning: non_empty(warning),
         success: non_empty(success),
     }
 }
 
-fn non_empty(s: String) -> Option<String> {
+fn non_empty(s: &str) -> Option<String> {
     let trimmed = s.trim();
     if trimmed.is_empty() {
         None
@@ -158,14 +158,7 @@ mod tests {
 
     #[test]
     fn config_from_fields_blanks_become_none() {
-        let cfg = config_from_fields(
-            "#000000".into(),
-            "#FFFFFF".into(),
-            "#2563EB".into(),
-            "  ".into(),
-            String::new(),
-            "#16A34A".into(),
-        );
+        let cfg = config_from_fields("#000000", "#FFFFFF", "#2563EB", "  ", "", "#16A34A");
         assert_eq!(cfg.danger, None);
         assert_eq!(cfg.warning, None);
         assert_eq!(cfg.success.as_deref(), Some("#16A34A"));

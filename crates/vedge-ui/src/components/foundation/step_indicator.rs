@@ -59,22 +59,18 @@ pub fn StepIndicator(
 ) -> impl IntoView {
     #[cfg(debug_assertions)]
     {
-        let len = steps.with_untracked(|v| v.len());
+        let len = steps.with_untracked(std::vec::Vec::len);
         if len < 2 {
             web_sys::console::error_1(
-                &format!(
-                    "StepIndicator: `steps` must contain at least 2 items (got {}).",
-                    len
-                )
-                .into(),
+                &format!("StepIndicator: `steps` must contain at least 2 items (got {len}).")
+                    .into(),
             );
         }
         if len > 7 {
             web_sys::console::error_1(
                 &format!(
-                    "StepIndicator: `steps` has {} items; the practical maximum is 7. \
-                    Consider grouping steps or restructuring the flow.",
-                    len
+                    "StepIndicator: `steps` has {len} items; the practical maximum is 7. \
+                    Consider grouping steps or restructuring the flow."
                 )
                 .into(),
             );
@@ -94,12 +90,10 @@ pub fn StepIndicator(
                 all.into_iter()
                     .enumerate()
                     .map(|(idx, step)| {
-                        let state = if idx < cur {
-                            StepState::Completed
-                        } else if idx == cur {
-                            StepState::Current
-                        } else {
-                            StepState::Upcoming
+                        let state = match idx.cmp(&cur) {
+                            std::cmp::Ordering::Less => StepState::Completed,
+                            std::cmp::Ordering::Equal => StepState::Current,
+                            std::cmp::Ordering::Greater => StepState::Upcoming,
                         };
                         let is_last = idx + 1 == len;
                         let step_number = idx + 1;
@@ -210,7 +204,7 @@ fn StepItem(
                         .then(|| view! { <span class=connector_cls aria-hidden="true"></span> })}
                 </div>
                 <div class="step-indicator__content">
-                    <span class=label_cls>{step.label.clone()}</span>
+                    <span class=label_cls>{step.label}</span>
                     {show_description
                         .then(|| {
                             view! {
@@ -229,7 +223,7 @@ fn StepItem(
                         {node_content}
                     </span>
                     <div class="step-indicator__content">
-                        <span class=label_cls>{step.label.clone()}</span>
+                        <span class=label_cls>{step.label}</span>
                     </div>
                 </div>
                 {(!is_last).then(|| view! { <span class=connector_cls aria-hidden="true"></span> })}

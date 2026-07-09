@@ -17,7 +17,7 @@ use crate::features::vault::context::ActiveVault;
 use crate::features::vault::recents_filter::filter_sort_recents;
 use crate::features::vault::vault_list::VaultList;
 use crate::features::vault::vault_unlock_panel::VaultUnlockPanel;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -44,7 +44,7 @@ pub struct Selected {
 /// directory or `.vdb` extension.
 pub fn display_name_from_path(path: &str) -> String {
     let name = path.rsplit(['/', '\\']).next().unwrap_or(path);
-    name.strip_suffix(".vdb").unwrap_or(name).to_string()
+    name.strip_suffix(".vdb").unwrap_or(name).to_owned()
 }
 
 /// Focus the master-password field after a vault is selected. A no-op if the
@@ -64,20 +64,17 @@ fn focus_password() {
 /// freshly-picked one). Shared by the password and biometric unlock paths. A
 /// plain async fn — no reactive owner, so safe to `.await` inside `spawn_local`.
 async fn record_unlock(sel: &Selected) {
-    match &sel.id {
-        Some(id) => {
-            let _ = api::recent::touch_recent_vault_on_unlock(id).await;
-        }
-        None => {
-            let dto = RecentVaultDto {
-                id: Uuid::new_v4().to_string(),
-                path: sel.path.clone(),
-                display_name: sel.display_name.clone(),
-                last_opened: None,
-                sort_order: 0,
-            };
-            let _ = api::recent::add_recent_vault(&dto).await;
-        }
+    if let Some(id) = &sel.id {
+        let _ = api::recent::touch_recent_vault_on_unlock(id).await;
+    } else {
+        let dto = RecentVaultDto {
+            id: Uuid::new_v4().to_string(),
+            path: sel.path.clone(),
+            display_name: sel.display_name.clone(),
+            last_opened: None,
+            sort_order: 0,
+        };
+        let _ = api::recent::add_recent_vault(&dto).await;
     }
 }
 
@@ -107,7 +104,7 @@ pub fn VaultLaunch() -> impl IntoView {
     // Danger-toast helper. Called from event handlers *and* `spawn_local`
     // futures, so it reads its dismiss label via `untrack` (owner-less async).
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, unlock.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, unlock.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -119,7 +116,7 @@ pub fn VaultLaunch() -> impl IntoView {
         loading.set(true);
         // Called from an Effect *and* from inside `spawn_local`; `untrack`
         // reads the current locale string safely in both.
-        let err_prefix = untrack(|| t_string!(i18n, unlock.err_recents).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, unlock.err_recents).to_owned());
         spawn_local(async move {
             match api::recent::list_recent_vaults_with_status().await {
                 Ok(list) => recents.set(list),
@@ -189,14 +186,14 @@ pub fn VaultLaunch() -> impl IntoView {
             .into_iter()
             .find(|r| r.vault.id == id)
             .map(|r| r.vault.display_name);
-        let dialog_title = t_string!(i18n, unlock.open_file).to_string();
-        let err_prefix = t_string!(i18n, unlock.err_open).to_string();
+        let dialog_title = t_string!(i18n, unlock.open_file).to_owned();
+        let err_prefix = t_string!(i18n, unlock.err_open).to_owned();
         spawn_local(async move {
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
                 filters: vec![DialogFilter {
-                    name: "VEdge Vault".to_string(),
-                    extensions: vec!["vdb".to_string()],
+                    name: "VEdge Vault".to_owned(),
+                    extensions: vec!["vdb".to_owned()],
                 }],
             };
             match api::dialog::open(&opts).await {
@@ -227,7 +224,7 @@ pub fn VaultLaunch() -> impl IntoView {
     });
 
     let on_rename_commit = Callback::new(move |(id, name): (String, String)| {
-        let err_prefix = untrack(|| t_string!(i18n, unlock.err_rename).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, unlock.err_rename).to_owned());
         spawn_local(async move {
             match api::recent::rename_recent_vault(&id, &name).await {
                 Ok(()) => refresh_recents(),
@@ -248,9 +245,9 @@ pub fn VaultLaunch() -> impl IntoView {
         let nav = use_navigate();
         // Read locale-dependent strings in the handler (owner present); reading
         // them inside `spawn_local` trips the reactive-context warning.
-        let msg_wrong = t_string!(i18n, unlock.wrong_password).to_string();
-        let msg_keychain = t_string!(i18n, unlock.keychain_missing).to_string();
-        let msg_failed = t_string!(i18n, unlock.unlock_failed).to_string();
+        let msg_wrong = t_string!(i18n, unlock.wrong_password).to_owned();
+        let msg_keychain = t_string!(i18n, unlock.keychain_missing).to_owned();
+        let msg_failed = t_string!(i18n, unlock.unlock_failed).to_owned();
         spawn_local(async move {
             let input = UnlockVaultInputDto {
                 vault_path: sel.path.clone(),
@@ -282,18 +279,15 @@ pub fn VaultLaunch() -> impl IntoView {
         }
         unlocking.set(true);
         let nav = use_navigate();
-        let msg_failed = t_string!(i18n, unlock.err_biometric).to_string();
+        let msg_failed = t_string!(i18n, unlock.err_biometric).to_owned();
         spawn_local(async move {
-            match api::biometric::unlock(&sel.path).await {
-                Ok(()) => {
-                    record_unlock(&sel).await;
-                    active.path.set(Some(sel.path.clone()));
-                    nav("/v/vault", Default::default());
-                }
-                Err(_) => {
-                    show_password.set(true);
-                    show_error(msg_failed);
-                }
+            if matches!(api::biometric::unlock(&sel.path).await, Ok(())) {
+                record_unlock(&sel).await;
+                active.path.set(Some(sel.path.clone()));
+                nav("/v/vault", Default::default());
+            } else {
+                show_password.set(true);
+                show_error(msg_failed);
             }
             unlocking.set(false);
         });
@@ -301,14 +295,14 @@ pub fn VaultLaunch() -> impl IntoView {
 
     // Open a vault file not in recents → select it into the unlock panel.
     let on_open_file = Callback::new(move |()| {
-        let dialog_title = t_string!(i18n, unlock.open_file).to_string();
-        let err_prefix = t_string!(i18n, unlock.err_open).to_string();
+        let dialog_title = t_string!(i18n, unlock.open_file).to_owned();
+        let err_prefix = t_string!(i18n, unlock.err_open).to_owned();
         spawn_local(async move {
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
                 filters: vec![DialogFilter {
-                    name: "VEdge Vault".to_string(),
-                    extensions: vec!["vdb".to_string()],
+                    name: "VEdge Vault".to_owned(),
+                    extensions: vec!["vdb".to_owned()],
                 }],
             };
             match api::dialog::open(&opts).await {
@@ -347,10 +341,10 @@ pub fn VaultLaunch() -> impl IntoView {
                 <EmptyState
                     icon=i::FaFileShieldSolid
                     title=Signal::derive(move || {
-                        t_string!(i18n, unlock.no_vaults_title).to_string()
+                        t_string!(i18n, unlock.no_vaults_title).to_owned()
                     })
                     description=Signal::derive(move || {
-                        t_string!(i18n, unlock.no_vaults_body).to_string()
+                        t_string!(i18n, unlock.no_vaults_body).to_owned()
                     })
                 >
                     <div class="flex gap-2">
@@ -380,7 +374,7 @@ pub fn VaultLaunch() -> impl IntoView {
                     view! {
                         <div class="flex items-center justify-center">
                             <Spinner label=Signal::derive(move || {
-                                t_string!(i18n, unlock.loading).to_string()
+                                t_string!(i18n, unlock.loading).to_owned()
                             }) />
                         </div>
                     }

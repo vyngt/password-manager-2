@@ -15,7 +15,7 @@ pub fn ToastItem(toast: ToastData) -> impl IntoView {
     let dismiss_label = toast.dismiss_label.clone();
 
     // --- Timer with hover pause/resume (generation-based) ---
-    let remaining = RwSignal::new(duration as f64);
+    let remaining = RwSignal::new(f64::from(duration));
     let timer_start = RwSignal::new(0.0_f64);
     let generation = RwSignal::new(0u32);
 
@@ -109,7 +109,7 @@ pub fn ToastItem(toast: ToastData) -> impl IntoView {
                 <Icon icon=icon />
             </span>
             <div class="toast__body">
-                <span class="toast__message">{toast.message.clone()}</span>
+                <span class="toast__message">{toast.message}</span>
                 {action_label
                     .map(|label| {
                         view! {
@@ -126,7 +126,7 @@ pub fn ToastItem(toast: ToastData) -> impl IntoView {
                         }
                     })}
             </div>
-            <button class="toast__dismiss" aria-label=dismiss_label.clone() on:click=handle_dismiss>
+            <button class="toast__dismiss" aria-label=dismiss_label on:click=handle_dismiss>
                 <Icon icon=i::FaXmarkSolid />
             </button>
         </div>

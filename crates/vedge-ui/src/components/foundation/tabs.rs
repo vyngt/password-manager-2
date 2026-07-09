@@ -59,7 +59,6 @@ pub fn Tabs(
     }
 
     let initial_id = default_active
-        .clone()
         .or_else(|| {
             tabs.iter()
                 .find(|t| !t.disabled)
@@ -132,7 +131,7 @@ pub fn Tabs(
                 } else {
                     idx - 1
                 };
-                if !meta[idx].1 {
+                if meta.get(idx).is_some_and(|m| !m.1) {
                     return Some(idx);
                 }
             }
@@ -155,8 +154,8 @@ pub fn Tabs(
                 return;
             };
             let html: &web_sys::HtmlElement = node.unchecked_ref();
-            indicator_left.set(html.offset_left() as f64);
-            indicator_width.set(html.offset_width() as f64);
+            indicator_left.set(f64::from(html.offset_left()));
+            indicator_width.set(f64::from(html.offset_width()));
         });
     });
 
@@ -178,13 +177,13 @@ pub fn Tabs(
                 return;
             };
             let html: &web_sys::HtmlElement = node.unchecked_ref();
-            indicator_left.set(html.offset_left() as f64);
-            indicator_width.set(html.offset_width() as f64);
+            indicator_left.set(f64::from(html.offset_left()));
+            indicator_width.set(f64::from(html.offset_width()));
         };
         let closure =
             Closure::<dyn FnMut(web_sys::Event)>::new(move |_: web_sys::Event| reposition());
         let _ = window.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
-        let win = window.clone();
+        let win = window;
         let cleanup: Box<dyn FnOnce()> = Box::new(move || {
             let _ =
                 win.remove_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
@@ -193,7 +192,10 @@ pub fn Tabs(
         resize_cleanup.set_value(Some(cleanup));
     }
     on_cleanup(move || {
-        if let Some(f) = resize_cleanup.try_update_value(|v| v.take()).flatten() {
+        if let Some(f) = resize_cleanup
+            .try_update_value(std::option::Option::take)
+            .flatten()
+        {
             f();
         }
     });

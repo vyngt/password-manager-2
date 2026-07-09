@@ -72,29 +72,29 @@ pub enum DatePickerValue {
 impl DatePickerValue {
     pub fn empty_for(variant: DatePickerVariant) -> Self {
         match variant {
-            DatePickerVariant::Single => DatePickerValue::Single(None),
-            DatePickerVariant::Range => DatePickerValue::Range(DateRange::default()),
-            DatePickerVariant::Month => DatePickerValue::Month(None),
+            DatePickerVariant::Single => Self::Single(None),
+            DatePickerVariant::Range => Self::Range(DateRange::default()),
+            DatePickerVariant::Month => Self::Month(None),
         }
     }
 
     pub fn as_single(&self) -> Option<NaiveDate> {
         match self {
-            DatePickerValue::Single(d) => *d,
+            Self::Single(d) => *d,
             _ => None,
         }
     }
 
     pub fn as_range(&self) -> DateRange {
         match self {
-            DatePickerValue::Range(r) => *r,
+            Self::Range(r) => *r,
             _ => DateRange::default(),
         }
     }
 
     pub fn as_month(&self) -> Option<YearMonth> {
         match self {
-            DatePickerValue::Month(m) => *m,
+            Self::Month(m) => *m,
             _ => None,
         }
     }

@@ -70,8 +70,8 @@ pub async fn load() -> SecurityPrefs {
 
 /// Persist the prefs (fire-and-forget; a write error is non-fatal to the UI —
 /// the in-memory signal already reflects the change).
-pub fn save(prefs: SecurityPrefs) {
-    if let Ok(value) = serde_json::to_value(&prefs) {
+pub fn save(prefs: &SecurityPrefs) {
+    if let Ok(value) = serde_json::to_value(prefs) {
         spawn_local(async move {
             let _ = api::settings::set_app_setting(KEY, &value).await;
         });

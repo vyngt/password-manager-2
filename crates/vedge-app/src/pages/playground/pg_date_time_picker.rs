@@ -21,7 +21,7 @@ fn format_dt(v: Option<DateTimeValue>) -> String {
             dt.time.hours,
             dt.time.minutes,
         ),
-        None => "None".to_string(),
+        None => "None".to_owned(),
     }
 }
 
@@ -103,7 +103,7 @@ pub fn DateTimePickerPage() -> impl IntoView {
                                         date: today(),
                                         time: TimeValue { hours: 12, minutes: 0 },
                                     }),
-                                )
+                                );
                         }
                     >
                         "Set to today noon"

@@ -1,4 +1,4 @@
-use crate::i18n::*;
+use crate::i18n::I18nContextProvider;
 
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -12,7 +12,7 @@ use crate::features::vault::context::ActiveVault;
 use crate::features::window_panel::WindowPanel;
 use crate::routes::AppRoutes;
 use vedge_ui::components::feedback::toast::provider::ToastProvider;
-use vedge_ui::theme::{ThemeConfig, ThemeState, derive_tokens, inject_css_vars};
+use vedge_ui::theme::{ThemeConfig, ThemeState, ThemeTokens, derive_tokens, inject_css_vars};
 
 /// Default light theme configuration.
 fn default_theme_config() -> ThemeConfig {
@@ -26,10 +26,72 @@ fn default_theme_config() -> ThemeConfig {
     }
 }
 
+/// Flat, guaranteed-valid fallback token set derived from the base config colors.
+///
+/// Only reached if [`derive_tokens`] fails on the *seeded* [`default_theme_config`]
+/// — effectively unreachable, since that literal is a valid theme. A `#[component]`
+/// can't return `Result`, so rather than panic (which would blank the CSR app) we
+/// degrade to flat base colors, keeping the app usable, and log the anomaly.
+fn fallback_tokens(config: &ThemeConfig) -> ThemeTokens {
+    let bg = config.background.clone();
+    let fg = config.foreground.clone();
+    let primary = config.primary.clone();
+    ThemeTokens {
+        color_background: bg.clone(),
+        color_surface_1: bg.clone(),
+        color_surface_2: bg.clone(),
+        color_surface_3: bg.clone(),
+        color_surface_4: bg.clone(),
+        color_border: fg.clone(),
+        color_border_strong: fg.clone(),
+
+        color_text_primary: fg.clone(),
+        color_text_secondary: fg.clone(),
+        color_text_tertiary: fg,
+
+        color_primary: primary.clone(),
+        color_primary_hover: primary.clone(),
+        color_primary_muted: primary.clone(),
+        color_primary_foreground: bg.clone(),
+        color_primary_text: primary.clone(),
+
+        color_danger: "#DC2626".into(),
+        color_danger_hover: "#DC2626".into(),
+        color_danger_muted: "#DC2626".into(),
+        color_danger_foreground: bg.clone(),
+        color_danger_text: "#DC2626".into(),
+
+        color_warning: "#D97706".into(),
+        color_warning_hover: "#D97706".into(),
+        color_warning_muted: "#D97706".into(),
+        color_warning_foreground: bg.clone(),
+        color_warning_text: "#D97706".into(),
+
+        color_success: "#16A34A".into(),
+        color_success_hover: "#16A34A".into(),
+        color_success_muted: "#16A34A".into(),
+        color_success_foreground: bg,
+        color_success_text: "#16A34A".into(),
+
+        color_focus_ring: primary,
+
+        shadow_sm: "0 1px 2px rgba(0,0,0,0.05)".into(),
+        shadow_md: "0 4px 6px rgba(0,0,0,0.1)".into(),
+        shadow_lg: "0 10px 15px rgba(0,0,0,0.1)".into(),
+        shadow_scrim: "rgba(0,0,0,0.5)".into(),
+    }
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     let config = default_theme_config();
-    let tokens = derive_tokens(&config).expect("default theme must be valid");
+    let tokens = derive_tokens(&config).unwrap_or_else(|_| {
+        web_sys::console::error_1(
+            &"App: derive_tokens failed on the seeded default theme; using flat fallback tokens."
+                .into(),
+        );
+        fallback_tokens(&config)
+    });
 
     // Inject CSS vars on startup
     inject_css_vars(&tokens);

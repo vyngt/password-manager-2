@@ -72,8 +72,8 @@ pub fn CopyButton(
         ["copy-btn", state_cls, class].join(" ")
     };
 
-    let revert_ver_click = revert_ver.clone();
-    let handle_click = Callback::new(move |_: ()| {
+    let revert_ver_click = revert_ver;
+    let handle_click = Callback::new(move |(): ()| {
         let Some(window) = web_sys::window() else {
             if let Some(cb) = on_copy {
                 cb.run(false);
@@ -86,7 +86,7 @@ pub fn CopyButton(
         let promise = clipboard.write_text(&value_now);
 
         let ticket = revert_ver_click.fetch_add(1, Ordering::Relaxed) + 1;
-        let ver = revert_ver_click.clone();
+        let ver = Arc::clone(&revert_ver_click);
 
         spawn_local(async move {
             match JsFuture::from(promise).await {
@@ -114,7 +114,7 @@ pub fn CopyButton(
                             }
                             state.set(CopyState::Idle);
                         },
-                        Duration::from_millis(2000),
+                        Duration::from_secs(2),
                     );
                 }
                 Err(_) => {

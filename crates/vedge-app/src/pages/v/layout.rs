@@ -14,7 +14,7 @@ use crate::features::vault::auto_lock::AutoLock;
 use crate::features::vault::command_palette::{CommandPalette, typing_in_field};
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::ui_state::VaultUiState;
-use crate::i18n::*;
+use crate::i18n::{t_string, use_i18n};
 
 struct SidebarRouteItem {
     path: &'static str,
@@ -65,8 +65,8 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
     let location = leptos_router::hooks::use_location();
     let is_active = move || location.pathname.get().starts_with(item.path);
     let label = Signal::derive(move || match item.path {
-        "/v/settings" => t_string!(i18n, nav.settings).to_string(),
-        _ => t_string!(i18n, nav.vault).to_string(),
+        "/v/settings" => t_string!(i18n, nav.settings).to_owned(),
+        _ => t_string!(i18n, nav.vault).to_owned(),
     });
     let go = move |_: web_sys::MouseEvent| use_navigate()(item.path, Default::default());
     // Keyboard activation for the `role="button"` divs (Enter / Space), so the
@@ -135,7 +135,7 @@ fn Sidebar() -> impl IntoView {
     let i18n = use_i18n();
     // Collapsed by default (icon rail); expands to icon + label.
     let collapsed = RwSignal::new(true);
-    let toggle_label = Signal::derive(move || t_string!(i18n, nav.toggle_sidebar).to_string());
+    let toggle_label = Signal::derive(move || t_string!(i18n, nav.toggle_sidebar).to_owned());
 
     view! {
         <div
@@ -209,7 +209,7 @@ fn Sidebar() -> impl IntoView {
 fn LockButton(collapsed: RwSignal<bool>) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
-    let label = Signal::derive(move || t_string!(i18n, unlock.lock).to_string());
+    let label = Signal::derive(move || t_string!(i18n, unlock.lock).to_owned());
 
     let on_lock = move |_: web_sys::MouseEvent| {
         let nav = use_navigate();

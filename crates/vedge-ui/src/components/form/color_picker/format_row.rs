@@ -19,11 +19,10 @@ pub(super) fn FormatRow(
     // Check EyeDropper API availability
     let eyedropper_supported = web_sys::window()
         .and_then(|w| js_sys::Reflect::get(&w, &"EyeDropper".into()).ok())
-        .map(|v| v.is_function())
-        .unwrap_or(false);
+        .is_some_and(|v| v.is_function());
 
     let on_eyedropper = move |_: web_sys::MouseEvent| {
-        let fire = fire_change_end.clone();
+        let fire = fire_change_end;
         wasm_bindgen_futures::spawn_local(async move {
             if let Some(hex) = pick_from_screen().await {
                 if let Some(parsed) = HsvColor::from_hex(&hex) {
@@ -65,7 +64,7 @@ pub(super) fn FormatRow(
                 hsv=hsv
                 active_format=active_format
                 alpha=alpha
-                on_commit=Callback::new(move |_: ()| fire_change_end())
+                on_commit=Callback::new(move |(): ()| fire_change_end())
             />
         </div>
     }

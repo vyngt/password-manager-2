@@ -236,7 +236,7 @@ pub fn DialogPage() -> impl IntoView {
                         <span class="font-medium text-text-primary">
                             {move || {
                                 let v = name_val.get();
-                                if v.is_empty() { "(unset)".to_string() } else { v }
+                                if v.is_empty() { "(unset)".to_owned() } else { v }
                             }}
                         </span>
                     </span>
@@ -257,7 +257,7 @@ pub fn DialogPage() -> impl IntoView {
                                 id="rename-name"
                                 value=Signal::derive(move || name_val.get())
                                 on_input=Callback::new(move |v: String| name_val.set(v))
-                                placeholder=Signal::stored("Enter a new name".to_string())
+                                placeholder=Signal::stored("Enter a new name".to_owned())
                             />
                         </div>
                     </DialogBody>

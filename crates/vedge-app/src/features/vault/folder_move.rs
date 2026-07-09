@@ -6,7 +6,7 @@
 
 use super::entry_form::EntryFormData;
 use super::folder_tree::{FlatFolder, FolderNode, available_move_targets, flatten_tree};
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use std::collections::HashSet;
 use vedge_ipc::IndexEntryDto;
@@ -36,7 +36,7 @@ pub fn FolderMove(
     // Seed the picker with the entry's current folder each time it opens.
     Effect::new(move |_| {
         if let Some(e) = target.get() {
-            chosen.set(e.folder_id.clone());
+            chosen.set(e.folder_id);
         }
     });
 
@@ -53,7 +53,7 @@ pub fn FolderMove(
             open=Signal::derive(move || target.get().is_some())
             on_close=close
             size=DialogSize::Sm
-            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>{move || t!(i18n, vault.folder_move_title)}</DialogTitle>
@@ -74,7 +74,7 @@ pub fn FolderMove(
                     {move || {
                         let moving_id = target.get().map(|e| e.id).unwrap_or_default();
                         let mut options = vec![
-                            SelectItem::option("", t_string!(i18n, vault.folder_none).to_string()),
+                            SelectItem::option("", t_string!(i18n, vault.folder_none).to_owned()),
                         ];
                         options
                             .extend(
@@ -87,7 +87,7 @@ pub fn FolderMove(
                                 options=options
                                 value=Signal::derive(move || chosen.get().unwrap_or_default())
                                 aria_label=Signal::derive(move || {
-                                    t_string!(i18n, vault.folder_move_dest_aria).to_string()
+                                    t_string!(i18n, vault.folder_move_dest_aria).to_owned()
                                 })
                                 on_change=Callback::new(move |v: String| {
                                     chosen.set(if v.is_empty() { None } else { Some(v) });
@@ -137,7 +137,7 @@ pub fn FolderSelect(
                     None => flatten_tree(&nodes, &HashSet::new()),
                 };
                 let mut options = vec![
-                    SelectItem::option("", t_string!(i18n, vault.folder_none).to_string()),
+                    SelectItem::option("", t_string!(i18n, vault.folder_none).to_owned()),
                 ];
                 options
                     .extend(
@@ -150,7 +150,7 @@ pub fn FolderSelect(
                             data.with(|d| d.folder_id.clone().unwrap_or_default())
                         })
                         aria_label=Signal::derive(move || {
-                            t_string!(i18n, vault.folder_label).to_string()
+                            t_string!(i18n, vault.folder_label).to_owned()
                         })
                         on_change=Callback::new(move |v: String| {
                             data.update(|d| {

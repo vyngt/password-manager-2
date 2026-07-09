@@ -10,7 +10,7 @@ use crate::features::vault::context::ActiveVault;
 use crate::features::vault::entry_form::{EntryFormData, EntryFormError};
 use crate::features::vault::entry_form_body::EntryFormBody;
 use crate::features::vault::folder_tree::FolderNode;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::EntryTypeDto;
@@ -30,7 +30,7 @@ pub fn VaultCreateForm(
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -56,18 +56,18 @@ pub fn VaultCreateForm(
             Ok(p) => p,
             Err(EntryFormError::NameRequired) => return,
             Err(EntryFormError::InvalidExpiry) => {
-                show_error(t_string!(i18n, vault.err_invalid_expiry).to_string());
+                show_error(t_string!(i18n, vault.err_invalid_expiry).to_owned());
                 return;
             }
             Err(EntryFormError::UnsupportedType) => {
-                show_error(t_string!(i18n, vault.err_save).to_string());
+                show_error(t_string!(i18n, vault.err_save).to_owned());
                 return;
             }
         };
 
         submitting.set(true);
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_save).to_string();
+        let err_prefix = t_string!(i18n, vault.err_save).to_owned();
 
         spawn_local(async move {
             match api::entry::create_entry(&vault_path, &payload).await {

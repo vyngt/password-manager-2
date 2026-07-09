@@ -10,7 +10,7 @@
 //! a `get_entry` reveal). The [`EntryForm`] component renders the active type's
 //! field set over a single `RwSignal<EntryFormData>`.
 
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
@@ -576,9 +576,9 @@ fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
                     size=Size::Sm
                     aria_label=Signal::derive(move || {
                         if revealed.get() {
-                            t_string!(i18n, vault.hide).to_string()
+                            t_string!(i18n, vault.hide).to_owned()
                         } else {
-                            t_string!(i18n, vault.reveal).to_string()
+                            t_string!(i18n, vault.reveal).to_owned()
                         }
                     })
                     on:click=move |_| set_revealed.update(|r| *r = !*r)
@@ -602,7 +602,7 @@ fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
                 class="font-jetbrains-mono"
                 masked=Signal::derive(move || !revealed.get())
                 placeholder=Signal::derive(move || {
-                    t_string!(i18n, vault.field_private_key).to_string()
+                    t_string!(i18n, vault.field_private_key).to_owned()
                 })
                 value=Signal::derive(move || data.with(|d| d.ssh_private_key.clone()))
                 on_change=Callback::new(move |v: String| data.update(|d| d.ssh_private_key = v))
@@ -647,10 +647,10 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                                 &data.with(|d| d.card_expiry.clone()),
                             ))
                             on_change=Callback::new(move |v: DatePickerValue| {
-                                data.update(|d| d.card_expiry = picker_to_expiry(v))
+                                data.update(|d| d.card_expiry = picker_to_expiry(v));
                             })
                             placeholder=Signal::derive(move || {
-                                t_string!(i18n, vault.field_card_expiry).to_string()
+                                t_string!(i18n, vault.field_card_expiry).to_owned()
                             })
                         />
                         {secret_field!(data, i18n, "ef-cvv", cvv, field_cvv)}
@@ -693,11 +693,11 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                                 id="ef-note"
                                 rows=6
                                 placeholder=Signal::derive(move || {
-                                    t_string!(i18n, vault.field_content).to_string()
+                                    t_string!(i18n, vault.field_content).to_owned()
                                 })
                                 value=Signal::derive(move || data.with(|d| d.note_content.clone()))
                                 on_change=Callback::new(move |v: String| {
-                                    data.update(|d| d.note_content = v)
+                                    data.update(|d| d.note_content = v);
                                 })
                             />
                         </div>
@@ -753,7 +753,7 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                     <Input
                         id="ef-env-key"
                         placeholder=Signal::derive(move || {
-                            t_string!(i18n, vault.field_env_key).to_string()
+                            t_string!(i18n, vault.field_env_key).to_owned()
                         })
                         value=Signal::derive(move || {
                             data.with(|d| {
@@ -765,7 +765,7 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                                 if let Some(p) = d.env_vars.get_mut(i) {
                                     p.0 = v;
                                 }
-                            })
+                            });
                         })
                         class="flex-1"
                     />
@@ -773,7 +773,7 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                         id="ef-env-val"
                         input_type="password"
                         placeholder=Signal::derive(move || {
-                            t_string!(i18n, vault.field_env_value).to_string()
+                            t_string!(i18n, vault.field_env_value).to_owned()
                         })
                         value=Signal::derive(move || {
                             data.with(|d| {
@@ -785,12 +785,12 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                                 if let Some(p) = d.env_vars.get_mut(i) {
                                     p.1 = v;
                                 }
-                            })
+                            });
                         })
                         reveal_label=Signal::derive(move || {
-                            t_string!(i18n, vault.reveal).to_string()
+                            t_string!(i18n, vault.reveal).to_owned()
                         })
-                        hide_label=Signal::derive(move || t_string!(i18n, vault.hide).to_string())
+                        hide_label=Signal::derive(move || t_string!(i18n, vault.hide).to_owned())
                         class="flex-1"
                     />
                     <Button
@@ -801,7 +801,7 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                                 if i < d.env_vars.len() {
                                     d.env_vars.remove(i);
                                 }
-                            })
+                            });
                         }
                     >
                         {move || t!(i18n, vault.remove_var)}

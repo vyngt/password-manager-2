@@ -62,11 +62,8 @@ pub fn DateTimePicker(
     let partial_date = RwSignal::<Option<NaiveDate>>::new(None);
     let partial_time = RwSignal::<Option<TimeValue>>::new(None);
 
-    let effective_value = Signal::derive(move || {
-        value
-            .map(|s| s.get())
-            .unwrap_or_else(|| internal_value.get())
-    });
+    let effective_value =
+        Signal::derive(move || value.map_or_else(|| internal_value.get(), |s| s.get()));
 
     // Derived sub-picker signals
     let dp_value = Signal::derive(move || match effective_value.get() {
@@ -100,25 +97,22 @@ pub fn DateTimePicker(
                 .unwrap_or_else(|| chrono::Utc::now().date_naive()),
             _ => return,
         };
-        match effective_value.get_untracked() {
-            Some(existing) => {
+        if let Some(existing) = effective_value.get_untracked() {
+            let next = DateTimeValue {
+                date: new_date,
+                time: existing.time,
+            };
+            commit(Some(next));
+        } else {
+            partial_date.set(Some(new_date));
+            if let Some(t) = partial_time.get_untracked() {
                 let next = DateTimeValue {
                     date: new_date,
-                    time: existing.time,
+                    time: t,
                 };
                 commit(Some(next));
-            }
-            None => {
-                partial_date.set(Some(new_date));
-                if let Some(t) = partial_time.get_untracked() {
-                    let next = DateTimeValue {
-                        date: new_date,
-                        time: t,
-                    };
-                    commit(Some(next));
-                    partial_date.set(None);
-                    partial_time.set(None);
-                }
+                partial_date.set(None);
+                partial_time.set(None);
             }
         }
     });
@@ -128,25 +122,22 @@ pub fn DateTimePicker(
             partial_time.set(None);
             return;
         };
-        match effective_value.get_untracked() {
-            Some(existing) => {
+        if let Some(existing) = effective_value.get_untracked() {
+            let next = DateTimeValue {
+                date: existing.date,
+                time: new_time,
+            };
+            commit(Some(next));
+        } else {
+            partial_time.set(Some(new_time));
+            if let Some(d) = partial_date.get_untracked() {
                 let next = DateTimeValue {
-                    date: existing.date,
+                    date: d,
                     time: new_time,
                 };
                 commit(Some(next));
-            }
-            None => {
-                partial_time.set(Some(new_time));
-                if let Some(d) = partial_date.get_untracked() {
-                    let next = DateTimeValue {
-                        date: d,
-                        time: new_time,
-                    };
-                    commit(Some(next));
-                    partial_date.set(None);
-                    partial_time.set(None);
-                }
+                partial_date.set(None);
+                partial_time.set(None);
             }
         }
     });
@@ -161,16 +152,22 @@ pub fn DateTimePicker(
     // sentinels when a bound is not provided. See component doc / plan
     // risks — min_time/max_time over-constrain when the selected date
     // differs from min/max. Acceptable v1 behaviour.
-    let min_date_naive = min_datetime.map(|m| m.date).unwrap_or(NaiveDate::MIN);
-    let max_date_naive = max_datetime.map(|m| m.date).unwrap_or(NaiveDate::MAX);
-    let min_time = min_datetime.map(|m| m.time).unwrap_or(TimeValue {
-        hours: 0,
-        minutes: 0,
-    });
-    let max_time = max_datetime.map(|m| m.time).unwrap_or(TimeValue {
-        hours: 23,
-        minutes: 59,
-    });
+    let min_date_naive = min_datetime.map_or(NaiveDate::MIN, |m| m.date);
+    let max_date_naive = max_datetime.map_or(NaiveDate::MAX, |m| m.date);
+    let min_time = min_datetime.map_or(
+        TimeValue {
+            hours: 0,
+            minutes: 0,
+        },
+        |m| m.time,
+    );
+    let max_time = max_datetime.map_or(
+        TimeValue {
+            hours: 23,
+            minutes: 59,
+        },
+        |m| m.time,
+    );
 
     let anchor = Signal::derive(move || {
         trigger_ref
@@ -232,7 +229,7 @@ pub fn DateTimePicker(
         commit(None);
     };
 
-    let handle_close = Callback::new(move |_: ()| {
+    let handle_close = Callback::new(move |(): ()| {
         open.set(false);
     });
 

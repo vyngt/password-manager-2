@@ -1,4 +1,4 @@
-use crate::i18n::*;
+use crate::i18n::{t_string, use_i18n};
 use leptos::prelude::*;
 use vedge_ui::components::Input;
 use vedge_ui::primitives::tokens::Size;
@@ -12,13 +12,13 @@ pub fn VaultSearch(search_query: RwSignal<String>) -> impl IntoView {
             <Input
                 id="vault-search"
                 placeholder=Signal::derive(move || {
-                    t_string!(i18n, vault.search_placeholder).to_string()
+                    t_string!(i18n, vault.search_placeholder).to_owned()
                 })
                 input_type="search"
                 size=Size::Lg
                 value=Signal::derive(move || search_query.get())
                 on_input=Callback::new(move |v: String| search_query.set(v))
-                clear_label=Signal::derive(move || t_string!(i18n, playground.clear).to_string())
+                clear_label=Signal::derive(move || t_string!(i18n, playground.clear).to_owned())
             />
         </div>
     }

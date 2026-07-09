@@ -15,7 +15,7 @@ use crate::api;
 use crate::api::dialog::SaveDialogOptions;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::ui_state::VaultUiState;
-use crate::i18n::*;
+use crate::i18n::{Locale, t, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -62,7 +62,7 @@ pub fn VaultDetail(
     let ui = expect_context::<VaultUiState>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -139,7 +139,7 @@ pub fn VaultDetail(
     // plaintext file bytes reach WASM. (`get_entry` audits this as `Viewed`.)
     let is_document = matches!(entry.entry_type, EntryTypeDto::Document);
     let doc_meta = RwSignal::new(Option::<DocumentPayloadDto>::None);
-    let doc_name_default = StoredValue::new(entry.name.clone());
+    let doc_name_default = StoredValue::new(entry.name);
     if is_document {
         let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry_id.get_value();
@@ -161,7 +161,7 @@ pub fn VaultDetail(
     let reveal_and_edit = move || {
         let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry_id.get_value();
-        let err_prefix = untrack(|| t_string!(i18n, vault.err_reveal).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_reveal).to_owned());
         spawn_local(async move {
             match api::entry::get_entry(&vault_path, &id).await {
                 Ok(payload) => {
@@ -199,18 +199,18 @@ pub fn VaultDetail(
             Ok(p) => p,
             Err(EntryFormError::NameRequired) => return,
             Err(EntryFormError::InvalidExpiry) => {
-                show_error(t_string!(i18n, vault.err_invalid_expiry).to_string());
+                show_error(t_string!(i18n, vault.err_invalid_expiry).to_owned());
                 return;
             }
             Err(EntryFormError::UnsupportedType) => {
-                show_error(t_string!(i18n, vault.err_update).to_string());
+                show_error(t_string!(i18n, vault.err_update).to_owned());
                 return;
             }
         };
         saving.set(true);
         let vault_path = active.path.get().unwrap_or_default();
         let id = entry_id.get_value();
-        let err_prefix = t_string!(i18n, vault.err_update).to_string();
+        let err_prefix = t_string!(i18n, vault.err_update).to_owned();
         spawn_local(async move {
             match api::entry::update_entry(&vault_path, &id, &payload).await {
                 Ok(()) => {
@@ -230,10 +230,9 @@ pub fn VaultDetail(
         let id = entry_id.get_value();
         let default_name = doc_meta
             .get()
-            .map(|p| p.filename)
-            .unwrap_or_else(|| doc_name_default.get_value());
-        let dialog_title = t_string!(i18n, vault.export).to_string();
-        let err_prefix = t_string!(i18n, vault.err_export).to_string();
+            .map_or_else(|| doc_name_default.get_value(), |p| p.filename);
+        let dialog_title = t_string!(i18n, vault.export).to_owned();
+        let err_prefix = t_string!(i18n, vault.err_export).to_owned();
         spawn_local(async move {
             let opts = SaveDialogOptions {
                 title: Some(dialog_title),
@@ -270,9 +269,9 @@ pub fn VaultDetail(
                     <IconButton
                         aria_label=Signal::derive(move || {
                             if is_fav {
-                                t_string!(i18n, vault.unfavorite).to_string()
+                                t_string!(i18n, vault.unfavorite).to_owned()
                             } else {
-                                t_string!(i18n, vault.favorite).to_string()
+                                t_string!(i18n, vault.favorite).to_owned()
                             }
                         })
                         variant=Variant::Ghost
@@ -296,7 +295,7 @@ pub fn VaultDetail(
                             view! {
                                 <IconButton
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.version_history).to_string()
+                                        t_string!(i18n, vault.version_history).to_owned()
                                     })
                                     variant=Variant::Ghost
                                     size=Size::Sm
@@ -309,7 +308,7 @@ pub fn VaultDetail(
                             }
                         })}
                     <IconButton
-                        aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+                        aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
                         variant=Variant::Ghost
                         size=Size::Sm
                         on:click=move |_: web_sys::MouseEvent| on_close.run(())
@@ -390,7 +389,7 @@ pub fn VaultDetail(
                                                 let nodes = folders.get();
                                                 let name = folder_display_name(&nodes, id)
                                                     .unwrap_or_else(|| {
-                                                        t_string!(i18n, vault.folder_none).to_string()
+                                                        t_string!(i18n, vault.folder_none).to_owned()
                                                     });
                                                 let (color, icon) = folder_style(&nodes, id);
                                                 let icon_data = folder_icon_from_key(
@@ -418,9 +417,7 @@ pub fn VaultDetail(
                                             None => {
                                                 Either::Right(
                                                     view! {
-                                                        <span>
-                                                            {t_string!(i18n, vault.folder_none).to_string()}
-                                                        </span>
+                                                        <span>{t_string!(i18n, vault.folder_none).to_owned()}</span>
                                                     },
                                                 )
                                             }
@@ -525,7 +522,7 @@ pub fn VaultDetail(
             open=Signal::derive(move || editing.get())
             on_close=do_cancel
             size=DialogSize::Lg
-            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>
@@ -612,6 +609,11 @@ fn copy_buttons(
             }
             .into_any(),
         ),
-        _ => None,
+        // Remaining types have no copy buttons. Bind by value (not `_`) so the
+        // scrutinee is *moved* into the match — this consumes `entry_type`,
+        // satisfying `needless_pass_by_value` without taking it by reference
+        // (a `&EntryTypeDto` param would force an RPIT lifetime onto the
+        // returned `impl IntoView`, which the caller's closure can't hold).
+        _other => None,
     }
 }

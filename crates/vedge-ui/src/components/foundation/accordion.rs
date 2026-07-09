@@ -42,7 +42,7 @@ pub fn Accordion(
             web_sys::console::error_1(&"Accordion: duplicate item `id` detected.".into());
         }
         for id in &default_open {
-            if !ids.iter().any(|x| *x == id) {
+            if !ids.contains(&id) {
                 web_sys::console::warn_1(
                     &format!("Accordion: default_open id `{id}` not found in items.").into(),
                 );
@@ -73,7 +73,6 @@ pub fn Accordion(
     let total = items.len();
 
     {
-        let initial_open = initial_open.clone();
         Effect::new(move |_| {
             for id in &initial_open {
                 if let Some(panel_ref) = panel_refs.with_value(|m| m.get(id).copied()) {
@@ -96,7 +95,7 @@ pub fn Accordion(
                 if was_open {
                     vec![]
                 } else {
-                    vec![id.clone()]
+                    vec![id]
                 }
             }
             AccordionMode::Multiple => {
@@ -104,18 +103,18 @@ pub fn Accordion(
                     prev_open.iter().filter(|x| *x != &id).cloned().collect()
                 } else {
                     let mut v = prev_open.clone();
-                    v.push(id.clone());
+                    v.push(id);
                     v
                 }
             }
         };
 
-        for item_id in prev_open.iter() {
+        for item_id in &prev_open {
             if !next_open.contains(item_id) {
                 animate_panel(item_id, false, panel_refs, anim_versions);
             }
         }
-        for item_id in next_open.iter() {
+        for item_id in &next_open {
             if !prev_open.contains(item_id) {
                 animate_panel(item_id, true, panel_refs, anim_versions);
             }
@@ -159,8 +158,8 @@ pub fn Accordion(
             let trigger_cls =
                 ["accordion__trigger", trigger_size.accordion_trigger_class()].join(" ");
 
-            let toggle_click = toggle.clone();
-            let click_id = item_id.clone();
+            let toggle_click = toggle;
+            let click_id = item_id;
             let handle_click = move |_: web_sys::MouseEvent| {
                 if disabled {
                     return;
@@ -194,7 +193,7 @@ pub fn Accordion(
 
             let trigger_id_attr = trigger_html_id.clone();
             let panel_id_attr = panel_html_id.clone();
-            let trigger_id_labelledby = trigger_html_id.clone();
+            let trigger_id_labelledby = trigger_html_id;
 
             view! {
                 <div class="accordion__item">
@@ -259,7 +258,7 @@ fn animate_panel(
         let _ = el.offset_height();
 
         let el_raf = el.clone();
-        let ver_raf = version.clone();
+        let ver_raf = Arc::clone(&version);
         request_animation_frame(move || {
             if ver_raf.load(Ordering::Relaxed) != ticket {
                 return;
@@ -267,11 +266,11 @@ fn animate_panel(
             let target = el_raf.scroll_height();
             let _ = el_raf
                 .style()
-                .set_property("height", &format!("{}px", target));
+                .set_property("height", &format!("{target}px"));
         });
 
-        let el_done = el.clone();
-        let ver_done = version.clone();
+        let el_done = el;
+        let ver_done = version;
         set_timeout(
             move || {
                 if ver_done.load(Ordering::Relaxed) != ticket {
@@ -284,12 +283,12 @@ fn animate_panel(
         );
     } else {
         let current = el.scroll_height();
-        let _ = el.style().set_property("height", &format!("{}px", current));
+        let _ = el.style().set_property("height", &format!("{current}px"));
         let _ = el.set_attribute("data-state", "closing");
         let _ = el.offset_height();
 
         let el_raf = el.clone();
-        let ver_raf = version.clone();
+        let ver_raf = Arc::clone(&version);
         request_animation_frame(move || {
             if ver_raf.load(Ordering::Relaxed) != ticket {
                 return;
@@ -297,8 +296,8 @@ fn animate_panel(
             let _ = el_raf.style().set_property("height", "0px");
         });
 
-        let el_done = el.clone();
-        let ver_done = version.clone();
+        let el_done = el;
+        let ver_done = version;
         set_timeout(
             move || {
                 if ver_done.load(Ordering::Relaxed) != ticket {

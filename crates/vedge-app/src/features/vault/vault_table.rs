@@ -1,5 +1,5 @@
 use super::entry_view::{short_date, type_label_i18n};
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
 use std::collections::HashMap;
@@ -211,9 +211,9 @@ fn VaultTableRow(
                 <IconButton
                     aria_label=Signal::derive(move || {
                         if is_fav {
-                            t_string!(i18n, vault.unfavorite).to_string()
+                            t_string!(i18n, vault.unfavorite).to_owned()
                         } else {
-                            t_string!(i18n, vault.favorite).to_string()
+                            t_string!(i18n, vault.favorite).to_owned()
                         }
                     })
                     variant=Variant::Ghost
@@ -262,7 +262,7 @@ fn VaultTableRow(
                             <div class="flex items-center gap-1">
                                 <IconButton
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_move).to_string()
+                                        t_string!(i18n, vault.folder_move).to_owned()
                                     })
                                     variant=Variant::Ghost
                                     size=Size::Sm
@@ -275,7 +275,7 @@ fn VaultTableRow(
                                 </IconButton>
                                 <IconButton
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.delete).to_string()
+                                        t_string!(i18n, vault.delete).to_owned()
                                     })
                                     variant=Variant::Danger
                                     size=Size::Sm

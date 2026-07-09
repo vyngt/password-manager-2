@@ -9,9 +9,5 @@ use crate::primitives::text_prop::TextProp;
 /// non-empty `Signal<String>` and never see the fallback.
 pub fn text_or(prop: TextProp, fallback: &str) -> String {
     let v = prop.get();
-    if v.is_empty() {
-        fallback.to_string()
-    } else {
-        v
-    }
+    if v.is_empty() { fallback.to_owned() } else { v }
 }

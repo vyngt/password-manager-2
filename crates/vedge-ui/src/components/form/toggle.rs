@@ -15,7 +15,7 @@ pub fn Toggle(
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let internal = RwSignal::new(default_checked);
-    let is_checked = move || checked.map(|s| s.get()).unwrap_or_else(|| internal.get());
+    let is_checked = move || checked.map_or_else(|| internal.get(), |s| s.get());
 
     let input_ref = NodeRef::<leptos::html::Input>::new();
 

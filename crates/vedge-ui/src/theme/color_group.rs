@@ -33,7 +33,7 @@ pub fn derive_color_group(base: Oklch, background: Oklch) -> Result<ColorGroup, 
         base: base_hex,
         hover: oklch_to_hex(scale[7]),
         muted: oklch_to_hex(scale[0]),
-        foreground: foreground.to_string(),
+        foreground: foreground.to_owned(),
         text: oklch_to_hex(scale[8]),
     })
 }
