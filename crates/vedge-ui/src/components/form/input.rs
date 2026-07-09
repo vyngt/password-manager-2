@@ -25,10 +25,30 @@ pub fn Input(
     #[prop(optional, default = "")] suffix: &'static str,
     #[prop(into, default = None)] on_input: Option<Callback<String>>,
     #[prop(optional)] required: bool,
+    /// Accessible name for the native `<input>` (for fields with no visible
+    /// `<label>`, e.g. an inline rename or a search box).
+    #[prop(into, default = TextProp::default())]
+    aria_label: TextProp,
     #[prop(optional, default = "")] aria_describedby: &'static str,
+    /// `autocomplete` attribute (e.g. `"off"`); omitted when empty.
+    #[prop(optional, default = "")]
+    autocomplete: &'static str,
+    /// `spellcheck` attribute (e.g. `"false"` for search / technical fields);
+    /// omitted when empty (browser default).
+    #[prop(optional, default = "")]
+    spellcheck: &'static str,
     #[prop(into, default = TextProp::default())] clear_label: TextProp,
     #[prop(into, default = TextProp::default())] reveal_label: TextProp,
     #[prop(into, default = TextProp::default())] hide_label: TextProp,
+    /// Optional external ref to the native `<input>`. When supplied, callers can
+    /// imperatively `focus()`/`select()` the element (e.g. inline rename fields).
+    /// Reconciled with the internal ref so the search clear-button still refocuses.
+    #[prop(into, default = None)]
+    input_ref: Option<NodeRef<leptos::html::Input>>,
+    /// Focus the field on mount (HTML `autofocus`). Useful for fields revealed by
+    /// a `<Show>`/`Either` (new-folder, inline rename) that should grab focus.
+    #[prop(optional)]
+    autofocus: bool,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     // Dev assertions
@@ -60,7 +80,10 @@ pub fn Input(
 
     // Internal state
     let (revealed, set_revealed) = signal(false);
-    let input_ref = NodeRef::<leptos::html::Input>::new();
+    // Use the caller's ref when provided; otherwise create our own. Either way the
+    // component binds this ref to the native input, so `handle_clear` (search) and
+    // any external `focus()`/`select()` operate on the same element.
+    let input_ref = input_ref.unwrap_or_else(NodeRef::<leptos::html::Input>::new);
 
     let is_password = input_type == "password";
     let is_search = input_type == "search";
@@ -132,10 +155,17 @@ pub fn Input(
                 class="input-native"
                 id=id
                 type=effective_type
+                autofocus=autofocus
+                autocomplete=(!autocomplete.is_empty()).then_some(autocomplete)
+                spellcheck=(!spellcheck.is_empty()).then_some(spellcheck)
                 disabled=disabled
                 readonly=read_only
                 prop:value=move || value.map(|s| s.get()).unwrap_or_default()
                 placeholder=move || placeholder.map(|s| s.get()).unwrap_or_default()
+                aria-label=move || {
+                    let v = aria_label.get();
+                    if v.is_empty() { None } else { Some(v) }
+                }
                 aria-invalid=aria_invalid
                 aria-describedby=aria_describedby_attr
                 aria-required=aria_required_attr

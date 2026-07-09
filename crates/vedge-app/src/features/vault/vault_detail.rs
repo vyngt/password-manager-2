@@ -6,9 +6,9 @@
 //! path), seeds the shared [`EntryForm`], and saves through
 //! `api::entry::update_entry`; `on_saved` pings the parent to refresh.
 
-use super::entry_form::{EntryForm, EntryFormData, EntryFormError};
+use super::entry_form::{EntryFormData, EntryFormError};
+use super::entry_form_body::EntryFormBody;
 use super::entry_view::{human_size, short_date, type_label_i18n};
-use super::folder_move::FolderSelect;
 use super::folder_tree::{FolderNode, folder_display_name, folder_icon_from_key, folder_style};
 use super::tag_assign::TagAssign;
 use crate::api;
@@ -26,11 +26,13 @@ use vedge_ipc::{
 use vedge_ui::components::Button;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
+use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
 
 use icondata as i;
 use leptos_icons::Icon;
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn VaultDetail(
@@ -68,6 +70,31 @@ pub fn VaultDetail(
         );
     };
 
+    // Click-outside-to-close: dismiss the drawer on a click outside it — but NOT on
+    // a table row (a row click switches the selected entry instead), so you can keep
+    // browsing entries with the drawer open. Uses mousedown so the exclusion happens
+    // before the row's own click handler runs.
+    let close_handle = window_event_listener(leptos::ev::mousedown, move |ev| {
+        let Some(target) = ev
+            .target()
+            .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+        else {
+            return;
+        };
+        // Ignore clicks inside the drawer itself, on a table row (which switches the
+        // selection), or inside any overlay opened from it (an edit/move/history
+        // dialog, or a toast) — those must not dismiss the drawer.
+        let ignore = target
+            .closest("[data-detail-drawer], [data-entry-row], .dialog-scrim, .toast-group")
+            .ok()
+            .flatten()
+            .is_some();
+        if !ignore {
+            on_close.run(());
+        }
+    });
+    on_cleanup(move || close_handle.remove());
+
     let entry_id = StoredValue::new(entry.id.clone());
     let fav_id = entry.id.clone();
     let is_fav = entry.is_favorite;
@@ -75,7 +102,9 @@ pub fn VaultDetail(
     let folder_of = entry.folder_id.clone();
     // Exclude this folder (+ its descendants) from its own parent picker so an
     // edit can't build a cycle; non-folder entries get every folder as a target.
-    let move_exclude = (entry.entry_type == EntryTypeDto::Folder).then(|| entry.id.clone());
+    // `StoredValue` so the edit `Dialog`'s (re-callable) body can clone it.
+    let move_exclude =
+        StoredValue::new((entry.entry_type == EntryTypeDto::Folder).then(|| entry.id.clone()));
     let tag_entry_id = entry.id.clone();
     let tag_ids = entry.tag_ids.clone();
     let name = entry.name.clone();
@@ -158,11 +187,11 @@ pub fn VaultDetail(
         cur
     });
 
-    let cancel_edit = move |_: web_sys::MouseEvent| {
-        editing.set(false);
-    };
+    // Cancel/Save are `Callback<()>` so the shared `EntryFormBody` footer (and the
+    // dialog's scrim/Escape close, via `on_close`) can drive them.
+    let do_cancel = Callback::new(move |()| editing.set(false));
 
-    let save_edit = move |_: web_sys::MouseEvent| {
+    let do_save = Callback::new(move |()| {
         if saving.get() {
             return;
         }
@@ -192,7 +221,7 @@ pub fn VaultDetail(
             }
             saving.set(false);
         });
-    };
+    });
 
     let export_doc = move |_: web_sys::MouseEvent| {
         // Read signals + locale strings in the handler body (owner present);
@@ -226,7 +255,13 @@ pub fn VaultDetail(
     };
 
     view! {
-        <aside class="w-80 shrink-0 border border-border rounded-lg p-4 bg-primary-muted overflow-auto">
+        // Right-side drawer: absolutely positioned over the table (its parent row
+        // is `relative`), so it never competes for column width. Opaque bg +
+        // shadow lift it off the list; dismiss via the header ✕ (`on_close`).
+        <aside
+            data-detail-drawer="true"
+            class="absolute inset-y-0 right-0 z-20 w-80 border-l border-border bg-primary-muted p-4 shadow-2xl overflow-auto animate-[drawer-in_180ms_ease-out]"
+        >
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-semibold text-text-secondary">
                     {move || t!(i18n, vault.detail_title)}
@@ -278,35 +313,9 @@ pub fn VaultDetail(
             </div>
 
             {move || {
-                if editing.get() {
-                    let move_exclude = move_exclude.clone();
-                    Either::Left(view! {
-                        <EntryForm data=form />
-                        <div class="grid grid-cols-2 gap-3 mt-3">
-                            <FolderSelect data=form folders=folders exclude_id=move_exclude />
-                        </div>
-                        <div class="flex gap-2 justify-end mt-4">
-                            <Button variant=Variant::Ghost size=Size::Sm on:click=cancel_edit>
-                                {move || t!(i18n, vault.cancel)}
-                            </Button>
-                            {move || {
-                                let is_saving = saving.get();
-                                let busy = is_saving || form.with(|d| d.name.trim().is_empty());
-                                view! {
-                                    <Button
-                                        variant=Variant::Primary
-                                        size=Size::Sm
-                                        disabled=busy
-                                        loading=is_saving
-                                        on:click=save_edit
-                                    >
-                                        {move || t!(i18n, vault.save)}
-                                    </Button>
-                                }
-                            }}
-                        </div>
-                    })
-                } else {
+                // Edit now happens in the roomy `<Dialog>` below; while editing,
+                // the compact read aside collapses to just its header (renders None).
+                (!editing.get()).then(|| {
                     let name = name.clone();
                     let url = url.clone();
                     let updated = updated.clone();
@@ -316,7 +325,7 @@ pub fn VaultDetail(
                     let tag_entry_id = tag_entry_id.clone();
                     let folder_of = folder_of.clone();
                     let entry_for_move = entry_for_move.clone();
-                    Either::Right(view! {
+                    view! {
                         <dl class="flex flex-col gap-2 text-sm">
                             <div>
                                 <dt class="text-foreground/50 text-xs uppercase tracking-wider">
@@ -478,10 +487,39 @@ pub fn VaultDetail(
                                 on_catalog=on_catalog
                             />
                         </div>
-                    })
-                }
+                    }
+                })
             }}
         </aside>
+
+        // Roomy shared edit surface — the same fields as the create form, hosted
+        // in a large dialog so multi-field types (Identity/SSH/Card) aren't
+        // squeezed into the 320px read rail. Scrim/Escape close = cancel.
+        <Dialog
+            open=Signal::derive(move || editing.get())
+            on_close=do_cancel
+            size=DialogSize::Lg
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+        >
+            <DialogHeader>
+                <DialogTitle>
+                    {move || t!(i18n, vault.edit)}
+                    <span class="ml-2 inline-flex items-center text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
+                        {move || type_lbl.get()}
+                    </span>
+                </DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+                <EntryFormBody
+                    data=form
+                    folders=folders
+                    exclude_id=move_exclude.get_value()
+                    saving=saving
+                    on_save=do_save
+                    on_cancel=do_cancel
+                />
+            </DialogBody>
+        </Dialog>
     }
 }
 

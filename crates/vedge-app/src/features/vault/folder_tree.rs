@@ -19,6 +19,8 @@ use leptos_icons::Icon;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use vedge_ipc::{EntryTypeDto, IndexEntryDto};
+use vedge_ui::components::{Button, IconButton, Input, SidebarItem};
+use vedge_ui::primitives::tokens::{Size, Variant};
 
 /// A node in the folder hierarchy (acyclic — see module docs).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -480,24 +482,28 @@ pub fn FolderTree(
                     <span class="text-foreground/50 text-xs uppercase tracking-wider">
                         {move || t!(i18n, vault.folders_label)}
                     </span>
-                    <button
-                        type="button"
-                        class="flex shrink-0 text-foreground/40 hover:text-primary p-0.5"
-                        aria-label=move || t_string!(i18n, vault.folder_new).to_string()
+                    <IconButton
+                        variant=Variant::Ghost
+                        size=Size::Xs
+                        class="text-foreground/40"
+                        aria_label=Signal::derive(move || t_string!(i18n, vault.folder_new).to_string())
                         on:click=move |_: web_sys::MouseEvent| show_new.update(|v| *v = !*v)
                     >
                         <Icon attr:aria-hidden="true" icon=i::FaPlusSolid width="12" height="12" />
-                    </button>
+                    </IconButton>
                 </div>
 
                 // Compact new-folder input, revealed by the header "+".
                 <Show when=move || show_new.get()>
-                    <input
-                        class="w-full bg-background border border-primary/40 rounded px-2 py-1 text-sm text-text-primary outline-none mb-1"
+                    <Input
+                        id="folder-new"
+                        class="mb-1"
                         autofocus=true
-                        placeholder=move || t_string!(i18n, vault.folder_new_placeholder).to_string()
-                        prop:value=move || new_name.get()
-                        on:input:target=move |ev| new_name.set(ev.target().value())
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.folder_new_placeholder).to_string()
+                        })
+                        value=Signal::derive(move || new_name.get())
+                        on_input=Callback::new(move |v: String| new_name.set(v))
                         on:keydown=move |ev: web_sys::KeyboardEvent| {
                             match ev.key().as_str() {
                                 "Enter" => {
@@ -516,44 +522,50 @@ pub fn FolderTree(
                 </Show>
 
                 // All items — the cleared scope (also a "move to root" drop target).
-            <button
-                type="button"
-                class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
-                class=("bg-primary/10", move || matches!(scope.get(), FolderScope::All))
-                class=("text-primary", move || matches!(scope.get(), FolderScope::All))
-                class=("ring-1", move || drag_over.get() == DROP_ALL)
-                class=("ring-primary", move || drag_over.get() == DROP_ALL)
-                class=("bg-primary/15", move || drag_over.get() == DROP_ALL)
-                on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::All)
+            // Drop-target highlight rides the reactive `class`; drag handlers spread
+            // onto SidebarItem's root button (same element the click nav uses).
+            <SidebarItem
+                label=Signal::derive(move || t_string!(i18n, vault.folder_root).to_string())
+                icon=Box::new(|| {
+                    view! { <Icon icon=i::FaLayerGroupSolid width="14" height="14" /> }.into_any()
+                })
+                badge=Box::new(move || view! { {move || counts.get().0} }.into_any())
+                selected=Signal::derive(move || matches!(scope.get(), FolderScope::All))
+                on_click=Callback::new(move |_: ()| scope.set(FolderScope::All))
+                class=Signal::derive(move || {
+                    if drag_over.get() == DROP_ALL {
+                        "ring-1 ring-primary bg-primary/15".to_string()
+                    } else {
+                        String::new()
+                    }
+                })
                 on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
                 on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_ALL.to_owned())
                 on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
                 on:drop=drop_on_root
-            >
-                <span class="flex shrink-0"><Icon attr:aria-hidden="true" icon=i::FaLayerGroupSolid width="14" height="14" /></span>
-                <span class="flex-1 truncate">{move || t!(i18n, vault.folder_root)}</span>
-                <span class="shrink-0 text-[10px] text-foreground/40">{move || counts.get().0}</span>
-            </button>
+            />
 
             // Unfiled — entries with no folder (drop here = move to root).
-            <button
-                type="button"
-                class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-primary/5"
-                class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Unfiled))
-                class=("text-primary", move || matches!(scope.get(), FolderScope::Unfiled))
-                class=("ring-1", move || drag_over.get() == DROP_UNFILED)
-                class=("ring-primary", move || drag_over.get() == DROP_UNFILED)
-                class=("bg-primary/15", move || drag_over.get() == DROP_UNFILED)
-                on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::Unfiled)
+            <SidebarItem
+                label=Signal::derive(move || t_string!(i18n, vault.folder_unfiled).to_string())
+                icon=Box::new(|| {
+                    view! { <Icon icon=i::FaInboxSolid width="14" height="14" /> }.into_any()
+                })
+                badge=Box::new(move || view! { {move || counts.get().1} }.into_any())
+                selected=Signal::derive(move || matches!(scope.get(), FolderScope::Unfiled))
+                on_click=Callback::new(move |_: ()| scope.set(FolderScope::Unfiled))
+                class=Signal::derive(move || {
+                    if drag_over.get() == DROP_UNFILED {
+                        "ring-1 ring-primary bg-primary/15".to_string()
+                    } else {
+                        String::new()
+                    }
+                })
                 on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
                 on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_UNFILED.to_owned())
                 on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
                 on:drop=drop_on_root
-            >
-                <span class="flex shrink-0"><Icon attr:aria-hidden="true" icon=i::FaInboxSolid width="14" height="14" /></span>
-                <span class="flex-1 truncate">{move || t!(i18n, vault.folder_unfiled)}</span>
-                <span class="shrink-0 text-[10px] text-foreground/40">{move || counts.get().1}</span>
-            </button>
+            />
 
             <For
                 each=rows
@@ -632,10 +644,11 @@ pub fn FolderTree(
                             {if has_children {
                                 leptos::either::Either::Left(
                                     view! {
-                                        <button
-                                            type="button"
-                                            class="flex shrink-0 text-foreground/40 hover:text-primary w-4"
-                                            aria-label=move || t_string!(i18n, vault.folder_toggle).to_string()
+                                        <IconButton
+                                            variant=Variant::Ghost
+                                            size=Size::Xs
+                                            class="text-foreground/40"
+                                            aria_label=Signal::derive(move || t_string!(i18n, vault.folder_toggle).to_string())
                                             on:click=move |ev: web_sys::MouseEvent| {
                                                 ev.stop_propagation();
                                                 collapsed
@@ -657,7 +670,7 @@ pub fn FolderTree(
                                                     )
                                                 }
                                             }}
-                                        </button>
+                                        </IconButton>
                                     },
                                 )
                             } else {
@@ -673,12 +686,13 @@ pub fn FolderTree(
                                 if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
                                     leptos::either::Either::Left(
                                         view! {
-                                            <input
-                                                class="flex-1 min-w-0 bg-background border border-primary/40 rounded px-1 text-sm text-text-primary outline-none"
+                                            <Input
+                                                id="folder-rename"
+                                                class="flex-1 min-w-0"
                                                 autofocus=true
-                                                prop:value=move || rename_value.get()
+                                                value=Signal::derive(move || rename_value.get())
+                                                on_input=Callback::new(move |v: String| rename_value.set(v))
                                                 on:click=move |ev: web_sys::MouseEvent| ev.stop_propagation()
-                                                on:input:target=move |ev| rename_value.set(ev.target().value())
                                                 on:keydown=move |ev: web_sys::KeyboardEvent| {
                                                     match ev.key().as_str() {
                                                         "Enter" => {
@@ -692,7 +706,7 @@ pub fn FolderTree(
                                                         _ => {}
                                                     }
                                                 }
-                                                on:blur=move |_: web_sys::FocusEvent| commit()
+                                                on:focusout=move |_: web_sys::FocusEvent| commit()
                                             />
                                         },
                                     )
@@ -711,21 +725,23 @@ pub fn FolderTree(
                             <span class="shrink-0 text-[10px] text-foreground/40">
                                 {move || counts.get().2.get(&cnt_id).copied().unwrap_or(0)}
                             </span>
-                            <button
-                                type="button"
-                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-primary"
-                                aria-label=move || t_string!(i18n, vault.folder_customize).to_string()
+                            <IconButton
+                                variant=Variant::Ghost
+                                size=Size::Xs
+                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
+                                aria_label=Signal::derive(move || t_string!(i18n, vault.folder_customize).to_string())
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
                                     on_customize.run(cust_id.clone());
                                 }
                             >
                                 <Icon attr:aria-hidden="true" icon=i::FaPaletteSolid width="10" height="10" />
-                            </button>
-                            <button
-                                type="button"
-                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-primary"
-                                aria-label=move || t_string!(i18n, vault.folder_rename).to_string()
+                            </IconButton>
+                            <IconButton
+                                variant=Variant::Ghost
+                                size=Size::Xs
+                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
+                                aria_label=Signal::derive(move || t_string!(i18n, vault.folder_rename).to_string())
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
                                     renaming.set(Some(start_id.clone()));
@@ -733,18 +749,19 @@ pub fn FolderTree(
                                 }
                             >
                                 <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="10" height="10" />
-                            </button>
-                            <button
-                                type="button"
+                            </IconButton>
+                            <IconButton
+                                variant=Variant::Ghost
+                                size=Size::Xs
                                 class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
-                                aria-label=move || t_string!(i18n, vault.folder_delete).to_string()
+                                aria_label=Signal::derive(move || t_string!(i18n, vault.folder_delete).to_string())
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
                                     on_delete.run(del_id.clone());
                                 }
                             >
                                 <Icon attr:aria-hidden="true" icon=i::BiTrashRegular width="10" height="10" />
-                            </button>
+                            </IconButton>
                         </div>
                     }
                 }
@@ -779,13 +796,13 @@ pub fn FolderBreadcrumb(
     let i18n = use_i18n();
     view! {
         <div class="flex items-center gap-1 text-sm text-foreground/60 flex-wrap">
-            <button
-                type="button"
-                class="hover:text-primary"
+            <Button
+                variant=Variant::Link
+                class="text-foreground/60"
                 on:click=move |_: web_sys::MouseEvent| scope.set(FolderScope::All)
             >
                 {move || t!(i18n, vault.folder_root)}
-            </button>
+            </Button>
             {move || match scope.get() {
                 FolderScope::All => ().into_any(),
                 FolderScope::Unfiled => {
@@ -805,9 +822,9 @@ pub fn FolderBreadcrumb(
                             let icon_data = folder_icon_from_key(icon.as_deref().unwrap_or_default());
                             view! {
                                 <span class="text-foreground/30">"/"</span>
-                                <button
-                                    type="button"
-                                    class="flex items-center gap-1 hover:text-primary"
+                                <Button
+                                    variant=Variant::Link
+                                    class="gap-1 text-foreground/60"
                                     on:click=move |_: web_sys::MouseEvent| {
                                         scope.set(FolderScope::Folder(target.clone()));
                                     }
@@ -819,7 +836,7 @@ pub fn FolderBreadcrumb(
                                         <Icon attr:aria-hidden="true" icon=icon_data width="11" height="11" />
                                     </span>
                                     {pname}
-                                </button>
+                                </Button>
                             }
                         })
                         .collect_view()

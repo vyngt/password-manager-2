@@ -13,7 +13,10 @@ pub fn SidebarItem(
     #[prop(into, default = None)] on_click: Option<Callback<()>>,
     #[prop(optional, default = 0)] indent: u8,
     #[prop(into, default = TextProp::default())] aria_label: TextProp,
-    #[prop(optional, default = "")] class: &'static str,
+    /// Extra classes. `TextProp` so consumers can pass a reactive `Signal<String>`
+    /// (e.g. a drag-over drop-target highlight) as well as a static literal.
+    #[prop(into, default = TextProp::default())]
+    class: TextProp,
 ) -> impl IntoView {
     #[cfg(debug_assertions)]
     if href.is_some() && on_click.is_some() {
@@ -36,19 +39,25 @@ pub fn SidebarItem(
         _ => "",
     };
 
-    let disabled_cls = if disabled { "sidebar-item--disabled" } else { "" };
+    let disabled_cls = if disabled {
+        "sidebar-item--disabled"
+    } else {
+        ""
+    };
 
     let root_cls = move || {
+        let selected_cls = if selected.get() {
+            "sidebar-item--selected"
+        } else {
+            ""
+        };
+        let extra = class.get();
         [
             "sidebar-item",
             indent_cls,
-            if selected.get() {
-                "sidebar-item--selected"
-            } else {
-                ""
-            },
+            selected_cls,
             disabled_cls,
-            class,
+            extra.as_str(),
         ]
         .join(" ")
     };

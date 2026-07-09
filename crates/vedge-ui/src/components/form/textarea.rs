@@ -15,6 +15,10 @@ pub fn Textarea(
     #[prop(optional)] disabled: bool,
     #[prop(optional)] read_only: bool,
     #[prop(into, default = None)] on_change: Option<Callback<String>>,
+    /// When the signal is `true`, masks the content like a password field
+    /// (`-webkit-text-security`) — e.g. an SSH PEM block behind a reveal toggle.
+    #[prop(into, default = None)]
+    masked: Option<Signal<bool>>,
     #[prop(optional, default = "")] class: &'static str,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional)] required: bool,
@@ -24,12 +28,12 @@ pub fn Textarea(
 
     // Line-height and padding per size (must match CSS exactly)
     let line_height: f64 = match size {
-        Size::Sm => 16.0,
+        Size::Xs | Size::Sm => 16.0,
         Size::Md => 20.0,
         Size::Lg => 24.0,
     };
     let padding_y: f64 = match size {
-        Size::Sm => 6.0,
+        Size::Xs | Size::Sm => 6.0,
         Size::Md => 8.0,
         Size::Lg => 10.0,
     };
@@ -107,6 +111,7 @@ pub fn Textarea(
         <textarea
             node_ref=textarea_ref
             class=root_cls
+            class=("textarea--masked", move || masked.map(|m| m.get()).unwrap_or(false))
             id=id
             disabled=disabled
             readonly=read_only

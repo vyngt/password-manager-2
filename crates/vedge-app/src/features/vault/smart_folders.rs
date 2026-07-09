@@ -14,6 +14,8 @@ use leptos::prelude::*;
 use leptos_icons::Icon;
 use serde::{Deserialize, Serialize};
 use vedge_ipc::EntryTypeDto;
+use vedge_ui::components::{IconButton, Input};
+use vedge_ui::primitives::tokens::{Size, Variant};
 
 /// A saved view: the toolbar filter + sort state, plus an id + display name.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -102,24 +104,28 @@ pub fn SmartFolders(
                 <span class="text-foreground/50 text-xs uppercase tracking-wider">
                     {move || t!(i18n, vault.smart_folders_label)}
                 </span>
-                <button
-                    type="button"
-                    class="flex shrink-0 text-foreground/40 hover:text-primary p-0.5"
-                    aria-label=move || t_string!(i18n, vault.smart_save).to_string()
+                <IconButton
+                    variant=Variant::Ghost
+                    size=Size::Xs
+                    class="text-foreground/40"
+                    aria_label=Signal::derive(move || t_string!(i18n, vault.smart_save).to_string())
                     on:click=move |_: web_sys::MouseEvent| show_save.update(|v| *v = !*v)
                 >
                     <Icon attr:aria-hidden="true" icon=i::FaPlusSolid width="12" height="12" />
-                </button>
+                </IconButton>
             </div>
 
             // Compact "save current view" input, revealed by the header "+".
             <Show when=move || show_save.get()>
-                <input
-                    class="w-full bg-background border border-primary/40 rounded px-2 py-1 text-sm text-text-primary outline-none mb-1"
+                <Input
+                    id="smart-save"
+                    class="mb-1"
                     autofocus=true
-                    placeholder=move || t_string!(i18n, vault.smart_name_placeholder).to_string()
-                    prop:value=move || new_name.get()
-                    on:input:target=move |ev| new_name.set(ev.target().value())
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, vault.smart_name_placeholder).to_string()
+                    })
+                    value=Signal::derive(move || new_name.get())
+                    on_input=Callback::new(move |v: String| new_name.set(v))
                     on:keydown=move |ev: web_sys::KeyboardEvent| {
                         match ev.key().as_str() {
                             "Enter" => {
@@ -169,12 +175,13 @@ pub fn SmartFolders(
                                 if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
                                     leptos::either::Either::Left(
                                         view! {
-                                            <input
-                                                class="flex-1 min-w-0 bg-background border border-primary/40 rounded px-1 text-sm text-text-primary outline-none"
+                                            <Input
+                                                id="smart-rename"
+                                                class="flex-1 min-w-0"
                                                 autofocus=true
-                                                prop:value=move || rename_value.get()
+                                                value=Signal::derive(move || rename_value.get())
+                                                on_input=Callback::new(move |v: String| rename_value.set(v))
                                                 on:click=move |ev: web_sys::MouseEvent| ev.stop_propagation()
-                                                on:input:target=move |ev| rename_value.set(ev.target().value())
                                                 on:keydown=move |ev: web_sys::KeyboardEvent| {
                                                     match ev.key().as_str() {
                                                         "Enter" => {
@@ -188,7 +195,7 @@ pub fn SmartFolders(
                                                         _ => {}
                                                     }
                                                 }
-                                                on:blur=move |_: web_sys::FocusEvent| commit()
+                                                on:focusout=move |_: web_sys::FocusEvent| commit()
                                             />
                                         },
                                     )
@@ -211,10 +218,11 @@ pub fn SmartFolders(
                                     )
                                 }
                             }}
-                            <button
-                                type="button"
-                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-primary"
-                                aria-label=move || t_string!(i18n, vault.smart_rename).to_string()
+                            <IconButton
+                                variant=Variant::Ghost
+                                size=Size::Xs
+                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
+                                aria_label=Signal::derive(move || t_string!(i18n, vault.smart_rename).to_string())
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
                                     renaming.set(Some(start_id.clone()));
@@ -222,18 +230,19 @@ pub fn SmartFolders(
                                 }
                             >
                                 <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="10" height="10" />
-                            </button>
-                            <button
-                                type="button"
+                            </IconButton>
+                            <IconButton
+                                variant=Variant::Ghost
+                                size=Size::Xs
                                 class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
-                                aria-label=move || t_string!(i18n, vault.smart_delete).to_string()
+                                aria_label=Signal::derive(move || t_string!(i18n, vault.smart_delete).to_string())
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
                                     on_delete.run(del_id.clone());
                                 }
                             >
                                 <Icon attr:aria-hidden="true" icon=i::BiTrashRegular width="10" height="10" />
-                            </button>
+                            </IconButton>
                         </div>
                     }
                 }

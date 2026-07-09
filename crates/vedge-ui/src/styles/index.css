@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "./focus-ring.css";
+@import "./scrollbar.css";
 
 @import "./accordion.css";
 @import "./button.css";

@@ -39,7 +39,7 @@ pub fn VaultTable(
     let i18n = use_i18n();
 
     view! {
-        <div class="flex-1 overflow-auto">
+        <div class="flex-1 min-w-0 overflow-auto">
             <Show
                 when=move || !items.get().is_empty()
                 fallback=move || {
@@ -126,11 +126,13 @@ fn VaultTableRow(
     let is_fav = item.is_favorite;
     let tag_ids = item.tag_ids.clone();
     let name = item.name.clone();
+    let name_title = name.clone();
     // Reactive so it doesn't read the i18n locale in the (owner-less) row body
     // and relocalizes on language switch.
     let entry_type = item.entry_type.clone();
     let type_lbl = Signal::derive(move || type_label_i18n(i18n, &entry_type));
     let url = item.url.clone().unwrap_or_default();
+    let url_title = url.clone();
     let updated = short_date(&item.updated_at);
 
     // Resolve this row's tag ids to name + color chips (unresolved ids skipped).
@@ -159,6 +161,7 @@ fn VaultTableRow(
 
     view! {
         <tr
+            data-entry-row="true"
             class="border-b border-secondary/10 hover:bg-primary/5 transition-colors cursor-pointer"
             class=("border-t-2", move || drag_over.get())
             class=("border-t-primary", move || drag_over.get())
@@ -224,13 +227,13 @@ fn VaultTableRow(
                 </IconButton>
             </td>
             <td class="p-3 text-sm">
-                <div class="flex flex-col gap-1">
-                    <span>{name}</span>
+                <div class="flex flex-col gap-1 min-w-0">
+                    <span class="block max-w-[16rem] truncate" title=name_title>{name}</span>
                     <div class="flex flex-wrap gap-1">{chips}</div>
                 </div>
             </td>
             <td class="p-3 text-sm text-foreground/70">{type_lbl}</td>
-            <td class="p-3 text-sm font-jetbrains-mono text-foreground/60">{url}</td>
+            <td class="p-3 text-sm font-jetbrains-mono text-foreground/60 max-w-[14rem] truncate" title=url_title>{url}</td>
             <td class="p-3 text-sm text-foreground/60">{updated}</td>
             <td class="p-3">
                 <Show when=move || !hide_delete.get()>
