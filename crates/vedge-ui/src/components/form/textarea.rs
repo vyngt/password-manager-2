@@ -23,7 +23,7 @@ pub fn Textarea(
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional)] required: bool,
 ) -> impl IntoView {
-    let internal = RwSignal::new(default_value.to_string());
+    let internal = RwSignal::new(default_value.to_owned());
     let textarea_ref = NodeRef::<leptos::html::Textarea>::new();
 
     // Line-height and padding per size (must match CSS exactly)
@@ -39,8 +39,8 @@ pub fn Textarea(
     };
     let border: f64 = 2.0; // 1px top + 1px bottom
 
-    let min_height = (rows as f64) * line_height + padding_y * 2.0 + border;
-    let max_height = (max_rows as f64) * line_height + padding_y * 2.0 + border;
+    let min_height = f64::from(rows) * line_height + padding_y * 2.0 + border;
+    let max_height = f64::from(max_rows) * line_height + padding_y * 2.0 + border;
 
     let auto_resize = move || {
         // Imperative DOM work — often deferred via `request_animation_frame`
@@ -53,7 +53,7 @@ pub fn Textarea(
                 "style",
                 &format!("min-height:{min_height}px;max-height:{max_height}px;height:auto"),
             );
-            let scroll_h = raw.scroll_height() as f64;
+            let scroll_h = f64::from(raw.scroll_height());
             let clamped = scroll_h.max(min_height).min(max_height);
             let _ = raw.set_attribute(
                 "style",
@@ -111,13 +111,13 @@ pub fn Textarea(
         <textarea
             node_ref=textarea_ref
             class=root_cls
-            class=("textarea--masked", move || masked.map(|m| m.get()).unwrap_or(false))
+            class=("textarea--masked", move || masked.is_some_and(|m| m.get()))
             id=id
             disabled=disabled
             readonly=read_only
             rows=rows
             placeholder=move || placeholder.map(|s| s.get()).unwrap_or_default()
-            prop:value=move || value.map(|s| s.get()).unwrap_or_else(|| internal.get())
+            prop:value=move || value.map_or_else(|| internal.get(), |s| s.get())
             style=style_str
             aria-invalid=aria_invalid
             aria-describedby=aria_describedby_attr

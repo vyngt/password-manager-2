@@ -1,5 +1,5 @@
 use crate::api::window;
-use crate::i18n::*;
+use crate::i18n::{I18nLocaleTrait, Locale, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -58,6 +58,10 @@ pub fn WindowPanel() -> impl IntoView {
             </div>
             <div class="flex grow" data-tauri-drag-region=true></div>
             <div class="flex flex-col justify-center" style=handle_inner_color>
+                // Design-system exception (OS titlebar chrome): the locale toggle's color
+                // inherits the computed titlebar foreground (`handle_inner_color`). Ghost
+                // `Button` forces a fixed height + text-secondary and `Link` forces
+                // --color-primary, neither able to take the dynamic chrome color. Kept raw.
                 <button
                     type="button"
                     class="px-2 text-xs font-semibold opacity-60 hover:opacity-100 cursor-pointer uppercase tracking-wide"
@@ -74,7 +78,7 @@ pub fn WindowPanel() -> impl IntoView {
             </div>
             <div class="flex h-full" style=handle_inner_color>
                 <TooltipIconButton
-                    label=Signal::derive(move || t_string!(i18n, window.minimize).to_string())
+                    label=Signal::derive(move || t_string!(i18n, window.minimize).to_owned())
                     size=Size::Lg
                     shape=Shape::Square
                     tooltip_placement=Placement::Bottom
@@ -93,7 +97,7 @@ pub fn WindowPanel() -> impl IntoView {
                     </span>
                 </TooltipIconButton>
                 <TooltipIconButton
-                    label=Signal::derive(move || t_string!(i18n, window.maximize).to_string())
+                    label=Signal::derive(move || t_string!(i18n, window.maximize).to_owned())
                     size=Size::Lg
                     shape=Shape::Square
                     tooltip_placement=Placement::Left
@@ -121,7 +125,7 @@ pub fn WindowPanel() -> impl IntoView {
                     </span>
                 </TooltipIconButton>
                 <TooltipIconButton
-                    label=Signal::derive(move || t_string!(i18n, window.close).to_string())
+                    label=Signal::derive(move || t_string!(i18n, window.close).to_owned())
                     variant=Variant::Danger
                     size=Size::Lg
                     shape=Shape::Square

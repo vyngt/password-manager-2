@@ -2,7 +2,7 @@
 //! panel (`vault_detail`). `short_date` is pure/host-testable; the entry-type
 //! label is localized (`vault.type_*`) so it needs the i18n context.
 
-use crate::i18n::*;
+use crate::i18n::{Locale, t_string};
 use icondata as i;
 use leptos_i18n::I18nContext;
 use vedge_ipc::EntryTypeDto;
@@ -10,16 +10,16 @@ use vedge_ipc::EntryTypeDto;
 /// Localized label for an entry type, for the list/detail Type field.
 pub fn type_label_i18n(i18n: I18nContext<Locale>, entry_type: &EntryTypeDto) -> String {
     match entry_type {
-        EntryTypeDto::Login => t_string!(i18n, vault.type_login).to_string(),
-        EntryTypeDto::Card => t_string!(i18n, vault.type_card).to_string(),
-        EntryTypeDto::SshKey => t_string!(i18n, vault.type_ssh_key).to_string(),
-        EntryTypeDto::ApiKey => t_string!(i18n, vault.type_api_key).to_string(),
-        EntryTypeDto::EnvVars => t_string!(i18n, vault.type_env_vars).to_string(),
-        EntryTypeDto::Note => t_string!(i18n, vault.type_note).to_string(),
-        EntryTypeDto::Document => t_string!(i18n, vault.type_document).to_string(),
-        EntryTypeDto::Identity => t_string!(i18n, vault.type_identity).to_string(),
-        EntryTypeDto::Folder => t_string!(i18n, vault.type_folder).to_string(),
-        EntryTypeDto::Unknown(_) => t_string!(i18n, vault.type_other).to_string(),
+        EntryTypeDto::Login => t_string!(i18n, vault.type_login).to_owned(),
+        EntryTypeDto::Card => t_string!(i18n, vault.type_card).to_owned(),
+        EntryTypeDto::SshKey => t_string!(i18n, vault.type_ssh_key).to_owned(),
+        EntryTypeDto::ApiKey => t_string!(i18n, vault.type_api_key).to_owned(),
+        EntryTypeDto::EnvVars => t_string!(i18n, vault.type_env_vars).to_owned(),
+        EntryTypeDto::Note => t_string!(i18n, vault.type_note).to_owned(),
+        EntryTypeDto::Document => t_string!(i18n, vault.type_document).to_owned(),
+        EntryTypeDto::Identity => t_string!(i18n, vault.type_identity).to_owned(),
+        EntryTypeDto::Folder => t_string!(i18n, vault.type_folder).to_owned(),
+        EntryTypeDto::Unknown(_) => t_string!(i18n, vault.type_other).to_owned(),
     }
 }
 
@@ -45,7 +45,7 @@ pub fn type_icon(entry_type: &EntryTypeDto) -> icondata::Icon {
 pub fn short_date(rfc3339: &str) -> String {
     rfc3339
         .split_once('T')
-        .map_or_else(|| rfc3339.to_string(), |(date, _)| date.to_string())
+        .map_or_else(|| rfc3339.to_owned(), |(date, _)| date.to_owned())
 }
 
 /// Long calendar date for the history panel (`2026-07-03T…` → `Jul 3, 2026`).

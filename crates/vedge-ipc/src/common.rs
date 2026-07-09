@@ -93,7 +93,10 @@ pub fn b64_decode(s: &str) -> Result<Vec<u8>, IpcError> {
 pub fn b64_decode_fixed<const N: usize>(s: &str) -> Result<[u8; N], IpcError> {
     let v = b64_decode(s)?;
     let actual = v.len();
-    <[u8; N]>::try_from(v.as_slice()).map_err(|_| IpcError::WrongLength { expected: N, actual })
+    <[u8; N]>::try_from(v.as_slice()).map_err(|_| IpcError::WrongLength {
+        expected: N,
+        actual,
+    })
 }
 
 #[cfg(test)]
@@ -114,7 +117,13 @@ mod tests {
     #[test]
     fn b64_fixed_rejects_wrong_length() {
         let err = b64_decode_fixed::<32>(&b64_encode(&[0u8; 16])).unwrap_err();
-        assert!(matches!(err, IpcError::WrongLength { expected: 32, actual: 16 }));
+        assert!(matches!(
+            err,
+            IpcError::WrongLength {
+                expected: 32,
+                actual: 16
+            }
+        ));
     }
 
     #[test]

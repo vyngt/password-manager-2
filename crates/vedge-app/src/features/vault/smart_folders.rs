@@ -8,7 +8,7 @@
 
 use super::folder_tree::FolderScope;
 use super::vault_filters::{Filters, SortKey};
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
@@ -18,7 +18,7 @@ use vedge_ui::components::{IconButton, Input};
 use vedge_ui::primitives::tokens::{Size, Variant};
 
 /// A saved view: the toolbar filter + sort state, plus an id + display name.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SmartFolder {
     pub id: String,
     pub name: String,
@@ -108,7 +108,7 @@ pub fn SmartFolders(
                     variant=Variant::Ghost
                     size=Size::Xs
                     class="text-foreground/40"
-                    aria_label=Signal::derive(move || t_string!(i18n, vault.smart_save).to_string())
+                    aria_label=Signal::derive(move || t_string!(i18n, vault.smart_save).to_owned())
                     on:click=move |_: web_sys::MouseEvent| show_save.update(|v| *v = !*v)
                 >
                     <Icon attr:aria-hidden="true" icon=i::FaPlusSolid width="12" height="12" />
@@ -122,7 +122,7 @@ pub fn SmartFolders(
                     class="mb-1"
                     autofocus=true
                     placeholder=Signal::derive(move || {
-                        t_string!(i18n, vault.smart_name_placeholder).to_string()
+                        t_string!(i18n, vault.smart_name_placeholder).to_owned()
                     })
                     value=Signal::derive(move || new_name.get())
                     on_input=Callback::new(move |v: String| new_name.set(v))
@@ -158,18 +158,23 @@ pub fn SmartFolders(
                     let start_id = p.id.clone();
                     let start_nm = p.name.clone();
                     let del_id = p.id.clone();
-                    let name = p.name.clone();
-                    // Commit an inline rename (shared by Enter + blur).
+                    let name = p.name;
                     let commit = move || {
                         if let Some(id) = renaming.get_untracked() {
                             on_rename.run((id, rename_value.get_untracked()));
                         }
                         renaming.set(None);
                     };
+                    // Commit an inline rename (shared by Enter + blur).
                     view! {
                         <div class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5">
                             <span class="flex shrink-0 text-foreground/50">
-                                <Icon attr:aria-hidden="true" icon=i::FaFilterSolid width="12" height="12" />
+                                <Icon
+                                    attr:aria-hidden="true"
+                                    icon=i::FaFilterSolid
+                                    width="12"
+                                    height="12"
+                                />
                             </span>
                             {move || {
                                 if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
@@ -181,7 +186,9 @@ pub fn SmartFolders(
                                                 autofocus=true
                                                 value=Signal::derive(move || rename_value.get())
                                                 on_input=Callback::new(move |v: String| rename_value.set(v))
-                                                on:click=move |ev: web_sys::MouseEvent| ev.stop_propagation()
+                                                on:click=move |ev: web_sys::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                }
                                                 on:keydown=move |ev: web_sys::KeyboardEvent| {
                                                     match ev.key().as_str() {
                                                         "Enter" => {
@@ -222,26 +229,40 @@ pub fn SmartFolders(
                                 variant=Variant::Ghost
                                 size=Size::Xs
                                 class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
-                                aria_label=Signal::derive(move || t_string!(i18n, vault.smart_rename).to_string())
+                                aria_label=Signal::derive(move || {
+                                    t_string!(i18n, vault.smart_rename).to_owned()
+                                })
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
                                     renaming.set(Some(start_id.clone()));
                                     rename_value.set(start_nm.clone());
                                 }
                             >
-                                <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="10" height="10" />
+                                <Icon
+                                    attr:aria-hidden="true"
+                                    icon=i::FaPenSolid
+                                    width="10"
+                                    height="10"
+                                />
                             </IconButton>
                             <IconButton
                                 variant=Variant::Ghost
                                 size=Size::Xs
                                 class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
-                                aria_label=Signal::derive(move || t_string!(i18n, vault.smart_delete).to_string())
+                                aria_label=Signal::derive(move || {
+                                    t_string!(i18n, vault.smart_delete).to_owned()
+                                })
                                 on:click=move |ev: web_sys::MouseEvent| {
                                     ev.stop_propagation();
                                     on_delete.run(del_id.clone());
                                 }
                             >
-                                <Icon attr:aria-hidden="true" icon=i::BiTrashRegular width="10" height="10" />
+                                <Icon
+                                    attr:aria-hidden="true"
+                                    icon=i::BiTrashRegular
+                                    width="10"
+                                    height="10"
+                                />
                             </IconButton>
                         </div>
                     }

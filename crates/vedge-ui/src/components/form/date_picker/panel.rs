@@ -435,11 +435,11 @@ fn handle_day_keydown(
         }
         "Home" => {
             let dow = current.weekday().num_days_from_sunday();
-            next = current - chrono::Duration::days(dow as i64);
+            next = current - chrono::Duration::days(i64::from(dow));
         }
         "End" => {
             let dow = current.weekday().num_days_from_sunday();
-            next = current + chrono::Duration::days(6 - dow as i64);
+            next = current + chrono::Duration::days(6 - i64::from(dow));
         }
         "Enter" | " " => {
             if !is_disabled(current, min_date, max_date, disabled_dates) {

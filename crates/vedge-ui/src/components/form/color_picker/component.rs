@@ -72,14 +72,14 @@ pub fn ColorPicker(
     let hide_ver = Arc::new(AtomicU32::new(0));
 
     // ---- Close (as Callback — Copy, usable in multiple closures) ----
-    let close_sv = show_ver.clone();
-    let close_hv = hide_ver.clone();
+    let close_sv = Arc::clone(&show_ver);
+    let close_hv = Arc::clone(&hide_ver);
     let do_close = Callback::new(move |()| {
         close_sv.fetch_add(1, Ordering::Relaxed);
         data_state.set(Some("closed"));
 
         let ver = close_hv.load(Ordering::Relaxed);
-        let hv = close_hv.clone();
+        let hv = Arc::clone(&close_hv);
         set_timeout(
             move || {
                 if hv.load(Ordering::Relaxed) == ver {
@@ -101,8 +101,8 @@ pub fn ColorPicker(
     // `Show` → `Portal` children closures (both must be `Fn`); moving the owned
     // `Vec` through two closure layers would make the outer one `FnOnce`.
     let swatches = StoredValue::new(swatches);
-    let open_sv = show_ver.clone();
-    let open_hv = hide_ver.clone();
+    let open_sv = show_ver;
+    let open_hv = hide_ver;
     let do_open = Callback::new(move |()| {
         if disabled {
             return;
@@ -118,7 +118,7 @@ pub fn ColorPicker(
                 .unwrap_or(800.0);
 
             let panel_h =
-                220.0 + if alpha { 18.0 } else { 0.0 } + if !swatches_empty { 30.0 } else { 0.0 };
+                220.0 + if alpha { 18.0 } else { 0.0 } + if swatches_empty { 0.0 } else { 30.0 };
 
             let space_below = viewport_height - rect.bottom() - 8.0;
             let place_below = space_below >= panel_h || rect.top() < panel_h + 8.0;
@@ -136,7 +136,7 @@ pub fn ColorPicker(
         mounted.set(true);
 
         let ver = open_sv.load(Ordering::Relaxed);
-        let sv2 = open_sv.clone();
+        let sv2 = Arc::clone(&open_sv);
         set_timeout(
             move || {
                 if sv2.load(Ordering::Relaxed) == ver {
@@ -219,7 +219,7 @@ pub fn ColorPicker(
                 c.a / 100.0
             )
         } else {
-            format!("background-color: rgb({}, {}, {})", r, g, b)
+            format!("background-color: rgb({r}, {g}, {b})")
         }
     };
 
@@ -313,46 +313,46 @@ pub fn ColorPicker(
             // and `overflow: hidden`, which would otherwise reparent + clip them).
             <Show when=move || mounted.get()>
                 <Portal>
-                // Invisible backdrop catches clicks outside the panel. Sits above the
-                // dialog scrim (z-50) so the picker works when opened from a dialog.
-                <div
-                    style="position: fixed; inset: 0; z-index: 60;"
-                    on:mousedown=move |_: web_sys::MouseEvent| do_close.run(())
-                />
-                <div
-                    node_ref=panel_ref
-                    class="color-picker-panel"
-                    style=move || panel_style.get()
-                    role="dialog"
-                    aria-label="Color picker"
-                    data-state=move || data_state.get()
-                    on:keydown=move |ev: web_sys::KeyboardEvent| {
-                        if ev.key() == "Escape" {
-                            ev.prevent_default();
-                            ev.stop_propagation();
-                            do_close.run(());
+                    // Invisible backdrop catches clicks outside the panel. Sits above the
+                    // dialog scrim (z-50) so the picker works when opened from a dialog.
+                    <div
+                        style="position: fixed; inset: 0; z-index: 60;"
+                        on:mousedown=move |_: web_sys::MouseEvent| do_close.run(())
+                    />
+                    <div
+                        node_ref=panel_ref
+                        class="color-picker-panel"
+                        style=move || panel_style.get()
+                        role="dialog"
+                        aria-label="Color picker"
+                        data-state=move || data_state.get()
+                        on:keydown=move |ev: web_sys::KeyboardEvent| {
+                            if ev.key() == "Escape" {
+                                ev.prevent_default();
+                                ev.stop_propagation();
+                                do_close.run(());
+                            }
                         }
-                    }
-                >
-                    <Gradient hsv=hsv on_change_end=on_change_end format=format alpha=alpha />
-                    <HueSlider hsv=hsv />
-                    {alpha.then(move || view! { <AlphaSlider hsv=hsv /> })}
-                    <div class="cp-divider"></div>
-                    <FormatRow
-                        hsv=hsv
-                        active_format=active_format
-                        alpha=alpha
-                        on_change_end=on_change_end
-                        format=format
-                    />
-                    <SwatchesGrid
-                        swatches=swatches.get_value()
-                        hsv=hsv
-                        on_change_end=on_change_end
-                        format=format
-                        alpha=alpha
-                    />
-                </div>
+                    >
+                        <Gradient hsv=hsv on_change_end=on_change_end format=format alpha=alpha />
+                        <HueSlider hsv=hsv />
+                        {alpha.then(move || view! { <AlphaSlider hsv=hsv /> })}
+                        <div class="cp-divider"></div>
+                        <FormatRow
+                            hsv=hsv
+                            active_format=active_format
+                            alpha=alpha
+                            on_change_end=on_change_end
+                            format=format
+                        />
+                        <SwatchesGrid
+                            swatches=swatches.get_value()
+                            hsv=hsv
+                            on_change_end=on_change_end
+                            format=format
+                            alpha=alpha
+                        />
+                    </div>
                 </Portal>
             </Show>
         </div>

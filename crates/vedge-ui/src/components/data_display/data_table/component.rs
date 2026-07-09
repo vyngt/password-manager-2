@@ -35,12 +35,12 @@ where
     let focus_idx = RwSignal::new(None::<usize>);
 
     let columns_sv = StoredValue::new(columns);
-    let columns_len = columns_sv.with_value(|c| c.len());
+    let columns_len = columns_sv.with_value(std::vec::Vec::len);
     let row_key_sv = StoredValue::new(row_key);
     let row_select_label_sv = StoredValue::new(row_select_label);
     let empty_action_sv = StoredValue::new(empty_action);
 
-    let total_cols: u32 = (columns_len + if selectable { 1 } else { 0 }) as u32;
+    let total_cols: u32 = (columns_len + usize::from(selectable)) as u32;
 
     // Reactive: per-row keys in visible order.
     let row_keys = Memo::new(move |_| {
@@ -49,7 +49,7 @@ where
 
     // Clamp focus if rows shrink.
     Effect::new(move |_| {
-        let len = row_keys.with(|k| k.len());
+        let len = row_keys.with(std::vec::Vec::len);
         focus_idx.update(|f| {
             if matches!(*f, Some(idx) if idx >= len) {
                 *f = None;
@@ -72,19 +72,28 @@ where
     // Header tri-state signals driven by selection vs. total.
     let header_chk_checked = Signal::derive(move || {
         matches!(
-            header_state(selected_rows.with(|s| s.len()), row_keys.with(|k| k.len())),
+            header_state(
+                selected_rows.with(std::vec::Vec::len),
+                row_keys.with(std::vec::Vec::len)
+            ),
             HeaderCheckState::Checked
         )
     });
     let header_chk_indeterminate = Signal::derive(move || {
         matches!(
-            header_state(selected_rows.with(|s| s.len()), row_keys.with(|k| k.len())),
+            header_state(
+                selected_rows.with(std::vec::Vec::len),
+                row_keys.with(std::vec::Vec::len)
+            ),
             HeaderCheckState::Indeterminate
         )
     });
     let header_chk_label = Signal::derive(move || {
         if matches!(
-            header_state(selected_rows.with(|s| s.len()), row_keys.with(|k| k.len())),
+            header_state(
+                selected_rows.with(std::vec::Vec::len),
+                row_keys.with(std::vec::Vec::len)
+            ),
             HeaderCheckState::Checked
         ) {
             deselect_all_label.get()
@@ -118,12 +127,12 @@ where
             pieces.push(view! { <col style="width:44px" /> }.into_any());
         }
         columns_sv.with_value(|cols| {
-            for c in cols.iter() {
+            for c in cols {
                 let style = match c.width {
-                    ColumnWidth::Fixed(px) => format!("width:{}px", px),
+                    ColumnWidth::Fixed(px) => format!("width:{px}px"),
                     ColumnWidth::Flexible => String::new(),
                     ColumnWidth::MinMax(mi, ma) => {
-                        format!("min-width:{}px;max-width:{}px", mi, ma)
+                        format!("min-width:{mi}px;max-width:{ma}px")
                     }
                 };
                 if style.is_empty() {
@@ -215,7 +224,7 @@ where
                     let label = row_select_label_sv
                         .with_value(|opt| opt.as_ref().map(|f| f(&row_for_checkbox_label)))
                         .unwrap_or_default();
-                    let key_for_checkbox = row_key_str.clone();
+                    let key_for_checkbox = row_key_str;
                     move || {
                         if !selectable {
                             return ().into_any();
@@ -264,7 +273,7 @@ where
 
                 let on_keydown = move |ev: web_sys::KeyboardEvent| {
                     let key = ev.key();
-                    let len = row_keys.with(|k| k.len());
+                    let len = row_keys.with(std::vec::Vec::len);
                     match key.as_str() {
                         "ArrowDown" => {
                             ev.prevent_default();
@@ -354,7 +363,7 @@ where
                             </svg>
                         </span>
                         <span>{move || empty_message.get()}</span>
-                        {move || empty_action_sv.with_value(|a| a.run())}
+                        {move || empty_action_sv.with_value(leptos::prelude::ViewFn::run)}
                     </div>
                 </td>
             </tr>
@@ -379,14 +388,14 @@ where
                 class="data-table"
                 role="grid"
                 aria-busy=move || loading.get().then_some("true")
-                aria-rowcount=move || row_keys.with(|k| k.len()).to_string()
+                aria-rowcount=move || row_keys.with(std::vec::Vec::len).to_string()
             >
                 <colgroup>{colgroup_view}</colgroup>
                 <thead>
                     <tr>{header_checkbox_view} {header_cells_view}</tr>
                 </thead>
                 <tbody>
-                    <Show when=move || !rows.with(|r| r.is_empty()) fallback=empty_view>
+                    <Show when=move || !rows.with(std::vec::Vec::is_empty) fallback=empty_view>
                         {body_view}
                     </Show>
                 </tbody>
@@ -444,7 +453,7 @@ fn render_header_cell<T: 'static>(
         ColumnType::Action => " data-table__th--action",
         _ => "",
     };
-    let full_cls = format!("data-table__th {}{}", align_cls, col_type_cls);
+    let full_cls = format!("data-table__th {align_cls}{col_type_cls}");
 
     if sortable {
         let on_click = move |ev: web_sys::MouseEvent| {
@@ -475,14 +484,12 @@ fn render_cell<T: 'static>(col: &ColumnDef<T>, row: &T) -> AnyView {
     let value = (col.cell)(row);
     let align_cls = col.align.data_table_td_class();
     let (type_cls, stop_click) = match col.col_type {
-        ColumnType::Text => ("", false),
-        ColumnType::Badge => ("", false),
         ColumnType::Date => ("data-table__td--date", false),
         ColumnType::Mono => ("data-table__td--mono", false),
         ColumnType::Action => ("data-table__td--action", true),
-        ColumnType::Custom => ("", false),
+        ColumnType::Text | ColumnType::Badge | ColumnType::Custom => ("", false),
     };
-    let cls = format!("data-table__td {} {}", type_cls, align_cls);
+    let cls = format!("data-table__td {type_cls} {align_cls}");
 
     match value {
         CellValue::Text(s) => {

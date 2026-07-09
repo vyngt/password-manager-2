@@ -41,15 +41,15 @@ pub fn weekday_short_names(locale: &str) -> Vec<String> {
         let names: Vec<String> = (0..7)
             .map(|i| {
                 let d = js_date(2024, 0, 7 + i);
-                let r = format_fn
+
+                format_fn
                     .call1(&JsValue::NULL, &d.into())
                     .ok()
                     .and_then(|v| v.as_string())
-                    .unwrap_or_default();
-                r
+                    .unwrap_or_default()
             })
             .collect();
-        cache.borrow_mut().insert(locale.to_string(), names.clone());
+        cache.borrow_mut().insert(locale.to_owned(), names.clone());
         names
     })
 }
@@ -65,15 +65,15 @@ pub fn month_long_names(locale: &str) -> Vec<String> {
         let names: Vec<String> = (0..12)
             .map(|i| {
                 let d = js_date(2024, i, 15);
-                let r = format_fn
+
+                format_fn
                     .call1(&JsValue::NULL, &d.into())
                     .ok()
                     .and_then(|v| v.as_string())
-                    .unwrap_or_default();
-                r
+                    .unwrap_or_default()
             })
             .collect();
-        cache.borrow_mut().insert(locale.to_string(), names.clone());
+        cache.borrow_mut().insert(locale.to_owned(), names.clone());
         names
     })
 }
@@ -88,16 +88,18 @@ pub fn first_day_of_week(locale: &str) -> u32 {
         let region = region_from_tag(locale);
         let fdow = match region.as_deref() {
             // Sunday-first regions
-            Some("US") | Some("CA") | Some("MX") | Some("JP") | Some("IL") | Some("KR")
-            | Some("TW") | Some("HK") | Some("PH") | Some("ZA") | Some("BR") | Some("CO")
-            | Some("VE") | Some("PE") | Some("EC") | Some("GT") | Some("DO") | Some("AR") => 0,
+            Some(
+                "US" | "CA" | "MX" | "JP" | "IL" | "KR" | "TW" | "HK" | "PH" | "ZA" | "BR" | "CO"
+                | "VE" | "PE" | "EC" | "GT" | "DO" | "AR",
+            ) => 0,
             // Saturday-first regions
-            Some("AE") | Some("AF") | Some("BH") | Some("EG") | Some("IQ") | Some("IR")
-            | Some("KW") | Some("LY") | Some("OM") | Some("QA") | Some("SA") | Some("SD")
-            | Some("SY") | Some("YE") => 6,
+            Some(
+                "AE" | "AF" | "BH" | "EG" | "IQ" | "IR" | "KW" | "LY" | "OM" | "QA" | "SA" | "SD"
+                | "SY" | "YE",
+            ) => 6,
             _ => 1,
         };
-        cache.borrow_mut().insert(locale.to_string(), fdow);
+        cache.borrow_mut().insert(locale.to_owned(), fdow);
         fdow
     })
 }
@@ -151,7 +153,7 @@ fn region_from_tag(locale: &str) -> Option<String> {
 fn fallback_weekday_names() -> Vec<String> {
     ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         .iter()
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect()
 }
 
@@ -171,6 +173,6 @@ fn fallback_month_names() -> Vec<String> {
         "December",
     ]
     .iter()
-    .map(|s| s.to_string())
+    .map(std::string::ToString::to_string)
     .collect()
 }

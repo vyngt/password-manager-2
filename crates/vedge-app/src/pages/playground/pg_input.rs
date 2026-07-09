@@ -1,4 +1,4 @@
-use crate::i18n::*;
+use crate::i18n::{t_string, use_i18n};
 use leptos::prelude::*;
 use vedge_ui::components::Input;
 use vedge_ui::components::form::label::Label;
@@ -27,34 +27,34 @@ pub fn InputPage() -> impl IntoView {
                     <Input
                         id="size-sm"
                         size=Size::Sm
-                        placeholder=Signal::stored("Small (28px)".to_string())
+                        placeholder=Signal::stored("Small (28px)".to_owned())
                     />
-                    <Input id="size-md" placeholder=Signal::stored("Medium (36px)".to_string()) />
+                    <Input id="size-md" placeholder=Signal::stored("Medium (36px)".to_owned()) />
                     <Input
                         id="size-lg"
                         size=Size::Lg
-                        placeholder=Signal::stored("Large (44px)".to_string())
+                        placeholder=Signal::stored("Large (44px)".to_owned())
                     />
                 </div>
             </Section>
 
             <Section title="Status">
                 <div class="space-y-3 max-w-md">
-                    <Input id="status-default" placeholder=Signal::stored("Default".to_string()) />
+                    <Input id="status-default" placeholder=Signal::stored("Default".to_owned()) />
                     <Input
                         id="status-error"
                         status=Status::Error
-                        placeholder=Signal::stored("Error".to_string())
+                        placeholder=Signal::stored("Error".to_owned())
                     />
                     <Input
                         id="status-success"
                         status=Status::Success
-                        placeholder=Signal::stored("Success".to_string())
+                        placeholder=Signal::stored("Success".to_owned())
                     />
                     <Input
                         id="status-warning"
                         status=Status::Warning
-                        placeholder=Signal::stored("Warning".to_string())
+                        placeholder=Signal::stored("Warning".to_owned())
                     />
                 </div>
             </Section>
@@ -64,20 +64,20 @@ pub fn InputPage() -> impl IntoView {
                     <Input
                         id="state-disabled"
                         disabled=true
-                        value=Signal::stored("Disabled input".to_string())
-                        placeholder=Signal::stored("Disabled".to_string())
+                        value=Signal::stored("Disabled input".to_owned())
+                        placeholder=Signal::stored("Disabled".to_owned())
                     />
                     <Input
                         id="state-readonly"
                         read_only=true
-                        value=Signal::stored("Read-only value".to_string())
-                        placeholder=Signal::stored("Read-only".to_string())
+                        value=Signal::stored("Read-only value".to_owned())
+                        placeholder=Signal::stored("Read-only".to_owned())
                     />
                     <Input
                         id="state-loading"
                         loading=true
-                        value=Signal::stored("Loading...".to_string())
-                        placeholder=Signal::stored("Loading".to_string())
+                        value=Signal::stored("Loading...".to_owned())
+                        placeholder=Signal::stored("Loading".to_owned())
                     />
                 </div>
             </Section>
@@ -89,14 +89,14 @@ pub fn InputPage() -> impl IntoView {
                         <Input
                             id="type-password"
                             input_type="password"
-                            placeholder=Signal::stored("Enter password".to_string())
+                            placeholder=Signal::stored("Enter password".to_owned())
                             value=Signal::derive(move || password_val.get())
                             on_input=Callback::new(move |v: String| set_password_val.set(v))
                             reveal_label=Signal::derive(move || {
-                                t_string!(i18n, playground.show_password).to_string()
+                                t_string!(i18n, playground.show_password).to_owned()
                             })
                             hide_label=Signal::derive(move || {
-                                t_string!(i18n, playground.hide_password).to_string()
+                                t_string!(i18n, playground.hide_password).to_owned()
                             })
                         />
                     </div>
@@ -105,11 +105,11 @@ pub fn InputPage() -> impl IntoView {
                         <Input
                             id="type-search"
                             input_type="search"
-                            placeholder=Signal::stored("Search...".to_string())
+                            placeholder=Signal::stored("Search...".to_owned())
                             value=Signal::derive(move || search_val.get())
                             on_input=Callback::new(move |v: String| set_search_val.set(v))
                             clear_label=Signal::derive(move || {
-                                t_string!(i18n, playground.clear).to_string()
+                                t_string!(i18n, playground.clear).to_owned()
                             })
                         />
                     </div>
@@ -120,27 +120,27 @@ pub fn InputPage() -> impl IntoView {
                 <div class="space-y-3 max-w-md">
                     <Input
                         id="icon-leading"
-                        placeholder=Signal::stored("With leading icon".to_string())
+                        placeholder=Signal::stored("With leading icon".to_owned())
                         leading_icon=Box::new(|| {
                             view! { <Icon icon=i::FaMagnifyingGlassSolid /> }.into_any()
                         })
                     />
                     <Input
                         id="icon-trailing"
-                        placeholder=Signal::stored("With trailing icon".to_string())
+                        placeholder=Signal::stored("With trailing icon".to_owned())
                         trailing_icon=Box::new(|| view! { <Icon icon=i::FaGearSolid /> }.into_any())
                     />
                     <Input
                         id="affix-prefix"
                         prefix="https://"
-                        placeholder=Signal::stored("example.com".to_string())
+                        placeholder=Signal::stored("example.com".to_owned())
                         value=Signal::derive(move || prefix_val.get())
                         on_input=Callback::new(move |v: String| set_prefix_val.set(v))
                     />
                     <Input
                         id="affix-suffix"
                         suffix=".com"
-                        placeholder=Signal::stored("domain".to_string())
+                        placeholder=Signal::stored("domain".to_owned())
                         value=Signal::derive(move || suffix_val.get())
                         on_input=Callback::new(move |v: String| set_suffix_val.set(v))
                     />
@@ -155,7 +155,7 @@ pub fn InputPage() -> impl IntoView {
                         </Label>
                         <Input
                             id="interactive-text"
-                            placeholder=Signal::stored("Enter your full name".to_string())
+                            placeholder=Signal::stored("Enter your full name".to_owned())
                             value=Signal::derive(move || text_val.get())
                             on_input=Callback::new(move |v: String| set_text_val.set(v))
                             required=true
@@ -165,7 +165,7 @@ pub fn InputPage() -> impl IntoView {
                         "Value: "
                         {move || {
                             let v = text_val.get();
-                            if v.is_empty() { "(empty)".to_string() } else { v }
+                            if v.is_empty() { "(empty)".to_owned() } else { v }
                         }}
                     </p>
                 </div>

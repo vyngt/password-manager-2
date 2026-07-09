@@ -9,7 +9,7 @@ pub enum ColorError {
 impl fmt::Display for ColorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ColorError::InvalidHex(s) => write!(f, "invalid hex color: {s}"),
+            Self::InvalidHex(s) => write!(f, "invalid hex color: {s}"),
         }
     }
 }
@@ -63,9 +63,9 @@ pub fn hex_to_srgb(hex: &str) -> Result<Srgb, ColorError> {
     let b = u8::from_str_radix(&hex[4..6], 16)
         .map_err(|_| ColorError::InvalidHex(format!("#{hex}")))?;
     Ok(Srgb {
-        r: r as f32 / 255.0,
-        g: g as f32 / 255.0,
-        b: b as f32 / 255.0,
+        r: f32::from(r) / 255.0,
+        g: f32::from(g) / 255.0,
+        b: f32::from(b) / 255.0,
     })
 }
 
@@ -89,7 +89,7 @@ fn gamma_decode(c: f32) -> f32 {
 }
 
 fn gamma_encode(c: f32) -> f32 {
-    if c <= 0.0031308 {
+    if c <= 0.003_130_8 {
         c * 12.92
     } else {
         1.055 * c.powf(1.0 / 2.4) - 0.055
@@ -119,9 +119,9 @@ pub fn linear_to_srgb(c: LinSrgb) -> Srgb {
 /// Returns `[L, a, b]` in OKLAB.
 pub fn linear_to_oklab(c: LinSrgb) -> [f32; 3] {
     // Step 1: linear sRGB → LMS (cone response)
-    let l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
-    let m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
-    let s = 0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b;
+    let l = 0.412_221_46 * c.r + 0.536_332_55 * c.g + 0.051_445_995 * c.b;
+    let m = 0.211_903_5 * c.r + 0.680_699_5 * c.g + 0.107_396_96 * c.b;
+    let s = 0.088_302_46 * c.r + 0.281_718_85 * c.g + 0.629_978_7 * c.b;
 
     // Step 2: cube root (perceptual nonlinearity)
     let l_ = l.cbrt();
@@ -129,9 +129,9 @@ pub fn linear_to_oklab(c: LinSrgb) -> [f32; 3] {
     let s_ = s.cbrt();
 
     // Step 3: LMS' → OKLAB
-    let lab_l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
-    let lab_a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
-    let lab_b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+    let lab_l = 0.210_454_26 * l_ + 0.793_617_8 * m_ - 0.004_072_047 * s_;
+    let lab_a = 1.977_998_5 * l_ - 2.428_592_2 * m_ + 0.450_593_7 * s_;
+    let lab_b = 0.025_904_037 * l_ + 0.782_771_77 * m_ - 0.808_675_77 * s_;
 
     [lab_l, lab_a, lab_b]
 }
@@ -141,9 +141,9 @@ pub fn oklab_to_linear(lab: [f32; 3]) -> LinSrgb {
     let [lab_l, lab_a, lab_b] = lab;
 
     // OKLAB → LMS' (inverse of step 3)
-    let l_ = lab_l + 0.3963377774 * lab_a + 0.2158037573 * lab_b;
-    let m_ = lab_l - 0.1055613458 * lab_a - 0.0638541728 * lab_b;
-    let s_ = lab_l - 0.0894841775 * lab_a - 1.2914855480 * lab_b;
+    let l_ = lab_l + 0.396_337_78 * lab_a + 0.215_803_76 * lab_b;
+    let m_ = lab_l - 0.105_561_346 * lab_a - 0.063_854_17 * lab_b;
+    let s_ = lab_l - 0.089_484_18 * lab_a - 1.291_485_5 * lab_b;
 
     // LMS' → LMS (cube, inverse of step 2)
     let l = l_ * l_ * l_;
@@ -151,9 +151,9 @@ pub fn oklab_to_linear(lab: [f32; 3]) -> LinSrgb {
     let s = s_ * s_ * s_;
 
     // LMS → linear sRGB (inverse of step 1)
-    let r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-    let g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-    let b = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+    let r = 4.076_741_7 * l - 3.307_711_6 * m + 0.230_969_94 * s;
+    let g = -1.268_438 * l + 2.609_757_4 * m - 0.341_319_38 * s;
+    let b = -0.004_196_086_3 * l - 0.703_418_6 * m + 1.707_614_7 * s;
 
     LinSrgb { r, g, b }
 }
@@ -166,7 +166,7 @@ pub const ACHROMATIC_THRESHOLD: f32 = 1e-4;
 
 pub fn oklab_to_oklch(lab: [f32; 3]) -> Oklch {
     let [l, a, b] = lab;
-    let c = (a * a + b * b).sqrt();
+    let c = a.hypot(b);
     let h = if c < ACHROMATIC_THRESHOLD {
         0.0 // hue is undefined for achromatic colors
     } else {

@@ -130,7 +130,7 @@ fn adjust_for_minimum_contrast(
     let mut high = 1.0f32;
 
     for _ in 0..16 {
-        let mid = (low + high) / 2.0;
+        let mid = f32::midpoint(low, high);
         let adjusted = if surface_is_light {
             // Darken: reduce L
             super::color_space::Oklch {

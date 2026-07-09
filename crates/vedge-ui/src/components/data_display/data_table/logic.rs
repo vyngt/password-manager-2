@@ -32,7 +32,7 @@ pub fn toggle_row(
             };
             let hi = hi.min(keys.len().saturating_sub(1));
             let mut next: Vec<String> = current.to_vec();
-            for k in keys[lo..=hi].iter() {
+            for k in keys.get(lo..=hi).into_iter().flatten() {
                 if !next.iter().any(|x| x == k) {
                     next.push(k.clone());
                 }
@@ -41,7 +41,9 @@ pub fn toggle_row(
         }
     }
 
-    let clicked_key = &keys[clicked_idx];
+    let Some(clicked_key) = keys.get(clicked_idx) else {
+        return (current.to_vec(), anchor);
+    };
     let mut next: Vec<String> = current.to_vec();
     if let Some(pos) = next.iter().position(|k| k == clicked_key) {
         next.remove(pos);
@@ -82,7 +84,7 @@ pub fn cycle_sort(current: Option<&SortState>, column_id: &str) -> Option<SortSt
             SortDirection::Desc => None,
         },
         _ => Some(SortState {
-            column_id: column_id.to_string(),
+            column_id: column_id.to_owned(),
             direction: SortDirection::Asc,
         }),
     }
@@ -100,7 +102,7 @@ mod tests {
     fn toggle_adds_missing_key() {
         let ks = keys(3);
         let (next, anchor) = toggle_row(&[], &ks, 1, None, false);
-        assert_eq!(next, vec!["k1".to_string()]);
+        assert_eq!(next, vec!["k1".to_owned()]);
         assert_eq!(anchor, Some(1));
     }
 
@@ -109,7 +111,7 @@ mod tests {
         let ks = keys(3);
         let current = vec!["k0".into(), "k1".into()];
         let (next, anchor) = toggle_row(&current, &ks, 1, Some(0), false);
-        assert_eq!(next, vec!["k0".to_string()]);
+        assert_eq!(next, vec!["k0".to_owned()]);
         assert_eq!(anchor, Some(1));
     }
 
@@ -117,7 +119,7 @@ mod tests {
     fn toggle_shift_range_up() {
         let ks = keys(5);
         let (next, anchor) = toggle_row(&[], &ks, 3, Some(1), true);
-        assert_eq!(next, vec!["k1".to_string(), "k2".into(), "k3".into()]);
+        assert_eq!(next, vec!["k1".to_owned(), "k2".into(), "k3".into()]);
         assert_eq!(anchor, Some(1), "anchor preserved across range-select");
     }
 
@@ -125,17 +127,17 @@ mod tests {
     fn toggle_shift_range_down() {
         let ks = keys(5);
         let (next, _) = toggle_row(&[], &ks, 1, Some(3), true);
-        assert_eq!(next, vec!["k1".to_string(), "k2".into(), "k3".into()]);
+        assert_eq!(next, vec!["k1".to_owned(), "k2".into(), "k3".into()]);
     }
 
     #[test]
     fn toggle_shift_preserves_existing() {
         let ks = keys(5);
-        let current = vec!["k4".to_string()];
+        let current = vec!["k4".to_owned()];
         let (next, _) = toggle_row(&current, &ks, 2, Some(0), true);
         assert_eq!(
             next,
-            vec!["k4".to_string(), "k0".into(), "k1".into(), "k2".into()]
+            vec!["k4".to_owned(), "k0".into(), "k1".into(), "k2".into()]
         );
     }
 
@@ -143,7 +145,7 @@ mod tests {
     fn toggle_shift_without_anchor_falls_back_to_single() {
         let ks = keys(3);
         let (next, anchor) = toggle_row(&[], &ks, 2, None, true);
-        assert_eq!(next, vec!["k2".to_string()]);
+        assert_eq!(next, vec!["k2".to_owned()]);
         assert_eq!(anchor, Some(2));
     }
 
@@ -156,7 +158,7 @@ mod tests {
     #[test]
     fn cycle_header_some_to_empty() {
         let ks = keys(3);
-        let current = vec!["k0".to_string()];
+        let current = vec!["k0".to_owned()];
         assert!(cycle_header(&current, &ks).is_empty());
     }
 

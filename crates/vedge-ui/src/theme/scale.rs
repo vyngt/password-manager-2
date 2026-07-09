@@ -22,20 +22,20 @@ const SHADE_RATIOS: [f32; 3] = [0.18, 0.36, 0.55];
 ///
 /// This function is used identically for primary, danger, warning, and success.
 pub fn generate_color_scale(base: Oklch, background: Oklch) -> [Oklch; 10] {
-    let shade_anchor = hex_to_oklch(SHADE_ANCHOR).expect("hardcoded anchor is valid");
+    let shade_anchor = hex_to_oklch(SHADE_ANCHOR).unwrap_or(base);
 
     let mut scale = [base; 10];
 
-    // Tints: mix background toward base
-    for (i, &t) in TINT_RATIOS.iter().enumerate() {
-        scale[i] = oklch_mix(background, base, t);
+    // Tints: mix background toward base (fills steps 50–500 at indices 0..6)
+    for (slot, t) in scale.iter_mut().zip(TINT_RATIOS) {
+        *slot = oklch_mix(background, base, t);
     }
 
     // Base stays at index 6 (already set by array init)
 
-    // Shades: mix base toward near-black
-    for (i, &s) in SHADE_RATIOS.iter().enumerate() {
-        scale[7 + i] = oklch_mix(base, shade_anchor, s);
+    // Shades: mix base toward near-black (fills steps 700–900 at indices 7..10)
+    for (slot, s) in scale.iter_mut().skip(7).zip(SHADE_RATIOS) {
+        *slot = oklch_mix(base, shade_anchor, s);
     }
 
     scale
@@ -64,11 +64,11 @@ mod tests {
         let base = hex_to_oklch("#2563EB").unwrap();
         let bg = hex_to_oklch("#FFFFFF").unwrap();
         let scale = generate_color_scale(base, bg);
-        for i in 0..6 {
+        for (i, s) in scale.iter().enumerate().take(6) {
             assert!(
-                scale[i].l >= base.l,
+                s.l >= base.l,
                 "tint {i} (L={}) should be >= base (L={})",
-                scale[i].l,
+                s.l,
                 base.l
             );
         }
@@ -79,11 +79,11 @@ mod tests {
         let base = hex_to_oklch("#2563EB").unwrap();
         let bg = hex_to_oklch("#FFFFFF").unwrap();
         let scale = generate_color_scale(base, bg);
-        for i in 7..10 {
+        for (i, s) in scale.iter().enumerate().skip(7) {
             assert!(
-                scale[i].l <= base.l,
+                s.l <= base.l,
                 "shade {i} (L={}) should be <= base (L={})",
-                scale[i].l,
+                s.l,
                 base.l
             );
         }

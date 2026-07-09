@@ -1,5 +1,5 @@
 use super::entry_view::{short_date, type_label_i18n};
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
 use std::collections::HashMap;
@@ -211,9 +211,9 @@ fn VaultTableRow(
                 <IconButton
                     aria_label=Signal::derive(move || {
                         if is_fav {
-                            t_string!(i18n, vault.unfavorite).to_string()
+                            t_string!(i18n, vault.unfavorite).to_owned()
                         } else {
-                            t_string!(i18n, vault.favorite).to_string()
+                            t_string!(i18n, vault.favorite).to_owned()
                         }
                     })
                     variant=Variant::Ghost
@@ -226,31 +226,44 @@ fn VaultTableRow(
                     {if is_fav {
                         Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> })
                     } else {
-                        Either::Right(view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> })
+                        Either::Right(
+                            view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> },
+                        )
                     }}
                 </IconButton>
             </td>
             <td class="p-3 text-sm">
                 <div class="flex flex-col gap-1 min-w-0">
-                    <span class="block max-w-[16rem] truncate" title=name_title>{name}</span>
+                    <span class="block max-w-[16rem] truncate" title=name_title>
+                        {name}
+                    </span>
                     <div class="flex flex-wrap gap-1">{chips}</div>
                 </div>
             </td>
             <td class="p-3 text-sm text-foreground/70">{type_lbl}</td>
-            <td class="p-3 text-sm font-jetbrains-mono text-foreground/60 max-w-[14rem] truncate" title=url_title>{url}</td>
+            <td
+                class="p-3 text-sm font-jetbrains-mono text-foreground/60 max-w-[14rem] truncate"
+                title=url_title
+            >
+                {url}
+            </td>
             <td class="p-3 text-sm text-foreground/60">{updated}</td>
             <td class="p-3">
-                <Show when=move || !hide_delete.get()>
+                <Show when=move || {
+                    !hide_delete.get()
+                }>
                     {
+                        let item_id = item_id.clone();
+                        let entry_for_move = entry_for_move.clone();
                         // Clone per render so the inner `on:click` (a `move`
                         // closure) doesn't take ownership out of the `Show`'s
                         // re-runnable `Fn` children.
-                        let item_id = item_id.clone();
-                        let entry_for_move = entry_for_move.clone();
                         view! {
                             <div class="flex items-center gap-1">
                                 <IconButton
-                                    aria_label=Signal::derive(move || t_string!(i18n, vault.folder_move).to_string())
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.folder_move).to_owned()
+                                    })
                                     variant=Variant::Ghost
                                     size=Size::Sm
                                     on:click=move |ev: web_sys::MouseEvent| {
@@ -261,7 +274,9 @@ fn VaultTableRow(
                                     <Icon attr:aria-hidden="true" icon=i::FaFolderOpenSolid />
                                 </IconButton>
                                 <IconButton
-                                    aria_label=Signal::derive(move || t_string!(i18n, vault.delete).to_string())
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.delete).to_owned()
+                                    })
                                     variant=Variant::Danger
                                     size=Size::Sm
                                     on:click=move |ev: web_sys::MouseEvent| {

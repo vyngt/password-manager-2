@@ -6,11 +6,14 @@ pub fn today() -> NaiveDate {
 }
 
 pub fn days_in_month(year: i32, month: u32) -> u32 {
-    let first = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+    // `month` is 1..=12 and day 1 is always valid by contract, so the fallback is
+    // unreachable in practice — it only guards against an out-of-range `year`.
+    let first_day = |y: i32, m: u32| NaiveDate::from_ymd_opt(y, m, 1).unwrap_or(NaiveDate::MIN);
+    let first = first_day(year, month);
     let next_month = if month == 12 {
-        NaiveDate::from_ymd_opt(year + 1, 1, 1).unwrap()
+        first_day(year + 1, 1)
     } else {
-        NaiveDate::from_ymd_opt(year, month + 1, 1).unwrap()
+        first_day(year, month + 1)
     };
     (next_month - first).num_days() as u32
 }
@@ -19,11 +22,11 @@ pub fn days_in_month(year: i32, month: u32) -> u32 {
 /// `first_dow` is 0=Sunday, 1=Monday, …, 6=Saturday.
 /// Includes leading/trailing out-of-month days so the grid is always 42 cells.
 pub fn build_month_grid(year: i32, month: u32, first_dow: u32) -> Vec<NaiveDate> {
-    let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+    let first_of_month = NaiveDate::from_ymd_opt(year, month, 1).unwrap_or(NaiveDate::MIN);
     let first_weekday = first_of_month.weekday().num_days_from_sunday(); // 0..=6
     // How many cells before the 1st?
     let lead = (first_weekday + 7 - first_dow) % 7;
-    let start = first_of_month - chrono::Duration::days(lead as i64);
+    let start = first_of_month - chrono::Duration::days(i64::from(lead));
 
     (0..42).map(|i| start + chrono::Duration::days(i)).collect()
 }
@@ -44,7 +47,7 @@ pub fn is_disabled(
             return true;
         }
     }
-    disabled_dates.iter().any(|d| *d == date)
+    disabled_dates.contains(&date)
 }
 
 pub fn is_in_month(date: NaiveDate, year: i32, month: u32) -> bool {

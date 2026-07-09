@@ -49,7 +49,7 @@ pub fn NumberInput(
     }
 
     let internal = RwSignal::new(default_value);
-    let current_value = move || value.map(|s| s.get()).unwrap_or_else(|| internal.get());
+    let current_value = move || value.map_or_else(|| internal.get(), |s| s.get());
 
     let input_ref = NodeRef::<leptos::html::Input>::new();
 
@@ -71,8 +71,8 @@ pub fn NumberInput(
         commit(new_val);
     };
 
-    let can_decrement = move || min.map(|lo| current_value() > lo).unwrap_or(true);
-    let can_increment = move || max.map(|hi| current_value() < hi).unwrap_or(true);
+    let can_decrement = move || min.is_none_or(|lo| current_value() > lo);
+    let can_increment = move || max.is_none_or(|hi| current_value() < hi);
 
     let handle_blur = move |_: web_sys::FocusEvent| {
         if let Some(el) = input_ref.get() {

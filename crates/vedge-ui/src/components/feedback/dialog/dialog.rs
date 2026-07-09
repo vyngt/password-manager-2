@@ -122,44 +122,44 @@ pub fn Dialog(
     view! {
         <leptos::portal::Portal>
             <leptos::context::Provider value=dialog_ctx>
-            <Show when=move || open.get()>
-                <div
-                    class="dialog-scrim"
-                    data-state=move || data_state.get()
-                    on:click=move |ev: web_sys::MouseEvent| {
-                        if !closeable {
-                            return;
-                        }
-                        if let (Some(t), Some(c)) = (ev.target(), ev.current_target()) {
-                            if js_sys::Object::is(t.as_ref(), c.as_ref()) {
-                                on_close.run(());
-                            }
-                        }
-                    }
-                    on:keydown=move |ev: web_sys::KeyboardEvent| {
-                        match ev.key().as_str() {
-                            "Escape" if closeable => {
-                                ev.prevent_default();
-                                on_close.run(());
-                            }
-                            "Tab" => trap_tab(&ev, dialog_ref),
-                            _ => {}
-                        }
-                    }
-                >
+                <Show when=move || open.get()>
                     <div
-                        node_ref=dialog_ref
-                        class=format!("dialog {size_cls}")
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby=move || title_id.get()
-                        aria-describedby=move || body_id.get()
-                        tabindex="-1"
+                        class="dialog-scrim"
+                        data-state=move || data_state.get()
+                        on:click=move |ev: web_sys::MouseEvent| {
+                            if !closeable {
+                                return;
+                            }
+                            if let (Some(t), Some(c)) = (ev.target(), ev.current_target()) {
+                                if js_sys::Object::is(t.as_ref(), c.as_ref()) {
+                                    on_close.run(());
+                                }
+                            }
+                        }
+                        on:keydown=move |ev: web_sys::KeyboardEvent| {
+                            match ev.key().as_str() {
+                                "Escape" if closeable => {
+                                    ev.prevent_default();
+                                    on_close.run(());
+                                }
+                                "Tab" => trap_tab(&ev, dialog_ref),
+                                _ => {}
+                            }
+                        }
                     >
-                        {move || children_stored.with_value(|c| c())}
+                        <div
+                            node_ref=dialog_ref
+                            class=format!("dialog {size_cls}")
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby=move || title_id.get()
+                            aria-describedby=move || body_id.get()
+                            tabindex="-1"
+                        >
+                            {move || children_stored.with_value(|c| c())}
+                        </div>
                     </div>
-                </div>
-            </Show>
+                </Show>
             </leptos::context::Provider>
         </leptos::portal::Portal>
     }
@@ -193,9 +193,8 @@ fn trap_tab(ev: &web_sys::KeyboardEvent, dialog_ref: NodeRef<leptos::html::Div>)
     };
     let el: &web_sys::HtmlElement = &root;
 
-    let list = match el.query_selector_all(FOCUSABLE_SELECTOR) {
-        Ok(l) => l,
-        Err(_) => return,
+    let Ok(list) = el.query_selector_all(FOCUSABLE_SELECTOR) else {
+        return;
     };
 
     let len = list.length();
@@ -226,8 +225,7 @@ fn trap_tab(ev: &web_sys::KeyboardEvent, dialog_ref: NodeRef<leptos::html::Div>)
         matches!((active.as_ref(), last.as_ref()), (Some(a), Some(l)) if same_identity(a, l));
     let is_root = active
         .as_ref()
-        .map(|a| js_sys::Object::is(a.as_ref(), el.as_ref()))
-        .unwrap_or(false);
+        .is_some_and(|a| js_sys::Object::is(a.as_ref(), el.as_ref()));
 
     if ev.shift_key() {
         if is_first || is_root {

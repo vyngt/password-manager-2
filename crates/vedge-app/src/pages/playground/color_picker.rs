@@ -4,7 +4,7 @@ use vedge_ui::primitives::tokens::Size;
 
 #[component]
 pub fn ColorPickerPage() -> impl IntoView {
-    let (color_val, set_color_val) = signal("#2563EB".to_string());
+    let (color_val, set_color_val) = signal("#2563EB".to_owned());
     let (last_change_end, set_last_change_end) = signal(String::new());
 
     let preset_swatches = vec![
@@ -189,7 +189,7 @@ pub fn ColorPickerPage() -> impl IntoView {
                             <span class="font-mono text-text-primary">
                                 {move || {
                                     let v = last_change_end.get();
-                                    if v.is_empty() { "(none)".to_string() } else { v }
+                                    if v.is_empty() { "(none)".to_owned() } else { v }
                                 }}
                             </span>
                         </p>

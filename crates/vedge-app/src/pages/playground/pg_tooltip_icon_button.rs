@@ -82,10 +82,7 @@ pub fn TooltipIconButtonPage() -> impl IntoView {
                     <TooltipIconButton label="Tooltip on top" tooltip_placement=Placement::Top>
                         <Icon icon=i::FaArrowUpSolid />
                     </TooltipIconButton>
-                    <TooltipIconButton
-                        label="Tooltip on right"
-                        tooltip_placement=Placement::Right
-                    >
+                    <TooltipIconButton label="Tooltip on right" tooltip_placement=Placement::Right>
                         <Icon icon=i::FaArrowRightSolid />
                     </TooltipIconButton>
                     <TooltipIconButton
@@ -102,11 +99,7 @@ pub fn TooltipIconButtonPage() -> impl IntoView {
 
             <Section title="Interactive — click counter">
                 <div class="flex items-center gap-3">
-                    <TooltipIconButton
-                        label="Increment"
-                        variant=Variant::Primary
-                        on_click=bump
-                    >
+                    <TooltipIconButton label="Increment" variant=Variant::Primary on_click=bump>
                         <Icon icon=i::FaPlusSolid />
                     </TooltipIconButton>
                     <span class="text-sm text-text-secondary">

@@ -5,7 +5,7 @@ use qrcodegen::{QrCode, QrCodeEcc};
 
 /// QR error-correction level. Higher levels recover more from damage but pack
 /// more modules into the same content length.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum QrEcc {
     /// ~7% recovery. Use only when the QR will always be clean (screen display).
     L,
@@ -64,12 +64,13 @@ pub fn QRCode(
 
     let view_box = move || {
         qr.with(|opt| {
-            opt.as_ref()
-                .map(|q| {
+            opt.as_ref().map_or_else(
+                || String::from("0 0 33 33"),
+                |q| {
                     let side = q.size() + BORDER * 2;
                     format!("0 0 {side} {side}")
-                })
-                .unwrap_or_else(|| String::from("0 0 33 33"))
+                },
+            )
         })
     };
 

@@ -10,17 +10,14 @@ pub(super) fn SwatchesGrid(
     alpha: bool,
 ) -> impl IntoView {
     if swatches.is_empty() {
-        return view! {}.into_any();
+        return ().into_any();
     }
 
-    // Pre-parse all swatches into HSV on mount
-    let parsed: Vec<(SwatchItem, Option<HsvColor>)> = swatches
-        .into_iter()
-        .map(|sw| {
-            let parsed = HsvColor::from_hex(&sw.value);
-            (sw, parsed)
-        })
-        .collect();
+    // Pre-parse all swatches into HSV on mount (lazily, consumed once by the view)
+    let parsed = swatches.into_iter().map(|sw| {
+        let parsed = HsvColor::from_hex(&sw.value);
+        (sw, parsed)
+    });
 
     let fire_change_end = move || {
         if let Some(cb) = on_change_end {
@@ -32,10 +29,9 @@ pub(super) fn SwatchesGrid(
         <div class="cp-divider"></div>
         <div class="cp-swatches" role="group" aria-label="Preset colors">
             {parsed
-                .into_iter()
                 .map(|(swatch, parsed_hsv)| {
                     let label = swatch.label.clone().unwrap_or_else(|| swatch.value.clone());
-                    let hex_value = swatch.value.clone();
+                    let hex_value = swatch.value;
                     let is_active = move || {
                         if let Some(ref p) = parsed_hsv {
                             let current = hsv.get();

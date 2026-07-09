@@ -1,5 +1,5 @@
-use crate::components::foundation::icon_button::IconButton;
 use crate::components::feedback::tooltip::Tooltip;
+use crate::components::foundation::icon_button::IconButton;
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Placement, Shape, Size, Variant};
 use leptos::prelude::*;
@@ -42,11 +42,7 @@ pub fn TooltipIconButton(
 
     view! {
         <span class=wrapper_cls>
-            <Tooltip
-                content=tooltip_content
-                placement=tooltip_placement
-                disabled=disabled
-            >
+            <Tooltip content=tooltip_content placement=tooltip_placement disabled=disabled>
                 <IconButton
                     aria_label=label
                     variant=variant

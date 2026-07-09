@@ -9,7 +9,7 @@
 
 use crate::api;
 use crate::features::vault::context::ActiveVault;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -63,7 +63,7 @@ pub fn TagAssign(
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -103,7 +103,7 @@ pub fn TagAssign(
                             size=Size::Xs
                             class="hover:text-danger"
                             aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.tag_remove).to_string()
+                                t_string!(i18n, vault.tag_remove).to_owned()
                             })
                             on:click=move |_: web_sys::MouseEvent| {
                                 on_tags
@@ -138,8 +138,10 @@ pub fn TagAssign(
                 <Select
                     options=options
                     value=Signal::derive(String::new)
-                    placeholder=Signal::derive(move || t_string!(i18n, vault.tag_add).to_string())
-                    aria_label=Signal::derive(move || t_string!(i18n, vault.tag_add_aria).to_string())
+                    placeholder=Signal::derive(move || t_string!(i18n, vault.tag_add).to_owned())
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, vault.tag_add_aria).to_owned()
+                    })
                     on_change=Callback::new(move |id: String| {
                         on_tags.run((id_sv.get_value(), toggle_tag(&ids_sv.get_value(), &id)));
                     })
@@ -159,7 +161,7 @@ pub fn TagAssign(
             return;
         }
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_tag_create).to_string();
+        let err_prefix = t_string!(i18n, vault.err_tag_create).to_owned();
         busy.set(true);
         spawn_local(async move {
             let dto = CreateTagDto { name, color: None };
@@ -195,7 +197,9 @@ pub fn TagAssign(
                     <Input
                         id="tag-assign-new"
                         value=Signal::derive(move || new_name.get())
-                        placeholder=Signal::derive(move || t_string!(i18n, vault.tag_new).to_string())
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.tag_new).to_owned()
+                        })
                         on_input=Callback::new(move |v: String| new_name.set(v))
                     />
                 </div>

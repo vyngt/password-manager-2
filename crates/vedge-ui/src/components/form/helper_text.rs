@@ -24,11 +24,8 @@ pub fn HelperText(
         };
         if let Some(prop) = missing {
             web_sys::console::error_1(
-                &format!(
-                    "HelperText: `{}` is required for i18n when status is non-Default.",
-                    prop
-                )
-                .into(),
+                &format!("HelperText: `{prop}` is required for i18n when status is non-Default.")
+                    .into(),
             );
         }
     }

@@ -31,12 +31,5 @@ pub async fn delete_tag(vault_path: &str, tag_id: &str) -> Result<(), ApiError> 
         vault_path: &'a str,
         tag_id: &'a str,
     }
-    call_void(
-        "delete_tag",
-        &Args {
-            vault_path,
-            tag_id,
-        },
-    )
-    .await
+    call_void("delete_tag", &Args { vault_path, tag_id }).await
 }

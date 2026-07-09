@@ -39,11 +39,11 @@ pub fn RadioGroup(
     let group_name: String = if name.is_empty() {
         format!("radio-group-{}", COUNTER.fetch_add(1, Ordering::Relaxed))
     } else {
-        name.to_string()
+        name.to_owned()
     };
 
-    let internal = RwSignal::new(default_value.to_string());
-    let selected = move || value.map(|s| s.get()).unwrap_or_else(|| internal.get());
+    let internal = RwSignal::new(default_value.to_owned());
+    let selected = move || value.map_or_else(|| internal.get(), |s| s.get());
 
     let option_count = options.len();
     let options = StoredValue::new(options);
@@ -55,7 +55,12 @@ pub fn RadioGroup(
         }
     };
 
-    // Keyboard handler for roving tabindex
+    // Keyboard handler for roving tabindex.
+    #[allow(
+        clippy::indexing_slicing,
+        reason = "indices are (idx ± 1) % option_count == opts.len() — provably in bounds; \
+                  rewriting to `.get()` would force a dead `None` branch on selection"
+    )]
     let handle_keydown = move |ev: web_sys::KeyboardEvent| {
         let key = ev.key();
         let is_nav = matches!(
@@ -150,7 +155,7 @@ pub fn RadioGroup(
                     let opt_disabled = opt.disabled;
                     let item_disabled = disabled || opt_disabled;
                     let is_selected = {
-                        let v = val.clone();
+                        let v = val;
                         move || selected() == v
                     };
                     let item_cls = move || {
@@ -159,20 +164,11 @@ pub fn RadioGroup(
                     };
                     let is_selected2 = is_selected.clone();
                     let tab_idx = move || {
-                        if is_selected2() {
-                            0
-                        } else if selected().is_empty() && i == 0 {
-                            0
-                        } else {
-                            -1
-                        }
+                        if is_selected2() || (selected().is_empty() && i == 0) { 0 } else { -1 }
                     };
-                    let on_change_handler = {
-                        let select_value = select_value.clone();
-                        move |_: web_sys::Event| {
-                            if !item_disabled {
-                                select_value(val2.clone());
-                            }
+                    let on_change_handler = move |_: web_sys::Event| {
+                        if !item_disabled {
+                            select_value(val2.clone());
                         }
                     };
 

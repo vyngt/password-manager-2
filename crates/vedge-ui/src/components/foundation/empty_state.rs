@@ -38,14 +38,11 @@ pub fn EmptyState(
                             <Icon icon=ic />
                         </span>
                     }
-                })}
-            <div class="empty-state__title">{move || title.get()}</div>
+                })} <div class="empty-state__title">{move || title.get()}</div>
             {move || {
                 let d = description.get();
-                (!d.is_empty())
-                    .then(|| view! { <div class="empty-state__description">{d}</div> })
-            }}
-            {children.map(|c| view! { <div class="empty-state__action">{c()}</div> })}
+                (!d.is_empty()).then(|| view! { <div class="empty-state__description">{d}</div> })
+            }} {children.map(|c| view! { <div class="empty-state__action">{c()}</div> })}
         </div>
     }
 }

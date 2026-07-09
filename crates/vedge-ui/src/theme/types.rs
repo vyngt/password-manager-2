@@ -13,7 +13,7 @@ pub const DEFAULT_SUCCESS: &str = "#16A34A";
 /// `danger`, `warning`, `success` are optional — the system uses well-known
 /// defaults when omitted. The UI Settings page only exposes the 3 required
 /// fields; the internal system treats all color groups identically.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ThemeConfig {
     pub background: String,
     pub foreground: String,
@@ -42,7 +42,7 @@ impl ThemeConfig {
 
 /// Full derived token set — all CSS variable values as hex or CSS strings.
 /// Field names map 1:1 to `--color-*` and `--shadow-*` CSS custom properties.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ThemeTokens {
     // Surfaces
     pub color_background: String,
