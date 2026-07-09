@@ -486,7 +486,9 @@ pub fn FolderTree(
                         variant=Variant::Ghost
                         size=Size::Xs
                         class="text-foreground/40"
-                        aria_label=Signal::derive(move || t_string!(i18n, vault.folder_new).to_string())
+                        aria_label=Signal::derive(move || {
+                            t_string!(i18n, vault.folder_new).to_string()
+                        })
                         on:click=move |_: web_sys::MouseEvent| show_new.update(|v| *v = !*v)
                     >
                         <Icon attr:aria-hidden="true" icon=i::FaPlusSolid width="12" height="12" />
@@ -522,254 +524,326 @@ pub fn FolderTree(
                 </Show>
 
                 // All items — the cleared scope (also a "move to root" drop target).
-            // Drop-target highlight rides the reactive `class`; drag handlers spread
-            // onto SidebarItem's root button (same element the click nav uses).
-            <SidebarItem
-                label=Signal::derive(move || t_string!(i18n, vault.folder_root).to_string())
-                icon=Box::new(|| {
-                    view! { <Icon icon=i::FaLayerGroupSolid width="14" height="14" /> }.into_any()
-                })
-                badge=Box::new(move || view! { {move || counts.get().0} }.into_any())
-                selected=Signal::derive(move || matches!(scope.get(), FolderScope::All))
-                on_click=Callback::new(move |_: ()| scope.set(FolderScope::All))
-                class=Signal::derive(move || {
-                    if drag_over.get() == DROP_ALL {
-                        "ring-1 ring-primary bg-primary/15".to_string()
-                    } else {
-                        String::new()
-                    }
-                })
-                on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
-                on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_ALL.to_owned())
-                on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
-                on:drop=drop_on_root
-            />
-
-            // Unfiled — entries with no folder (drop here = move to root).
-            <SidebarItem
-                label=Signal::derive(move || t_string!(i18n, vault.folder_unfiled).to_string())
-                icon=Box::new(|| {
-                    view! { <Icon icon=i::FaInboxSolid width="14" height="14" /> }.into_any()
-                })
-                badge=Box::new(move || view! { {move || counts.get().1} }.into_any())
-                selected=Signal::derive(move || matches!(scope.get(), FolderScope::Unfiled))
-                on_click=Callback::new(move |_: ()| scope.set(FolderScope::Unfiled))
-                class=Signal::derive(move || {
-                    if drag_over.get() == DROP_UNFILED {
-                        "ring-1 ring-primary bg-primary/15".to_string()
-                    } else {
-                        String::new()
-                    }
-                })
-                on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
-                on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_UNFILED.to_owned())
-                on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
-                on:drop=drop_on_root
-            />
-
-            <For
-                each=rows
-                key=|f| (
-                    f.id.clone(),
-                    f.name.clone(),
-                    f.depth,
-                    f.has_children,
-                    f.color.clone(),
-                    f.icon.clone(),
-                )
-                children=move |f| {
-                    let sel_id_a = f.id.clone();
-                    let sel_id_b = f.id.clone();
-                    let click_id = f.id.clone();
-                    let chev_id = f.id.clone();
-                    let col_id = f.id.clone();
-                    let cnt_id = f.id.clone();
-                    let over_id = f.id.clone();
-                    // Three clones — one per single-token drag-over ring toggle below
-                    // (`class=(...)` takes one token; multi-token strings break at runtime).
-                    let over_id2 = f.id.clone();
-                    let over_id3 = f.id.clone();
-                    let enter_id = f.id.clone();
-                    let drop_id = f.id.clone();
-                    let drag_check_id = f.id.clone();
-                    let dragstart_id = f.id.clone();
-                    let rn_check_id = f.id.clone();
-                    let start_id = f.id.clone();
-                    let start_nm = f.name.clone();
-                    let cust_id = f.id.clone();
-                    let del_id = f.id.clone();
-                    let name = f.name.clone();
-                    let depth = f.depth;
-                    let has_children = f.has_children;
-                    let icon_data = folder_icon_from_key(f.icon.as_deref().unwrap_or_default());
-                    let icon_color = f.color.clone();
-                    let indent = format!("padding-left:{}rem", 0.25 + depth as f64 * 0.85);
-                    // Commit an inline rename (shared by Enter + blur). Untracked
-                    // reads — invoked from event handlers, no-op once cleared.
-                    let commit = move || {
-                        if let Some(id) = renaming.get_untracked() {
-                            on_rename.run((id, rename_value.get_untracked()));
+                // Drop-target highlight rides the reactive `class`; drag handlers spread
+                // onto SidebarItem's root button (same element the click nav uses).
+                <SidebarItem
+                    label=Signal::derive(move || t_string!(i18n, vault.folder_root).to_string())
+                    icon=Box::new(|| {
+                        view! { <Icon icon=i::FaLayerGroupSolid width="14" height="14" /> }
+                            .into_any()
+                    })
+                    badge=Box::new(move || view! { {move || counts.get().0} }.into_any())
+                    selected=Signal::derive(move || matches!(scope.get(), FolderScope::All))
+                    on_click=Callback::new(move |_: ()| scope.set(FolderScope::All))
+                    class=Signal::derive(move || {
+                        if drag_over.get() == DROP_ALL {
+                            "ring-1 ring-primary bg-primary/15".to_string()
+                        } else {
+                            String::new()
                         }
-                        renaming.set(None);
-                    };
-                    view! {
-                        <div
-                            class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
-                            class=("bg-primary/10", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_a))
-                            class=("text-primary", move || matches!(scope.get(), FolderScope::Folder(ref s) if *s == sel_id_b))
-                            class=("ring-1", move || drag_over.get() == over_id)
-                            class=("ring-primary", move || drag_over.get() == over_id2)
-                            class=("bg-primary/15", move || drag_over.get() == over_id3)
-                            style=indent
-                            // Draggable as a move source (to reparent under another
-                            // folder / root) — but not while its rename input is open,
-                            // or the parent drag would hijack text selection.
-                            draggable=move || {
-                                (renaming.get().as_deref() != Some(drag_check_id.as_str()))
-                                    .then_some("true")
+                    })
+                    on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
+                    on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_ALL.to_owned())
+                    on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
+                    on:drop=drop_on_root
+                />
+
+                // Unfiled — entries with no folder (drop here = move to root).
+                <SidebarItem
+                    label=Signal::derive(move || t_string!(i18n, vault.folder_unfiled).to_string())
+                    icon=Box::new(|| {
+                        view! { <Icon icon=i::FaInboxSolid width="14" height="14" /> }.into_any()
+                    })
+                    badge=Box::new(move || view! { {move || counts.get().1} }.into_any())
+                    selected=Signal::derive(move || matches!(scope.get(), FolderScope::Unfiled))
+                    on_click=Callback::new(move |_: ()| scope.set(FolderScope::Unfiled))
+                    class=Signal::derive(move || {
+                        if drag_over.get() == DROP_UNFILED {
+                            "ring-1 ring-primary bg-primary/15".to_string()
+                        } else {
+                            String::new()
+                        }
+                    })
+                    on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
+                    on:dragenter=move |_: web_sys::DragEvent| drag_over.set(DROP_UNFILED.to_owned())
+                    on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
+                    on:drop=drop_on_root
+                />
+
+                <For
+                    each=rows
+                    key=|f| (
+                        f.id.clone(),
+                        f.name.clone(),
+                        f.depth,
+                        f.has_children,
+                        f.color.clone(),
+                        f.icon.clone(),
+                    )
+                    children=move |f| {
+                        let sel_id_a = f.id.clone();
+                        let sel_id_b = f.id.clone();
+                        let click_id = f.id.clone();
+                        let chev_id = f.id.clone();
+                        let col_id = f.id.clone();
+                        let cnt_id = f.id.clone();
+                        let over_id = f.id.clone();
+                        let over_id2 = f.id.clone();
+                        let over_id3 = f.id.clone();
+                        let enter_id = f.id.clone();
+                        let drop_id = f.id.clone();
+                        let drag_check_id = f.id.clone();
+                        let dragstart_id = f.id.clone();
+                        let rn_check_id = f.id.clone();
+                        let start_id = f.id.clone();
+                        let start_nm = f.name.clone();
+                        let cust_id = f.id.clone();
+                        let del_id = f.id.clone();
+                        let name = f.name.clone();
+                        let depth = f.depth;
+                        let has_children = f.has_children;
+                        let icon_data = folder_icon_from_key(f.icon.as_deref().unwrap_or_default());
+                        let icon_color = f.color.clone();
+                        let indent = format!("padding-left:{}rem", 0.25 + depth as f64 * 0.85);
+                        let commit = move || {
+                            if let Some(id) = renaming.get_untracked() {
+                                on_rename.run((id, rename_value.get_untracked()));
                             }
-                            on:dragstart=move |ev: web_sys::DragEvent| {
-                                if let Some(dt) = ev.data_transfer() {
-                                    let _ = dt.set_data("text/plain", &dragstart_id);
-                                }
-                            }
-                            on:click=move |_: web_sys::MouseEvent| {
-                                scope.set(FolderScope::Folder(click_id.clone()));
-                            }
-                            on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
-                            on:dragenter=move |_: web_sys::DragEvent| drag_over.set(enter_id.clone())
-                            on:dragleave=move |_: web_sys::DragEvent| drag_over.set(String::new())
-                            on:drop=move |ev: web_sys::DragEvent| drop_on_folder(ev, drop_id.clone())
-                        >
-                            {if has_children {
-                                leptos::either::Either::Left(
-                                    view! {
-                                        <IconButton
-                                            variant=Variant::Ghost
-                                            size=Size::Xs
-                                            class="text-foreground/40"
-                                            aria_label=Signal::derive(move || t_string!(i18n, vault.folder_toggle).to_string())
-                                            on:click=move |ev: web_sys::MouseEvent| {
-                                                ev.stop_propagation();
-                                                collapsed
-                                                    .update(|c| {
-                                                        if !c.remove(&chev_id) {
-                                                            c.insert(chev_id.clone());
-                                                        }
-                                                    });
-                                            }
-                                        >
-                                            {move || {
-                                                if collapsed.get().contains(&col_id) {
-                                                    leptos::either::Either::Left(
-                                                        view! { <Icon attr:aria-hidden="true" icon=i::FaChevronRightSolid width="10" height="10" /> },
-                                                    )
-                                                } else {
-                                                    leptos::either::Either::Right(
-                                                        view! { <Icon attr:aria-hidden="true" icon=i::FaChevronDownSolid width="10" height="10" /> },
-                                                    )
-                                                }
-                                            }}
-                                        </IconButton>
+                            renaming.set(None);
+                        };
+                        // Three clones — one per single-token drag-over ring toggle below
+                        // (`class=(...)` takes one token; multi-token strings break at runtime).
+                        // Commit an inline rename (shared by Enter + blur). Untracked
+                        // reads — invoked from event handlers, no-op once cleared.
+                        view! {
+                            <div
+                                class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
+                                class=(
+                                    "bg-primary/10",
+                                    move || {
+                                        matches!(
+                                            scope.get(),
+                                            FolderScope::Folder(ref s)
+                                            if *s == sel_id_a
+                                        )
                                     },
                                 )
-                            } else {
-                                leptos::either::Either::Right(view! { <span class="w-4 shrink-0"></span> })
-                            }}
-                            <span
-                                class="flex shrink-0 text-foreground/50"
-                                style:color=move || icon_color.clone().unwrap_or_default()
+                                class=(
+                                    "text-primary",
+                                    move || {
+                                        matches!(
+                                            scope.get(),
+                                            FolderScope::Folder(ref s)
+                                            if *s == sel_id_b
+                                        )
+                                    },
+                                )
+                                class=("ring-1", move || drag_over.get() == over_id)
+                                class=("ring-primary", move || drag_over.get() == over_id2)
+                                class=("bg-primary/15", move || drag_over.get() == over_id3)
+                                style=indent
+                                // Draggable as a move source (to reparent under another
+                                // folder / root) — but not while its rename input is open,
+                                // or the parent drag would hijack text selection.
+                                draggable=move || {
+                                    (renaming.get().as_deref() != Some(drag_check_id.as_str()))
+                                        .then_some("true")
+                                }
+                                on:dragstart=move |ev: web_sys::DragEvent| {
+                                    if let Some(dt) = ev.data_transfer() {
+                                        let _ = dt.set_data("text/plain", &dragstart_id);
+                                    }
+                                }
+                                on:click=move |_: web_sys::MouseEvent| {
+                                    scope.set(FolderScope::Folder(click_id.clone()));
+                                }
+                                on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
+                                on:dragenter=move |_: web_sys::DragEvent| {
+                                    drag_over.set(enter_id.clone())
+                                }
+                                on:dragleave=move |_: web_sys::DragEvent| {
+                                    drag_over.set(String::new())
+                                }
+                                on:drop=move |ev: web_sys::DragEvent| drop_on_folder(
+                                    ev,
+                                    drop_id.clone(),
+                                )
                             >
-                                <Icon attr:aria-hidden="true" icon=icon_data width="14" height="14" />
-                            </span>
-                            {move || {
-                                if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
+                                {if has_children {
                                     leptos::either::Either::Left(
                                         view! {
-                                            <Input
-                                                id="folder-rename"
-                                                class="flex-1 min-w-0"
-                                                autofocus=true
-                                                value=Signal::derive(move || rename_value.get())
-                                                on_input=Callback::new(move |v: String| rename_value.set(v))
-                                                on:click=move |ev: web_sys::MouseEvent| ev.stop_propagation()
-                                                on:keydown=move |ev: web_sys::KeyboardEvent| {
-                                                    match ev.key().as_str() {
-                                                        "Enter" => {
-                                                            ev.prevent_default();
-                                                            commit();
-                                                        }
-                                                        "Escape" => {
-                                                            ev.prevent_default();
-                                                            renaming.set(None);
-                                                        }
-                                                        _ => {}
-                                                    }
+                                            <IconButton
+                                                variant=Variant::Ghost
+                                                size=Size::Xs
+                                                class="text-foreground/40"
+                                                aria_label=Signal::derive(move || {
+                                                    t_string!(i18n, vault.folder_toggle).to_string()
+                                                })
+                                                on:click=move |ev: web_sys::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                    collapsed
+                                                        .update(|c| {
+                                                            if !c.remove(&chev_id) {
+                                                                c.insert(chev_id.clone());
+                                                            }
+                                                        });
                                                 }
-                                                on:focusout=move |_: web_sys::FocusEvent| commit()
-                                            />
+                                            >
+                                                {move || {
+                                                    if collapsed.get().contains(&col_id) {
+                                                        leptos::either::Either::Left(
+                                                            view! {
+                                                                <Icon
+                                                                    attr:aria-hidden="true"
+                                                                    icon=i::FaChevronRightSolid
+                                                                    width="10"
+                                                                    height="10"
+                                                                />
+                                                            },
+                                                        )
+                                                    } else {
+                                                        leptos::either::Either::Right(
+                                                            view! {
+                                                                <Icon
+                                                                    attr:aria-hidden="true"
+                                                                    icon=i::FaChevronDownSolid
+                                                                    width="10"
+                                                                    height="10"
+                                                                />
+                                                            },
+                                                        )
+                                                    }
+                                                }}
+                                            </IconButton>
                                         },
                                     )
                                 } else {
-                                    let name = name.clone();
-                                    let name_title = name.clone();
                                     leptos::either::Either::Right(
-                                        view! {
-                                            <span class="flex-1 truncate" title=name_title>
-                                                {name}
-                                            </span>
-                                        },
+                                        view! { <span class="w-4 shrink-0"></span> },
                                     )
-                                }
-                            }}
-                            <span class="shrink-0 text-[10px] text-foreground/40">
-                                {move || counts.get().2.get(&cnt_id).copied().unwrap_or(0)}
-                            </span>
-                            <IconButton
-                                variant=Variant::Ghost
-                                size=Size::Xs
-                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
-                                aria_label=Signal::derive(move || t_string!(i18n, vault.folder_customize).to_string())
-                                on:click=move |ev: web_sys::MouseEvent| {
-                                    ev.stop_propagation();
-                                    on_customize.run(cust_id.clone());
-                                }
-                            >
-                                <Icon attr:aria-hidden="true" icon=i::FaPaletteSolid width="10" height="10" />
-                            </IconButton>
-                            <IconButton
-                                variant=Variant::Ghost
-                                size=Size::Xs
-                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
-                                aria_label=Signal::derive(move || t_string!(i18n, vault.folder_rename).to_string())
-                                on:click=move |ev: web_sys::MouseEvent| {
-                                    ev.stop_propagation();
-                                    renaming.set(Some(start_id.clone()));
-                                    rename_value.set(start_nm.clone());
-                                }
-                            >
-                                <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="10" height="10" />
-                            </IconButton>
-                            <IconButton
-                                variant=Variant::Ghost
-                                size=Size::Xs
-                                class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
-                                aria_label=Signal::derive(move || t_string!(i18n, vault.folder_delete).to_string())
-                                on:click=move |ev: web_sys::MouseEvent| {
-                                    ev.stop_propagation();
-                                    on_delete.run(del_id.clone());
-                                }
-                            >
-                                <Icon attr:aria-hidden="true" icon=i::BiTrashRegular width="10" height="10" />
-                            </IconButton>
-                        </div>
+                                }}
+                                <span
+                                    class="flex shrink-0 text-foreground/50"
+                                    style:color=move || icon_color.clone().unwrap_or_default()
+                                >
+                                    <Icon
+                                        attr:aria-hidden="true"
+                                        icon=icon_data
+                                        width="14"
+                                        height="14"
+                                    />
+                                </span>
+                                {move || {
+                                    if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
+                                        leptos::either::Either::Left(
+                                            view! {
+                                                <Input
+                                                    id="folder-rename"
+                                                    class="flex-1 min-w-0"
+                                                    autofocus=true
+                                                    value=Signal::derive(move || rename_value.get())
+                                                    on_input=Callback::new(move |v: String| rename_value.set(v))
+                                                    on:click=move |ev: web_sys::MouseEvent| {
+                                                        ev.stop_propagation()
+                                                    }
+                                                    on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                                        match ev.key().as_str() {
+                                                            "Enter" => {
+                                                                ev.prevent_default();
+                                                                commit();
+                                                            }
+                                                            "Escape" => {
+                                                                ev.prevent_default();
+                                                                renaming.set(None);
+                                                            }
+                                                            _ => {}
+                                                        }
+                                                    }
+                                                    on:focusout=move |_: web_sys::FocusEvent| commit()
+                                                />
+                                            },
+                                        )
+                                    } else {
+                                        let name = name.clone();
+                                        let name_title = name.clone();
+                                        leptos::either::Either::Right(
+                                            view! {
+                                                <span class="flex-1 truncate" title=name_title>
+                                                    {name}
+                                                </span>
+                                            },
+                                        )
+                                    }
+                                }}
+                                <span class="shrink-0 text-[10px] text-foreground/40">
+                                    {move || counts.get().2.get(&cnt_id).copied().unwrap_or(0)}
+                                </span>
+                                <IconButton
+                                    variant=Variant::Ghost
+                                    size=Size::Xs
+                                    class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.folder_customize).to_string()
+                                    })
+                                    on:click=move |ev: web_sys::MouseEvent| {
+                                        ev.stop_propagation();
+                                        on_customize.run(cust_id.clone());
+                                    }
+                                >
+                                    <Icon
+                                        attr:aria-hidden="true"
+                                        icon=i::FaPaletteSolid
+                                        width="10"
+                                        height="10"
+                                    />
+                                </IconButton>
+                                <IconButton
+                                    variant=Variant::Ghost
+                                    size=Size::Xs
+                                    class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.folder_rename).to_string()
+                                    })
+                                    on:click=move |ev: web_sys::MouseEvent| {
+                                        ev.stop_propagation();
+                                        renaming.set(Some(start_id.clone()));
+                                        rename_value.set(start_nm.clone());
+                                    }
+                                >
+                                    <Icon
+                                        attr:aria-hidden="true"
+                                        icon=i::FaPenSolid
+                                        width="10"
+                                        height="10"
+                                    />
+                                </IconButton>
+                                <IconButton
+                                    variant=Variant::Ghost
+                                    size=Size::Xs
+                                    class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.folder_delete).to_string()
+                                    })
+                                    on:click=move |ev: web_sys::MouseEvent| {
+                                        ev.stop_propagation();
+                                        on_delete.run(del_id.clone());
+                                    }
+                                >
+                                    <Icon
+                                        attr:aria-hidden="true"
+                                        icon=i::BiTrashRegular
+                                        width="10"
+                                        height="10"
+                                    />
+                                </IconButton>
+                            </div>
+                        }
                     }
-                }
-            />
+                />
 
-            // Optional extra sidebar content (e.g. the smart-folders section),
-            // rendered below the folder list inside the same scrollable aside.
-            {children.map(|c| c())}
+                // Optional extra sidebar content (e.g. the smart-folders section),
+                // rendered below the folder list inside the same scrollable aside.
+                {children.map(|c| c())}
             </div>
 
             // Drag handle — pointer-capture resize (20–40vw).
@@ -808,7 +882,9 @@ pub fn FolderBreadcrumb(
                 FolderScope::Unfiled => {
                     view! {
                         <span class="text-foreground/30">"/"</span>
-                        <span class="text-text-primary">{move || t!(i18n, vault.folder_unfiled)}</span>
+                        <span class="text-text-primary">
+                            {move || t!(i18n, vault.folder_unfiled)}
+                        </span>
                     }
                         .into_any()
                 }
@@ -819,7 +895,9 @@ pub fn FolderBreadcrumb(
                         .map(|(pid, pname)| {
                             let target = pid.clone();
                             let (color, icon) = folder_style(&nodes, &pid);
-                            let icon_data = folder_icon_from_key(icon.as_deref().unwrap_or_default());
+                            let icon_data = folder_icon_from_key(
+                                icon.as_deref().unwrap_or_default(),
+                            );
                             view! {
                                 <span class="text-foreground/30">"/"</span>
                                 <Button
@@ -833,7 +911,12 @@ pub fn FolderBreadcrumb(
                                         class="flex shrink-0"
                                         style:color=color.unwrap_or_default()
                                     >
-                                        <Icon attr:aria-hidden="true" icon=icon_data width="11" height="11" />
+                                        <Icon
+                                            attr:aria-hidden="true"
+                                            icon=icon_data
+                                            width="11"
+                                            height="11"
+                                        />
                                     </span>
                                     {pname}
                                 </Button>

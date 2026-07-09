@@ -33,7 +33,9 @@ pub fn TagInput(
 ) -> impl IntoView {
     #[cfg(debug_assertions)]
     if matches!(max_tags, Some(0)) {
-        web_sys::console::warn_1(&"TagInput: `max_tags=0` makes the input permanently unusable.".into());
+        web_sys::console::warn_1(
+            &"TagInput: `max_tags=0` makes the input permanently unusable.".into(),
+        );
     }
 
     let input_text = RwSignal::new(String::new());
@@ -107,62 +109,61 @@ pub fn TagInput(
 
     // --- event handlers ----------------------------------------------------
 
-    let handle_input = move |ev: leptos::ev::Targeted<web_sys::Event, web_sys::HtmlInputElement>| {
-        let text = ev.target().value();
-        if let Some(last_comma) = text.rfind(',') {
-            // Split: everything up to the last comma becomes tags; anything after
-            // stays as the live text input value.
-            let (before, after) = text.split_at(last_comma);
-            for token in before.split(',') {
-                let t = token.trim();
-                if !t.is_empty() {
-                    add_tag(t.to_string());
+    let handle_input =
+        move |ev: leptos::ev::Targeted<web_sys::Event, web_sys::HtmlInputElement>| {
+            let text = ev.target().value();
+            if let Some(last_comma) = text.rfind(',') {
+                // Split: everything up to the last comma becomes tags; anything after
+                // stays as the live text input value.
+                let (before, after) = text.split_at(last_comma);
+                for token in before.split(',') {
+                    let t = token.trim();
+                    if !t.is_empty() {
+                        add_tag(t.to_string());
+                    }
                 }
+                // Skip the comma itself (`after` starts with `,`)
+                let remainder = after.get(1..).unwrap_or("").to_string();
+                input_text.set(remainder);
+                // Also write the value back to the DOM input so it visually clears.
+                if let Some(el) = input_ref.get_untracked() {
+                    el.set_value(&input_text.get_untracked());
+                }
+            } else {
+                input_text.set(text);
             }
-            // Skip the comma itself (`after` starts with `,`)
-            let remainder = after.get(1..).unwrap_or("").to_string();
-            input_text.set(remainder);
-            // Also write the value back to the DOM input so it visually clears.
-            if let Some(el) = input_ref.get_untracked() {
-                el.set_value(&input_text.get_untracked());
-            }
-        } else {
-            input_text.set(text);
-        }
-    };
+        };
 
-    let handle_input_keydown = move |ev: web_sys::KeyboardEvent| {
-        match ev.key().as_str() {
-            "Enter" => {
-                ev.prevent_default();
-                let text = input_text.get_untracked();
-                add_tag(text);
-                input_text.set(String::new());
-                if let Some(el) = input_ref.get_untracked() {
-                    el.set_value("");
-                }
+    let handle_input_keydown = move |ev: web_sys::KeyboardEvent| match ev.key().as_str() {
+        "Enter" => {
+            ev.prevent_default();
+            let text = input_text.get_untracked();
+            add_tag(text);
+            input_text.set(String::new());
+            if let Some(el) = input_ref.get_untracked() {
+                el.set_value("");
             }
-            "Backspace" if input_text.with_untracked(String::is_empty) => {
-                let current = value.get_untracked();
-                if let Some(last) = current.last().cloned() {
-                    remove_tag(last);
-                }
-            }
-            "ArrowLeft" if input_text.with_untracked(String::is_empty) => {
-                let len = value.get_untracked().len();
-                if len > 0 {
-                    ev.prevent_default();
-                    focus_chip_at(len - 1);
-                }
-            }
-            "Escape" => {
-                input_text.set(String::new());
-                if let Some(el) = input_ref.get_untracked() {
-                    el.set_value("");
-                }
-            }
-            _ => {}
         }
+        "Backspace" if input_text.with_untracked(String::is_empty) => {
+            let current = value.get_untracked();
+            if let Some(last) = current.last().cloned() {
+                remove_tag(last);
+            }
+        }
+        "ArrowLeft" if input_text.with_untracked(String::is_empty) => {
+            let len = value.get_untracked().len();
+            if len > 0 {
+                ev.prevent_default();
+                focus_chip_at(len - 1);
+            }
+        }
+        "Escape" => {
+            input_text.set(String::new());
+            if let Some(el) = input_ref.get_untracked() {
+                el.set_value("");
+            }
+        }
+        _ => {}
     };
 
     let handle_blur = move |ev: web_sys::FocusEvent| {
@@ -241,11 +242,7 @@ pub fn TagInput(
     let aria_described = (!aria_describedby.is_empty()).then_some(aria_describedby);
 
     view! {
-        <div
-            class=root_cls
-            node_ref=root_ref
-            on:click=handle_root_click
-        >
+        <div class=root_cls node_ref=root_ref on:click=handle_root_click>
             <ul class="tag-input__chips" role="list">
                 <For
                     each=move || value.get()
@@ -256,15 +253,15 @@ pub fn TagInput(
                         let tag_for_kbd = tag.clone();
                         let aria = text_or(remove_label, "Remove {tag}")
                             .replace("{tag}", &tag_for_aria);
-
                         let handle_chip_click = move |_: web_sys::MouseEvent| {
                             remove_tag(tag_for_click.clone());
                             focus_input();
                         };
-
                         let handle_chip_keydown = move |ev: web_sys::KeyboardEvent| {
                             let current = value.get_untracked();
-                            let Some(my_idx) = current.iter().position(|t| t == &tag_for_kbd) else { return; };
+                            let Some(my_idx) = current.iter().position(|t| t == &tag_for_kbd) else {
+                                return;
+                            };
                             match ev.key().as_str() {
                                 "Delete" | "Backspace" => {
                                     ev.prevent_default();
@@ -292,14 +289,8 @@ pub fn TagInput(
 
                         view! {
                             <li role="listitem" class="tag-input__chip-item">
-                                <Badge
-                                    variant=BadgeVariant::Default
-                                    shape=BadgeShape::Pill
-                                >
-                                    <span
-                                        class="tag-input__chip-text"
-                                        title=tag.clone()
-                                    >
+                                <Badge variant=BadgeVariant::Default shape=BadgeShape::Pill>
+                                    <span class="tag-input__chip-text" title=tag.clone()>
                                         {tag.clone()}
                                     </span>
                                     <button
@@ -340,8 +331,10 @@ pub fn TagInput(
                 <span class="tag-input__max-hint">
                     {move || {
                         max_tags
-                            .map(|n| text_or(max_reached_hint, "Max {n} tags reached")
-                                .replace("{n}", &n.to_string()))
+                            .map(|n| {
+                                text_or(max_reached_hint, "Max {n} tags reached")
+                                    .replace("{n}", &n.to_string())
+                            })
                             .unwrap_or_default()
                     }}
                 </span>

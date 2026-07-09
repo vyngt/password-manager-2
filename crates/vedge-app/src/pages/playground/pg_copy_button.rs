@@ -124,8 +124,7 @@ pub fn CopyButtonPage() -> impl IntoView {
                         "Success: "
                         <code class="text-text-primary">
                             {move || success_count.get().to_string()}
-                        </code>
-                        " · Failure: "
+                        </code> " · Failure: "
                         <code class="text-text-primary">
                             {move || failure_count.get().to_string()}
                         </code>

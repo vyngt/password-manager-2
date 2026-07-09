@@ -153,10 +153,8 @@ pub fn DateTimePicker(
 
     // Pre-compute inner IDs — DatePicker/TimePicker require &'static str.
     let instance = id_with_prefix("dtp");
-    let date_inner_id: &'static str =
-        Box::leak(format!("{instance}-date").into_boxed_str());
-    let time_inner_id: &'static str =
-        Box::leak(format!("{instance}-time").into_boxed_str());
+    let date_inner_id: &'static str = Box::leak(format!("{instance}-date").into_boxed_str());
+    let time_inner_id: &'static str = Box::leak(format!("{instance}-time").into_boxed_str());
 
     // Flatten datetime bounds to DatePicker/TimePicker shapes, using
     // chrono::NaiveDate::{MIN,MAX} and 00:00 / 23:59 as effectively-unbounded
@@ -165,10 +163,14 @@ pub fn DateTimePicker(
     // differs from min/max. Acceptable v1 behaviour.
     let min_date_naive = min_datetime.map(|m| m.date).unwrap_or(NaiveDate::MIN);
     let max_date_naive = max_datetime.map(|m| m.date).unwrap_or(NaiveDate::MAX);
-    let min_time = min_datetime.map(|m| m.time).unwrap_or(TimeValue { hours: 0, minutes: 0 });
-    let max_time = max_datetime
-        .map(|m| m.time)
-        .unwrap_or(TimeValue { hours: 23, minutes: 59 });
+    let min_time = min_datetime.map(|m| m.time).unwrap_or(TimeValue {
+        hours: 0,
+        minutes: 0,
+    });
+    let max_time = max_datetime.map(|m| m.time).unwrap_or(TimeValue {
+        hours: 23,
+        minutes: 59,
+    });
 
     let anchor = Signal::derive(move || {
         trigger_ref
@@ -198,7 +200,11 @@ pub fn DateTimePicker(
         [
             "datetime-trigger",
             status_cls,
-            if has_clear { "datetime-trigger--has-clear" } else { "" },
+            if has_clear {
+                "datetime-trigger--has-clear"
+            } else {
+                ""
+            },
             class,
         ]
         .join(" ")
@@ -250,14 +256,22 @@ pub fn DateTimePicker(
                     <Icon icon=i::FaCalendarSolid />
                 </span>
                 {move || match display_text() {
-                    Some(txt) => view! {
-                        <span class="datetime-trigger__value" aria-live="polite">{txt}</span>
-                    }.into_any(),
-                    None => view! {
-                        <span class="datetime-trigger__placeholder">
-                            {move || placeholder.get()}
-                        </span>
-                    }.into_any(),
+                    Some(txt) => {
+                        view! {
+                            <span class="datetime-trigger__value" aria-live="polite">
+                                {txt}
+                            </span>
+                        }
+                            .into_any()
+                    }
+                    None => {
+                        view! {
+                            <span class="datetime-trigger__placeholder">
+                                {move || placeholder.get()}
+                            </span>
+                        }
+                            .into_any()
+                    }
                 }}
             </button>
 
@@ -272,11 +286,7 @@ pub fn DateTimePicker(
                 </button>
             </Show>
 
-            <Popover
-                open=Signal::derive(move || open.get())
-                on_close=handle_close
-                anchor=anchor
-            >
+            <Popover open=Signal::derive(move || open.get()) on_close=handle_close anchor=anchor>
                 <div
                     class="datetime-panel"
                     role="dialog"

@@ -65,7 +65,9 @@ pub fn FolderMove(
                             .get()
                             .map(|e| {
                                 view! {
-                                    <p class="text-sm font-medium text-text-primary truncate">{e.name}</p>
+                                    <p class="text-sm font-medium text-text-primary truncate">
+                                        {e.name}
+                                    </p>
                                 }
                             })
                     }}
@@ -92,8 +94,7 @@ pub fn FolderMove(
                                 })
                             />
                         }
-                    }}
-                    <div class="flex justify-end gap-2">
+                    }} <div class="flex justify-end gap-2">
                         <Button
                             variant=Variant::Ghost
                             size=Size::Sm
@@ -145,10 +146,16 @@ pub fn FolderSelect(
                 view! {
                     <Select
                         options=options
-                        value=Signal::derive(move || data.with(|d| d.folder_id.clone().unwrap_or_default()))
-                        aria_label=Signal::derive(move || t_string!(i18n, vault.folder_label).to_string())
+                        value=Signal::derive(move || {
+                            data.with(|d| d.folder_id.clone().unwrap_or_default())
+                        })
+                        aria_label=Signal::derive(move || {
+                            t_string!(i18n, vault.folder_label).to_string()
+                        })
                         on_change=Callback::new(move |v: String| {
-                            data.update(|d| d.folder_id = if v.is_empty() { None } else { Some(v) });
+                            data.update(|d| {
+                                d.folder_id = if v.is_empty() { None } else { Some(v) };
+                            });
                         })
                     />
                 }

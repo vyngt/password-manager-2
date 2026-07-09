@@ -303,7 +303,8 @@ pub fn ThemeEditor(
                             .map(|(text_ok, primary_ok)| {
                                 let fg = t_string!(i18n, settings.color_foreground).to_string();
                                 let pr = t_string!(i18n, settings.color_primary).to_string();
-                                let ok_word = t_string!(i18n, settings.theme_contrast_ok).to_string();
+                                let ok_word = t_string!(i18n, settings.theme_contrast_ok)
+                                    .to_string();
                                 let low_word = t_string!(i18n, settings.theme_contrast_low)
                                     .to_string();
                                 let mk = move |ok: bool, label: String| {
@@ -324,8 +325,7 @@ pub fn ThemeEditor(
                                 };
                                 view! {
                                     <div class="flex gap-3">
-                                        {mk(text_ok, fg)}
-                                        {mk(primary_ok, pr)}
+                                        {mk(text_ok, fg)} {mk(primary_ok, pr)}
                                     </div>
                                 }
                             })

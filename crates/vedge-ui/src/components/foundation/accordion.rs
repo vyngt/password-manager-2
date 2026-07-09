@@ -148,8 +148,7 @@ pub fn Accordion(
                 m.insert(item_id.clone(), version);
             });
 
-            let trigger_html_id =
-                format!("{}-trigger-{}", instance.get_value(), &item_id);
+            let trigger_html_id = format!("{}-trigger-{}", instance.get_value(), &item_id);
             let panel_html_id = format!("{}-panel-{}", instance.get_value(), &item_id);
 
             let is_open = {
@@ -157,11 +156,8 @@ pub fn Accordion(
                 Signal::derive(move || open_ids.with(|v| v.iter().any(|x| x == &id)))
             };
 
-            let trigger_cls = [
-                "accordion__trigger",
-                trigger_size.accordion_trigger_class(),
-            ]
-            .join(" ");
+            let trigger_cls =
+                ["accordion__trigger", trigger_size.accordion_trigger_class()].join(" ");
 
             let toggle_click = toggle.clone();
             let click_id = item_id.clone();
@@ -288,9 +284,7 @@ fn animate_panel(
         );
     } else {
         let current = el.scroll_height();
-        let _ = el
-            .style()
-            .set_property("height", &format!("{}px", current));
+        let _ = el.style().set_property("height", &format!("{}px", current));
         let _ = el.set_attribute("data-state", "closing");
         let _ = el.offset_height();
 

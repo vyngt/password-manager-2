@@ -198,8 +198,8 @@ pub fn Popover(
 
         // pointerdown — close when click lands outside both panel and anchor
         {
-            let closure =
-                Closure::<dyn FnMut(web_sys::PointerEvent)>::new(move |ev: web_sys::PointerEvent| {
+            let closure = Closure::<dyn FnMut(web_sys::PointerEvent)>::new(
+                move |ev: web_sys::PointerEvent| {
                     let Some(target) = ev.target() else {
                         return;
                     };
@@ -228,7 +228,8 @@ pub fn Popover(
                         return;
                     }
                     on_close.run(());
-                });
+                },
+            );
             let _ = document
                 .add_event_listener_with_callback("pointerdown", closure.as_ref().unchecked_ref());
             let doc = document.clone();
@@ -244,13 +245,14 @@ pub fn Popover(
 
         // keydown — Escape closes
         {
-            let closure =
-                Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(move |ev: web_sys::KeyboardEvent| {
+            let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(
+                move |ev: web_sys::KeyboardEvent| {
                     if ev.key() == "Escape" {
                         ev.prevent_default();
                         on_close.run(());
                     }
-                });
+                },
+            );
             let _ = document
                 .add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref());
             let doc = document.clone();
@@ -273,8 +275,8 @@ pub fn Popover(
                     do_reposition.run(());
                 }
             });
-            let _ = window
-                .add_event_listener_with_callback("scroll", closure.as_ref().unchecked_ref());
+            let _ =
+                window.add_event_listener_with_callback("scroll", closure.as_ref().unchecked_ref());
             let win = window.clone();
             let cleanup: Box<dyn FnOnce()> = Box::new(move || {
                 let _ = win.remove_event_listener_with_callback(
@@ -291,8 +293,8 @@ pub fn Popover(
             let closure = Closure::<dyn FnMut(web_sys::Event)>::new(move |_: web_sys::Event| {
                 do_reposition.run(());
             });
-            let _ = window
-                .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
+            let _ =
+                window.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
             let win = window.clone();
             let cleanup: Box<dyn FnOnce()> = Box::new(move || {
                 let _ = win.remove_event_listener_with_callback(
@@ -382,20 +384,13 @@ pub fn Popover(
                     tabindex="-1"
                     data-state=move || data_state.get()
                     data-placement=move || resolved_placement.get().data_attr()
-                    data-positioned=move || {
-                        if positioned.get() { "true" } else { "false" }
-                    }
+                    data-positioned=move || { if positioned.get() { "true" } else { "false" } }
                     style=move || {
                         let mw = min_width
                             .get()
                             .map(|w| format!("min-width: {w}px;"))
                             .unwrap_or_default();
-                        format!(
-                            "top: {}px; left: {}px; {}",
-                            pos_top.get(),
-                            pos_left.get(),
-                            mw,
-                        )
+                        format!("top: {}px; left: {}px; {}", pos_top.get(), pos_left.get(), mw)
                     }
                     on:keydown=move |ev: web_sys::KeyboardEvent| {
                         if ev.key() == "Tab" {
@@ -464,10 +459,8 @@ fn handle_tab(
         js_sys::Object::is(a.as_ref(), b.as_ref())
     };
 
-    let is_first =
-        matches!((active.as_ref(), first.as_ref()), (Some(a), Some(f)) if same(a, f));
-    let is_last =
-        matches!((active.as_ref(), last.as_ref()), (Some(a), Some(l)) if same(a, l));
+    let is_first = matches!((active.as_ref(), first.as_ref()), (Some(a), Some(f)) if same(a, f));
+    let is_last = matches!((active.as_ref(), last.as_ref()), (Some(a), Some(l)) if same(a, l));
 
     if ev.shift_key() && is_first {
         on_close.run(());
@@ -583,6 +576,10 @@ fn calc_position(
     top = top.max(8.0).min(max_top);
 
     let resolved = PopoverPlacement::from_parts(side, align);
-    let mw = if match_trigger_width { Some(ar_width) } else { None };
+    let mw = if match_trigger_width {
+        Some(ar_width)
+    } else {
+        None
+    };
     (resolved, top, left, mw)
 }

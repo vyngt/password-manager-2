@@ -54,7 +54,9 @@ pub fn FolderDelete(
                             .get()
                             .map(|e| {
                                 view! {
-                                    <p class="text-sm font-medium text-text-primary truncate">{e.name}</p>
+                                    <p class="text-sm font-medium text-text-primary truncate">
+                                        {e.name}
+                                    </p>
                                 }
                             })
                     }}
@@ -107,7 +109,9 @@ pub fn FolderDelete(
                                         <Button
                                             variant=Variant::Danger
                                             size=Size::Sm
-                                            on:click=move |_: web_sys::MouseEvent| on_empty.run(contents())
+                                            on:click=move |_: web_sys::MouseEvent| {
+                                                on_empty.run(contents())
+                                            }
                                         >
                                             {move || t!(i18n, vault.folder_empty_action)}
                                         </Button>

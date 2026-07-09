@@ -346,7 +346,9 @@ pub fn VaultLaunch() -> impl IntoView {
             <div class="w-[420px] max-w-full rounded-xl border border-border bg-surface p-6 shadow-lg">
                 <EmptyState
                     icon=i::FaFileShieldSolid
-                    title=Signal::derive(move || t_string!(i18n, unlock.no_vaults_title).to_string())
+                    title=Signal::derive(move || {
+                        t_string!(i18n, unlock.no_vaults_title).to_string()
+                    })
                     description=Signal::derive(move || {
                         t_string!(i18n, unlock.no_vaults_body).to_string()
                     })

@@ -38,8 +38,7 @@ pub fn TagInputPage() -> impl IntoView {
                     placeholder="Paste a comma- or newline-separated list"
                 />
                 <div class="mt-2 text-xs text-text-tertiary break-all">
-                    "Try pasting: "
-                    <code class="text-text-primary">"apple, banana, cherry"</code>
+                    "Try pasting: " <code class="text-text-primary">"apple, banana, cherry"</code>
                 </div>
             </Section>
 

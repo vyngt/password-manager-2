@@ -65,9 +65,5 @@ pub async fn touch_extension_session_last_active(session_id: &str) -> Result<(),
     struct Args<'a> {
         session_id: &'a str,
     }
-    call_void(
-        "touch_extension_session_last_active",
-        &Args { session_id },
-    )
-    .await
+    call_void("touch_extension_session_last_active", &Args { session_id }).await
 }

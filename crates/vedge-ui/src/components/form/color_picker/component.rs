@@ -313,46 +313,46 @@ pub fn ColorPicker(
             // and `overflow: hidden`, which would otherwise reparent + clip them).
             <Show when=move || mounted.get()>
                 <Portal>
-                // Invisible backdrop catches clicks outside the panel. Sits above the
-                // dialog scrim (z-50) so the picker works when opened from a dialog.
-                <div
-                    style="position: fixed; inset: 0; z-index: 60;"
-                    on:mousedown=move |_: web_sys::MouseEvent| do_close.run(())
-                />
-                <div
-                    node_ref=panel_ref
-                    class="color-picker-panel"
-                    style=move || panel_style.get()
-                    role="dialog"
-                    aria-label="Color picker"
-                    data-state=move || data_state.get()
-                    on:keydown=move |ev: web_sys::KeyboardEvent| {
-                        if ev.key() == "Escape" {
-                            ev.prevent_default();
-                            ev.stop_propagation();
-                            do_close.run(());
+                    // Invisible backdrop catches clicks outside the panel. Sits above the
+                    // dialog scrim (z-50) so the picker works when opened from a dialog.
+                    <div
+                        style="position: fixed; inset: 0; z-index: 60;"
+                        on:mousedown=move |_: web_sys::MouseEvent| do_close.run(())
+                    />
+                    <div
+                        node_ref=panel_ref
+                        class="color-picker-panel"
+                        style=move || panel_style.get()
+                        role="dialog"
+                        aria-label="Color picker"
+                        data-state=move || data_state.get()
+                        on:keydown=move |ev: web_sys::KeyboardEvent| {
+                            if ev.key() == "Escape" {
+                                ev.prevent_default();
+                                ev.stop_propagation();
+                                do_close.run(());
+                            }
                         }
-                    }
-                >
-                    <Gradient hsv=hsv on_change_end=on_change_end format=format alpha=alpha />
-                    <HueSlider hsv=hsv />
-                    {alpha.then(move || view! { <AlphaSlider hsv=hsv /> })}
-                    <div class="cp-divider"></div>
-                    <FormatRow
-                        hsv=hsv
-                        active_format=active_format
-                        alpha=alpha
-                        on_change_end=on_change_end
-                        format=format
-                    />
-                    <SwatchesGrid
-                        swatches=swatches.get_value()
-                        hsv=hsv
-                        on_change_end=on_change_end
-                        format=format
-                        alpha=alpha
-                    />
-                </div>
+                    >
+                        <Gradient hsv=hsv on_change_end=on_change_end format=format alpha=alpha />
+                        <HueSlider hsv=hsv />
+                        {alpha.then(move || view! { <AlphaSlider hsv=hsv /> })}
+                        <div class="cp-divider"></div>
+                        <FormatRow
+                            hsv=hsv
+                            active_format=active_format
+                            alpha=alpha
+                            on_change_end=on_change_end
+                            format=format
+                        />
+                        <SwatchesGrid
+                            swatches=swatches.get_value()
+                            hsv=hsv
+                            on_change_end=on_change_end
+                            format=format
+                            alpha=alpha
+                        />
+                    </div>
                 </Portal>
             </Show>
         </div>

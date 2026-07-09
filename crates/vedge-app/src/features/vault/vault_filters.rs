@@ -221,15 +221,18 @@ pub fn VaultFilters(
             // locale read is tracked (no owner-less warning) and relocalizes.
             <div class="w-40 shrink-0">
                 {move || {
-                    let mut options = vec![SelectItem::option(
-                        "",
-                        t_string!(i18n, vault.filter_all_types).to_string(),
-                    )];
-                    options.extend(
-                        filterable_types()
-                            .iter()
-                            .map(|ty| SelectItem::option(type_to_key(ty), type_label_i18n(i18n, ty))),
-                    );
+                    let mut options = vec![
+                        SelectItem::option("", t_string!(i18n, vault.filter_all_types).to_string()),
+                    ];
+                    options
+                        .extend(
+                            filterable_types()
+                                .iter()
+                                .map(|ty| SelectItem::option(
+                                    type_to_key(ty),
+                                    type_label_i18n(i18n, ty),
+                                )),
+                        );
                     view! {
                         <Select
                             options=options
@@ -244,7 +247,13 @@ pub fn VaultFilters(
                             })
                             on_change=Callback::new(move |key: String| {
                                 entry_type
-                                    .set(if key.is_empty() { None } else { Some(type_from_key(&key)) });
+                                    .set(
+                                        if key.is_empty() {
+                                            None
+                                        } else {
+                                            Some(type_from_key(&key))
+                                        },
+                                    );
                             })
                         />
                     }
@@ -254,10 +263,9 @@ pub fn VaultFilters(
             // Tag facet — rebuilt when the tag list or locale changes.
             <div class="w-40 shrink-0">
                 {move || {
-                    let mut options = vec![SelectItem::option(
-                        "",
-                        t_string!(i18n, vault.filter_all_tags).to_string(),
-                    )];
+                    let mut options = vec![
+                        SelectItem::option("", t_string!(i18n, vault.filter_all_tags).to_string()),
+                    ];
                     options
                         .extend(tags.get().into_iter().map(|t| SelectItem::option(t.id, t.name)));
                     view! {
@@ -282,7 +290,10 @@ pub fn VaultFilters(
             <div class="w-32 shrink-0">
                 {move || {
                     let options = vec![
-                        SelectItem::option("active", t_string!(i18n, vault.view_active).to_string()),
+                        SelectItem::option(
+                            "active",
+                            t_string!(i18n, vault.view_active).to_string(),
+                        ),
                         SelectItem::option("trash", t_string!(i18n, vault.view_trash).to_string()),
                     ];
                     view! {
@@ -305,7 +316,10 @@ pub fn VaultFilters(
                 {move || {
                     let options = vec![
                         SelectItem::option("name", t_string!(i18n, vault.sort_name).to_string()),
-                        SelectItem::option("updated", t_string!(i18n, vault.sort_updated).to_string()),
+                        SelectItem::option(
+                            "updated",
+                            t_string!(i18n, vault.sort_updated).to_string(),
+                        ),
                         SelectItem::option("used", t_string!(i18n, vault.sort_used).to_string()),
                         SelectItem::option("manual", t_string!(i18n, vault.sort_manual).to_string()),
                     ];
@@ -332,7 +346,9 @@ pub fn VaultFilters(
                 <Toggle
                     checked=Signal::derive(move || favorites_only.get())
                     on_change=Callback::new(move |v: bool| favorites_only.set(v))
-                    aria_label=Signal::derive(move || t_string!(i18n, vault.filter_favorites).to_string())
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, vault.filter_favorites).to_string()
+                    })
                 />
                 <span>{move || t!(i18n, vault.filter_favorites)}</span>
             </div>

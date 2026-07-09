@@ -84,14 +84,17 @@ pub fn FolderCustomize(
                                     class="flex shrink-0 text-foreground/50"
                                     style:color=move || color.get().unwrap_or_default()
                                 >
-                                    <Icon attr:aria-hidden="true" icon=icon_data width="16" height="16" />
+                                    <Icon
+                                        attr:aria-hidden="true"
+                                        icon=icon_data
+                                        width="16"
+                                        height="16"
+                                    />
                                 </span>
                                 <span class="truncate">{name}</span>
                             </div>
                         }
-                    }}
-
-                    // Color.
+                    }} // Color.
                     <div class="flex flex-col gap-1">
                         <span class="text-foreground/50 text-xs uppercase tracking-wider">
                             {move || t!(i18n, vault.folder_color)}
@@ -112,10 +115,8 @@ pub fn FolderCustomize(
                                 {move || t!(i18n, vault.folder_color_clear)}
                             </Button>
                         </div>
-                    </div>
-
                     // Icon grid.
-                    <div class="flex flex-col gap-1">
+                    </div> <div class="flex flex-col gap-1">
                         <span class="text-foreground/50 text-xs uppercase tracking-wider">
                             {move || t!(i18n, vault.folder_icon)}
                         </span>
@@ -124,15 +125,15 @@ pub fn FolderCustomize(
                                 .iter()
                                 .map(|(key, ic)| {
                                     let key_s = (*key).to_owned();
-                                    // One clone per closure (the reactive selected-class read, the
-                                    // aria-pressed read, and the click) since the key is non-Copy.
                                     let sel_cls = key_s.clone();
                                     let sel_p = key_s.clone();
+                                    let label = key_s.clone();
+                                    let ic = *ic;
+                                    // One clone per closure (the reactive selected-class read, the
+                                    // aria-pressed read, and the click) since the key is non-Copy.
                                     // The icon key doubles as the accessible name — there's no
                                     // localized per-icon string set, so the identifier is the
                                     // best available label for this visual picker.
-                                    let label = key_s.clone();
-                                    let ic = *ic;
                                     view! {
                                         <IconButton
                                             variant=Variant::Ghost
@@ -154,15 +155,18 @@ pub fn FolderCustomize(
                                                 icon.set(Some(key_s.clone()));
                                             }
                                         >
-                                            <Icon attr:aria-hidden="true" icon=ic width="16" height="16" />
+                                            <Icon
+                                                attr:aria-hidden="true"
+                                                icon=ic
+                                                width="16"
+                                                height="16"
+                                            />
                                         </IconButton>
                                     }
                                 })
                                 .collect_view()}
                         </div>
-                    </div>
-
-                    <div class="flex justify-end gap-2">
+                    </div> <div class="flex justify-end gap-2">
                         <Button
                             variant=Variant::Ghost
                             size=Size::Sm

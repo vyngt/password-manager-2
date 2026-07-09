@@ -134,9 +134,7 @@ pub fn TabsPage() -> impl IntoView {
                 />
                 <div class="mt-2 text-xs text-text-tertiary flex items-center gap-2">
                     "Active: "
-                    <code class="text-text-primary">
-                        {move || controlled_active.get()}
-                    </code>
+                    <code class="text-text-primary">{move || controlled_active.get()}</code>
                     <button
                         type="button"
                         class="btn btn--secondary btn--sm btn--rounded"
@@ -152,9 +150,7 @@ pub fn TabsPage() -> impl IntoView {
                     Tab {
                         id: "t1".into(),
                         label: Box::new(|| view! { "Enabled A" }.into_any()),
-                        panel: Arc::new(|| {
-                            view! { <p class="text-sm">"A"</p> }.into_any()
-                        }),
+                        panel: Arc::new(|| { view! { <p class="text-sm">"A"</p> }.into_any() }),
                         disabled: false,
                     },
                     Tab {
@@ -168,9 +164,7 @@ pub fn TabsPage() -> impl IntoView {
                     Tab {
                         id: "t3".into(),
                         label: Box::new(|| view! { "Enabled C" }.into_any()),
-                        panel: Arc::new(|| {
-                            view! { <p class="text-sm">"C"</p> }.into_any()
-                        }),
+                        panel: Arc::new(|| { view! { <p class="text-sm">"C"</p> }.into_any() }),
                         disabled: false,
                     },
                 ] />

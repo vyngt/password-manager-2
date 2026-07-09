@@ -42,7 +42,7 @@ fn make_items(suffix: &str) -> Vec<AccordionItem> {
                         "LAN sync pairing, peer trust, and conflict resolution policies."
                     </p>
                 }
-                    .into_any()
+                .into_any()
             }),
             disabled: false,
         },

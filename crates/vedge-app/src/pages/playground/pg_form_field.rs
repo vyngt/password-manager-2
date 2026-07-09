@@ -112,20 +112,12 @@ pub fn FormFieldPage() -> impl IntoView {
 
             <Section title="No hint — no helper row rendered">
                 <FormField label="Notes" id="ff-no-hint">
-                    <Input
-                        id="ff-no-hint"
-                        placeholder=Signal::stored("Optional".to_string())
-                    />
+                    <Input id="ff-no-hint" placeholder=Signal::stored("Optional".to_string()) />
                 </FormField>
             </Section>
 
             <Section title="Interactive — reactive hint">
-                <FormField
-                    label="Pick a name"
-                    id="ff-interactive"
-                    required=true
-                    hint=name_hint
-                >
+                <FormField label="Pick a name" id="ff-interactive" required=true hint=name_hint>
                     <Input
                         id="ff-interactive"
                         value=Signal::derive(move || name.get())

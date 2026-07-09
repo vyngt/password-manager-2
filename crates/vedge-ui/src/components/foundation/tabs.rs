@@ -40,9 +40,7 @@ pub fn Tabs(
         let mut seen: Vec<&String> = Vec::new();
         for t in &tabs {
             if seen.iter().any(|x| **x == t.id) {
-                web_sys::console::error_1(
-                    &format!("Tabs: duplicate id `{}`.", t.id).into(),
-                );
+                web_sys::console::error_1(&format!("Tabs: duplicate id `{}`.", t.id).into());
             }
             seen.push(&t.id);
         }
@@ -83,8 +81,7 @@ pub fn Tabs(
     let indicator_width = RwSignal::new(0.0_f64);
 
     // Snapshot of tabs metadata (ids + disabled) for keyboard navigation.
-    let tab_meta: Vec<(String, bool)> =
-        tabs.iter().map(|t| (t.id.clone(), t.disabled)).collect();
+    let tab_meta: Vec<(String, bool)> = tabs.iter().map(|t| (t.id.clone(), t.disabled)).collect();
     let tab_meta = StoredValue::new(tab_meta);
 
     let trigger_refs: StoredValue<Vec<NodeRef<leptos::html::Button>>> =
@@ -118,12 +115,20 @@ pub fn Tabs(
             for _ in 0..n {
                 idx = if forward {
                     if idx + 1 >= n {
-                        if wrap { 0 } else { return None; }
+                        if wrap {
+                            0
+                        } else {
+                            return None;
+                        }
                     } else {
                         idx + 1
                     }
                 } else if idx == 0 {
-                    if wrap { n - 1 } else { return None; }
+                    if wrap {
+                        n - 1
+                    } else {
+                        return None;
+                    }
                 } else {
                     idx - 1
                 };
@@ -140,7 +145,9 @@ pub fn Tabs(
         let active_id = effective_active.get();
         request_animation_frame(move || {
             let idx = tab_meta.with_value(|m| m.iter().position(|(id, _)| id == &active_id));
-            let Some(idx) = idx else { return; };
+            let Some(idx) = idx else {
+                return;
+            };
             let Some(node) = trigger_refs
                 .with_value(|refs| refs.get(idx).copied())
                 .and_then(|r| r.get_untracked())
@@ -161,7 +168,9 @@ pub fn Tabs(
         let reposition = move || {
             let active_id = effective_active.get_untracked();
             let idx = tab_meta.with_value(|m| m.iter().position(|(id, _)| id == &active_id));
-            let Some(idx) = idx else { return; };
+            let Some(idx) = idx else {
+                return;
+            };
             let Some(node) = trigger_refs
                 .with_value(|refs| refs.get(idx).copied())
                 .and_then(|r| r.get_untracked())
@@ -174,14 +183,11 @@ pub fn Tabs(
         };
         let closure =
             Closure::<dyn FnMut(web_sys::Event)>::new(move |_: web_sys::Event| reposition());
-        let _ = window
-            .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
+        let _ = window.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
         let win = window.clone();
         let cleanup: Box<dyn FnOnce()> = Box::new(move || {
-            let _ = win.remove_event_listener_with_callback(
-                "resize",
-                closure.as_ref().unchecked_ref(),
-            );
+            let _ =
+                win.remove_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
             drop(closure);
         });
         resize_cleanup.set_value(Some(cleanup));
@@ -258,11 +264,14 @@ pub fn Tabs(
                 _ => return,
             };
 
-            let Some(next_idx) = target_idx else { return; };
+            let Some(next_idx) = target_idx else {
+                return;
+            };
             ev.prevent_default();
             focus_trigger(next_idx);
             if activate_on_move {
-                if let Some(id) = tab_meta.with_value(|m| m.get(next_idx).map(|(id, _)| id.clone())) {
+                if let Some(id) = tab_meta.with_value(|m| m.get(next_idx).map(|(id, _)| id.clone()))
+                {
                     commit_a(id);
                 }
             }

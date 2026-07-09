@@ -290,14 +290,16 @@ fn ThemeRow(
     let actions = if built_in {
         view! {
             <IconButton
-                aria_label=Signal::derive(move || t_string!(i18n, settings.theme_duplicate).to_string())
+                aria_label=Signal::derive(move || {
+                    t_string!(i18n, settings.theme_duplicate).to_string()
+                })
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_duplicate.run(d_dup.clone())
             >
                 <Icon attr:aria-hidden="true" icon=i::FaCopySolid />
             </IconButton>
         }
-            .into_any()
+        .into_any()
     } else {
         view! {
             <IconButton
@@ -308,21 +310,25 @@ fn ThemeRow(
                 <Icon attr:aria-hidden="true" icon=i::FaPenSolid />
             </IconButton>
             <IconButton
-                aria_label=Signal::derive(move || t_string!(i18n, settings.theme_duplicate).to_string())
+                aria_label=Signal::derive(move || {
+                    t_string!(i18n, settings.theme_duplicate).to_string()
+                })
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_duplicate.run(d_dup.clone())
             >
                 <Icon attr:aria-hidden="true" icon=i::FaCopySolid />
             </IconButton>
             <IconButton
-                aria_label=Signal::derive(move || t_string!(i18n, settings.theme_delete).to_string())
+                aria_label=Signal::derive(move || {
+                    t_string!(i18n, settings.theme_delete).to_string()
+                })
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_delete.run(d_del.clone())
             >
                 <Icon attr:aria-hidden="true" icon=i::FaTrashSolid />
             </IconButton>
         }
-            .into_any()
+        .into_any()
     };
 
     view! {

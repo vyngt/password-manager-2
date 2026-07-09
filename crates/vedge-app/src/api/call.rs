@@ -20,7 +20,9 @@ where
     O: DeserializeOwned,
 {
     let args_js = serde_wasm_bindgen::to_value(args).map_err(ApiError::serialize)?;
-    let raw = invoke(cmd, args_js).await.map_err(ApiError::from_rejection)?;
+    let raw = invoke(cmd, args_js)
+        .await
+        .map_err(ApiError::from_rejection)?;
     serde_wasm_bindgen::from_value::<O>(raw).map_err(ApiError::deserialize)
 }
 

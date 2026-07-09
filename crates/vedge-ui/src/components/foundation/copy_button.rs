@@ -157,8 +157,7 @@ fn build_toast_message(
     let base = text_or(copied_label, "Copied");
     match countdown {
         Some(n) => {
-            let suffix =
-                text_or(countdown_label, "clears in {n}s").replace("{n}", &n.to_string());
+            let suffix = text_or(countdown_label, "clears in {n}s").replace("{n}", &n.to_string());
             format!("{base} · {suffix}")
         }
         None => base,

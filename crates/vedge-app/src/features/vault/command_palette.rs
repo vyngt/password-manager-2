@@ -342,7 +342,12 @@ pub fn CommandPalette() -> impl IntoView {
             // Search header — search icon + input + esc badge.
             <div class="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
                 <span class="flex shrink-0 text-foreground/40">
-                    <Icon attr:aria-hidden="true" icon=i::FaMagnifyingGlassSolid width="16" height="16" />
+                    <Icon
+                        attr:aria-hidden="true"
+                        icon=i::FaMagnifyingGlassSolid
+                        width="16"
+                        height="16"
+                    />
                 </span>
                 <input
                     node_ref=input_ref
@@ -460,7 +465,12 @@ pub fn CommandPalette() -> impl IntoView {
                                         class=("text-primary", is_hl)
                                         class=("text-foreground/50", move || !is_hl())
                                     >
-                                        <Icon attr:aria-hidden="true" icon=icon width="16" height="16" />
+                                        <Icon
+                                            attr:aria-hidden="true"
+                                            icon=icon
+                                            width="16"
+                                            height="16"
+                                        />
                                     </span>
                                     <span
                                         class="flex-1 truncate"

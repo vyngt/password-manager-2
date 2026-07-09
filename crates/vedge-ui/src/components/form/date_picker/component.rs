@@ -29,11 +29,13 @@ pub fn DatePicker(
     /// When `true`, renders just the calendar grid with no trigger or floating
     /// panel. Used by DateTimePicker to compose the calendar alongside a
     /// TimePicker inside a shared Popover.
-    #[prop(optional)] inline: bool,
+    #[prop(optional)]
+    inline: bool,
     /// `Month`-variant only: when `true`, the trigger displays as `MM/YYYY`
     /// (numeric) instead of the localized long form (e.g. `December 2030`). The
     /// calendar panel header is unaffected.
-    #[prop(optional)] month_numeric: bool,
+    #[prop(optional)]
+    month_numeric: bool,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -50,11 +52,8 @@ pub fn DatePicker(
 
     // Panel state — inline mode keeps the panel permanently visible.
     let mounted = RwSignal::new(inline);
-    let data_state = RwSignal::<Option<&'static str>>::new(if inline {
-        Some("open")
-    } else {
-        None
-    });
+    let data_state =
+        RwSignal::<Option<&'static str>>::new(if inline { Some("open") } else { None });
     let panel_style = RwSignal::new(String::new());
 
     let trigger_ref = NodeRef::<leptos::html::Button>::new();

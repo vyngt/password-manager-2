@@ -747,21 +747,27 @@ pub fn VaultPage() -> impl IntoView {
                         reorder_enabled=Signal::derive(move || sort.get() == SortKey::Manual)
                     />
                 </Show>
-                {move || selected_entry.get().map(|entry| view! {
-                    <VaultDetail
-                        entry=entry
-                        tags=Signal::derive(move || tags.get())
-                        on_copy=on_copy
-                        on_close=on_close
-                        on_saved=on_saved
-                        on_favorite=on_favorite
-                        on_tags=on_tags
-                        on_catalog=on_catalog
-                        folders=folders
-                        on_move_request=on_move_request
-                        on_history_request=on_history_request
-                    />
-                })}
+                {move || {
+                    selected_entry
+                        .get()
+                        .map(|entry| {
+                            view! {
+                                <VaultDetail
+                                    entry=entry
+                                    tags=Signal::derive(move || tags.get())
+                                    on_copy=on_copy
+                                    on_close=on_close
+                                    on_saved=on_saved
+                                    on_favorite=on_favorite
+                                    on_tags=on_tags
+                                    on_catalog=on_catalog
+                                    folders=folders
+                                    on_move_request=on_move_request
+                                    on_history_request=on_history_request
+                                />
+                            }
+                        })
+                }}
             </div>
         </div>
     }

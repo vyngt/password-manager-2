@@ -191,9 +191,8 @@ mod tests {
         let keychain: Arc<dyn KeychainProvider> =
             Arc::new(vedge_core::infrastructure::keychain::MemoryKeychainProvider::new());
         // Real biometric hardware isn't reachable in tests — use the in-memory variant.
-        let biometric: Arc<dyn BiometricAuthenticator> = Arc::new(
-            vedge_core::infrastructure::biometric::MemoryBiometricAuthenticator::new(),
-        );
+        let biometric: Arc<dyn BiometricAuthenticator> =
+            Arc::new(vedge_core::infrastructure::biometric::MemoryBiometricAuthenticator::new());
         // Clipboard can fail in CI / headless — use the in-memory variant.
         let clipboard: Arc<dyn ClipboardProvider> =
             Arc::new(vedge_core::infrastructure::clipboard::MemoryClipboardProvider::new());

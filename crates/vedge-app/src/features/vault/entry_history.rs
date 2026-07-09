@@ -252,7 +252,6 @@ pub fn EntryHistory(
                                 }
                             })
                     }}
-
                     {move || {
                         if loading.get() {
                             EitherOf3::A(
@@ -293,7 +292,6 @@ pub fn EntryHistory(
                             )
                         }
                     }}
-
                     <div class="flex items-start gap-1.5 pt-2 mt-1 border-t border-border text-xs text-text-tertiary">
                         <span class="mt-0.5">
                             <Icon attr:aria-hidden="true" icon=i::FaLockSolid />
@@ -401,9 +399,17 @@ fn history_row(
                                 >
                                     {move || {
                                         if revealed.get().map(|(rv, _)| rv) == Some(version) {
-                                            Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaEyeSlashSolid /> })
+                                            Either::Left(
+                                                view! {
+                                                    <Icon attr:aria-hidden="true" icon=i::FaEyeSlashSolid />
+                                                },
+                                            )
                                         } else {
-                                            Either::Right(view! { <Icon attr:aria-hidden="true" icon=i::FaEyeSolid /> })
+                                            Either::Right(
+                                                view! {
+                                                    <Icon attr:aria-hidden="true" icon=i::FaEyeSolid />
+                                                },
+                                            )
                                         }
                                     }}
                                 </IconButton>

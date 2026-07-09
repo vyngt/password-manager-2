@@ -601,7 +601,9 @@ fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
                 max_rows=12
                 class="font-jetbrains-mono"
                 masked=Signal::derive(move || !revealed.get())
-                placeholder=Signal::derive(move || t_string!(i18n, vault.field_private_key).to_string())
+                placeholder=Signal::derive(move || {
+                    t_string!(i18n, vault.field_private_key).to_string()
+                })
                 value=Signal::derive(move || data.with(|d| d.ssh_private_key.clone()))
                 on_change=Callback::new(move |v: String| data.update(|d| d.ssh_private_key = v))
             />
@@ -623,75 +625,111 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
             {text_field!(data, i18n, "ef-name", name, form_title)}
             {text_field!(data, i18n, "ef-url", url, form_url)}
             {move || match active_type.get() {
-                EntryTypeDto::Login => view! {
-                    {text_field!(data, i18n, "ef-username", username, form_identifier)}
-                    {secret_field!(data, i18n, "ef-password", password, form_password)}
-                    {secret_field!(data, i18n, "ef-totp", totp, field_totp)}
-                }.into_any(),
-                EntryTypeDto::Card => view! {
-                    {text_field!(data, i18n, "ef-cardholder", cardholder_name, field_cardholder)}
-                    {secret_field!(data, i18n, "ef-number", card_number, field_card_number)}
-                    <DatePicker
-                        id="ef-expiry"
-                        variant=DatePickerVariant::Month
-                        month_numeric=true
-                        value=Signal::derive(move || expiry_to_picker(&data.with(|d| d.card_expiry.clone())))
-                        on_change=Callback::new(move |v: DatePickerValue| data.update(|d| d.card_expiry = picker_to_expiry(v)))
-                        placeholder=Signal::derive(move || t_string!(i18n, vault.field_card_expiry).to_string())
-                    />
-                    {secret_field!(data, i18n, "ef-cvv", cvv, field_cvv)}
-                    {secret_field!(data, i18n, "ef-pin", pin, field_pin)}
-                }.into_any(),
-                EntryTypeDto::SshKey => view! {
-                    <SshPrivateKeyField data=data />
-                    {secret_field!(data, i18n, "ef-ssh-pass", ssh_passphrase, field_passphrase)}
-                    {text_field!(data, i18n, "ef-ssh-pub", ssh_public_key, field_public_key)}
-                    {text_field!(data, i18n, "ef-ssh-fp", ssh_fingerprint, field_fingerprint)}
-                    {text_field!(data, i18n, "ef-ssh-kt", ssh_key_type, field_key_type)}
-                }.into_any(),
-                EntryTypeDto::ApiKey => view! {
-                    {secret_field!(data, i18n, "ef-api-key", api_key, field_api_key)}
-                    {secret_field!(data, i18n, "ef-api-secret", api_secret, field_api_secret)}
-                    {text_field!(data, i18n, "ef-api-endpoint", api_endpoint, field_endpoint)}
-                    {text_field!(data, i18n, "ef-api-expiry", api_expiry, field_expiry)}
-                    {text_field!(data, i18n, "ef-api-kt", api_key_type, field_key_type)}
-                }.into_any(),
-                EntryTypeDto::EnvVars => view! {
-                    <div class="col-span-2">
-                        <EnvVarsFields data=data />
-                    </div>
-                }.into_any(),
-                EntryTypeDto::Note => view! {
-                    <div class="col-span-2">
-                        <Textarea
-                            id="ef-note"
-                            rows=6
-                            placeholder=Signal::derive(move || t_string!(i18n, vault.field_content).to_string())
-                            value=Signal::derive(move || data.with(|d| d.note_content.clone()))
-                            on_change=Callback::new(move |v: String| data.update(|d| d.note_content = v))
+                EntryTypeDto::Login => {
+                    view! {
+                        {text_field!(data, i18n, "ef-username", username, form_identifier)}
+                        {secret_field!(data, i18n, "ef-password", password, form_password)}
+                        {secret_field!(data, i18n, "ef-totp", totp, field_totp)}
+                    }
+                        .into_any()
+                }
+                EntryTypeDto::Card => {
+                    view! {
+                        {text_field!(
+                            data, i18n, "ef-cardholder", cardholder_name, field_cardholder
+                        )}
+                        {secret_field!(data, i18n, "ef-number", card_number, field_card_number)}
+                        <DatePicker
+                            id="ef-expiry"
+                            variant=DatePickerVariant::Month
+                            month_numeric=true
+                            value=Signal::derive(move || expiry_to_picker(
+                                &data.with(|d| d.card_expiry.clone()),
+                            ))
+                            on_change=Callback::new(move |v: DatePickerValue| {
+                                data.update(|d| d.card_expiry = picker_to_expiry(v))
+                            })
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, vault.field_card_expiry).to_string()
+                            })
                         />
-                    </div>
-                }.into_any(),
-                EntryTypeDto::Identity => view! {
-                    {text_field!(data, i18n, "ef-first", first_name, field_first_name)}
-                    {text_field!(data, i18n, "ef-last", last_name, field_last_name)}
-                    {text_field!(data, i18n, "ef-email", email, field_email)}
-                    {text_field!(data, i18n, "ef-phone", phone, field_phone)}
-                    {text_field!(data, i18n, "ef-addr1", addr_line1, field_address_line1)}
-                    {text_field!(data, i18n, "ef-addr2", addr_line2, field_address_line2)}
-                    {text_field!(data, i18n, "ef-city", addr_city, field_city)}
-                    {text_field!(data, i18n, "ef-state", addr_state, field_state)}
-                    {text_field!(data, i18n, "ef-postal", addr_postal_code, field_postal_code)}
-                    {text_field!(data, i18n, "ef-country", addr_country, field_country)}
-                    {text_field!(data, i18n, "ef-dob", date_of_birth, field_date_of_birth)}
-                    {secret_field!(data, i18n, "ef-natid", national_id, field_national_id)}
-                }.into_any(),
+                        {secret_field!(data, i18n, "ef-cvv", cvv, field_cvv)}
+                        {secret_field!(data, i18n, "ef-pin", pin, field_pin)}
+                    }
+                        .into_any()
+                }
+                EntryTypeDto::SshKey => {
+                    view! {
+                        <SshPrivateKeyField data=data />
+                        {secret_field!(data, i18n, "ef-ssh-pass", ssh_passphrase, field_passphrase)}
+                        {text_field!(data, i18n, "ef-ssh-pub", ssh_public_key, field_public_key)}
+                        {text_field!(data, i18n, "ef-ssh-fp", ssh_fingerprint, field_fingerprint)}
+                        {text_field!(data, i18n, "ef-ssh-kt", ssh_key_type, field_key_type)}
+                    }
+                        .into_any()
+                }
+                EntryTypeDto::ApiKey => {
+                    view! {
+                        {secret_field!(data, i18n, "ef-api-key", api_key, field_api_key)}
+                        {secret_field!(data, i18n, "ef-api-secret", api_secret, field_api_secret)}
+                        {text_field!(data, i18n, "ef-api-endpoint", api_endpoint, field_endpoint)}
+                        {text_field!(data, i18n, "ef-api-expiry", api_expiry, field_expiry)}
+                        {text_field!(data, i18n, "ef-api-kt", api_key_type, field_key_type)}
+                    }
+                        .into_any()
+                }
+                EntryTypeDto::EnvVars => {
+                    view! {
+                        <div class="col-span-2">
+                            <EnvVarsFields data=data />
+                        </div>
+                    }
+                        .into_any()
+                }
+                EntryTypeDto::Note => {
+                    view! {
+                        <div class="col-span-2">
+                            <Textarea
+                                id="ef-note"
+                                rows=6
+                                placeholder=Signal::derive(move || {
+                                    t_string!(i18n, vault.field_content).to_string()
+                                })
+                                value=Signal::derive(move || data.with(|d| d.note_content.clone()))
+                                on_change=Callback::new(move |v: String| {
+                                    data.update(|d| d.note_content = v)
+                                })
+                            />
+                        </div>
+                    }
+                        .into_any()
+                }
+                EntryTypeDto::Identity => {
+                    view! {
+                        {text_field!(data, i18n, "ef-first", first_name, field_first_name)}
+                        {text_field!(data, i18n, "ef-last", last_name, field_last_name)}
+                        {text_field!(data, i18n, "ef-email", email, field_email)}
+                        {text_field!(data, i18n, "ef-phone", phone, field_phone)}
+                        {text_field!(data, i18n, "ef-addr1", addr_line1, field_address_line1)}
+                        {text_field!(data, i18n, "ef-addr2", addr_line2, field_address_line2)}
+                        {text_field!(data, i18n, "ef-city", addr_city, field_city)}
+                        {text_field!(data, i18n, "ef-state", addr_state, field_state)}
+                        {text_field!(data, i18n, "ef-postal", addr_postal_code, field_postal_code)}
+                        {text_field!(data, i18n, "ef-country", addr_country, field_country)}
+                        {text_field!(data, i18n, "ef-dob", date_of_birth, field_date_of_birth)}
+                        {secret_field!(data, i18n, "ef-natid", national_id, field_national_id)}
+                    }
+                        .into_any()
+                }
                 EntryTypeDto::Folder => ().into_any(),
-                EntryTypeDto::Document | EntryTypeDto::Unknown(_) => view! {
-                    <p class="col-span-2 text-sm text-foreground/50">
-                        {move || t!(i18n, vault.doc_not_editable)}
-                    </p>
-                }.into_any(),
+                EntryTypeDto::Document | EntryTypeDto::Unknown(_) => {
+                    view! {
+                        <p class="col-span-2 text-sm text-foreground/50">
+                            {move || t!(i18n, vault.doc_not_editable)}
+                        </p>
+                    }
+                        .into_any()
+                }
             }}
         </div>
     }
@@ -714,31 +752,57 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                 <div class="flex gap-2 items-center">
                     <Input
                         id="ef-env-key"
-                        placeholder=Signal::derive(move || t_string!(i18n, vault.field_env_key).to_string())
-                        value=Signal::derive(move || data.with(|d| d.env_vars.get(i).map(|p| p.0.clone()).unwrap_or_default()))
-                        on_input=Callback::new(move |v: String| data.update(|d| {
-                            if let Some(p) = d.env_vars.get_mut(i) { p.0 = v; }
-                        }))
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.field_env_key).to_string()
+                        })
+                        value=Signal::derive(move || {
+                            data.with(|d| {
+                                d.env_vars.get(i).map(|p| p.0.clone()).unwrap_or_default()
+                            })
+                        })
+                        on_input=Callback::new(move |v: String| {
+                            data.update(|d| {
+                                if let Some(p) = d.env_vars.get_mut(i) {
+                                    p.0 = v;
+                                }
+                            })
+                        })
                         class="flex-1"
                     />
                     <Input
                         id="ef-env-val"
                         input_type="password"
-                        placeholder=Signal::derive(move || t_string!(i18n, vault.field_env_value).to_string())
-                        value=Signal::derive(move || data.with(|d| d.env_vars.get(i).map(|p| p.1.clone()).unwrap_or_default()))
-                        on_input=Callback::new(move |v: String| data.update(|d| {
-                            if let Some(p) = d.env_vars.get_mut(i) { p.1 = v; }
-                        }))
-                        reveal_label=Signal::derive(move || t_string!(i18n, vault.reveal).to_string())
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.field_env_value).to_string()
+                        })
+                        value=Signal::derive(move || {
+                            data.with(|d| {
+                                d.env_vars.get(i).map(|p| p.1.clone()).unwrap_or_default()
+                            })
+                        })
+                        on_input=Callback::new(move |v: String| {
+                            data.update(|d| {
+                                if let Some(p) = d.env_vars.get_mut(i) {
+                                    p.1 = v;
+                                }
+                            })
+                        })
+                        reveal_label=Signal::derive(move || {
+                            t_string!(i18n, vault.reveal).to_string()
+                        })
                         hide_label=Signal::derive(move || t_string!(i18n, vault.hide).to_string())
                         class="flex-1"
                     />
                     <Button
                         variant=Variant::Ghost
                         size=Size::Sm
-                        on:click=move |_: web_sys::MouseEvent| data.update(|d| {
-                            if i < d.env_vars.len() { d.env_vars.remove(i); }
-                        })
+                        on:click=move |_: web_sys::MouseEvent| {
+                            data.update(|d| {
+                                if i < d.env_vars.len() {
+                                    d.env_vars.remove(i);
+                                }
+                            })
+                        }
                     >
                         {move || t!(i18n, vault.remove_var)}
                     </Button>

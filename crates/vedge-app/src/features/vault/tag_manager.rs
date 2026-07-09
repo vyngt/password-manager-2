@@ -127,7 +127,9 @@ pub fn TagManager(
                             // the stale child for a fixed key.
                             key=|t| (t.id.clone(), t.name.clone())
                             children=move |t| {
-                                view! { <TagManagerRow tag=t entries=entries on_changed=on_changed /> }
+                                view! {
+                                    <TagManagerRow tag=t entries=entries on_changed=on_changed />
+                                }
                             }
                         />
                     </div>
@@ -236,79 +238,86 @@ fn TagManagerRow(
         <div class="flex flex-col gap-1 py-2">
             {move || {
                 if editing.get() {
-                    Either::Left(view! {
-                        <div class="flex gap-2 items-center">
-                            <div class="flex-1">
-                                <Input
-                                    id="tag-manager-rename"
-                                    value=Signal::derive(move || edit_name.get())
-                                    on_input=Callback::new(move |v: String| edit_name.set(v))
-                                />
+                    Either::Left(
+                        view! {
+                            <div class="flex gap-2 items-center">
+                                <div class="flex-1">
+                                    <Input
+                                        id="tag-manager-rename"
+                                        value=Signal::derive(move || edit_name.get())
+                                        on_input=Callback::new(move |v: String| edit_name.set(v))
+                                    />
+                                </div>
+                                <Button variant=Variant::Primary size=Size::Sm on:click=save_rename>
+                                    {move || t!(i18n, vault.save)}
+                                </Button>
+                                <Button variant=Variant::Ghost size=Size::Sm on:click=cancel_rename>
+                                    {move || t!(i18n, vault.cancel)}
+                                </Button>
                             </div>
-                            <Button variant=Variant::Primary size=Size::Sm on:click=save_rename>
-                                {move || t!(i18n, vault.save)}
-                            </Button>
-                            <Button variant=Variant::Ghost size=Size::Sm on:click=cancel_rename>
-                                {move || t!(i18n, vault.cancel)}
-                            </Button>
-                        </div>
-                    })
+                        },
+                    )
                 } else {
                     let name = tag_name.clone();
-                    Either::Right(view! {
-                        <div class="flex flex-col gap-1.5">
-                            <div class="flex gap-2 items-center justify-between">
-                                <span class="text-sm text-text-primary truncate">{name}</span>
-                                <Show when=move || !confirming.get()>
-                                    <div class="flex gap-1 shrink-0">
-                                        <Button
-                                            variant=Variant::Ghost
-                                            size=Size::Sm
-                                            on:click=start_rename
+                    Either::Right(
+                        view! {
+                            <div class="flex flex-col gap-1.5">
+                                <div class="flex gap-2 items-center justify-between">
+                                    <span class="text-sm text-text-primary truncate">{name}</span>
+                                    <Show when=move || !confirming.get()>
+                                        <div class="flex gap-1 shrink-0">
+                                            <Button
+                                                variant=Variant::Ghost
+                                                size=Size::Sm
+                                                on:click=start_rename
+                                            >
+                                                {move || t!(i18n, vault.tag_rename)}
+                                            </Button>
+                                            <Button
+                                                variant=Variant::Danger
+                                                size=Size::Sm
+                                                on:click=ask_delete
+                                            >
+                                                {move || t!(i18n, vault.tag_delete)}
+                                            </Button>
+                                        </div>
+                                    </Show>
+                                </div>
+                                // Delete confirm: a stacked warning that reports how
+                                // many entries still reference the tag (deletion is
+                                // allowed — it just leaves tolerated dangling ids).
+                                <Show when=move || confirming.get()>
+                                    <div class="flex flex-col gap-1.5 rounded-md bg-primary/5 p-2">
+                                        <span
+                                            class="text-xs"
+                                            style="color:var(--color-danger-text)"
                                         >
-                                            {move || t!(i18n, vault.tag_rename)}
-                                        </Button>
-                                        <Button
-                                            variant=Variant::Danger
-                                            size=Size::Sm
-                                            on:click=ask_delete
-                                        >
-                                            {move || t!(i18n, vault.tag_delete)}
-                                        </Button>
+                                            {move || {
+                                                let n = ref_count();
+                                                t!(i18n, vault.tag_delete_confirm, refs = n)
+                                            }}
+                                        </span>
+                                        <div class="flex gap-1 justify-end">
+                                            <Button
+                                                variant=Variant::Ghost
+                                                size=Size::Sm
+                                                on:click=cancel_delete
+                                            >
+                                                {move || t!(i18n, vault.cancel)}
+                                            </Button>
+                                            <Button
+                                                variant=Variant::Danger
+                                                size=Size::Sm
+                                                on:click=confirm_delete
+                                            >
+                                                {move || t!(i18n, vault.tag_delete)}
+                                            </Button>
+                                        </div>
                                     </div>
                                 </Show>
                             </div>
-                            // Delete confirm: a stacked warning that reports how
-                            // many entries still reference the tag (deletion is
-                            // allowed — it just leaves tolerated dangling ids).
-                            <Show when=move || confirming.get()>
-                                <div class="flex flex-col gap-1.5 rounded-md bg-primary/5 p-2">
-                                    <span class="text-xs" style="color:var(--color-danger-text)">
-                                        {move || {
-                                            let n = ref_count();
-                                            t!(i18n, vault.tag_delete_confirm, refs = n)
-                                        }}
-                                    </span>
-                                    <div class="flex gap-1 justify-end">
-                                        <Button
-                                            variant=Variant::Ghost
-                                            size=Size::Sm
-                                            on:click=cancel_delete
-                                        >
-                                            {move || t!(i18n, vault.cancel)}
-                                        </Button>
-                                        <Button
-                                            variant=Variant::Danger
-                                            size=Size::Sm
-                                            on:click=confirm_delete
-                                        >
-                                            {move || t!(i18n, vault.tag_delete)}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </Show>
-                        </div>
-                    })
+                        },
+                    )
                 }
             }}
         </div>

@@ -138,18 +138,26 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                 <Button variant=Variant::Secondary size=Size::Sm on:click=choose_file>
                     {move || t!(i18n, vault.attach_choose_file)}
                 </Button>
-                {move || src_path.get().map(|p| view! {
-                    <span class="text-sm text-text-secondary font-jetbrains-mono break-all">
-                        {file_basename(&p)}
-                    </span>
-                })}
+                {move || {
+                    src_path
+                        .get()
+                        .map(|p| {
+                            view! {
+                                <span class="text-sm text-text-secondary font-jetbrains-mono break-all">
+                                    {file_basename(&p)}
+                                </span>
+                            }
+                        })
+                }}
             </div>
 
             <Show when=move || src_path.get().is_some()>
                 <div class="mb-3">
                     <Input
                         id="doc-attach-name"
-                        placeholder=Signal::derive(move || t_string!(i18n, vault.form_title).to_string())
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.form_title).to_string()
+                        })
                         value=Signal::derive(move || name.get())
                         on_input=Callback::new(move |v: String| name.set(v))
                     />
@@ -162,8 +170,7 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                 </Button>
                 {move || {
                     let saving = submitting.get();
-                    let busy = saving
-                        || src_path.get().is_none()
+                    let busy = saving || src_path.get().is_none()
                         || name.with(|n| n.trim().is_empty());
                     view! {
                         <Button

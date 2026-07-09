@@ -139,7 +139,9 @@ pub fn TagAssign(
                     options=options
                     value=Signal::derive(String::new)
                     placeholder=Signal::derive(move || t_string!(i18n, vault.tag_add).to_string())
-                    aria_label=Signal::derive(move || t_string!(i18n, vault.tag_add_aria).to_string())
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, vault.tag_add_aria).to_string()
+                    })
                     on_change=Callback::new(move |id: String| {
                         on_tags.run((id_sv.get_value(), toggle_tag(&ids_sv.get_value(), &id)));
                     })
@@ -195,7 +197,9 @@ pub fn TagAssign(
                     <Input
                         id="tag-assign-new"
                         value=Signal::derive(move || new_name.get())
-                        placeholder=Signal::derive(move || t_string!(i18n, vault.tag_new).to_string())
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.tag_new).to_string()
+                        })
                         on_input=Callback::new(move |v: String| new_name.set(v))
                     />
                 </div>

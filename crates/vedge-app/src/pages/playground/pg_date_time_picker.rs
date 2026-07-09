@@ -39,14 +39,20 @@ pub fn DateTimePickerPage() -> impl IntoView {
     let partial_null = RwSignal::<Option<DateTimeValue>>::new(None);
     let twelve_hour = RwSignal::<Option<DateTimeValue>>::new(Some(DateTimeValue {
         date: today(),
-        time: TimeValue { hours: 9, minutes: 15 },
+        time: TimeValue {
+            hours: 9,
+            minutes: 15,
+        },
     }));
     let constrained = RwSignal::<Option<DateTimeValue>>::new(None);
     let in_form = RwSignal::<Option<DateTimeValue>>::new(None);
 
     let min_bound = DateTimeValue {
         date: today(),
-        time: TimeValue { hours: 8, minutes: 0 },
+        time: TimeValue {
+            hours: 8,
+            minutes: 0,
+        },
     };
     let max_bound = DateTimeValue {
         date: today() + chrono::Duration::days(30),
@@ -65,7 +71,10 @@ pub fn DateTimePickerPage() -> impl IntoView {
                     id="dtp-basic"
                     default_value=DateTimeValue {
                         date: today(),
-                        time: TimeValue { hours: 14, minutes: 30 },
+                        time: TimeValue {
+                            hours: 14,
+                            minutes: 30,
+                        },
                     }
                     on_change=Callback::new(move |v: Option<DateTimeValue>| basic.set(v))
                 />
@@ -88,10 +97,13 @@ pub fn DateTimePickerPage() -> impl IntoView {
                         type="button"
                         class="btn btn--secondary btn--sm btn--rounded"
                         on:click=move |_| {
-                            controlled.set(Some(DateTimeValue {
-                                date: today(),
-                                time: TimeValue { hours: 12, minutes: 0 },
-                            }))
+                            controlled
+                                .set(
+                                    Some(DateTimeValue {
+                                        date: today(),
+                                        time: TimeValue { hours: 12, minutes: 0 },
+                                    }),
+                                )
                         }
                     >
                         "Set to today noon"
@@ -136,11 +148,7 @@ pub fn DateTimePickerPage() -> impl IntoView {
             </Section>
 
             <Section title="Inside FormField">
-                <FormField
-                    label="Schedule breach check"
-                    id="dtp-ff"
-                    hint="Local time"
-                >
+                <FormField label="Schedule breach check" id="dtp-ff" hint="Local time">
                     <DateTimePicker
                         id="dtp-ff"
                         value=Signal::derive(move || in_form.get())

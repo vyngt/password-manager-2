@@ -336,9 +336,8 @@ pub fn MenuPanelBody(
                     first
                 });
 
-                let ticket = typeahead_ver
-                    .with_value(|ver| ver.fetch_add(1, Ordering::Relaxed))
-                    + 1;
+                let ticket =
+                    typeahead_ver.with_value(|ver| ver.fetch_add(1, Ordering::Relaxed)) + 1;
                 let ver_clone = typeahead_ver.with_value(|ver| ver.clone());
                 set_timeout(
                     move || {
@@ -388,7 +387,9 @@ fn render_sections(
                 let label_text = label.clone();
                 nodes.push(
                     view! {
-                        <li class="menu-group-label" role="presentation">{label_text}</li>
+                        <li class="menu-group-label" role="presentation">
+                            {label_text}
+                        </li>
                     }
                     .into_any(),
                 );
@@ -448,9 +449,8 @@ fn render_menu_item(
         commit(id_for_click.clone());
     };
 
-    let is_active = Signal::derive(move || {
-        is_focusable && focused_idx.get() == Some(focusable_idx)
-    });
+    let is_active =
+        Signal::derive(move || is_focusable && focused_idx.get() == Some(focusable_idx));
     let tabindex = move || if is_active.get() { "0" } else { "-1" };
     let aria_disabled = if !is_focusable { Some("true") } else { None };
     let data_idx_attr = if is_focusable {
@@ -467,10 +467,12 @@ fn render_menu_item(
         }
     });
 
-    let shortcut_view = item.shortcut.clone().map(|text| view! {
-        <span class="menu-item__hint">
-            <Kbd>{text}</Kbd>
-        </span>
+    let shortcut_view = item.shortcut.clone().map(|text| {
+        view! {
+            <span class="menu-item__hint">
+                <Kbd>{text}</Kbd>
+            </span>
+        }
     });
 
     let label_text = item.label.clone();

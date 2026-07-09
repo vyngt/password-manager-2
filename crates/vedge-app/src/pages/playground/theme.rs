@@ -259,9 +259,7 @@ fn ThemeRow(
                         "Built-in"
                     </Badge>
                 </Show>
-                <Show when=move || {
-                    active_id.get().as_deref() == Some(id_for_active.as_str())
-                }>
+                <Show when=move || { active_id.get().as_deref() == Some(id_for_active.as_str()) }>
                     <Badge variant=BadgeVariant::Success size=BadgeSize::Sm>
                         "Active"
                     </Badge>
@@ -281,7 +279,9 @@ fn ThemeRow(
                 <Icon icon=i::FiCopy />
             </IconButton>
 
-            <Show when=move || update_disabled_reason>
+            <Show when=move || {
+                update_disabled_reason
+            }>
                 {
                     let t_u = t_update.clone();
                     let t_d = t_delete.clone();
