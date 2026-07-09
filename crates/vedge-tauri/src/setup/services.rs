@@ -46,6 +46,13 @@ pub type ComposeError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Resolve the directory that holds `app.db` and user-writable files.
 ///
+/// - **`VEDGE_DATA_DIR` env override** (any build): if set and non-empty, that
+///   path wins — checked *first*, before the debug/release branch. Enables a
+///   portable/relocatable data directory and, in particular, lets the e2e
+///   harness point `app.db` at a per-run temp dir for hermetic, repeatable
+///   runs (see `crates/vedge-e2e`). Paired with disabling the single-instance
+///   lock (`crate::run`) so a portable/test instance doesn't collide with a
+///   normally-installed one.
 /// - **Debug builds** (`cargo run`, `cargo tauri dev`): `<workspace>/local/`.
 ///   Keeps dev data out of `%APPDATA%` / `~/.config` so wiping state is a
 ///   simple `rm -rf local/`, and multiple checkouts don't clobber each
@@ -55,9 +62,12 @@ pub type ComposeError = Box<dyn std::error::Error + Send + Sync>;
 ///   on Windows, `~/Library/Application Support/...` on macOS,
 ///   `~/.local/share/...` on Linux.
 ///
-/// The switch is compile-time (`cfg!(debug_assertions)`) so release binaries
-/// never accidentally read/write the dev folder.
+/// Absent the env override the switch is compile-time (`cfg!(debug_assertions)`)
+/// so release binaries never accidentally read/write the dev folder.
 fn resolve_app_dir(app: &tauri::App) -> Result<std::path::PathBuf, ComposeError> {
+    if let Some(dir) = std::env::var_os("VEDGE_DATA_DIR").filter(|v| !v.is_empty()) {
+        return Ok(std::path::PathBuf::from(dir));
+    }
     if cfg!(debug_assertions) {
         // `env!("CARGO_MANIFEST_DIR")` resolves at compile time to this
         // crate's absolute path. `ancestors().nth(2)` walks up

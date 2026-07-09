@@ -118,6 +118,9 @@ fn VaultTableRow(
     let entry_for_select = item.clone();
     let entry_for_move = item.clone();
     let item_id = item.id.clone();
+    // Stable per-entry hook for the e2e harness (slice 2.9.2) — lets a test
+    // address a specific row without matching on (localized) cell text.
+    let row_id = item.id.clone();
     let drag_id = item.id.clone();
     // This row as a reorder drop target: the dragged entry's id + the highlight.
     let drop_target_id = item.id.clone();
@@ -162,6 +165,7 @@ fn VaultTableRow(
     view! {
         <tr
             data-entry-row="true"
+            data-entry-id=row_id
             class="border-b border-secondary/10 hover:bg-primary/5 transition-colors cursor-pointer"
             class=("border-t-2", move || drag_over.get())
             class=("border-t-primary", move || drag_over.get())

@@ -1,0 +1,21 @@
+[package]
+name = "vedge-e2e"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "End-to-end WebDriver test harness for the VEdge desktop app (tauri-driver + thirtyfour)."
+
+# NOTE: deliberately NOT opting into `[lints] workspace = true`. This crate is
+# all test/harness code (unwrap-heavy WebDriver plumbing); the workspace
+# deny-unwrap/expect/panic gate is meant for production crates. Mirrors the
+# `vedge-app` precedent. `mise lint` also does not include `-p vedge-e2e`.
+
+[dependencies]
+thirtyfour = "0.35"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net"] }
+anyhow = "1"
+serde_json = "1"
+tempfile = "3"
+
+# The crate is a pure test harness: no library API is consumed elsewhere. The
+# daily-loop lives in `tests/`, the reusable driver plumbing in `src/lib.rs`.
