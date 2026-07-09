@@ -32,10 +32,24 @@ The whole path from a click to SQLite and back, in a real Tauri window. Catches 
 cd crates/vedge-tauri && cargo tauri dev
 ```
 
+## 4. End-to-end — `mise e2e` (slice 2.9.2)
+
+The full path from a WebDriver click to SQLite and back, in the **real built binary**, driven from Rust. `tauri-driver` + [`thirtyfour`] against the platform WebDriver (WebView2/msedgedriver on Windows, WebKitWebDriver on Linux) automate the Phase-2 daily loop — create → add → search → edit/history → favorite → folder → lock → **restart** → unlock → theme-persists — and stand a **console-clean guard** that fails on any Leptos "outside a reactive tracking context" warning (the recurring `spawn_local`/i18n footgun; the guard proves itself live with a self-test).
+
+```
+mise e2e                      # trunk build (debug wasm) → cargo build --features custom-protocol → cargo test -p vedge-e2e -- --ignored
+cargo test --workspace        # unaffected: vedge-e2e is #[ignore]-gated AND --exclude'd from the gate
+```
+
+Lives in `crates/vedge-e2e/` (harness in `src/lib.rs`, scenario in `tests/daily_loop.rs`). **Opt-in / `#[ignore]`-gated** — it needs a display + the platform driver, so it never runs in the default `mise test`/`mise ci`. See [`crates/vedge-e2e/README.md`](../crates/vedge-e2e/README.md) for prerequisites, the deterministic seams (`VEDGE_DATA_DIR`, temp vault dir, real keychain), and the manual boundary (real biometric prompt, native OS file dialogs).
+
+> Prereqs: `cargo install tauri-driver --locked` + a version-matched platform WebDriver (msedgedriver ↔ WebView2). The build must embed **debug** wasm (`trunk build` without `--release`) or the console-clean warning never compiles in.
+
 ## What's deliberately *not* here (yet)
 
-- **A lint for the reactive/`spawn_local` footgun** — reading a signal (or `t!`/`t_string!`) inside a `spawn_local` future runs outside a reactive owner and warns at runtime. A grep/`cargo-dylint` check would catch it without a browser. (Convention for now: read signals in the handler body, move plain values into the async block.)
-- **Component/DOM tests** and **full Tauri E2E** (WebDriver/`tauri-driver`) — highest fidelity but need a display/driver and are flaky-prone. The manual smoke covers this mile until a flow keeps regressing; when E2E lands, wire it to **fail on Leptos reactive-context console warnings** so it also nets that class.
+- **A lint for the reactive/`spawn_local` footgun** — reading a signal (or `t!`/`t_string!`) inside a `spawn_local` future runs outside a reactive owner and warns at runtime. A grep/`cargo-dylint` check would catch it *at build time*; until then the e2e **console-clean guard** (level 4) nets it at runtime, and the convention holds: read signals in the handler body, move plain values into the async block.
+- **Component/DOM unit tests** — the e2e level (4) now covers mounted-and-driven flows end-to-end; a lighter component-test tier is still absent (highest-fidelity coverage lives in the e2e daily loop).
+- **E2e in CI** — the `mise e2e` job is documented but not yet enabled (needs a runner with a display + the platform driver; `xvfb-run` on Linux). See the crate README.
 
 ## Rule of thumb
 
@@ -44,4 +58,5 @@ cd crates/vedge-tauri && cargo tauri dev
 | Crypto / persistence / data-loss | 1 (backend) |
 | Frontend pure logic | 1 (host component tests) |
 | IPC wire-format (`serde_wasm_bindgen`, flatten, tags) | **2 (wasm-node)** |
-| Reactive-context / render / navigation / composition | 3 (manual smoke) → later a lint + E2E |
+| Reactive-context / render / navigation / composition | 3 (manual smoke) + **4 (e2e daily loop + console-clean guard)** |
+| Full user flow regression (create→edit→restart→unlock) | **4 (e2e — `mise e2e`)** |

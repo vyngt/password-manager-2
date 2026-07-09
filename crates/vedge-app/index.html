@@ -2,6 +2,36 @@
 <html>
     <head>
         <meta charset="utf-8" />
+        <script>
+            // e2e console-clean seam (slice 2.9.2). Buffers console.warn /
+            // console.error into a bounded ring so the WebDriver harness
+            // (crates/vedge-e2e) can assert the app produced no Leptos
+            // "outside a reactive tracking context" warnings. Installed before
+            // the WASM module below so boot-time warnings are captured too.
+            // Inert in production: it only appends to an array and forwards to
+            // the original console method.
+            (function () {
+                var CAP = 200;
+                var buf = (window.__vedge_warnings = []);
+                ["warn", "error"].forEach(function (level) {
+                    var orig = console[level]
+                        ? console[level].bind(console)
+                        : function () {};
+                    console[level] = function () {
+                        try {
+                            var text = Array.prototype.map
+                                .call(arguments, function (a) {
+                                    return String(a);
+                                })
+                                .join(" ");
+                            buf.push({ level: level, text: text });
+                            if (buf.length > CAP) buf.shift();
+                        } catch (_) {}
+                        return orig.apply(console, arguments);
+                    };
+                });
+            })();
+        </script>
         <link data-trunk rel="rust" data-wasm-opt="z" />
         <link data-trunk rel="tailwind-css" href="styles/root.css" />
         <link data-trunk rel="copy-dir" href="fonts" />

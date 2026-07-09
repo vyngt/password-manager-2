@@ -40,9 +40,19 @@ pub fn run() {
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
-        builder = builder
-            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-            .plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+        builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
+
+        // The single-instance lock is keyed by the app identifier, not the
+        // data directory — two instances collide even with distinct
+        // `VEDGE_DATA_DIR`s. Skip it in portable/test mode (any non-empty
+        // `VEDGE_DATA_DIR`) so a portable copy — or an e2e run, which also
+        // needs to relaunch the app for its restart test — doesn't
+        // forward-and-exit into a normally-installed instance. See
+        // `setup::services::resolve_app_dir`.
+        let portable = std::env::var_os("VEDGE_DATA_DIR").is_some_and(|v| !v.is_empty());
+        if !portable {
+            builder = builder.plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+        }
     }
 
     builder
