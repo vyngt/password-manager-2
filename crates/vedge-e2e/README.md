@@ -36,14 +36,24 @@ The default `cargo test` / `mise test` are unaffected — this crate is
 
 ## Prerequisites
 
+Full setup: the Tauri [WebDriver manual-setup guide][tauri-manual]. In short:
+
 - **`tauri-driver`**: `cargo install tauri-driver --locked` (also in `mise setup`).
 - **Platform WebDriver**, version-matched to the webview:
   - **Windows**: `msedgedriver.exe` matching the installed **WebView2** runtime.
-    WebView2 auto-updates, so a mismatched driver is the #1 flake — re-fetch
-    `msedgedriver` when session creation fails with a version error. Put it on
-    `PATH` or point at it with `VEDGE_E2E_NATIVE_DRIVER=/path/to/msedgedriver.exe`.
-  - **Linux**: `WebKitWebDriver` (`webkit2gtk` / `libwebkit2gtk-4.1`), run under
-    `xvfb-run` for a headless display.
+    Fetch a version-matched one with Tauri's helper:
+    ```powershell
+    cargo install --git https://github.com/chippers/msedgedriver-tool
+    msedgedriver-tool          # downloads msedgedriver.exe matching your Edge
+    ```
+    Then put it **on `PATH`** — e.g. copy it next to `tauri-driver` in
+    `~/.cargo/bin`. `tauri-driver`'s working directory is the *crate* dir, not
+    the repo root, so a driver dropped at the repo root is **not** found; use
+    `PATH` or point at it explicitly with `VEDGE_E2E_NATIVE_DRIVER`. WebView2
+    auto-updates, so a mismatched driver is the #1 flake — re-run
+    `msedgedriver-tool` if session creation hangs/errors on a version.
+  - **Linux**: `WebKitWebDriver` (`webkit2gtk-driver` / `libwebkit2gtk-4.1`), run
+    under `xvfb-run` for a headless display.
 - A **display** (real or virtual). This is a GUI e2e; it is not headless-safe.
 
 ### Env overrides
@@ -108,5 +118,32 @@ default CI stays fast and headless.
   read-only assertions. A few terminal mutations (history restore, folder move,
   theme set) use `invoke()` directly and are noted inline.
 
+## References
+
+**Testing (this repo)**
+
+- [`docs/testing.md`](../../docs/testing.md) — VEdge's four testing layers; this
+  harness is **level 4** (E2E). Levels 1–3: host `cargo test`, `wasm-pack test
+  --node` (IPC wire codec), and the manual `cargo tauri dev` smoke.
+
+**WebDriver + Tauri**
+
+- Tauri — [WebDriver testing overview][tauri-wd] · [manual setup][tauri-manual]
+  (install `tauri-driver` + the platform driver) · [the WebDriverIO/Selenium
+  examples][tauri-example] (JS reference; we use `thirtyfour` in Rust instead).
+- [`tauri-driver`][tauri-driver-crate] — the cross-platform WebDriver proxy.
+- [`thirtyfour`] — the async Rust WebDriver client this harness drives.
+- [`msedgedriver-tool`][msedgedriver-tool] — fetches a version-matched Edge driver
+  (Windows).
+- [Microsoft Edge WebDriver][edge-driver] · [WebKitWebDriver][webkit-driver]
+  (Linux) — the platform drivers `tauri-driver` proxies to.
+
 [`tauri-driver`]: https://v2.tauri.app/develop/tests/webdriver/
 [`thirtyfour`]: https://docs.rs/thirtyfour
+[tauri-wd]: https://v2.tauri.app/develop/tests/webdriver/
+[tauri-manual]: https://v2.tauri.app/develop/tests/webdriver/manual-setup/
+[tauri-example]: https://v2.tauri.app/develop/tests/webdriver/example/
+[tauri-driver-crate]: https://crates.io/crates/tauri-driver
+[msedgedriver-tool]: https://github.com/chippers/msedgedriver-tool
+[edge-driver]: https://developer.microsoft.com/microsoft-edge/tools/webdriver/
+[webkit-driver]: https://github.com/tauri-apps/wry/wiki/Webdriver
