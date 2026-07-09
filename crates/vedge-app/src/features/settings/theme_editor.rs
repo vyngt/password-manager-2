@@ -14,7 +14,7 @@ use super::theme_util::{
     config_from_fields, create_input_from, headline_contrast, update_input_from,
 };
 use crate::api;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -48,7 +48,7 @@ pub fn ThemeEditor(
     let i18n = use_i18n();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, settings.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, settings.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -74,18 +74,18 @@ pub fn ThemeEditor(
             primary.set(t.seed.primary.clone());
             danger.set(t.seed.danger.clone().unwrap_or_default());
             warning.set(t.seed.warning.clone().unwrap_or_default());
-            success.set(t.seed.success.clone().unwrap_or_default());
+            success.set(t.seed.success.unwrap_or_default());
         }
     });
 
     let draft = move || {
         config_from_fields(
-            background.get(),
-            foreground.get(),
-            primary.get(),
-            danger.get(),
-            warning.get(),
-            success.get(),
+            &background.get(),
+            &foreground.get(),
+            &primary.get(),
+            &danger.get(),
+            &warning.get(),
+            &success.get(),
         )
     };
 
@@ -130,18 +130,18 @@ pub fn ThemeEditor(
         };
         let name_val = name.get_untracked().trim().to_owned();
         if name_val.is_empty() {
-            show_error(t_string!(i18n, settings.theme_name_required).to_string());
+            show_error(t_string!(i18n, settings.theme_name_required).to_owned());
             return;
         }
         let cfg = config_from_fields(
-            background.get_untracked(),
-            foreground.get_untracked(),
-            primary.get_untracked(),
-            danger.get_untracked(),
-            warning.get_untracked(),
-            success.get_untracked(),
+            &background.get_untracked(),
+            &foreground.get_untracked(),
+            &primary.get_untracked(),
+            &danger.get_untracked(),
+            &warning.get_untracked(),
+            &success.get_untracked(),
         );
-        let err_prefix = t_string!(i18n, settings.err_theme_save).to_string();
+        let err_prefix = t_string!(i18n, settings.err_theme_save).to_owned();
         let editing = t.editing;
         let source_id = t.source.as_ref().map(|d| d.id.clone());
         saving.set(true);
@@ -167,16 +167,16 @@ pub fn ThemeEditor(
 
     let title = move || {
         if target.get().is_some_and(|t| t.editing) {
-            t_string!(i18n, settings.theme_edit).to_string()
+            t_string!(i18n, settings.theme_edit).to_owned()
         } else {
-            t_string!(i18n, settings.theme_new).to_string()
+            t_string!(i18n, settings.theme_new).to_owned()
         }
     };
     let save_label = move || {
         if target.get().is_some_and(|t| t.editing) {
-            t_string!(i18n, settings.theme_save).to_string()
+            t_string!(i18n, settings.theme_save).to_owned()
         } else {
-            t_string!(i18n, settings.theme_create).to_string()
+            t_string!(i18n, settings.theme_create).to_owned()
         }
     };
 
@@ -185,7 +185,7 @@ pub fn ThemeEditor(
             open=Signal::derive(move || target.get().is_some())
             on_close=close
             size=DialogSize::Md
-            close_label=Signal::derive(move || t_string!(i18n, settings.cancel).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, settings.cancel).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>{title}</DialogTitle>
@@ -212,21 +212,21 @@ pub fn ThemeEditor(
                         <div class="grid grid-cols-2 gap-3">
                             <ColorField
                                 label=Signal::derive(move || {
-                                    t_string!(i18n, settings.color_background).to_string()
+                                    t_string!(i18n, settings.color_background).to_owned()
                                 })
                                 value=Signal::derive(move || background.get())
                                 on_change=Callback::new(move |v: String| background.set(v))
                             />
                             <ColorField
                                 label=Signal::derive(move || {
-                                    t_string!(i18n, settings.color_foreground).to_string()
+                                    t_string!(i18n, settings.color_foreground).to_owned()
                                 })
                                 value=Signal::derive(move || foreground.get())
                                 on_change=Callback::new(move |v: String| foreground.set(v))
                             />
                             <ColorField
                                 label=Signal::derive(move || {
-                                    t_string!(i18n, settings.color_primary).to_string()
+                                    t_string!(i18n, settings.color_primary).to_owned()
                                 })
                                 value=Signal::derive(move || primary.get())
                                 on_change=Callback::new(move |v: String| primary.set(v))
@@ -301,12 +301,12 @@ pub fn ThemeEditor(
                         contrast
                             .get()
                             .map(|(text_ok, primary_ok)| {
-                                let fg = t_string!(i18n, settings.color_foreground).to_string();
-                                let pr = t_string!(i18n, settings.color_primary).to_string();
+                                let fg = t_string!(i18n, settings.color_foreground).to_owned();
+                                let pr = t_string!(i18n, settings.color_primary).to_owned();
                                 let ok_word = t_string!(i18n, settings.theme_contrast_ok)
-                                    .to_string();
+                                    .to_owned();
                                 let low_word = t_string!(i18n, settings.theme_contrast_low)
-                                    .to_string();
+                                    .to_owned();
                                 let mk = move |ok: bool, label: String| {
                                     let (icon, color) = if ok {
                                         (i::FaCircleCheckSolid, "text-success-text")

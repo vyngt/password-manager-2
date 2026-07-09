@@ -69,7 +69,9 @@ pub struct SaveDialogOptions {
 pub async fn save(options: &SaveDialogOptions) -> Result<Option<String>, ApiError> {
     let _guard = DialogGuard::new();
     let args = serde_wasm_bindgen::to_value(options).map_err(ApiError::serialize)?;
-    let raw = dialog_save(args).await.map_err(ApiError::from_rejection)?;
+    let raw = dialog_save(args)
+        .await
+        .map_err(|e| ApiError::from_rejection(&e))?;
     // Resolves to a path string or `null` (cancelled).
     serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
 }
@@ -88,7 +90,9 @@ pub struct OpenDialogOptions {
 pub async fn open(options: &OpenDialogOptions) -> Result<Option<String>, ApiError> {
     let _guard = DialogGuard::new();
     let args = serde_wasm_bindgen::to_value(options).map_err(ApiError::serialize)?;
-    let raw = dialog_open(args).await.map_err(ApiError::from_rejection)?;
+    let raw = dialog_open(args)
+        .await
+        .map_err(|e| ApiError::from_rejection(&e))?;
     // Single-select resolves to a path string or `null` (cancelled).
     serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
 }
@@ -119,10 +123,10 @@ mod tests {
     #[test]
     fn open_options_serialize_camel_case_and_omit_empty() {
         let opts = OpenDialogOptions {
-            title: Some("Open vault".to_string()),
+            title: Some("Open vault".to_owned()),
             filters: vec![DialogFilter {
-                name: "VEdge Vault".to_string(),
-                extensions: vec!["vdb".to_string()],
+                name: "VEdge Vault".to_owned(),
+                extensions: vec!["vdb".to_owned()],
             }],
         };
         let v = serde_json::to_value(&opts).unwrap();
@@ -137,11 +141,11 @@ mod tests {
     #[test]
     fn save_options_serialize_camel_case() {
         let opts = SaveDialogOptions {
-            title: Some("Save".to_string()),
-            default_path: Some("kit.pdf".to_string()),
+            title: Some("Save".to_owned()),
+            default_path: Some("kit.pdf".to_owned()),
             filters: vec![DialogFilter {
-                name: "PDF".to_string(),
-                extensions: vec!["pdf".to_string()],
+                name: "PDF".to_owned(),
+                extensions: vec!["pdf".to_owned()],
             }],
         };
         let v = serde_json::to_value(&opts).unwrap();

@@ -21,7 +21,7 @@ use crate::features::vault::context::ActiveVault;
 use crate::features::vault::password_strength::score as password_score;
 use crate::features::vault::secret_display::SecretDisplay;
 use crate::features::vault::vault_launch::display_name_from_path;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -37,7 +37,7 @@ pub fn VaultSetup() -> impl IntoView {
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, onboarding.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, onboarding.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -45,7 +45,7 @@ pub fn VaultSetup() -> impl IntoView {
         );
     };
     let show_success = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, onboarding.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, onboarding.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Success)
@@ -77,9 +77,9 @@ pub fn VaultSetup() -> impl IntoView {
     // reactive tracking context" — and so labels relocalize on language switch.
     let steps = Signal::derive(move || {
         vec![
-            Step::new(t_string!(i18n, onboarding.step_location).to_string()),
-            Step::new(t_string!(i18n, onboarding.step_password).to_string()),
-            Step::new(t_string!(i18n, onboarding.step_kit).to_string()),
+            Step::new(t_string!(i18n, onboarding.step_location).to_owned()),
+            Step::new(t_string!(i18n, onboarding.step_password).to_owned()),
+            Step::new(t_string!(i18n, onboarding.step_kit).to_owned()),
         ]
     });
 
@@ -104,7 +104,7 @@ pub fn VaultSetup() -> impl IntoView {
                                         <Input
                                             id="vault-path"
                                             placeholder=Signal::derive(move || {
-                                                t_string!(i18n, onboarding.location_placeholder).to_string()
+                                                t_string!(i18n, onboarding.location_placeholder).to_owned()
                                             })
                                             value=Signal::derive(move || path.get())
                                             on_input=Callback::new(move |v: String| path.set(v))
@@ -116,15 +116,15 @@ pub fn VaultSetup() -> impl IntoView {
                                                 let dialog_title = t_string!(
                                                     i18n, onboarding.choose_dialog_title
                                                 )
-                                                    .to_string();
+                                                    .to_owned();
                                                 spawn_local(async move {
                                                     let opts = SaveDialogOptions {
                                                         title: Some(dialog_title),
-                                                        default_path: Some("my-vault.vdb".to_string()),
+                                                        default_path: Some("my-vault.vdb".to_owned()),
                                                         filters: vec![
                                                             DialogFilter {
-                                                                name: "VEdge Vault".to_string(),
-                                                                extensions: vec!["vdb".to_string()],
+                                                                name: "VEdge Vault".to_owned(),
+                                                                extensions: vec!["vdb".to_owned()],
                                                             },
                                                         ],
                                                     };
@@ -134,7 +134,7 @@ pub fn VaultSetup() -> impl IntoView {
                                                         Err(e) => {
                                                             web_sys::console::error_1(
                                                                 &format!("dialog failed: {e:?}").into(),
-                                                            )
+                                                            );
                                                         }
                                                     }
                                                 });
@@ -175,42 +175,42 @@ pub fn VaultSetup() -> impl IntoView {
                                         id="master-password"
                                         input_type="password"
                                         placeholder=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.password_placeholder).to_string()
+                                            t_string!(i18n, onboarding.password_placeholder).to_owned()
                                         })
                                         value=Signal::derive(move || pw.get())
                                         on_input=Callback::new(move |v: String| pw.set(v))
                                         reveal_label=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.show_password).to_string()
+                                            t_string!(i18n, onboarding.show_password).to_owned()
                                         })
                                         hide_label=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.hide_password).to_string()
+                                            t_string!(i18n, onboarding.hide_password).to_owned()
                                         })
                                     />
                                     <PasswordStrengthMeter
                                         score=strength
                                         strength_label=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.strength_label).to_string()
+                                            t_string!(i18n, onboarding.strength_label).to_owned()
                                         })
                                         level_labels=Signal::derive(move || [
-                                            t_string!(i18n, onboarding.strength_weak).to_string(),
-                                            t_string!(i18n, onboarding.strength_fair).to_string(),
-                                            t_string!(i18n, onboarding.strength_good).to_string(),
-                                            t_string!(i18n, onboarding.strength_strong).to_string(),
+                                            t_string!(i18n, onboarding.strength_weak).to_owned(),
+                                            t_string!(i18n, onboarding.strength_fair).to_owned(),
+                                            t_string!(i18n, onboarding.strength_good).to_owned(),
+                                            t_string!(i18n, onboarding.strength_strong).to_owned(),
                                         ])
                                     />
                                     <Input
                                         id="master-password-confirm"
                                         input_type="password"
                                         placeholder=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.confirm_placeholder).to_string()
+                                            t_string!(i18n, onboarding.confirm_placeholder).to_owned()
                                         })
                                         value=Signal::derive(move || confirm.get())
                                         on_input=Callback::new(move |v: String| confirm.set(v))
                                         reveal_label=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.show_password).to_string()
+                                            t_string!(i18n, onboarding.show_password).to_owned()
                                         })
                                         hide_label=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.hide_password).to_string()
+                                            t_string!(i18n, onboarding.hide_password).to_owned()
                                         })
                                     />
                                 </div>
@@ -235,9 +235,9 @@ pub fn VaultSetup() -> impl IntoView {
                                                     let vault_path = path.get();
                                                     let master_password = pw.get();
                                                     let msg_exists = t_string!(i18n, onboarding.err_exists)
-                                                        .to_string();
+                                                        .to_owned();
                                                     let msg_create = t_string!(i18n, onboarding.err_create)
-                                                        .to_string();
+                                                        .to_owned();
                                                     spawn_local(async move {
                                                         let input = CreateVaultInputDto {
                                                             vault_path,
@@ -308,21 +308,21 @@ pub fn VaultSetup() -> impl IntoView {
                                             let dialog_title = t_string!(
                                                 i18n, onboarding.save_kit_dialog_title
                                             )
-                                                .to_string();
+                                                .to_owned();
                                             let msg_saved = t_string!(i18n, onboarding.kit_saved)
-                                                .to_string();
+                                                .to_owned();
                                             let msg_kit_err = t_string!(i18n, onboarding.err_kit_save)
-                                                .to_string();
+                                                .to_owned();
                                             let msg_dialog_err = t_string!(i18n, onboarding.err_dialog)
-                                                .to_string();
+                                                .to_owned();
                                             spawn_local(async move {
                                                 let opts = SaveDialogOptions {
                                                     title: Some(dialog_title),
-                                                    default_path: Some("vedge-emergency-kit.pdf".to_string()),
+                                                    default_path: Some("vedge-emergency-kit.pdf".to_owned()),
                                                     filters: vec![
                                                         DialogFilter {
-                                                            name: "PDF".to_string(),
-                                                            extensions: vec!["pdf".to_string()],
+                                                            name: "PDF".to_owned(),
+                                                            extensions: vec!["pdf".to_owned()],
                                                         },
                                                     ],
                                                 };
@@ -349,7 +349,7 @@ pub fn VaultSetup() -> impl IntoView {
                                         checked=Signal::derive(move || acknowledged.get())
                                         on_change=Callback::new(move |v: bool| acknowledged.set(v))
                                         aria_label=Signal::derive(move || {
-                                            t_string!(i18n, onboarding.ack_aria).to_string()
+                                            t_string!(i18n, onboarding.ack_aria).to_owned()
                                         })
                                     />
                                     <span>{move || t!(i18n, onboarding.ack_label)}</span>

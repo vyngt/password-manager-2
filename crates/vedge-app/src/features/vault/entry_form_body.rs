@@ -15,7 +15,7 @@ use crate::features::vault::entry_form::{
 use crate::features::vault::entry_view::type_label_i18n;
 use crate::features::vault::folder_move::FolderSelect;
 use crate::features::vault::folder_tree::FolderNode;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use vedge_ui::components::Button;
 use vedge_ui::components::select::{Select, SelectItem};
@@ -65,10 +65,10 @@ pub fn EntryFormBody(
                                         data.with(|d| type_to_key(&d.entry_type).to_owned())
                                     })
                                     placeholder=Signal::derive(move || {
-                                        t_string!(i18n, vault.type_picker).to_string()
+                                        t_string!(i18n, vault.type_picker).to_owned()
                                     })
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.type_picker_aria).to_string()
+                                        t_string!(i18n, vault.type_picker_aria).to_owned()
                                     })
                                     on_change=Callback::new(move |key: String| {
                                         data.update(|d| *d = d.switch_type(type_from_key(&key)));

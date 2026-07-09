@@ -5,7 +5,7 @@ use vedge_ui::primitives::tokens::Size;
 use super::common::Section;
 
 fn make_items(suffix: &str) -> Vec<AccordionItem> {
-    let s = suffix.to_string();
+    let s = suffix.to_owned();
     vec![
         AccordionItem {
             id: format!("general-{s}"),
@@ -74,7 +74,7 @@ pub fn AccordionPage() -> impl IntoView {
                 <Accordion
                     mode=AccordionMode::Single
                     trigger_size=Size::Lg
-                    default_open=vec!["general-a".to_string()]
+                    default_open=vec!["general-a".to_owned()]
                     items=make_items("a")
                 />
             </Section>
@@ -83,7 +83,7 @@ pub fn AccordionPage() -> impl IntoView {
                 <div class="space-y-2">
                     <Accordion
                         mode=AccordionMode::Multiple
-                        default_open=vec!["general-b".to_string(), "sync-b".to_string()]
+                        default_open=vec!["general-b".to_owned(), "sync-b".to_owned()]
                         on_change=Callback::new(move |ids: Vec<String>| set_open_multi.set(ids))
                         items=make_items("b")
                     />

@@ -28,7 +28,7 @@ fn SizesSection() -> impl IntoView {
             <div class="flex items-end gap-6">
                 <div class="flex flex-col items-center gap-2">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         size=Size::Sm
                         aria_label="QR code to vedge.app (small)"
                     />
@@ -36,7 +36,7 @@ fn SizesSection() -> impl IntoView {
                 </div>
                 <div class="flex flex-col items-center gap-2">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         size=Size::Md
                         aria_label="QR code to vedge.app (medium)"
                     />
@@ -44,7 +44,7 @@ fn SizesSection() -> impl IntoView {
                 </div>
                 <div class="flex flex-col items-center gap-2">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         size=Size::Lg
                         aria_label="QR code to vedge.app (large)"
                     />
@@ -62,7 +62,7 @@ fn ErrorCorrectionSection() -> impl IntoView {
             <div class="flex items-end gap-6 flex-wrap">
                 <div class="flex flex-col items-center gap-2">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         error_correction=QrEcc::L
                         aria_label="L error correction"
                     />
@@ -70,7 +70,7 @@ fn ErrorCorrectionSection() -> impl IntoView {
                 </div>
                 <div class="flex flex-col items-center gap-2">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         error_correction=QrEcc::M
                         aria_label="M error correction"
                     />
@@ -78,7 +78,7 @@ fn ErrorCorrectionSection() -> impl IntoView {
                 </div>
                 <div class="flex flex-col items-center gap-2">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         error_correction=QrEcc::Q
                         aria_label="Q error correction"
                     />
@@ -86,7 +86,7 @@ fn ErrorCorrectionSection() -> impl IntoView {
                 </div>
                 <div class="flex flex-col items-center gap-2">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         error_correction=QrEcc::H
                         aria_label="H error correction"
                     />
@@ -104,7 +104,7 @@ fn ExamplesSection() -> impl IntoView {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="flex items-start gap-4">
                     <QRCode
-                        value=Signal::stored(URL.to_string())
+                        value=Signal::stored(URL.to_owned())
                         aria_label="QR code for https://vedge.app"
                     />
                     <div class="text-xs text-text-secondary">
@@ -114,7 +114,7 @@ fn ExamplesSection() -> impl IntoView {
                 </div>
                 <div class="flex items-start gap-4">
                     <QRCode
-                        value=Signal::stored(TOTP.to_string())
+                        value=Signal::stored(TOTP.to_owned())
                         error_correction=QrEcc::Q
                         aria_label="QR code for TOTP setup — scan with your authenticator app"
                     />

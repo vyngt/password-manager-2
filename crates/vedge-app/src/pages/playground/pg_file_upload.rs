@@ -41,20 +41,20 @@ fn VariantsSection() -> impl IntoView {
 
     let on_single = Callback::new(move |ev: FileChangeEvent| match ev {
         FileChangeEvent::Added(files) => {
-            let names: Vec<String> = files.iter().map(|f| f.name()).collect();
+            let names: Vec<String> = files.iter().map(web_sys::File::name).collect();
             single_log.set(format!("Added: {}", names.join(", ")));
         }
-        FileChangeEvent::Removed { id } => single_log.set(format!("Removed: {}", id)),
-        FileChangeEvent::Cancelled { id } => single_log.set(format!("Cancelled: {}", id)),
+        FileChangeEvent::Removed { id } => single_log.set(format!("Removed: {id}")),
+        FileChangeEvent::Cancelled { id } => single_log.set(format!("Cancelled: {id}")),
     });
 
     let on_multi = Callback::new(move |ev: FileChangeEvent| match ev {
         FileChangeEvent::Added(files) => {
-            let names: Vec<String> = files.iter().map(|f| f.name()).collect();
+            let names: Vec<String> = files.iter().map(web_sys::File::name).collect();
             multi_log.set(format!("Added: {}", names.join(", ")));
         }
-        FileChangeEvent::Removed { id } => multi_log.set(format!("Removed: {}", id)),
-        FileChangeEvent::Cancelled { id } => multi_log.set(format!("Cancelled: {}", id)),
+        FileChangeEvent::Removed { id } => multi_log.set(format!("Removed: {id}")),
+        FileChangeEvent::Cancelled { id } => multi_log.set(format!("Cancelled: {id}")),
     });
 
     view! {
@@ -199,7 +199,7 @@ fn ControlledSection() -> impl IntoView {
                 if let Some(it) = v.iter_mut().find(|it| it.id == id) {
                     if fail_here {
                         it.status = FileStatus::Error;
-                        it.error = Some("Simulated upload failure".to_string());
+                        it.error = Some("Simulated upload failure".to_owned());
                     } else {
                         it.status = FileStatus::Uploading;
                         it.progress = Some(next);
@@ -209,14 +209,13 @@ fn ControlledSection() -> impl IntoView {
 
             // Stop if we errored or reached 100
             let should_continue = items.with_untracked(|v| {
-                v.iter()
-                    .find(|it| it.id == id)
-                    .map(|it| it.status == FileStatus::Uploading && it.progress != Some(100))
-                    .unwrap_or(false)
+                v.iter().find(|it| it.id == id).is_some_and(|it| {
+                    it.status == FileStatus::Uploading && it.progress != Some(100)
+                })
             });
 
             if should_continue {
-                let id_next = id.clone();
+                let id_next = id;
                 set_timeout(move || tick(id_next, items), Duration::from_millis(220));
             }
         }

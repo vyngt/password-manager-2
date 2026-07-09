@@ -9,11 +9,11 @@ use super::common::Section;
 pub fn TagInputPage() -> impl IntoView {
     let (basic, set_basic) = signal(Vec::<String>::new());
     let (paste_tags, set_paste) = signal(Vec::<String>::new());
-    let (limited, set_limited) = signal(vec!["Work".to_string(), "Finance".to_string()]);
-    let (err_tags, set_err) = signal(vec!["invalid tag".to_string()]);
-    let (ok_tags, set_ok) = signal(vec!["approved".to_string()]);
-    let (warn_tags, set_warn) = signal(vec!["pending-review".to_string()]);
-    let (readonly_tags, _) = signal(vec!["locked-a".to_string(), "locked-b".to_string()]);
+    let (limited, set_limited) = signal(vec!["Work".to_owned(), "Finance".to_owned()]);
+    let (err_tags, set_err) = signal(vec!["invalid tag".to_owned()]);
+    let (ok_tags, set_ok) = signal(vec!["approved".to_owned()]);
+    let (warn_tags, set_warn) = signal(vec!["pending-review".to_owned()]);
+    let (readonly_tags, _) = signal(vec!["locked-a".to_owned(), "locked-b".to_owned()]);
     let (ff_tags, set_ff) = signal(Vec::<String>::new());
 
     view! {

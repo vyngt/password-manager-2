@@ -2,7 +2,11 @@ use super::layout::VLayout;
 use super::manage::{settings::SettingsPage, vault::VaultPage};
 use super::page::VPage;
 use leptos::prelude::*;
-use leptos_router::{MatchNestedRoutes, components::*, path};
+use leptos_router::{
+    MatchNestedRoutes,
+    components::{ParentRoute, Route},
+    path,
+};
 
 #[component(transparent)]
 pub fn VRoutes() -> impl MatchNestedRoutes + Clone {

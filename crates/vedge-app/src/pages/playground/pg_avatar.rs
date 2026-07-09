@@ -21,28 +21,28 @@ pub fn AvatarPage() -> impl IntoView {
             <Section title="Sizes">
                 <div class="flex items-end gap-4">
                     <Avatar
-                        src=PHOTO.to_string()
-                        name="Ada Lovelace".to_string()
+                        src=PHOTO.to_owned()
+                        name="Ada Lovelace".to_owned()
                         size=AvatarSize::Xs
                     />
                     <Avatar
-                        src=PHOTO.to_string()
-                        name="Ada Lovelace".to_string()
+                        src=PHOTO.to_owned()
+                        name="Ada Lovelace".to_owned()
                         size=AvatarSize::Sm
                     />
                     <Avatar
-                        src=PHOTO.to_string()
-                        name="Ada Lovelace".to_string()
+                        src=PHOTO.to_owned()
+                        name="Ada Lovelace".to_owned()
                         size=AvatarSize::Md
                     />
                     <Avatar
-                        src=PHOTO.to_string()
-                        name="Ada Lovelace".to_string()
+                        src=PHOTO.to_owned()
+                        name="Ada Lovelace".to_owned()
                         size=AvatarSize::Lg
                     />
                     <Avatar
-                        src=PHOTO.to_string()
-                        name="Ada Lovelace".to_string()
+                        src=PHOTO.to_owned()
+                        name="Ada Lovelace".to_owned()
                         size=AvatarSize::Xl
                     />
                 </div>
@@ -52,14 +52,14 @@ pub fn AvatarPage() -> impl IntoView {
                 <div class="flex items-center gap-4">
                     <div class="flex flex-col items-center gap-1">
                         <Avatar
-                            src=PHOTO.to_string()
-                            name="Ada Lovelace".to_string()
+                            src=PHOTO.to_owned()
+                            name="Ada Lovelace".to_owned()
                             size=AvatarSize::Lg
                         />
                         <span class="text-xs text-text-tertiary">"image"</span>
                     </div>
                     <div class="flex flex-col items-center gap-1">
-                        <Avatar name="Grace Hopper".to_string() size=AvatarSize::Lg />
+                        <Avatar name="Grace Hopper".to_owned() size=AvatarSize::Lg />
                         <span class="text-xs text-text-tertiary">"initials"</span>
                     </div>
                     <div class="flex flex-col items-center gap-1">
@@ -72,19 +72,19 @@ pub fn AvatarPage() -> impl IntoView {
             <Section title="Initials derivation">
                 <div class="flex items-center gap-4">
                     <div class="flex flex-col items-center gap-1">
-                        <Avatar name="Ada Lovelace".to_string() size=AvatarSize::Lg />
+                        <Avatar name="Ada Lovelace".to_owned() size=AvatarSize::Lg />
                         <span class="text-xs text-text-tertiary">"Ada Lovelace"</span>
                     </div>
                     <div class="flex flex-col items-center gap-1">
-                        <Avatar name="Cher".to_string() size=AvatarSize::Lg />
+                        <Avatar name="Cher".to_owned() size=AvatarSize::Lg />
                         <span class="text-xs text-text-tertiary">"Cher"</span>
                     </div>
                     <div class="flex flex-col items-center gap-1">
-                        <Avatar name="Dr. Martin Luther King Jr.".to_string() size=AvatarSize::Lg />
+                        <Avatar name="Dr. Martin Luther King Jr.".to_owned() size=AvatarSize::Lg />
                         <span class="text-xs text-text-tertiary">"Dr. Martin Luther King Jr."</span>
                     </div>
                     <div class="flex flex-col items-center gap-1">
-                        <Avatar name="maria o'neill".to_string() size=AvatarSize::Lg />
+                        <Avatar name="maria o'neill".to_owned() size=AvatarSize::Lg />
                         <span class="text-xs text-text-tertiary">"maria o\'neill"</span>
                     </div>
                 </div>
@@ -111,32 +111,32 @@ pub fn AvatarPage() -> impl IntoView {
                                 <div class="flex items-end gap-4">
                                     <span class="w-16 text-xs text-text-tertiary">{label}</span>
                                     <Avatar
-                                        src=PHOTO.to_string()
-                                        name="Ada".to_string()
+                                        src=PHOTO.to_owned()
+                                        name="Ada".to_owned()
                                         size=AvatarSize::Xs
                                         status=Some(s)
                                     />
                                     <Avatar
-                                        src=PHOTO.to_string()
-                                        name="Ada".to_string()
+                                        src=PHOTO.to_owned()
+                                        name="Ada".to_owned()
                                         size=AvatarSize::Sm
                                         status=Some(s)
                                     />
                                     <Avatar
-                                        src=PHOTO.to_string()
-                                        name="Ada".to_string()
+                                        src=PHOTO.to_owned()
+                                        name="Ada".to_owned()
                                         size=AvatarSize::Md
                                         status=Some(s)
                                     />
                                     <Avatar
-                                        src=PHOTO.to_string()
-                                        name="Ada".to_string()
+                                        src=PHOTO.to_owned()
+                                        name="Ada".to_owned()
                                         size=AvatarSize::Lg
                                         status=Some(s)
                                     />
                                     <Avatar
-                                        src=PHOTO.to_string()
-                                        name="Ada".to_string()
+                                        src=PHOTO.to_owned()
+                                        name="Ada".to_owned()
                                         size=AvatarSize::Xl
                                         status=Some(s)
                                     />
@@ -151,8 +151,8 @@ pub fn AvatarPage() -> impl IntoView {
                 <div class="flex items-center gap-6">
                     <div class="flex items-center gap-3">
                         <Avatar
-                            src=PHOTO.to_string()
-                            name="Ada Lovelace".to_string()
+                            src=PHOTO.to_owned()
+                            name="Ada Lovelace".to_owned()
                             size=AvatarSize::Lg
                             interactive=true
                             status=Some(AvatarStatus::Online)
@@ -164,11 +164,11 @@ pub fn AvatarPage() -> impl IntoView {
                     </div>
 
                     <Avatar
-                        name="Grace Hopper".to_string()
+                        name="Grace Hopper".to_owned()
                         size=AvatarSize::Lg
                         interactive=true
                         disabled=true
-                        aria_label="Grace Hopper (disabled)".to_string()
+                        aria_label="Grace Hopper (disabled)".to_owned()
                     />
                 </div>
             </Section>
@@ -176,8 +176,8 @@ pub fn AvatarPage() -> impl IntoView {
             <Section title="Broken image — falls back to initials">
                 <div class="flex items-center gap-4">
                     <Avatar
-                        src=BROKEN.to_string()
-                        name="Ada Lovelace".to_string()
+                        src=BROKEN.to_owned()
+                        name="Ada Lovelace".to_owned()
                         size=AvatarSize::Lg
                     />
                     <span class="text-xs text-text-tertiary">
@@ -189,8 +189,8 @@ pub fn AvatarPage() -> impl IntoView {
             <Section title="In a row (composition)">
                 <div class="flex items-center gap-3">
                     <Avatar
-                        src=PHOTO.to_string()
-                        name="Ada Lovelace".to_string()
+                        src=PHOTO.to_owned()
+                        name="Ada Lovelace".to_owned()
                         size=AvatarSize::Sm
                         status=Some(AvatarStatus::Online)
                     />

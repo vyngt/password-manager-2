@@ -7,7 +7,7 @@
 //! delete", in one dialog.
 
 use super::folder_tree::{FolderNode, subtree_contents};
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
 use vedge_ipc::IndexEntryDto;
@@ -42,7 +42,7 @@ pub fn FolderDelete(
             open=Signal::derive(move || target.get().is_some())
             on_close=close
             size=DialogSize::Sm
-            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>{move || t!(i18n, vault.folder_delete_title)}</DialogTitle>
@@ -110,7 +110,7 @@ pub fn FolderDelete(
                                             variant=Variant::Danger
                                             size=Size::Sm
                                             on:click=move |_: web_sys::MouseEvent| {
-                                                on_empty.run(contents())
+                                                on_empty.run(contents());
                                             }
                                         >
                                             {move || t!(i18n, vault.folder_empty_action)}

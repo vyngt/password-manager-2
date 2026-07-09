@@ -14,7 +14,7 @@ use super::secret_display::SecretDisplay;
 use crate::api;
 use crate::features::settings::security_prefs::SecurityPrefsCtx;
 use crate::features::vault::context::ActiveVault;
-use crate::i18n::*;
+use crate::i18n::{Locale, t, t_string, use_i18n};
 use icondata as i;
 use leptos::either::{Either, EitherOf3};
 use leptos::prelude::*;
@@ -44,7 +44,7 @@ pub fn EntryHistory(
     let sec = expect_context::<SecurityPrefsCtx>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -52,7 +52,7 @@ pub fn EntryHistory(
         );
     };
     let show_success = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Success)
@@ -76,8 +76,8 @@ pub fn EntryHistory(
         confirm.set(None);
         loading.set(true);
         let vault_path = active.path.get_untracked().unwrap_or_default();
-        let id = entry.id.clone();
-        let err_prefix = untrack(|| t_string!(i18n, vault.err_history).to_string());
+        let id = entry.id;
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_history).to_owned());
         spawn_local(async move {
             match api::entry::list_history(&vault_path, &id).await {
                 Ok(rows) => versions.set(rows),
@@ -103,8 +103,8 @@ pub fn EntryHistory(
             return;
         };
         let vault_path = active.path.get_untracked().unwrap_or_default();
-        let id = entry.id.clone();
-        let err_prefix = t_string!(i18n, vault.err_reveal).to_string();
+        let id = entry.id;
+        let err_prefix = t_string!(i18n, vault.err_reveal).to_owned();
         spawn_local(async move {
             let result = match history_id {
                 Some(hid) => api::entry::get_history_value(&vault_path, &id, &hid).await,
@@ -127,10 +127,10 @@ pub fn EntryHistory(
             return;
         };
         let vault_path = active.path.get_untracked().unwrap_or_default();
-        let id = entry.id.clone();
+        let id = entry.id;
         let secs = sec.0.get_untracked().clipboard_clear_seconds;
-        let copied = t_string!(i18n, vault.copied).to_string();
-        let err_prefix = t_string!(i18n, vault.err_copy).to_string();
+        let copied = t_string!(i18n, vault.copied).to_owned();
+        let err_prefix = t_string!(i18n, vault.err_copy).to_owned();
         spawn_local(async move {
             let result = match history_id {
                 Some(hid) => {
@@ -151,8 +151,8 @@ pub fn EntryHistory(
             return;
         };
         let vault_path = active.path.get_untracked().unwrap_or_default();
-        let id = entry.id.clone();
-        let err_prefix = t_string!(i18n, vault.err_history).to_string();
+        let id = entry.id;
+        let err_prefix = t_string!(i18n, vault.err_history).to_owned();
         confirm.set(None);
         spawn_local(async move {
             match api::entry::restore_history(&vault_path, &id, &hid).await {
@@ -174,9 +174,9 @@ pub fn EntryHistory(
 
     let title = move || {
         if is_login() {
-            t_string!(i18n, vault.password_history).to_string()
+            t_string!(i18n, vault.password_history).to_owned()
         } else {
-            t_string!(i18n, vault.version_history).to_string()
+            t_string!(i18n, vault.version_history).to_owned()
         }
     };
 
@@ -185,7 +185,7 @@ pub fn EntryHistory(
             open=Signal::derive(move || target.get().is_some())
             on_close=close
             size=DialogSize::Md
-            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>
@@ -325,7 +325,7 @@ fn history_row(
     // Cloned for the (reactive) date + relative-time label closures — i18n reads
     // live in `move ||`/`Signal::derive`, never eagerly (relocalizes on switch).
     let changed_at_date = v.changed_at.clone();
-    let changed_at_rel = v.changed_at.clone();
+    let changed_at_rel = v.changed_at;
 
     let reveal_hid = history_id.clone();
     let copy_hid = history_id.clone();
@@ -347,7 +347,7 @@ fn history_row(
                     <div class=date_class>
                         {move || {
                             if is_current {
-                                t_string!(i18n, vault.history_current).to_string()
+                                t_string!(i18n, vault.history_current).to_owned()
                             } else {
                                 long_date(&changed_at_date)
                             }
@@ -389,7 +389,7 @@ fn history_row(
                             view! {
                                 <IconButton
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.history_reveal).to_string()
+                                        t_string!(i18n, vault.history_reveal).to_owned()
                                     })
                                     variant=Variant::Ghost
                                     size=Size::Sm
@@ -421,7 +421,7 @@ fn history_row(
                             view! {
                                 <IconButton
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.history_copy).to_string()
+                                        t_string!(i18n, vault.history_copy).to_owned()
                                     })
                                     variant=Variant::Ghost
                                     size=Size::Sm
@@ -471,8 +471,8 @@ fn history_row(
 fn rel_label(i18n: I18nContext<Locale>, changed_at: &str) -> String {
     let now_ms = chrono::Utc::now().timestamp_millis();
     match relative_time(changed_at, now_ms) {
-        RelTime::JustNow => t_string!(i18n, vault.history_just_now).to_string(),
-        RelTime::Today => t_string!(i18n, vault.history_today).to_string(),
+        RelTime::JustNow => t_string!(i18n, vault.history_just_now).to_owned(),
+        RelTime::Today => t_string!(i18n, vault.history_today).to_owned(),
         RelTime::Days(n) => format!("{n} {}", t_string!(i18n, vault.history_days_ago)),
         RelTime::Weeks(n) => format!("{n} {}", t_string!(i18n, vault.history_weeks_ago)),
         RelTime::Months(n) => format!("{n} {}", t_string!(i18n, vault.history_months_ago)),
@@ -522,12 +522,12 @@ fn has_secret(entry_type: &EntryTypeDto) -> bool {
 /// localized labels; the long tail is prettified from the raw key.
 fn changed_field_label(i18n: I18nContext<Locale>, key: &str) -> String {
     match key {
-        "name" => t_string!(i18n, vault.col_name).to_string(),
-        "url" => t_string!(i18n, vault.col_url).to_string(),
-        "password" => t_string!(i18n, vault.form_password).to_string(),
-        "number" => t_string!(i18n, vault.field_card_number).to_string(),
-        "cvv" => t_string!(i18n, vault.field_cvv).to_string(),
-        "content" => t_string!(i18n, vault.field_content).to_string(),
+        "name" => t_string!(i18n, vault.col_name).to_owned(),
+        "url" => t_string!(i18n, vault.col_url).to_owned(),
+        "password" => t_string!(i18n, vault.form_password).to_owned(),
+        "number" => t_string!(i18n, vault.field_card_number).to_owned(),
+        "cvv" => t_string!(i18n, vault.field_cvv).to_owned(),
+        "content" => t_string!(i18n, vault.field_content).to_owned(),
         other => prettify_key(other),
     }
 }

@@ -14,7 +14,7 @@ use crate::api::tauri::invoke;
 /// - `Deserialize` → shell returned something the frontend didn't expect.
 /// - Promise rejection → decoded via [`ApiError::from_rejection`] into a
 ///   shell-reported variant (`WrongCredentials`, `NotFound`, …).
-pub(crate) async fn call<I, O>(cmd: &str, args: &I) -> Result<O, ApiError>
+pub async fn call<I, O>(cmd: &str, args: &I) -> Result<O, ApiError>
 where
     I: Serialize + ?Sized,
     O: DeserializeOwned,
@@ -22,13 +22,13 @@ where
     let args_js = serde_wasm_bindgen::to_value(args).map_err(ApiError::serialize)?;
     let raw = invoke(cmd, args_js)
         .await
-        .map_err(ApiError::from_rejection)?;
+        .map_err(|e| ApiError::from_rejection(&e))?;
     serde_wasm_bindgen::from_value::<O>(raw).map_err(ApiError::deserialize)
 }
 
 /// For commands that return `()`. Tauri serializes unit as `null`;
 /// `serde_wasm_bindgen::from_value::<()>` accepts it.
-pub(crate) async fn call_void<I>(cmd: &str, args: &I) -> Result<(), ApiError>
+pub async fn call_void<I>(cmd: &str, args: &I) -> Result<(), ApiError>
 where
     I: Serialize + ?Sized,
 {
@@ -37,7 +37,7 @@ where
 
 /// For commands taking no arguments. Tauri expects an empty object (not
 /// `null`); the unit struct `NoArgs` serializes to `{}`.
-pub(crate) async fn call_noargs<O>(cmd: &str) -> Result<O, ApiError>
+pub async fn call_noargs<O>(cmd: &str) -> Result<O, ApiError>
 where
     O: DeserializeOwned,
 {

@@ -23,7 +23,7 @@ pub fn CopyButtonPage() -> impl IntoView {
             <Section title="Basic">
                 <div class="flex items-center gap-3">
                     <span class="text-sm text-text-primary font-mono">"Hello, clipboard!"</span>
-                    <CopyButton value=Signal::stored("Hello, clipboard!".to_string()) />
+                    <CopyButton value=Signal::stored("Hello, clipboard!".to_owned()) />
                 </div>
             </Section>
 
@@ -31,7 +31,7 @@ pub fn CopyButtonPage() -> impl IntoView {
                 <div class="flex items-center gap-3">
                     <span class="text-sm text-text-primary font-mono">"secret-token-abc123"</span>
                     <CopyButton
-                        value=Signal::stored("secret-token-abc123".to_string())
+                        value=Signal::stored("secret-token-abc123".to_owned())
                         label="Copy token"
                         show_toast=true
                     />
@@ -42,7 +42,7 @@ pub fn CopyButtonPage() -> impl IntoView {
                 <div class="flex items-center gap-3">
                     <span class="text-sm text-text-primary font-mono">"very-secret-password"</span>
                     <CopyButton
-                        value=Signal::stored("very-secret-password".to_string())
+                        value=Signal::stored("very-secret-password".to_owned())
                         label="Copy password"
                         show_toast=true
                         countdown=30
@@ -56,17 +56,17 @@ pub fn CopyButtonPage() -> impl IntoView {
             <Section title="Variants">
                 <div class="flex items-center gap-2">
                     <CopyButton
-                        value=Signal::stored("ghost".to_string())
+                        value=Signal::stored("ghost".to_owned())
                         label="Ghost"
                         variant=Variant::Ghost
                     />
                     <CopyButton
-                        value=Signal::stored("secondary".to_string())
+                        value=Signal::stored("secondary".to_owned())
                         label="Secondary"
                         variant=Variant::Secondary
                     />
                     <CopyButton
-                        value=Signal::stored("primary".to_string())
+                        value=Signal::stored("primary".to_owned())
                         label="Primary"
                         variant=Variant::Primary
                     />
@@ -75,27 +75,19 @@ pub fn CopyButtonPage() -> impl IntoView {
 
             <Section title="Sizes">
                 <div class="flex items-center gap-2">
+                    <CopyButton value=Signal::stored("sm".to_owned()) label="Small" size=Size::Sm />
                     <CopyButton
-                        value=Signal::stored("sm".to_string())
-                        label="Small"
-                        size=Size::Sm
-                    />
-                    <CopyButton
-                        value=Signal::stored("md".to_string())
+                        value=Signal::stored("md".to_owned())
                         label="Medium"
                         size=Size::Md
                     />
-                    <CopyButton
-                        value=Signal::stored("lg".to_string())
-                        label="Large"
-                        size=Size::Lg
-                    />
+                    <CopyButton value=Signal::stored("lg".to_owned()) label="Large" size=Size::Lg />
                 </div>
             </Section>
 
             <Section title="Disabled">
                 <CopyButton
-                    value=Signal::stored("unreachable".to_string())
+                    value=Signal::stored("unreachable".to_owned())
                     label="Copy (disabled)"
                     disabled=true
                 />
@@ -103,7 +95,7 @@ pub fn CopyButtonPage() -> impl IntoView {
 
             <Section title="Localised (Vietnamese)">
                 <CopyButton
-                    value=Signal::stored("mật-khẩu-bí-mật".to_string())
+                    value=Signal::stored("mật-khẩu-bí-mật".to_owned())
                     label="Sao chép mật khẩu"
                     copied_label="Đã sao chép"
                     countdown_label="xóa sau {n}s"
@@ -116,7 +108,7 @@ pub fn CopyButtonPage() -> impl IntoView {
             <Section title="on_copy callback">
                 <div class="flex items-center gap-3">
                     <CopyButton
-                        value=Signal::stored("tracked".to_string())
+                        value=Signal::stored("tracked".to_owned())
                         label="Copy with counter"
                         on_copy=on_copy
                     />

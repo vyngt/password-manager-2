@@ -12,7 +12,7 @@ use crate::features::vault::entry_form::{type_from_key, type_to_key};
 use crate::features::vault::entry_view::type_label_i18n;
 use crate::features::vault::folder_tree::{FolderScope, scope_matches};
 use crate::features::vault::vault_search::VaultSearch;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -36,7 +36,7 @@ pub struct Filters {
 }
 
 /// How the filtered list is ordered.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SortKey {
     /// Name, case-insensitive A–Z.
     #[default]
@@ -222,7 +222,7 @@ pub fn VaultFilters(
             <div class="w-40 shrink-0">
                 {move || {
                     let mut options = vec![
-                        SelectItem::option("", t_string!(i18n, vault.filter_all_types).to_string()),
+                        SelectItem::option("", t_string!(i18n, vault.filter_all_types).to_owned()),
                     ];
                     options
                         .extend(
@@ -240,10 +240,10 @@ pub fn VaultFilters(
                                 entry_type.get().as_ref().map_or("", type_to_key).to_owned()
                             })
                             placeholder=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_type).to_string()
+                                t_string!(i18n, vault.filter_type).to_owned()
                             })
                             aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_type_aria).to_string()
+                                t_string!(i18n, vault.filter_type_aria).to_owned()
                             })
                             on_change=Callback::new(move |key: String| {
                                 entry_type
@@ -264,7 +264,7 @@ pub fn VaultFilters(
             <div class="w-40 shrink-0">
                 {move || {
                     let mut options = vec![
-                        SelectItem::option("", t_string!(i18n, vault.filter_all_tags).to_string()),
+                        SelectItem::option("", t_string!(i18n, vault.filter_all_tags).to_owned()),
                     ];
                     options
                         .extend(tags.get().into_iter().map(|t| SelectItem::option(t.id, t.name)));
@@ -273,10 +273,10 @@ pub fn VaultFilters(
                             options=options
                             value=Signal::derive(move || tag_id.get().unwrap_or_default())
                             placeholder=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_tag).to_string()
+                                t_string!(i18n, vault.filter_tag).to_owned()
                             })
                             aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_tag_aria).to_string()
+                                t_string!(i18n, vault.filter_tag_aria).to_owned()
                             })
                             on_change=Callback::new(move |id: String| {
                                 tag_id.set(if id.is_empty() { None } else { Some(id) });
@@ -290,11 +290,8 @@ pub fn VaultFilters(
             <div class="w-32 shrink-0">
                 {move || {
                     let options = vec![
-                        SelectItem::option(
-                            "active",
-                            t_string!(i18n, vault.view_active).to_string(),
-                        ),
-                        SelectItem::option("trash", t_string!(i18n, vault.view_trash).to_string()),
+                        SelectItem::option("active", t_string!(i18n, vault.view_active).to_owned()),
+                        SelectItem::option("trash", t_string!(i18n, vault.view_trash).to_owned()),
                     ];
                     view! {
                         <Select
@@ -303,7 +300,7 @@ pub fn VaultFilters(
                                 if trashed_view.get() { "trash" } else { "active" }.to_owned()
                             })
                             aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_view_aria).to_string()
+                                t_string!(i18n, vault.filter_view_aria).to_owned()
                             })
                             on_change=Callback::new(move |v: String| trashed_view.set(v == "trash"))
                         />
@@ -315,23 +312,23 @@ pub fn VaultFilters(
             <div class="w-40 shrink-0">
                 {move || {
                     let options = vec![
-                        SelectItem::option("name", t_string!(i18n, vault.sort_name).to_string()),
+                        SelectItem::option("name", t_string!(i18n, vault.sort_name).to_owned()),
                         SelectItem::option(
                             "updated",
-                            t_string!(i18n, vault.sort_updated).to_string(),
+                            t_string!(i18n, vault.sort_updated).to_owned(),
                         ),
-                        SelectItem::option("used", t_string!(i18n, vault.sort_used).to_string()),
-                        SelectItem::option("manual", t_string!(i18n, vault.sort_manual).to_string()),
+                        SelectItem::option("used", t_string!(i18n, vault.sort_used).to_owned()),
+                        SelectItem::option("manual", t_string!(i18n, vault.sort_manual).to_owned()),
                     ];
                     view! {
                         <Select
                             options=options
                             value=Signal::derive(move || sort_to_key(sort.get()).to_owned())
                             placeholder=Signal::derive(move || {
-                                t_string!(i18n, vault.sort_label).to_string()
+                                t_string!(i18n, vault.sort_label).to_owned()
                             })
                             aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.sort_aria).to_string()
+                                t_string!(i18n, vault.sort_aria).to_owned()
                             })
                             on_change=Callback::new(move |v: String| sort.set(sort_from_key(&v)))
                         />
@@ -347,7 +344,7 @@ pub fn VaultFilters(
                     checked=Signal::derive(move || favorites_only.get())
                     on_change=Callback::new(move |v: bool| favorites_only.set(v))
                     aria_label=Signal::derive(move || {
-                        t_string!(i18n, vault.filter_favorites).to_string()
+                        t_string!(i18n, vault.filter_favorites).to_owned()
                     })
                 />
                 <span>{move || t!(i18n, vault.filter_favorites)}</span>
@@ -396,7 +393,7 @@ mod tests {
         let mut by_tag = entry("3", "Zzz"); // name/url hold no "work" text
         by_tag.tag_ids = vec!["t-work".into()];
         let items = vec![by_name, by_url, by_tag];
-        let tag_names = HashMap::from([("t-work".to_string(), "Work".to_string())]);
+        let tag_names = HashMap::from([("t-work".to_owned(), "Work".to_owned())]);
 
         let q = |s: &str| Filters {
             query: s.into(),

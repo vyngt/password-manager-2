@@ -1,4 +1,4 @@
-use crate::i18n::*;
+use crate::i18n::{t_string, use_i18n};
 use leptos::prelude::*;
 use vedge_ui::components::Input;
 use vedge_ui::components::form::form_field::FormField;
@@ -9,16 +9,16 @@ use super::common::Section;
 #[component]
 pub fn FormFieldPage() -> impl IntoView {
     let i18n = use_i18n();
-    let err = Signal::derive(move || t_string!(i18n, playground.error_label).to_string());
-    let suc = Signal::derive(move || t_string!(i18n, playground.success_label).to_string());
-    let wrn = Signal::derive(move || t_string!(i18n, playground.warning_label).to_string());
+    let err = Signal::derive(move || t_string!(i18n, playground.error_label).to_owned());
+    let suc = Signal::derive(move || t_string!(i18n, playground.success_label).to_owned());
+    let wrn = Signal::derive(move || t_string!(i18n, playground.warning_label).to_owned());
 
     // Controlled demo: value reactivity while status stays at Default.
     let (name, set_name) = signal(String::new());
     let name_hint = Signal::derive(move || {
         let v = name.get();
         if v.is_empty() {
-            "Start typing to see the live helper update".to_string()
+            "Start typing to see the live helper update".to_owned()
         } else {
             format!("{} characters", v.len())
         }
@@ -37,7 +37,7 @@ pub fn FormFieldPage() -> impl IntoView {
                     <Input
                         id="ff-basic"
                         aria_describedby="ff-basic-helper"
-                        placeholder=Signal::stored("e.g. Personal".to_string())
+                        placeholder=Signal::stored("e.g. Personal".to_owned())
                     />
                 </FormField>
             </Section>
@@ -54,7 +54,7 @@ pub fn FormFieldPage() -> impl IntoView {
                     <Input
                         id="ff-email"
                         status=Status::Error
-                        value=Signal::stored("not-an-email".to_string())
+                        value=Signal::stored("not-an-email".to_owned())
                         aria_describedby="ff-email-helper"
                     />
                 </FormField>
@@ -71,7 +71,7 @@ pub fn FormFieldPage() -> impl IntoView {
                     <Input
                         id="ff-success"
                         status=Status::Success
-                        value=Signal::stored("CoolUser42".to_string())
+                        value=Signal::stored("CoolUser42".to_owned())
                         aria_describedby="ff-success-helper"
                     />
                 </FormField>
@@ -88,7 +88,7 @@ pub fn FormFieldPage() -> impl IntoView {
                     <Input
                         id="ff-warning"
                         status=Status::Warning
-                        value=Signal::stored("2026-04-19".to_string())
+                        value=Signal::stored("2026-04-19".to_owned())
                         aria_describedby="ff-warning-helper"
                     />
                 </FormField>
@@ -104,7 +104,7 @@ pub fn FormFieldPage() -> impl IntoView {
                     <Input
                         id="ff-disabled"
                         disabled=true
-                        value=Signal::stored("v-3f8a-9b21".to_string())
+                        value=Signal::stored("v-3f8a-9b21".to_owned())
                         aria_describedby="ff-disabled-helper"
                     />
                 </FormField>
@@ -112,7 +112,7 @@ pub fn FormFieldPage() -> impl IntoView {
 
             <Section title="No hint — no helper row rendered">
                 <FormField label="Notes" id="ff-no-hint">
-                    <Input id="ff-no-hint" placeholder=Signal::stored("Optional".to_string()) />
+                    <Input id="ff-no-hint" placeholder=Signal::stored("Optional".to_owned()) />
                 </FormField>
             </Section>
 

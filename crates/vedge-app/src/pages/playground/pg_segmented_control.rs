@@ -8,8 +8,8 @@ use super::common::Section;
 
 #[component]
 pub fn SegmentedControlPage() -> impl IntoView {
-    let (seg_val, set_seg_val) = signal("list".to_string());
-    let (seg_icon_val, set_seg_icon_val) = signal("left".to_string());
+    let (seg_val, set_seg_val) = signal("list".to_owned());
+    let (seg_icon_val, set_seg_icon_val) = signal("left".to_owned());
 
     view! {
         <div class="p-6 max-w-4xl mx-auto space-y-6">
@@ -49,7 +49,7 @@ pub fn SegmentedControlPage() -> impl IntoView {
                             SegmentOption::text("a", "One"),
                             SegmentOption::text("b", "Two"),
                         ]
-                        value=Signal::stored("a".to_string())
+                        value=Signal::stored("a".to_owned())
                         size=Size::Sm
                         aria_label="Small segmented"
                     />
@@ -58,7 +58,7 @@ pub fn SegmentedControlPage() -> impl IntoView {
                             SegmentOption::text("a", "One"),
                             SegmentOption::text("b", "Two"),
                         ]
-                        value=Signal::stored("a".to_string())
+                        value=Signal::stored("a".to_owned())
                         aria_label="Medium segmented"
                     />
                 </div>
@@ -71,7 +71,7 @@ pub fn SegmentedControlPage() -> impl IntoView {
                         SegmentOption::text("b", "Beta"),
                         SegmentOption::text("c", "Gamma"),
                     ]
-                    value=Signal::stored("a".to_string())
+                    value=Signal::stored("a".to_owned())
                     disabled=true
                     aria_label="Disabled segmented"
                 />

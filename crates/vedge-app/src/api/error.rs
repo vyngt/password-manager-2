@@ -70,7 +70,7 @@ impl ApiError {
     /// Decode the JS rejection value into an `ApiError`. Unknown shapes
     /// fall through to `Transport(format!("{raw:?}"))` so the caller can
     /// still log something useful.
-    pub(crate) fn from_rejection(raw: JsValue) -> Self {
+    pub(crate) fn from_rejection(raw: &JsValue) -> Self {
         match serde_wasm_bindgen::from_value::<ErrorEnvelope>(raw.clone()) {
             Ok(env) => Self::from_envelope(env),
             Err(_) => Self::Transport(format!("{raw:?}")),
@@ -102,8 +102,8 @@ mod tests {
 
     fn env(kind: &str, message: Option<&str>) -> ErrorEnvelope {
         ErrorEnvelope {
-            kind: kind.to_string(),
-            message: message.map(str::to_string),
+            kind: kind.to_owned(),
+            message: message.map(str::to_owned),
         }
     }
 

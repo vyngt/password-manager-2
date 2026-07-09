@@ -50,7 +50,7 @@ fn basic_items() -> Vec<MenuSection> {
 pub fn DropdownMenuPage() -> impl IntoView {
     let (last_action, set_last_action) = signal(String::new());
     let make_action =
-        move |name: &'static str| Callback::new(move |_: ()| set_last_action.set(name.to_string()));
+        move |name: &'static str| Callback::new(move |_: ()| set_last_action.set(name.to_owned()));
 
     let (open_count, set_open_count) = signal(0_u32);
     let (close_count, set_close_count) = signal(0_u32);
@@ -308,7 +308,7 @@ pub fn DropdownMenuPage() -> impl IntoView {
                 <code class="text-text-primary">
                     {move || {
                         let s = last_action.get();
-                        if s.is_empty() { "(none)".to_string() } else { s }
+                        if s.is_empty() { "(none)".to_owned() } else { s }
                     }}
                 </code>
             </div>

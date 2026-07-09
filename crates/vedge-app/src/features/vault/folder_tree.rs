@@ -12,7 +12,7 @@
 //! corruption) is grafted to the root instead of recursing forever, and every
 //! downstream helper walks the resulting *acyclic* tree.
 
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
@@ -31,7 +31,7 @@ pub struct FolderNode {
     /// Presentation, projected from the folder's index entry (`meta.color/icon`).
     pub color: Option<String>,
     pub icon: Option<String>,
-    pub children: Vec<FolderNode>,
+    pub children: Vec<Self>,
 }
 
 /// A tree node flattened for indented rendering / `Select` option labels.
@@ -487,7 +487,7 @@ pub fn FolderTree(
                         size=Size::Xs
                         class="text-foreground/40"
                         aria_label=Signal::derive(move || {
-                            t_string!(i18n, vault.folder_new).to_string()
+                            t_string!(i18n, vault.folder_new).to_owned()
                         })
                         on:click=move |_: web_sys::MouseEvent| show_new.update(|v| *v = !*v)
                     >
@@ -502,7 +502,7 @@ pub fn FolderTree(
                         class="mb-1"
                         autofocus=true
                         placeholder=Signal::derive(move || {
-                            t_string!(i18n, vault.folder_new_placeholder).to_string()
+                            t_string!(i18n, vault.folder_new_placeholder).to_owned()
                         })
                         value=Signal::derive(move || new_name.get())
                         on_input=Callback::new(move |v: String| new_name.set(v))
@@ -527,7 +527,7 @@ pub fn FolderTree(
                 // Drop-target highlight rides the reactive `class`; drag handlers spread
                 // onto SidebarItem's root button (same element the click nav uses).
                 <SidebarItem
-                    label=Signal::derive(move || t_string!(i18n, vault.folder_root).to_string())
+                    label=Signal::derive(move || t_string!(i18n, vault.folder_root).to_owned())
                     icon=Box::new(|| {
                         view! { <Icon icon=i::FaLayerGroupSolid width="14" height="14" /> }
                             .into_any()
@@ -537,7 +537,7 @@ pub fn FolderTree(
                     on_click=Callback::new(move |_: ()| scope.set(FolderScope::All))
                     class=Signal::derive(move || {
                         if drag_over.get() == DROP_ALL {
-                            "ring-1 ring-primary bg-primary/15".to_string()
+                            "ring-1 ring-primary bg-primary/15".to_owned()
                         } else {
                             String::new()
                         }
@@ -550,7 +550,7 @@ pub fn FolderTree(
 
                 // Unfiled — entries with no folder (drop here = move to root).
                 <SidebarItem
-                    label=Signal::derive(move || t_string!(i18n, vault.folder_unfiled).to_string())
+                    label=Signal::derive(move || t_string!(i18n, vault.folder_unfiled).to_owned())
                     icon=Box::new(|| {
                         view! { <Icon icon=i::FaInboxSolid width="14" height="14" /> }.into_any()
                     })
@@ -559,7 +559,7 @@ pub fn FolderTree(
                     on_click=Callback::new(move |_: ()| scope.set(FolderScope::Unfiled))
                     class=Signal::derive(move || {
                         if drag_over.get() == DROP_UNFILED {
-                            "ring-1 ring-primary bg-primary/15".to_string()
+                            "ring-1 ring-primary bg-primary/15".to_owned()
                         } else {
                             String::new()
                         }
@@ -604,7 +604,10 @@ pub fn FolderTree(
                         let has_children = f.has_children;
                         let icon_data = folder_icon_from_key(f.icon.as_deref().unwrap_or_default());
                         let icon_color = f.color.clone();
-                        let indent = format!("padding-left:{}rem", 0.25 + depth as f64 * 0.85);
+                        let indent = format!(
+                            "padding-left:{}rem",
+                            (depth as f64).mul_add(0.85, 0.25),
+                        );
                         let commit = move || {
                             if let Some(id) = renaming.get_untracked() {
                                 on_rename.run((id, rename_value.get_untracked()));
@@ -659,10 +662,10 @@ pub fn FolderTree(
                                 }
                                 on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
                                 on:dragenter=move |_: web_sys::DragEvent| {
-                                    drag_over.set(enter_id.clone())
+                                    drag_over.set(enter_id.clone());
                                 }
                                 on:dragleave=move |_: web_sys::DragEvent| {
-                                    drag_over.set(String::new())
+                                    drag_over.set(String::new());
                                 }
                                 on:drop=move |ev: web_sys::DragEvent| drop_on_folder(
                                     ev,
@@ -677,7 +680,7 @@ pub fn FolderTree(
                                                 size=Size::Xs
                                                 class="text-foreground/40"
                                                 aria_label=Signal::derive(move || {
-                                                    t_string!(i18n, vault.folder_toggle).to_string()
+                                                    t_string!(i18n, vault.folder_toggle).to_owned()
                                                 })
                                                 on:click=move |ev: web_sys::MouseEvent| {
                                                     ev.stop_propagation();
@@ -744,7 +747,7 @@ pub fn FolderTree(
                                                     value=Signal::derive(move || rename_value.get())
                                                     on_input=Callback::new(move |v: String| rename_value.set(v))
                                                     on:click=move |ev: web_sys::MouseEvent| {
-                                                        ev.stop_propagation()
+                                                        ev.stop_propagation();
                                                     }
                                                     on:keydown=move |ev: web_sys::KeyboardEvent| {
                                                         match ev.key().as_str() {
@@ -783,7 +786,7 @@ pub fn FolderTree(
                                     size=Size::Xs
                                     class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_customize).to_string()
+                                        t_string!(i18n, vault.folder_customize).to_owned()
                                     })
                                     on:click=move |ev: web_sys::MouseEvent| {
                                         ev.stop_propagation();
@@ -802,7 +805,7 @@ pub fn FolderTree(
                                     size=Size::Xs
                                     class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_rename).to_string()
+                                        t_string!(i18n, vault.folder_rename).to_owned()
                                     })
                                     on:click=move |ev: web_sys::MouseEvent| {
                                         ev.stop_propagation();
@@ -822,7 +825,7 @@ pub fn FolderTree(
                                     size=Size::Xs
                                     class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_delete).to_string()
+                                        t_string!(i18n, vault.folder_delete).to_owned()
                                     })
                                     on:click=move |ev: web_sys::MouseEvent| {
                                         ev.stop_propagation();

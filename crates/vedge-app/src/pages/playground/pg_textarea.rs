@@ -18,16 +18,16 @@ pub fn TextareaPage() -> impl IntoView {
                     <Textarea
                         id="size-sm"
                         size=Size::Sm
-                        placeholder=Signal::stored("Small (12px)".to_string())
+                        placeholder=Signal::stored("Small (12px)".to_owned())
                     />
                     <Textarea
                         id="size-md"
-                        placeholder=Signal::stored("Medium (14px) — default".to_string())
+                        placeholder=Signal::stored("Medium (14px) — default".to_owned())
                     />
                     <Textarea
                         id="size-lg"
                         size=Size::Lg
-                        placeholder=Signal::stored("Large (16px)".to_string())
+                        placeholder=Signal::stored("Large (16px)".to_owned())
                     />
                 </div>
             </Section>
@@ -36,22 +36,22 @@ pub fn TextareaPage() -> impl IntoView {
                 <div class="space-y-3 max-w-md">
                     <Textarea
                         id="status-default"
-                        placeholder=Signal::stored("Default".to_string())
+                        placeholder=Signal::stored("Default".to_owned())
                     />
                     <Textarea
                         id="status-error"
                         status=Status::Error
-                        placeholder=Signal::stored("Error".to_string())
+                        placeholder=Signal::stored("Error".to_owned())
                     />
                     <Textarea
                         id="status-success"
                         status=Status::Success
-                        placeholder=Signal::stored("Success".to_string())
+                        placeholder=Signal::stored("Success".to_owned())
                     />
                     <Textarea
                         id="status-warning"
                         status=Status::Warning
-                        placeholder=Signal::stored("Warning".to_string())
+                        placeholder=Signal::stored("Warning".to_owned())
                     />
                 </div>
             </Section>
@@ -61,14 +61,14 @@ pub fn TextareaPage() -> impl IntoView {
                     <Textarea
                         id="state-disabled"
                         disabled=true
-                        value=Signal::stored("Disabled textarea content".to_string())
+                        value=Signal::stored("Disabled textarea content".to_owned())
                     />
                     <Textarea
                         id="state-readonly"
                         read_only=true
                         value=Signal::stored(
                             "Read-only content that can be selected and copied but not edited."
-                                .to_string(),
+                                .to_owned(),
                         )
                     />
                 </div>
@@ -81,7 +81,7 @@ pub fn TextareaPage() -> impl IntoView {
                         rows=2
                         max_rows=6
                         placeholder=Signal::stored(
-                            "Type to see auto-resize (2 rows min, 6 max)".to_string(),
+                            "Type to see auto-resize (2 rows min, 6 max)".to_owned(),
                         )
                     />
                 </div>
@@ -95,7 +95,7 @@ pub fn TextareaPage() -> impl IntoView {
                         </Label>
                         <Textarea
                             id="interactive-textarea"
-                            placeholder=Signal::stored("Enter your notes...".to_string())
+                            placeholder=Signal::stored("Enter your notes...".to_owned())
                             value=Signal::derive(move || text_val.get())
                             on_change=Callback::new(move |v: String| set_text_val.set(v))
                             required=true

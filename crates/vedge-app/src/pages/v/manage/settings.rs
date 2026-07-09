@@ -17,7 +17,7 @@
 use crate::features::settings::biometric_setting::BiometricSetting;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use std::sync::Arc;
 use vedge_ui::components::Spinner;
@@ -38,8 +38,8 @@ pub fn SettingsPage() -> impl IntoView {
     // Confirm each saved edit with a Success toast (replaces the old inline
     // "Saved" line that never reset). Reads are `untrack`ed so it's owner-safe.
     let show_saved = move || {
-        let dismiss = untrack(|| t_string!(i18n, settings.dismiss).to_string());
-        let msg = untrack(|| t_string!(i18n, settings.saved).to_string());
+        let dismiss = untrack(|| t_string!(i18n, settings.dismiss).to_owned());
+        let msg = untrack(|| t_string!(i18n, settings.saved).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Success)
@@ -50,18 +50,18 @@ pub fn SettingsPage() -> impl IntoView {
     let on_minutes = Callback::new(move |v: String| {
         let m = v.parse::<u32>().unwrap_or(0);
         sec.0.update(|p| p.auto_lock_minutes = m);
-        security_prefs::save(sec.0.get_untracked());
+        security_prefs::save(&sec.0.get_untracked());
         show_saved();
     });
     let on_blur = Callback::new(move |v: bool| {
         sec.0.update(|p| p.lock_on_blur = v);
-        security_prefs::save(sec.0.get_untracked());
+        security_prefs::save(&sec.0.get_untracked());
         show_saved();
     });
     let on_clipboard = Callback::new(move |v: String| {
         let s = v.parse::<u32>().unwrap_or(30);
         sec.0.update(|p| p.clipboard_clear_seconds = s);
-        security_prefs::save(sec.0.get_untracked());
+        security_prefs::save(&sec.0.get_untracked());
         show_saved();
     });
 
@@ -91,11 +91,11 @@ pub fn SettingsPage() -> impl IntoView {
                     </div>
                     <div class="w-44 shrink-0">
                         {move || {
-                            let unit = t_string!(i18n, settings.minutes).to_string();
+                            let unit = t_string!(i18n, settings.minutes).to_owned();
                             let options = vec![
                                 SelectItem::option(
                                     "0",
-                                    t_string!(i18n, settings.auto_lock_off).to_string(),
+                                    t_string!(i18n, settings.auto_lock_off).to_owned(),
                                 ),
                                 SelectItem::option("1", format!("1 {unit}")),
                                 SelectItem::option("5", format!("5 {unit}")),
@@ -110,7 +110,7 @@ pub fn SettingsPage() -> impl IntoView {
                                         sec.0.get().auto_lock_minutes.to_string()
                                     })
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, settings.auto_lock).to_string()
+                                        t_string!(i18n, settings.auto_lock).to_owned()
                                     })
                                     on_change=on_minutes
                                 />
@@ -134,7 +134,7 @@ pub fn SettingsPage() -> impl IntoView {
                             checked=Signal::derive(move || sec.0.get().lock_on_blur)
                             on_change=on_blur
                             aria_label=Signal::derive(move || {
-                                t_string!(i18n, settings.lock_on_blur).to_string()
+                                t_string!(i18n, settings.lock_on_blur).to_owned()
                             })
                         />
                     </div>
@@ -152,7 +152,7 @@ pub fn SettingsPage() -> impl IntoView {
                     </div>
                     <div class="w-44 shrink-0">
                         {move || {
-                            let unit = t_string!(i18n, settings.seconds).to_string();
+                            let unit = t_string!(i18n, settings.seconds).to_owned();
                             let options = vec![
                                 SelectItem::option("15", format!("15 {unit}")),
                                 SelectItem::option("30", format!("30 {unit}")),
@@ -166,7 +166,7 @@ pub fn SettingsPage() -> impl IntoView {
                                         sec.0.get().clipboard_clear_seconds.to_string()
                                     })
                                     aria_label=Signal::derive(move || {
-                                        t_string!(i18n, settings.clipboard_clear).to_string()
+                                        t_string!(i18n, settings.clipboard_clear).to_owned()
                                     })
                                     on_change=on_clipboard
                                 />
@@ -184,13 +184,13 @@ pub fn SettingsPage() -> impl IntoView {
 
     let tabs = vec![
         Tab {
-            id: "security".to_string(),
+            id: "security".to_owned(),
             label: Box::new(move || view! { {move || t!(i18n, settings.security)} }.into_any()),
             panel: security_panel,
             disabled: false,
         },
         Tab {
-            id: "appearance".to_string(),
+            id: "appearance".to_owned(),
             label: Box::new(move || view! { {move || t!(i18n, settings.appearance)} }.into_any()),
             panel: Arc::new(|| view! { <ThemeList /> }.into_any()),
             disabled: false,

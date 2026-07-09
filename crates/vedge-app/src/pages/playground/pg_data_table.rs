@@ -107,7 +107,7 @@ fn BasicSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Flexible,
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
         },
         ColumnDef {
             id: "category",
@@ -116,7 +116,7 @@ fn BasicSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Fixed(140),
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_owned())),
         },
         ColumnDef {
             id: "modified",
@@ -125,7 +125,7 @@ fn BasicSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Fixed(120),
             align: Align::End,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_owned())),
         },
     ];
 
@@ -135,7 +135,7 @@ fn BasicSection() -> impl IntoView {
             <DataTable
                 columns=columns
                 rows=rows
-                row_key=string_fn(|e: &Entry| e.id.to_string())
+                row_key=string_fn(|e: &Entry| e.id.to_owned())
                 empty_message="No entries"
             />
         </Section>
@@ -173,7 +173,7 @@ fn SortableSection() -> impl IntoView {
             sortable: true,
             width: ColumnWidth::Flexible,
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
         },
         ColumnDef {
             id: "category",
@@ -182,7 +182,7 @@ fn SortableSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Fixed(140),
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_owned())),
         },
         ColumnDef {
             id: "modified",
@@ -191,7 +191,7 @@ fn SortableSection() -> impl IntoView {
             sortable: true,
             width: ColumnWidth::Fixed(120),
             align: Align::End,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_owned())),
         },
     ];
 
@@ -203,7 +203,7 @@ fn SortableSection() -> impl IntoView {
             <div class="text-xs text-text-secondary">
                 "Current sort: "
                 {move || match sort.get() {
-                    None => "none".to_string(),
+                    None => "none".to_owned(),
                     Some(s) => {
                         format!(
                             "{} {}",
@@ -219,7 +219,7 @@ fn SortableSection() -> impl IntoView {
             <DataTable
                 columns=columns
                 rows=Signal::derive(move || rows.get())
-                row_key=string_fn(|e: &Entry| e.id.to_string())
+                row_key=string_fn(|e: &Entry| e.id.to_owned())
                 sort=Signal::derive(move || sort.get())
                 on_sort_change=Callback::new(move |s| sort.set(s))
                 empty_message="No entries"
@@ -241,7 +241,7 @@ fn ColumnTypesSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Flexible,
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
         },
         ColumnDef {
             id: "category",
@@ -251,7 +251,7 @@ fn ColumnTypesSection() -> impl IntoView {
             width: ColumnWidth::Fixed(120),
             align: Align::Start,
             cell: cell_fn(|e: &Entry| CellValue::Badge {
-                label: e.category.to_string(),
+                label: e.category.to_owned(),
                 variant: e.category_variant,
             }),
         },
@@ -262,7 +262,7 @@ fn ColumnTypesSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Fixed(100),
             align: Align::End,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_owned())),
         },
         ColumnDef {
             id: "fingerprint",
@@ -271,7 +271,7 @@ fn ColumnTypesSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::MinMax(160, 260),
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.fingerprint.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.fingerprint.to_owned())),
         },
         ColumnDef {
             id: "custom",
@@ -281,7 +281,7 @@ fn ColumnTypesSection() -> impl IntoView {
             width: ColumnWidth::Fixed(140),
             align: Align::Start,
             cell: cell_fn(|e: &Entry| {
-                let n = e.name.to_string();
+                let n = e.name.to_owned();
                 CellValue::View(
                     view! {
                         <span class="inline-flex items-center gap-2">
@@ -321,7 +321,7 @@ fn ColumnTypesSection() -> impl IntoView {
             <DataTable
                 columns=columns
                 rows=rows
-                row_key=string_fn(|e: &Entry| e.id.to_string())
+                row_key=string_fn(|e: &Entry| e.id.to_owned())
                 empty_message="No entries"
             />
         </Section>
@@ -342,7 +342,7 @@ fn SelectableSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Flexible,
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
         },
         ColumnDef {
             id: "category",
@@ -351,7 +351,7 @@ fn SelectableSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::Fixed(140),
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_owned())),
         },
     ];
 
@@ -378,7 +378,7 @@ fn SelectableSection() -> impl IntoView {
             <DataTable
                 columns=columns
                 rows=rows
-                row_key=string_fn(|e: &Entry| e.id.to_string())
+                row_key=string_fn(|e: &Entry| e.id.to_owned())
                 selectable=true
                 selected_rows=Signal::derive(move || selected.get())
                 on_selection_change=Callback::new(move |keys| selected.set(keys))
@@ -405,7 +405,7 @@ fn RowClickVsSelectionSection() -> impl IntoView {
         sortable: false,
         width: ColumnWidth::Flexible,
         align: Align::Start,
-        cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_string())),
+        cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
     }];
     let columns_select = columns_click.clone();
 
@@ -428,9 +428,9 @@ fn RowClickVsSelectionSection() -> impl IntoView {
                     <DataTable
                         columns=columns_click
                         rows=rows
-                        row_key=string_fn(|e: &Entry| e.id.to_string())
+                        row_key=string_fn(|e: &Entry| e.id.to_owned())
                         on_row_click=Callback::new(move |e: Entry| {
-                            last_clicked.set(e.name.to_string())
+                            last_clicked.set(e.name.to_owned());
                         })
                         empty_message="No entries"
                     />
@@ -445,7 +445,7 @@ fn RowClickVsSelectionSection() -> impl IntoView {
                     <DataTable
                         columns=columns_select
                         rows=rows
-                        row_key=string_fn(|e: &Entry| e.id.to_string())
+                        row_key=string_fn(|e: &Entry| e.id.to_owned())
                         selectable=true
                         selected_rows=Signal::derive(move || selected.get())
                         on_selection_change=Callback::new(move |keys| selected.set(keys))
@@ -477,7 +477,7 @@ fn LoadingSection() -> impl IntoView {
                 sortable: false,
                 width: ColumnWidth::Flexible,
                 align: Align::Start,
-                cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_string())),
+                cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
             },
             ColumnDef {
                 id: "category",
@@ -486,7 +486,7 @@ fn LoadingSection() -> impl IntoView {
                 sortable: false,
                 width: ColumnWidth::Fixed(140),
                 align: Align::Start,
-                cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_string())),
+                cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_owned())),
             },
         ]
     };
@@ -508,7 +508,7 @@ fn LoadingSection() -> impl IntoView {
                     <DataTable
                         columns=columns()
                         rows=rows
-                        row_key=string_fn(|e: &Entry| e.id.to_string())
+                        row_key=string_fn(|e: &Entry| e.id.to_owned())
                         loading=Signal::derive(move || loading_with.get())
                         empty_message="No entries"
                     />
@@ -527,7 +527,7 @@ fn LoadingSection() -> impl IntoView {
                     <DataTable
                         columns=columns()
                         rows=empty_rows
-                        row_key=string_fn(|e: &Entry| e.id.to_string())
+                        row_key=string_fn(|e: &Entry| e.id.to_owned())
                         loading=Signal::derive(move || loading_empty.get())
                         empty_message="No entries"
                     />
@@ -551,7 +551,7 @@ fn EmptySection() -> impl IntoView {
                 sortable: false,
                 width: ColumnWidth::Flexible,
                 align: Align::Start,
-                cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_string())),
+                cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
             },
             ColumnDef {
                 id: "category",
@@ -560,7 +560,7 @@ fn EmptySection() -> impl IntoView {
                 sortable: false,
                 width: ColumnWidth::Fixed(140),
                 align: Align::Start,
-                cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_string())),
+                cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_owned())),
             },
         ]
     };
@@ -573,7 +573,7 @@ fn EmptySection() -> impl IntoView {
                     <DataTable
                         columns=columns()
                         rows=rows
-                        row_key=string_fn(|e: &Entry| e.id.to_string())
+                        row_key=string_fn(|e: &Entry| e.id.to_owned())
                         empty_message="No audit events recorded"
                     />
                 </div>
@@ -582,7 +582,7 @@ fn EmptySection() -> impl IntoView {
                     <DataTable
                         columns=columns()
                         rows=rows
-                        row_key=string_fn(|e: &Entry| e.id.to_string())
+                        row_key=string_fn(|e: &Entry| e.id.to_owned())
                         empty_message="No entries in this vault"
                         empty_action=move || {
                             view! {
@@ -639,7 +639,7 @@ fn KitchenSinkSection() -> impl IntoView {
                     .unwrap_or('?')
                     .to_uppercase()
                     .to_string();
-                let name = e.name.to_string();
+                let name = e.name.to_owned();
                 CellValue::View(
                     view! {
                         <span class="inline-flex items-center gap-2">
@@ -661,7 +661,7 @@ fn KitchenSinkSection() -> impl IntoView {
             width: ColumnWidth::Fixed(120),
             align: Align::Start,
             cell: cell_fn(|e: &Entry| CellValue::Badge {
-                label: e.category.to_string(),
+                label: e.category.to_owned(),
                 variant: e.category_variant,
             }),
         },
@@ -672,7 +672,7 @@ fn KitchenSinkSection() -> impl IntoView {
             sortable: false,
             width: ColumnWidth::MinMax(160, 240),
             align: Align::Start,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.fingerprint.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.fingerprint.to_owned())),
         },
         ColumnDef {
             id: "modified",
@@ -681,7 +681,7 @@ fn KitchenSinkSection() -> impl IntoView {
             sortable: true,
             width: ColumnWidth::Fixed(100),
             align: Align::End,
-            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_string())),
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.modified.to_owned())),
         },
         ColumnDef {
             id: "action",
@@ -742,13 +742,13 @@ fn KitchenSinkSection() -> impl IntoView {
             <DataTable
                 columns=columns
                 rows=Signal::derive(move || rows.get())
-                row_key=string_fn(|e: &Entry| e.id.to_string())
+                row_key=string_fn(|e: &Entry| e.id.to_owned())
                 selectable=true
                 selected_rows=Signal::derive(move || selected.get())
                 on_selection_change=Callback::new(move |keys| selected.set(keys))
                 sort=Signal::derive(move || sort.get())
                 on_sort_change=Callback::new(move |s| sort.set(s))
-                on_row_click=Callback::new(move |e: Entry| last_navigated.set(e.name.to_string()))
+                on_row_click=Callback::new(move |e: Entry| last_navigated.set(e.name.to_owned()))
                 select_all_label="Select all entries"
                 deselect_all_label="Deselect all entries"
                 row_select_label=string_fn(|e: &Entry| format!("Select {}", e.name))

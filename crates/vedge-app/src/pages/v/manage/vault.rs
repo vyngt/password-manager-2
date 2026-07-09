@@ -21,7 +21,7 @@ use crate::features::vault::vault_filters::{
     Filters, SortKey, VaultFilters, filter_and_sort, reorder_within,
 };
 use crate::features::vault::vault_table::VaultTable;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use std::collections::HashMap;
@@ -41,7 +41,7 @@ pub fn VaultPage() -> impl IntoView {
     // Toast helpers — read the localized dismiss label `untrack`ed so they're
     // safe to call from both event handlers and `spawn_local` futures.
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -49,7 +49,7 @@ pub fn VaultPage() -> impl IntoView {
         );
     };
     let show_success = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Success)
@@ -125,12 +125,12 @@ pub fn VaultPage() -> impl IntoView {
     let empty_label = Signal::derive(move || {
         if items.get().is_empty() {
             if trashed_view.get() {
-                t_string!(i18n, vault.empty_trash).to_string()
+                t_string!(i18n, vault.empty_trash).to_owned()
             } else {
-                t_string!(i18n, vault.empty_none).to_string()
+                t_string!(i18n, vault.empty_none).to_owned()
             }
         } else {
-            t_string!(i18n, vault.empty_no_matches).to_string()
+            t_string!(i18n, vault.empty_no_matches).to_owned()
         }
     });
 
@@ -149,7 +149,7 @@ pub fn VaultPage() -> impl IntoView {
         }
         loading.set(true);
         let is_trashed = untrack(|| trashed_view.get());
-        let err_prefix = untrack(|| t_string!(i18n, vault.err_load).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_load).to_owned());
         let tags_path = vault_path.clone();
         spawn_local(async move {
             // Tags back the facet + tag-name search; best-effort (a failure just
@@ -277,7 +277,7 @@ pub fn VaultPage() -> impl IntoView {
         // Read signals in the handler body (owner present); inside `spawn_local`
         // they'd be owner-less. `set` is fine there — only reads warn.
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_delete).to_string();
+        let err_prefix = t_string!(i18n, vault.err_delete).to_owned();
         let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
         // Deleting the folder we're currently scoped into → fall back to All.
         let was_scoped = entry.as_ref().is_some_and(|e| {
@@ -317,7 +317,7 @@ pub fn VaultPage() -> impl IntoView {
             }
         });
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_favorite).to_string();
+        let err_prefix = t_string!(i18n, vault.err_favorite).to_owned();
         let revert_id = id.clone();
         spawn_local(async move {
             if let Err(e) = api::entry::set_favorite(&vault_path, &id, next).await {
@@ -359,7 +359,7 @@ pub fn VaultPage() -> impl IntoView {
             }
         });
         let vault_path = active.path.get_untracked().unwrap_or_default();
-        let err_prefix = untrack(|| t_string!(i18n, vault.err_tag_assign).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_tag_assign).to_owned());
         let revert_id = id.clone();
         spawn_local(async move {
             if let Err(e) = api::entry::set_tags(&vault_path, &id, &new_ids).await {
@@ -383,8 +383,8 @@ pub fn VaultPage() -> impl IntoView {
         // Read the locale string here (reactive owner present); reading it
         // inside `spawn_local` trips the "outside a reactive tracking context"
         // warning.
-        let copied_msg = t_string!(i18n, vault.copied).to_string();
-        let err_prefix = t_string!(i18n, vault.err_copy).to_string();
+        let copied_msg = t_string!(i18n, vault.copied).to_owned();
+        let err_prefix = t_string!(i18n, vault.err_copy).to_owned();
         let secs = sec.0.get_untracked().clipboard_clear_seconds;
         spawn_local(async move {
             match api::entry::copy_field(&vault_path, &id, &field, Some(secs)).await {
@@ -416,9 +416,9 @@ pub fn VaultPage() -> impl IntoView {
             }
         });
         let vault_path = active.path.get_untracked().unwrap_or_default();
-        let err_prefix = untrack(|| t_string!(i18n, vault.err_move).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_move).to_owned());
         let revert_id = id.clone();
-        let dest_owned = dest.clone();
+        let dest_owned = dest;
         spawn_local(async move {
             if let Err(e) = api::entry::move_entry(&vault_path, &id, dest_owned.as_deref()).await {
                 if let Some(p) = prev {
@@ -468,7 +468,7 @@ pub fn VaultPage() -> impl IntoView {
             }
         });
         let vault_path = active.path.get_untracked().unwrap_or_default();
-        let err_prefix = untrack(|| t_string!(i18n, vault.err_reorder).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_reorder).to_owned());
         spawn_local(async move {
             for (id, ord) in changes {
                 if let Err(e) = api::entry::set_sort_order(&vault_path, &id, ord).await {
@@ -512,7 +512,7 @@ pub fn VaultPage() -> impl IntoView {
     // the shared form model so the Folder arm stays the single source of truth.
     let on_new_folder = Callback::new(move |(parent, name): (Option<String>, String)| {
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_folder_create).to_string();
+        let err_prefix = t_string!(i18n, vault.err_folder_create).to_owned();
         let mut d = EntryFormData::new(EntryTypeDto::Folder);
         d.name = name;
         d.folder_id = parent;
@@ -535,7 +535,7 @@ pub fn VaultPage() -> impl IntoView {
             return;
         }
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_folder_rename).to_string();
+        let err_prefix = t_string!(i18n, vault.err_folder_rename).to_owned();
         spawn_local(async move {
             match api::entry::get_entry(&vault_path, &id).await {
                 Ok(payload) => {
@@ -566,7 +566,7 @@ pub fn VaultPage() -> impl IntoView {
     let on_customize_apply = Callback::new(
         move |(id, color, icon): (String, Option<String>, Option<String>)| {
             let vault_path = active.path.get().unwrap_or_default();
-            let err_prefix = t_string!(i18n, vault.err_folder_customize).to_string();
+            let err_prefix = t_string!(i18n, vault.err_folder_customize).to_owned();
             spawn_local(async move {
                 match api::entry::get_entry(&vault_path, &id).await {
                     Ok(payload) => {
@@ -591,7 +591,7 @@ pub fn VaultPage() -> impl IntoView {
     // folder"). Sequential so a mid-way failure surfaces and stops.
     let on_empty = Callback::new(move |ids: Vec<String>| {
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_folder_delete).to_string();
+        let err_prefix = t_string!(i18n, vault.err_folder_delete).to_owned();
         spawn_local(async move {
             for id in ids {
                 if let Err(e) = api::entry::soft_delete_entry(&vault_path, &id).await {
@@ -606,7 +606,7 @@ pub fn VaultPage() -> impl IntoView {
     // Delete the now-empty folder itself (the delete dialog's second stage).
     let on_delete_folder = Callback::new(move |id: String| {
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_folder_delete).to_string();
+        let err_prefix = t_string!(i18n, vault.err_folder_delete).to_owned();
         let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
         let was_scoped = matches!(current_scope.get(), FolderScope::Folder(ref s) if *s == id);
         spawn_local(async move {

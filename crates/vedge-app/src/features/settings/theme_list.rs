@@ -12,7 +12,7 @@
 use super::theme_editor::{EditorTarget, ThemeEditor};
 use super::theme_util::{is_active, theme_config_from_dto, theme_swatches};
 use crate::api;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -178,7 +178,7 @@ pub fn ThemeList() -> impl IntoView {
 
             <div class="flex-1 overflow-auto min-h-0 border border-border rounded-lg">
                 <GroupHeader label=Signal::derive(move || {
-                    t_string!(i18n, settings.theme_group_builtin).to_string()
+                    t_string!(i18n, settings.theme_group_builtin).to_owned()
                 }) />
                 <For
                     each=move || builtin.get()
@@ -197,7 +197,7 @@ pub fn ThemeList() -> impl IntoView {
                     }
                 />
                 <GroupHeader label=Signal::derive(move || {
-                    t_string!(i18n, settings.theme_group_custom).to_string()
+                    t_string!(i18n, settings.theme_group_custom).to_owned()
                 }) />
                 <For
                     each=move || custom.get()
@@ -225,7 +225,7 @@ pub fn ThemeList() -> impl IntoView {
             open=Signal::derive(move || delete_target.get().is_some())
             on_close=close_delete
             size=DialogSize::Sm
-            close_label=Signal::derive(move || t_string!(i18n, settings.cancel).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, settings.cancel).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>{move || t!(i18n, settings.theme_delete)}</DialogTitle>
@@ -291,7 +291,7 @@ fn ThemeRow(
         view! {
             <IconButton
                 aria_label=Signal::derive(move || {
-                    t_string!(i18n, settings.theme_duplicate).to_string()
+                    t_string!(i18n, settings.theme_duplicate).to_owned()
                 })
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_duplicate.run(d_dup.clone())
@@ -303,7 +303,7 @@ fn ThemeRow(
     } else {
         view! {
             <IconButton
-                aria_label=Signal::derive(move || t_string!(i18n, settings.theme_edit).to_string())
+                aria_label=Signal::derive(move || t_string!(i18n, settings.theme_edit).to_owned())
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_edit.run(d_edit.clone())
             >
@@ -311,7 +311,7 @@ fn ThemeRow(
             </IconButton>
             <IconButton
                 aria_label=Signal::derive(move || {
-                    t_string!(i18n, settings.theme_duplicate).to_string()
+                    t_string!(i18n, settings.theme_duplicate).to_owned()
                 })
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_duplicate.run(d_dup.clone())
@@ -320,7 +320,7 @@ fn ThemeRow(
             </IconButton>
             <IconButton
                 aria_label=Signal::derive(move || {
-                    t_string!(i18n, settings.theme_delete).to_string()
+                    t_string!(i18n, settings.theme_delete).to_owned()
                 })
                 size=Size::Sm
                 on:click=move |_: web_sys::MouseEvent| on_delete.run(d_del.clone())
@@ -369,9 +369,9 @@ fn ThemeRow(
             >
                 {move || {
                     if built_in {
-                        t_string!(i18n, settings.theme_builtin).to_string()
+                        t_string!(i18n, settings.theme_builtin).to_owned()
                     } else {
-                        t_string!(i18n, settings.theme_custom).to_string()
+                        t_string!(i18n, settings.theme_custom).to_owned()
                     }
                 }}
             </Badge>

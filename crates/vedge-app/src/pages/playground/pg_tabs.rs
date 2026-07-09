@@ -52,7 +52,7 @@ fn make_basic_tabs(suffix: &'static str) -> Vec<Tab> {
 
 #[component]
 pub fn TabsPage() -> impl IntoView {
-    let controlled_active = RwSignal::new("overview-c".to_string());
+    let controlled_active = RwSignal::new("overview-c".to_owned());
 
     let overflow_tabs: Vec<Tab> = (0_u32..10)
         .map(|i| {
@@ -61,7 +61,7 @@ pub fn TabsPage() -> impl IntoView {
             let panel_label = label.clone();
             Tab {
                 id,
-                label: Box::new(move || view! { {label.clone()} }.into_any()),
+                label: Box::new(move || view! { {label} }.into_any()),
                 panel: Arc::new(move || {
                     let s = panel_label.clone();
                     view! { <p class="text-sm">{s}" content"</p> }.into_any()
@@ -138,7 +138,7 @@ pub fn TabsPage() -> impl IntoView {
                     <button
                         type="button"
                         class="btn btn--secondary btn--sm btn--rounded"
-                        on:click=move |_| controlled_active.set("overview-c".to_string())
+                        on:click=move |_| controlled_active.set("overview-c".to_owned())
                     >
                         "Reset to Overview"
                     </button>

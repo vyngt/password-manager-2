@@ -11,7 +11,7 @@
 
 use crate::api;
 use crate::features::vault::context::ActiveVault;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -35,7 +35,7 @@ pub fn TagManager(
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -57,7 +57,7 @@ pub fn TagManager(
             return;
         }
         let vault_path = active.path.get().unwrap_or_default();
-        let err_prefix = t_string!(i18n, vault.err_tag_create).to_string();
+        let err_prefix = t_string!(i18n, vault.err_tag_create).to_owned();
         busy.set(true);
         spawn_local(async move {
             let dto = CreateTagDto { name, color: None };
@@ -77,7 +77,7 @@ pub fn TagManager(
             open=Signal::derive(move || open.get())
             on_close=close
             size=DialogSize::Sm
-            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>{move || t!(i18n, vault.tag_manager_title)}</DialogTitle>
@@ -93,7 +93,7 @@ pub fn TagManager(
                                 id="tag-manager-new"
                                 value=Signal::derive(move || new_name.get())
                                 placeholder=Signal::derive(move || {
-                                    t_string!(i18n, vault.tag_new).to_string()
+                                    t_string!(i18n, vault.tag_new).to_owned()
                                 })
                                 on_input=Callback::new(move |v: String| new_name.set(v))
                             />
@@ -149,7 +149,7 @@ fn TagManagerRow(
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -174,7 +174,7 @@ fn TagManagerRow(
 
     let editing = RwSignal::new(false);
     let confirming = RwSignal::new(false);
-    let edit_name = RwSignal::new(tag.name.clone());
+    let edit_name = RwSignal::new(tag.name);
     let busy = RwSignal::new(false);
 
     let start_rename = move |_: web_sys::MouseEvent| {
@@ -193,7 +193,7 @@ fn TagManagerRow(
         }
         let vault_path = active.path.get().unwrap_or_default();
         let id = tag_id.get_value();
-        let err_prefix = t_string!(i18n, vault.err_tag_rename).to_string();
+        let err_prefix = t_string!(i18n, vault.err_tag_rename).to_owned();
         busy.set(true);
         spawn_local(async move {
             let dto = RenameTagDto {
@@ -222,7 +222,7 @@ fn TagManagerRow(
         }
         let vault_path = active.path.get().unwrap_or_default();
         let id = tag_id.get_value();
-        let err_prefix = t_string!(i18n, vault.err_tag_delete).to_string();
+        let err_prefix = t_string!(i18n, vault.err_tag_delete).to_owned();
         busy.set(true);
         spawn_local(async move {
             match api::tag::delete_tag(&vault_path, &id).await {

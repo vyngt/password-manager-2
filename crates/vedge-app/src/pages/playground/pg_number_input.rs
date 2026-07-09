@@ -1,4 +1,4 @@
-use crate::i18n::*;
+use crate::i18n::{t_string, use_i18n};
 use leptos::prelude::*;
 use vedge_ui::components::form::label::Label;
 use vedge_ui::components::form::number_input::NumberInput;
@@ -9,8 +9,8 @@ use super::common::Section;
 #[component]
 pub fn NumberInputPage() -> impl IntoView {
     let i18n = use_i18n();
-    let dec = Signal::derive(move || t_string!(i18n, playground.decrease).to_string());
-    let inc = Signal::derive(move || t_string!(i18n, playground.increase).to_string());
+    let dec = Signal::derive(move || t_string!(i18n, playground.decrease).to_owned());
+    let inc = Signal::derive(move || t_string!(i18n, playground.increase).to_owned());
     let (num_val, set_num_val) = signal(50.0_f64);
 
     view! {
