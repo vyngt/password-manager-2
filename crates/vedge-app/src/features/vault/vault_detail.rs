@@ -15,7 +15,7 @@ use crate::api;
 use crate::api::dialog::SaveDialogOptions;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::ui_state::VaultUiState;
-use crate::i18n::*;
+use crate::i18n::{Locale, t, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -62,7 +62,7 @@ pub fn VaultDetail(
     let ui = expect_context::<VaultUiState>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -139,7 +139,7 @@ pub fn VaultDetail(
     // plaintext file bytes reach WASM. (`get_entry` audits this as `Viewed`.)
     let is_document = matches!(entry.entry_type, EntryTypeDto::Document);
     let doc_meta = RwSignal::new(Option::<DocumentPayloadDto>::None);
-    let doc_name_default = StoredValue::new(entry.name.clone());
+    let doc_name_default = StoredValue::new(entry.name);
     if is_document {
         let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry_id.get_value();
@@ -161,7 +161,7 @@ pub fn VaultDetail(
     let reveal_and_edit = move || {
         let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry_id.get_value();
-        let err_prefix = untrack(|| t_string!(i18n, vault.err_reveal).to_string());
+        let err_prefix = untrack(|| t_string!(i18n, vault.err_reveal).to_owned());
         spawn_local(async move {
             match api::entry::get_entry(&vault_path, &id).await {
                 Ok(payload) => {
@@ -199,18 +199,18 @@ pub fn VaultDetail(
             Ok(p) => p,
             Err(EntryFormError::NameRequired) => return,
             Err(EntryFormError::InvalidExpiry) => {
-                show_error(t_string!(i18n, vault.err_invalid_expiry).to_string());
+                show_error(t_string!(i18n, vault.err_invalid_expiry).to_owned());
                 return;
             }
             Err(EntryFormError::UnsupportedType) => {
-                show_error(t_string!(i18n, vault.err_update).to_string());
+                show_error(t_string!(i18n, vault.err_update).to_owned());
                 return;
             }
         };
         saving.set(true);
         let vault_path = active.path.get().unwrap_or_default();
         let id = entry_id.get_value();
-        let err_prefix = t_string!(i18n, vault.err_update).to_string();
+        let err_prefix = t_string!(i18n, vault.err_update).to_owned();
         spawn_local(async move {
             match api::entry::update_entry(&vault_path, &id, &payload).await {
                 Ok(()) => {
@@ -230,10 +230,9 @@ pub fn VaultDetail(
         let id = entry_id.get_value();
         let default_name = doc_meta
             .get()
-            .map(|p| p.filename)
-            .unwrap_or_else(|| doc_name_default.get_value());
-        let dialog_title = t_string!(i18n, vault.export).to_string();
-        let err_prefix = t_string!(i18n, vault.err_export).to_string();
+            .map_or_else(|| doc_name_default.get_value(), |p| p.filename);
+        let dialog_title = t_string!(i18n, vault.export).to_owned();
+        let err_prefix = t_string!(i18n, vault.err_export).to_owned();
         spawn_local(async move {
             let opts = SaveDialogOptions {
                 title: Some(dialog_title),
@@ -270,9 +269,9 @@ pub fn VaultDetail(
                     <IconButton
                         aria_label=Signal::derive(move || {
                             if is_fav {
-                                t_string!(i18n, vault.unfavorite).to_string()
+                                t_string!(i18n, vault.unfavorite).to_owned()
                             } else {
-                                t_string!(i18n, vault.favorite).to_string()
+                                t_string!(i18n, vault.favorite).to_owned()
                             }
                         })
                         variant=Variant::Ghost
@@ -282,27 +281,34 @@ pub fn VaultDetail(
                         }
                     >
                         {if is_fav {
-                            Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> })
+                            Either::Left(
+                                view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> },
+                            )
                         } else {
-                            Either::Right(view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> })
+                            Either::Right(
+                                view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> },
+                            )
                         }}
                     </IconButton>
-                    {has_history.then(|| view! {
-                        <IconButton
-                            aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.version_history).to_string()
-                            })
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| {
-                                on_history_request.run(entry_for_history.clone());
+                    {has_history
+                        .then(|| {
+                            view! {
+                                <IconButton
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.version_history).to_owned()
+                                    })
+                                    variant=Variant::Ghost
+                                    size=Size::Sm
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        on_history_request.run(entry_for_history.clone());
+                                    }
+                                >
+                                    <Icon attr:aria-hidden="true" icon=i::FaClockRotateLeftSolid />
+                                </IconButton>
                             }
-                        >
-                            <Icon attr:aria-hidden="true" icon=i::FaClockRotateLeftSolid />
-                        </IconButton>
-                    })}
+                        })}
                     <IconButton
-                        aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+                        aria_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
                         variant=Variant::Ghost
                         size=Size::Sm
                         on:click=move |_: web_sys::MouseEvent| on_close.run(())
@@ -313,182 +319,199 @@ pub fn VaultDetail(
             </div>
 
             {move || {
-                // Edit now happens in the roomy `<Dialog>` below; while editing,
-                // the compact read aside collapses to just its header (renders None).
-                (!editing.get()).then(|| {
-                    let name = name.clone();
-                    let url = url.clone();
-                    let updated = updated.clone();
-                    let created = created.clone();
-                    let copy_type = copy_type.clone();
-                    let tag_ids = tag_ids.clone();
-                    let tag_entry_id = tag_entry_id.clone();
-                    let folder_of = folder_of.clone();
-                    let entry_for_move = entry_for_move.clone();
-                    view! {
-                        <dl class="flex flex-col gap-2 text-sm">
-                            <div>
-                                <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                    {move || t!(i18n, vault.col_name)}
-                                </dt>
-                                <dd class="text-text-primary">{name}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                    {move || t!(i18n, vault.col_type)}
-                                </dt>
-                                <dd class="text-text-primary">{type_lbl}</dd>
-                            </div>
-                            {url.map(|u| {
-                                let href = u.clone();
-                                view! {
-                                    <div>
-                                        <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                            {move || t!(i18n, vault.col_url)}
-                                        </dt>
-                                        <dd>
-                                            <a
-                                                class="text-primary hover:underline font-jetbrains-mono break-all"
-                                                href=href
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            >
-                                                {u}
-                                            </a>
-                                        </dd>
-                                    </div>
-                                }
-                            })}
-                            <div>
-                                <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                    {move || t!(i18n, vault.col_updated)}
-                                </dt>
-                                <dd class="text-foreground/70">{updated}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                    {move || t!(i18n, vault.col_created)}
-                                </dt>
-                                <dd class="text-foreground/70">{created}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                    {move || t!(i18n, vault.folder_label)}
-                                </dt>
-                                <dd class="text-foreground/70">
-                                    {move || match folder_of.as_deref() {
-                                        Some(id) => {
-                                            let nodes = folders.get();
-                                            let name = folder_display_name(&nodes, id)
-                                                .unwrap_or_else(|| {
-                                                    t_string!(i18n, vault.folder_none).to_string()
-                                                });
-                                            let (color, icon) = folder_style(&nodes, id);
-                                            let icon_data = folder_icon_from_key(
-                                                icon.as_deref().unwrap_or_default(),
-                                            );
-                                            Either::Left(
-                                                view! {
-                                                    <span class="flex items-center gap-1.5">
-                                                        <span
-                                                            class="flex shrink-0 text-foreground/50"
-                                                            style:color=color.unwrap_or_default()
-                                                        >
-                                                            <Icon attr:aria-hidden="true" icon=icon_data width="12" height="12" />
+                (!editing.get())
+                    .then(|| {
+                        let name = name.clone();
+                        let url = url.clone();
+                        let updated = updated.clone();
+                        let created = created.clone();
+                        let copy_type = copy_type.clone();
+                        let tag_ids = tag_ids.clone();
+                        let tag_entry_id = tag_entry_id.clone();
+                        let folder_of = folder_of.clone();
+                        let entry_for_move = entry_for_move.clone();
+                        // Edit now happens in the roomy `<Dialog>` below; while editing,
+                        // the compact read aside collapses to just its header (renders None).
+                        view! {
+                            <dl class="flex flex-col gap-2 text-sm">
+                                <div>
+                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                        {move || t!(i18n, vault.col_name)}
+                                    </dt>
+                                    <dd class="text-text-primary">{name}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                        {move || t!(i18n, vault.col_type)}
+                                    </dt>
+                                    <dd class="text-text-primary">{type_lbl}</dd>
+                                </div>
+                                {url
+                                    .map(|u| {
+                                        let href = u.clone();
+                                        view! {
+                                            <div>
+                                                <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                                    {move || t!(i18n, vault.col_url)}
+                                                </dt>
+                                                <dd>
+                                                    <a
+                                                        class="text-primary hover:underline font-jetbrains-mono break-all"
+                                                        href=href
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                    >
+                                                        {u}
+                                                    </a>
+                                                </dd>
+                                            </div>
+                                        }
+                                    })}
+                                <div>
+                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                        {move || t!(i18n, vault.col_updated)}
+                                    </dt>
+                                    <dd class="text-foreground/70">{updated}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                        {move || t!(i18n, vault.col_created)}
+                                    </dt>
+                                    <dd class="text-foreground/70">{created}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                        {move || t!(i18n, vault.folder_label)}
+                                    </dt>
+                                    <dd class="text-foreground/70">
+                                        {move || match folder_of.as_deref() {
+                                            Some(id) => {
+                                                let nodes = folders.get();
+                                                let name = folder_display_name(&nodes, id)
+                                                    .unwrap_or_else(|| {
+                                                        t_string!(i18n, vault.folder_none).to_owned()
+                                                    });
+                                                let (color, icon) = folder_style(&nodes, id);
+                                                let icon_data = folder_icon_from_key(
+                                                    icon.as_deref().unwrap_or_default(),
+                                                );
+                                                Either::Left(
+                                                    view! {
+                                                        <span class="flex items-center gap-1.5">
+                                                            <span
+                                                                class="flex shrink-0 text-foreground/50"
+                                                                style:color=color.unwrap_or_default()
+                                                            >
+                                                                <Icon
+                                                                    attr:aria-hidden="true"
+                                                                    icon=icon_data
+                                                                    width="12"
+                                                                    height="12"
+                                                                />
+                                                            </span>
+                                                            {name}
                                                         </span>
-                                                        {name}
-                                                    </span>
-                                                },
-                                            )
-                                        }
-                                        None => {
-                                            Either::Right(
-                                                view! {
-                                                    <span>{t_string!(i18n, vault.folder_none).to_string()}</span>
-                                                },
-                                            )
-                                        }
-                                    }}
-                                </dd>
-                            </div>
-                            {move || {
-                                is_document
-                                    .then(|| doc_meta.get())
-                                    .flatten()
-                                    .map(|p| view! {
-                                        <div>
-                                            <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                                {move || t!(i18n, vault.document_filename)}
-                                            </dt>
-                                            <dd class="text-text-primary font-jetbrains-mono break-all">
-                                                {p.filename.clone()}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                                {move || t!(i18n, vault.document_type)}
-                                            </dt>
-                                            <dd class="text-foreground/70 font-jetbrains-mono break-all">
-                                                {p.mime_type.clone()}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt class="text-foreground/50 text-xs uppercase tracking-wider">
-                                                {move || t!(i18n, vault.document_size)}
-                                            </dt>
-                                            <dd class="text-foreground/70">{human_size(p.size_bytes)}</dd>
-                                        </div>
-                                    })
-                            }}
-                        </dl>
+                                                    },
+                                                )
+                                            }
+                                            None => {
+                                                Either::Right(
+                                                    view! {
+                                                        <span>{t_string!(i18n, vault.folder_none).to_owned()}</span>
+                                                    },
+                                                )
+                                            }
+                                        }}
+                                    </dd>
+                                </div>
+                                {move || {
+                                    is_document
+                                        .then(|| doc_meta.get())
+                                        .flatten()
+                                        .map(|p| {
+                                            view! {
+                                                <div>
+                                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                                        {move || t!(i18n, vault.document_filename)}
+                                                    </dt>
+                                                    <dd class="text-text-primary font-jetbrains-mono break-all">
+                                                        {p.filename.clone()}
+                                                    </dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                                        {move || t!(i18n, vault.document_type)}
+                                                    </dt>
+                                                    <dd class="text-foreground/70 font-jetbrains-mono break-all">
+                                                        {p.mime_type.clone()}
+                                                    </dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-foreground/50 text-xs uppercase tracking-wider">
+                                                        {move || t!(i18n, vault.document_size)}
+                                                    </dt>
+                                                    <dd class="text-foreground/70">
+                                                        {human_size(p.size_bytes)}
+                                                    </dd>
+                                                </div>
+                                            }
+                                        })
+                                }}
+                            </dl>
 
-                        <div class="flex flex-col gap-2 mt-4">
-                            {copy_buttons(i18n, copy_type, on_copy)}
-                            <Button
-                                variant=Variant::Secondary
-                                size=Size::Sm
-                                full_width=true
-                                on:click=move |_: web_sys::MouseEvent| {
-                                    on_move_request.run(entry_for_move.clone());
-                                }
-                            >
-                                {move || t!(i18n, vault.folder_move)}
-                            </Button>
-                            {is_editable.then(|| view! {
+                            <div class="flex flex-col gap-2 mt-4">
+                                {copy_buttons(i18n, copy_type, on_copy)}
                                 <Button
                                     variant=Variant::Secondary
                                     size=Size::Sm
                                     full_width=true
-                                    on:click=start_edit
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        on_move_request.run(entry_for_move.clone());
+                                    }
                                 >
-                                    {move || t!(i18n, vault.edit)}
+                                    {move || t!(i18n, vault.folder_move)}
                                 </Button>
-                            })}
-                            {is_document.then(|| view! {
-                                <Button
-                                    variant=Variant::Primary
-                                    size=Size::Sm
-                                    full_width=true
-                                    on:click=export_doc
-                                >
-                                    {move || t!(i18n, vault.export)}
-                                </Button>
-                            })}
-                        </div>
+                                {is_editable
+                                    .then(|| {
+                                        view! {
+                                            <Button
+                                                variant=Variant::Secondary
+                                                size=Size::Sm
+                                                full_width=true
+                                                on:click=start_edit
+                                            >
+                                                {move || t!(i18n, vault.edit)}
+                                            </Button>
+                                        }
+                                    })}
+                                {is_document
+                                    .then(|| {
+                                        view! {
+                                            <Button
+                                                variant=Variant::Primary
+                                                size=Size::Sm
+                                                full_width=true
+                                                on:click=export_doc
+                                            >
+                                                {move || t!(i18n, vault.export)}
+                                            </Button>
+                                        }
+                                    })}
+                            </div>
 
-                        // Tagging lives here (read view) so it works for any
-                        // type — Document included — without entering edit mode.
-                        <div class="mt-4 pt-4 border-t border-secondary/15">
-                            <TagAssign
-                                entry_id=tag_entry_id
-                                initial=tag_ids
-                                catalog=tags
-                                on_tags=on_tags
-                                on_catalog=on_catalog
-                            />
-                        </div>
-                    }
-                })
+                            // Tagging lives here (read view) so it works for any
+                            // type — Document included — without entering edit mode.
+                            <div class="mt-4 pt-4 border-t border-secondary/15">
+                                <TagAssign
+                                    entry_id=tag_entry_id
+                                    initial=tag_ids
+                                    catalog=tags
+                                    on_tags=on_tags
+                                    on_catalog=on_catalog
+                                />
+                            </div>
+                        }
+                    })
             }}
         </aside>
 
@@ -499,7 +522,7 @@ pub fn VaultDetail(
             open=Signal::derive(move || editing.get())
             on_close=do_cancel
             size=DialogSize::Lg
-            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>
@@ -586,6 +609,11 @@ fn copy_buttons(
             }
             .into_any(),
         ),
-        _ => None,
+        // Remaining types have no copy buttons. Bind by value (not `_`) so the
+        // scrutinee is *moved* into the match — this consumes `entry_type`,
+        // satisfying `needless_pass_by_value` without taking it by reference
+        // (a `&EntryTypeDto` param would force an RPIT lifetime onto the
+        // returned `impl IntoView`, which the caller's closure can't hold).
+        _other => None,
     }
 }

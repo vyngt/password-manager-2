@@ -20,8 +20,8 @@ pub fn Select(
     #[prop(into, default = None)] on_change: Option<Callback<String>>,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
-    let internal = RwSignal::new(default_value.to_string());
-    let selected = Memo::new(move |_| value.map(|s| s.get()).unwrap_or_else(|| internal.get()));
+    let internal = RwSignal::new(default_value.to_owned());
+    let selected = Memo::new(move |_| value.map_or_else(|| internal.get(), |s| s.get()));
 
     // Flatten for keyboard navigation
     let flat_options = StoredValue::new(flatten_options(&options));
@@ -45,14 +45,14 @@ pub fn Select(
     let hide_ver = Arc::new(AtomicU32::new(0));
 
     // ---- Close ----
-    let close_sv = show_ver.clone();
-    let close_hv = hide_ver.clone();
+    let close_sv = Arc::clone(&show_ver);
+    let close_hv = Arc::clone(&hide_ver);
     let do_close = Callback::new(move |()| {
         close_sv.fetch_add(1, Ordering::Relaxed);
         data_state.set("closed".into());
 
         let ver = close_hv.load(Ordering::Relaxed);
-        let hv = close_hv.clone();
+        let hv = Arc::clone(&close_hv);
         set_timeout(
             move || {
                 if hv.load(Ordering::Relaxed) == ver {
@@ -71,8 +71,8 @@ pub fn Select(
     });
 
     // ---- Open ----
-    let open_sv = show_ver.clone();
-    let open_hv = hide_ver.clone();
+    let open_sv = show_ver;
+    let open_hv = hide_ver;
     let do_open = Callback::new(move |()| {
         if disabled {
             return;
@@ -121,7 +121,7 @@ pub fn Select(
         mounted.set(true);
 
         let ver = open_sv.load(Ordering::Relaxed);
-        let sv2 = open_sv.clone();
+        let sv2 = Arc::clone(&open_sv);
         set_timeout(
             move || {
                 if sv2.load(Ordering::Relaxed) == ver {
@@ -215,11 +215,13 @@ pub fn Select(
             }
             "ArrowDown" => {
                 ev.prevent_default();
-                let cur = highlighted.get_untracked().unwrap_or(len.wrapping_sub(1));
+                let cur = highlighted
+                    .get_untracked()
+                    .unwrap_or_else(|| len.wrapping_sub(1));
                 let mut next = cur;
                 for _ in 0..len {
                     next = (next + 1) % len;
-                    if !flat[next].disabled {
+                    if flat.get(next).is_some_and(|o| !o.disabled) {
                         break;
                     }
                 }
@@ -232,7 +234,7 @@ pub fn Select(
                 let mut next = cur;
                 for _ in 0..len {
                     next = if next == 0 { len - 1 } else { next - 1 };
-                    if !flat[next].disabled {
+                    if flat.get(next).is_some_and(|o| !o.disabled) {
                         break;
                     }
                 }
@@ -256,8 +258,10 @@ pub fn Select(
             "Enter" | " " => {
                 ev.prevent_default();
                 if let Some(idx) = highlighted.get_untracked() {
-                    if idx < len && !flat[idx].disabled {
-                        select_value(flat[idx].value.clone());
+                    if let Some(opt) = flat.get(idx) {
+                        if !opt.disabled {
+                            select_value(opt.value.clone());
+                        }
                     }
                 }
             }
@@ -454,7 +458,7 @@ fn render_option(
         cls
     };
 
-    let val_click = opt.value.clone();
+    let val_click = opt.value;
     let on_click = move |_: web_sys::MouseEvent| {
         if !opt_disabled {
             select_value(val_click.clone());

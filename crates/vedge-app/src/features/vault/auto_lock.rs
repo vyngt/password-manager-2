@@ -4,7 +4,9 @@
 //! long as a vault is open). It reads [`SecurityPrefsCtx`] reactively and:
 //! - arms an idle deadline that user activity (`mousemove`/`keydown`/`click`/
 //!   `scroll`) pushes out, polled once a second;
-//! - optionally locks when the window loses focus (`blur`).
+//! - optionally locks when the window loses focus (`blur`) — *except* while one
+//!   of our own native file dialogs is open (which also steals focus); see
+//!   [`api::dialog::dialog_in_progress`].
 //!
 //! On expiry it runs the same lock path as the sidebar `LockButton`
 //! (`api::vault::lock` → clear `ActiveVault` → navigate `/`).
@@ -97,7 +99,9 @@ pub fn AutoLock() -> impl IntoView {
             // Poll once a second; fire once (disarm) on expiry.
             if let Ok(interval) = set_interval_with_handle(
                 move || {
-                    if now_ms() >= deadline.get_value() {
+                    // Don't lock while our own native dialog is open (the user is
+                    // mid file-pick, not idle). It re-fires next tick once closed.
+                    if now_ms() >= deadline.get_value() && !api::dialog::dialog_in_progress() {
                         deadline.set_value(i64::MAX);
                         lock_trigger.update(|n| *n = n.wrapping_add(1));
                     }
@@ -112,6 +116,13 @@ pub fn AutoLock() -> impl IntoView {
 
         if on_blur {
             let h = window_event_listener(ev::blur, move |_| {
+                // A native OS file dialog (Document attach/export, Emergency Kit,
+                // vault picker) steals focus and fires `blur` — that's *us*, not
+                // the user leaving, so don't lock mid-task. Real alt-tab / minimize
+                // still fires `blur` with no dialog open and locks as before.
+                if api::dialog::dialog_in_progress() {
+                    return;
+                }
                 lock_trigger.update(|n| *n = n.wrapping_add(1));
             });
             next.push(Box::new(move || h.remove()));

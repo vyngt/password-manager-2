@@ -33,19 +33,19 @@ pub enum SelectItem {
 impl SelectItem {
     /// Convenience for a flat option.
     pub fn option(value: impl Into<String>, label: impl Into<String>) -> Self {
-        SelectItem::Option(SelectOption::new(value, label))
+        Self::Option(SelectOption::new(value, label))
     }
 
     /// Convenience for a group.
     pub fn group(label: impl Into<String>, options: Vec<SelectOption>) -> Self {
-        SelectItem::Group(SelectGroup {
+        Self::Group(SelectGroup {
             label: label.into(),
             options,
         })
     }
 }
 
-/// Flatten items into a list of (option, is_disabled) for keyboard navigation indexing.
+/// Flatten items into a list of (option, `is_disabled`) for keyboard navigation indexing.
 pub fn flatten_options(items: &[SelectItem]) -> Vec<SelectOption> {
     let mut flat = Vec::new();
     for item in items {

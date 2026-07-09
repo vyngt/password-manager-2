@@ -77,12 +77,12 @@ impl<T: 'static> Clone for ColumnDef<T> {
             sortable: self.sortable,
             width: self.width,
             align: self.align,
-            cell: self.cell.clone(),
+            cell: Arc::clone(&self.cell),
         }
     }
 }
 
-/// Controlled sort state — owned by the consumer, rendered by DataTable.
+/// Controlled sort state — owned by the consumer, rendered by `DataTable`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SortState {
     pub column_id: String,

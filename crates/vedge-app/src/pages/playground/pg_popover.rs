@@ -216,11 +216,8 @@ fn CloseOnScrollDemo() -> impl IntoView {
                 anchor=anchor
                 close_on_scroll=true
             >
-                <div class="p-3 text-sm text-text-primary">
-                    "I will close on scroll."
-                </div>
+                <div class="p-3 text-sm text-text-primary">"I will close on scroll."</div>
             </Popover>
         </div>
     }
 }
-

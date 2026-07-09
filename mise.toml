@@ -69,15 +69,13 @@ run = [
 
 [tasks.lint]
 alias = "clippy"
-description = "Clippy gate — backend crates strict; vedge-app isolated via --no-deps"
-run = [
-  "cargo clippy -p vedge-codegen -p vedge-core -p vedge-ipc -p vedge-tauri --all-targets -- -D warnings",
-  "cargo clippy -p vedge-app --all-targets --no-deps -- -D warnings",
-]
-
-[tasks.lint-ui]
-description = "Clippy for vedge-ui (informational — carries deferred pedantic warnings, not gated)"
-run = "cargo clippy -p vedge-ui --all-targets"
+description = "Clippy gate — whole workspace under -D warnings (vedge-e2e excluded)"
+# Since 2.10.1 every member crate opts into `[lints] workspace = true` (vedge-app +
+# vedge-ui adopted it), so a single whole-workspace pass replaces the old split
+# (backend-strict + vedge-app `--no-deps` + informational `lint-ui`). `vedge-e2e` is
+# excluded — it's unwrap-heavy harness code that deliberately opts out, matching the
+# `test` gate.
+run = "cargo clippy --workspace --exclude vedge-e2e --all-targets -- -D warnings"
 
 # ---------------------------------------------------------------------------
 # Test

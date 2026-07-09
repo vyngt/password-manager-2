@@ -6,7 +6,7 @@ use super::common::Section;
 
 #[component]
 pub fn RadioGroupPage() -> impl IntoView {
-    let (radio_val, set_radio_val) = signal("option-1".to_string());
+    let (radio_val, set_radio_val) = signal("option-1".to_owned());
 
     view! {
         <div class="p-6 max-w-4xl mx-auto space-y-6">

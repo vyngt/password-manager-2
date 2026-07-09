@@ -235,7 +235,7 @@ fn ThemeRow(
     let t_update = theme.clone();
     let t_delete = theme.clone();
     let t_duplicate = theme.clone();
-    let t_set_active = theme.clone();
+    let t_set_active = theme;
     let update_disabled_reason = !is_built_in;
 
     view! {
@@ -259,9 +259,7 @@ fn ThemeRow(
                         "Built-in"
                     </Badge>
                 </Show>
-                <Show when=move || {
-                    active_id.get().as_deref() == Some(id_for_active.as_str())
-                }>
+                <Show when=move || { active_id.get().as_deref() == Some(id_for_active.as_str()) }>
                     <Badge variant=BadgeVariant::Success size=BadgeSize::Sm>
                         "Active"
                     </Badge>
@@ -281,7 +279,9 @@ fn ThemeRow(
                 <Icon icon=i::FiCopy />
             </IconButton>
 
-            <Show when=move || update_disabled_reason>
+            <Show when=move || {
+                update_disabled_reason
+            }>
                 {
                     let t_u = t_update.clone();
                     let t_d = t_delete.clone();
@@ -325,12 +325,12 @@ fn ThemeRow(
 pub fn ThemePage() -> impl IntoView {
     let theme_state = expect_context::<ThemeState>();
 
-    let (background, set_background) = signal("#FFFFFF".to_string());
-    let (foreground, set_foreground) = signal("#111827".to_string());
-    let (primary, set_primary) = signal("#2563EB".to_string());
-    let (danger, set_danger) = signal("#DC2626".to_string());
-    let (warning, set_warning) = signal("#D97706".to_string());
-    let (success, set_success) = signal("#16A34A".to_string());
+    let (background, set_background) = signal("#FFFFFF".to_owned());
+    let (foreground, set_foreground) = signal("#111827".to_owned());
+    let (primary, set_primary) = signal("#2563EB".to_owned());
+    let (danger, set_danger) = signal("#DC2626".to_owned());
+    let (warning, set_warning) = signal("#D97706".to_owned());
+    let (success, set_success) = signal("#16A34A".to_owned());
 
     let validation: RwSignal<Option<ThemeValidation>> = RwSignal::new(None);
     let tokens_signal = theme_state.tokens();
@@ -398,10 +398,10 @@ pub fn ThemePage() -> impl IntoView {
         row_error.set(None);
         let cfg = theme_config_from_dto(&dto);
         load_into_editor(&cfg);
-        selected_id.set(Some(dto.id.clone()));
+        selected_id.set(Some(dto.id));
     });
 
-    let theme_for_commit = theme_state.clone();
+    let theme_for_commit = theme_state;
     let on_set_active = Callback::new(move |dto: ThemeDto| {
         let id = dto.id.clone();
         let cfg = theme_config_from_dto(&dto);
@@ -436,7 +436,7 @@ pub fn ThemePage() -> impl IntoView {
     });
 
     let on_update = Callback::new(move |dto: ThemeDto| {
-        let input = update_input_from(dto.id.clone(), dto.name.clone(), &current_config());
+        let input = update_input_from(dto.id.clone(), dto.name, &current_config());
         spawn_local(async move {
             match api::settings::update_custom_theme(&input).await {
                 Ok(()) => {
@@ -771,7 +771,7 @@ pub fn ThemePage() -> impl IntoView {
                     <div class="space-y-3">
                         <Input
                             id="theme-new-name"
-                            placeholder=Signal::derive(|| "Theme name".to_string())
+                            placeholder=Signal::derive(|| "Theme name".to_owned())
                             value=Signal::derive(move || new_name.get())
                             on_input=Callback::new(move |v| new_name.set(v))
                         />

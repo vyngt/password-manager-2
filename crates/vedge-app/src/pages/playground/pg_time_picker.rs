@@ -13,7 +13,7 @@ pub fn TimePickerPage() -> impl IntoView {
     let controlled = RwSignal::<Option<TimeValue>>::new(None);
     let controlled_readout = move || match controlled.get() {
         Some(v) => format_time(&v),
-        None => "(none)".to_string(),
+        None => "(none)".to_owned(),
     };
 
     let min_time = TimeValue {

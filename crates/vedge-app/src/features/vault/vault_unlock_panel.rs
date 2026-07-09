@@ -4,7 +4,7 @@
 //! Shows a placeholder until a vault is chosen from the list.
 
 use crate::features::vault::vault_launch::Selected;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::either::Either;
 use leptos::prelude::*;
@@ -31,114 +31,143 @@ pub fn VaultUnlockPanel(
     view! {
         <div class="flex flex-1 flex-col items-center justify-center p-8 text-center">
             {move || match selected.get() {
-                None => Either::Left(view! {
-                    <div class="flex flex-col items-center gap-3 text-foreground/40">
-                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-subtle text-2xl">
-                            <Icon attr:aria-hidden="true" icon=i::FaFileShieldSolid />
-                        </span>
-                        <p class="max-w-[220px] text-sm">
-                            {move || t!(i18n, unlock.select_vault)}
-                        </p>
-                    </div>
-                }),
-                Some(sel) => Either::Right(view! {
-                    <span class="mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-2xl">
-                        <Icon attr:aria-hidden="true" icon=i::FaFileShieldSolid />
-                    </span>
-                    <div class="text-lg font-semibold text-text-primary">{sel.display_name.clone()}</div>
-                    <div class="mb-5 max-w-full truncate text-xs font-jetbrains-mono text-foreground/40">
-                        {sel.path.clone()}
-                    </div>
-                    <div class="w-full max-w-[280px]">
-                        {move || {
-                            if bio_enrolled.get() && !show_password.get() {
-                                Either::Left(view! {
-                                    <div class="flex flex-col items-center gap-3">
-                                        <button
-                                            type="button"
-                                            class="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-primary text-3xl transition-colors hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            aria-label=move || {
-                                                t_string!(i18n, unlock.biometric_unlock_cta).to_string()
-                                            }
-                                            disabled=move || unlocking.get()
-                                            on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
-                                        >
-                                            <Icon attr:aria-hidden="true" icon=i::FaFingerprintSolid />
-                                        </button>
-                                        <div>
-                                            <div class="text-sm font-medium text-text-primary">
-                                                {move || t!(i18n, unlock.biometric_unlock_cta)}
-                                            </div>
-                                            <div class="text-xs text-foreground/50">
-                                                {move || t!(i18n, unlock.biometric_touch_hint)}
-                                            </div>
-                                        </div>
-                                        <Button
-                                            variant=Variant::Link
-                                            on:click=move |_: web_sys::MouseEvent| on_use_password.run(())
-                                        >
-                                            {move || t!(i18n, unlock.use_master_password)}
-                                        </Button>
-                                    </div>
-                                })
-                            } else {
-                                Either::Right(view! {
-                                    <div
-                                        class="flex flex-col gap-2.5"
-                                        on:keydown=move |ev: web_sys::KeyboardEvent| {
-                                            if ev.key() == "Enter" {
-                                                on_unlock.run(());
-                                            }
-                                        }
-                                    >
-                                        <Input
-                                            id="master-password"
-                                            input_type="password"
-                                            size=Size::Lg
-                                            placeholder=Signal::derive(move || {
-                                                t_string!(i18n, unlock.master_password).to_string()
-                                            })
-                                            value=Signal::derive(move || pw.get())
-                                            on_input=Callback::new(move |v: String| pw.set(v))
-                                            reveal_label=Signal::derive(move || {
-                                                t_string!(i18n, onboarding.show_password).to_string()
-                                            })
-                                            hide_label=Signal::derive(move || {
-                                                t_string!(i18n, onboarding.hide_password).to_string()
-                                            })
-                                        />
-                                        {move || {
-                                            let busy = unlocking.get();
+                None => {
+                    Either::Left(
+                        view! {
+                            <div class="flex flex-col items-center gap-3 text-foreground/40">
+                                <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-subtle text-2xl">
+                                    <Icon attr:aria-hidden="true" icon=i::FaFileShieldSolid />
+                                </span>
+                                <p class="max-w-[220px] text-sm">
+                                    {move || t!(i18n, unlock.select_vault)}
+                                </p>
+                            </div>
+                        },
+                    )
+                }
+                Some(sel) => {
+                    Either::Right(
+                        view! {
+                            <span class="mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-2xl">
+                                <Icon attr:aria-hidden="true" icon=i::FaFileShieldSolid />
+                            </span>
+                            <div class="text-lg font-semibold text-text-primary">
+                                {sel.display_name.clone()}
+                            </div>
+                            <div class="mb-5 max-w-full truncate text-xs font-jetbrains-mono text-foreground/40">
+                                {sel.path}
+                            </div>
+                            <div class="w-full max-w-[280px]">
+                                {move || {
+                                    if bio_enrolled.get() && !show_password.get() {
+                                        Either::Left(
                                             view! {
-                                                <Button
-                                                    variant=Variant::Primary
-                                                    size=Size::Lg
-                                                    full_width=true
-                                                    loading=busy
-                                                    on:click=move |_: web_sys::MouseEvent| on_unlock.run(())
+                                                <div class="flex flex-col items-center gap-3">
+                                                    // Design-system exception: a bespoke 64px circular tinted
+                                                    // biometric tap-target. `IconButton` maxes at 44px (`lg`) with a
+                                                    // fixed svg size and has no tinted/outline-primary variant, so a
+                                                    // conversion would override every axis. Kept raw (aria-labelled).
+                                                    <button
+                                                        type="button"
+                                                        class="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-primary text-3xl transition-colors hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        aria-label=move || {
+                                                            t_string!(i18n, unlock.biometric_unlock_cta).to_owned()
+                                                        }
+                                                        disabled=move || unlocking.get()
+                                                        on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
+                                                    >
+                                                        <Icon attr:aria-hidden="true" icon=i::FaFingerprintSolid />
+                                                    </button>
+                                                    <div>
+                                                        <div class="text-sm font-medium text-text-primary">
+                                                            {move || t!(i18n, unlock.biometric_unlock_cta)}
+                                                        </div>
+                                                        <div class="text-xs text-foreground/50">
+                                                            {move || t!(i18n, unlock.biometric_touch_hint)}
+                                                        </div>
+                                                    </div>
+                                                    <Button
+                                                        variant=Variant::Link
+                                                        on:click=move |_: web_sys::MouseEvent| {
+                                                            on_use_password.run(());
+                                                        }
+                                                    >
+                                                        {move || t!(i18n, unlock.use_master_password)}
+                                                    </Button>
+                                                </div>
+                                            },
+                                        )
+                                    } else {
+                                        Either::Right(
+                                            view! {
+                                                <div
+                                                    class="flex flex-col gap-2.5"
+                                                    on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                                        if ev.key() == "Enter" {
+                                                            on_unlock.run(());
+                                                        }
+                                                    }
                                                 >
-                                                    {move || t!(i18n, unlock.unlock)}
-                                                </Button>
-                                            }
-                                        }}
-                                        {move || {
-                                            bio_enrolled.get().then(|| view! {
-                                                <Button
-                                                    variant=Variant::Link
-                                                    class="mt-1 gap-1.5"
-                                                    on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
-                                                >
-                                                    <Icon attr:aria-hidden="true" icon=i::FaFingerprintSolid width="13" height="13" />
-                                                    {move || t!(i18n, unlock.biometric_unlock_cta)}
-                                                </Button>
-                                            })
-                                        }}
-                                    </div>
-                                })
-                            }
-                        }}
-                    </div>
-                }),
+                                                    <Input
+                                                        id="master-password"
+                                                        input_type="password"
+                                                        size=Size::Lg
+                                                        placeholder=Signal::derive(move || {
+                                                            t_string!(i18n, unlock.master_password).to_owned()
+                                                        })
+                                                        value=Signal::derive(move || pw.get())
+                                                        on_input=Callback::new(move |v: String| pw.set(v))
+                                                        reveal_label=Signal::derive(move || {
+                                                            t_string!(i18n, onboarding.show_password).to_owned()
+                                                        })
+                                                        hide_label=Signal::derive(move || {
+                                                            t_string!(i18n, onboarding.hide_password).to_owned()
+                                                        })
+                                                    />
+                                                    {move || {
+                                                        let busy = unlocking.get();
+                                                        view! {
+                                                            <Button
+                                                                variant=Variant::Primary
+                                                                size=Size::Lg
+                                                                full_width=true
+                                                                loading=busy
+                                                                on:click=move |_: web_sys::MouseEvent| on_unlock.run(())
+                                                            >
+                                                                {move || t!(i18n, unlock.unlock)}
+                                                            </Button>
+                                                        }
+                                                    }}
+                                                    {move || {
+                                                        bio_enrolled
+                                                            .get()
+                                                            .then(|| {
+                                                                view! {
+                                                                    <Button
+                                                                        variant=Variant::Link
+                                                                        class="mt-1 gap-1.5"
+                                                                        on:click=move |_: web_sys::MouseEvent| on_bio_unlock.run(())
+                                                                    >
+                                                                        <Icon
+                                                                            attr:aria-hidden="true"
+                                                                            icon=i::FaFingerprintSolid
+                                                                            width="13"
+                                                                            height="13"
+                                                                        />
+                                                                        {move || t!(i18n, unlock.biometric_unlock_cta)}
+                                                                    </Button>
+                                                                }
+                                                            })
+                                                    }}
+                                                </div>
+                                            },
+                                        )
+                                    }
+                                }}
+                            </div>
+                        },
+                    )
+                }
             }}
         </div>
     }

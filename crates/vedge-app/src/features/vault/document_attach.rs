@@ -10,7 +10,7 @@ use crate::api;
 use crate::api::dialog::OpenDialogOptions;
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::{CommonMetaDto, EntryTypeDto};
@@ -51,7 +51,7 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
     let show_error = move |msg: String| {
-        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_string());
+        let dismiss = untrack(|| t_string!(i18n, vault.dismiss).to_owned());
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
@@ -77,7 +77,7 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
     let choose_file = move |_| {
         // Read the locale string in the handler body (reactive owner present);
         // reading it inside `spawn_local` would warn.
-        let dialog_title = t_string!(i18n, vault.attach_title).to_string();
+        let dialog_title = t_string!(i18n, vault.attach_title).to_owned();
         spawn_local(async move {
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
@@ -106,8 +106,8 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
             return;
         }
         // Hoist every locale read out of the async block.
-        let too_large = t_string!(i18n, vault.err_document_too_large).to_string();
-        let err_prefix = t_string!(i18n, vault.err_import).to_string();
+        let too_large = t_string!(i18n, vault.err_document_too_large).to_owned();
+        let err_prefix = t_string!(i18n, vault.err_import).to_owned();
         let vault_path = active.path.get().unwrap_or_default();
 
         submitting.set(true);
@@ -138,18 +138,26 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                 <Button variant=Variant::Secondary size=Size::Sm on:click=choose_file>
                     {move || t!(i18n, vault.attach_choose_file)}
                 </Button>
-                {move || src_path.get().map(|p| view! {
-                    <span class="text-sm text-text-secondary font-jetbrains-mono break-all">
-                        {file_basename(&p)}
-                    </span>
-                })}
+                {move || {
+                    src_path
+                        .get()
+                        .map(|p| {
+                            view! {
+                                <span class="text-sm text-text-secondary font-jetbrains-mono break-all">
+                                    {file_basename(&p)}
+                                </span>
+                            }
+                        })
+                }}
             </div>
 
             <Show when=move || src_path.get().is_some()>
                 <div class="mb-3">
                     <Input
                         id="doc-attach-name"
-                        placeholder=Signal::derive(move || t_string!(i18n, vault.form_title).to_string())
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.form_title).to_owned()
+                        })
                         value=Signal::derive(move || name.get())
                         on_input=Callback::new(move |v: String| name.set(v))
                     />
@@ -162,8 +170,7 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                 </Button>
                 {move || {
                     let saving = submitting.get();
-                    let busy = saving
-                        || src_path.get().is_none()
+                    let busy = saving || src_path.get().is_none()
                         || name.with(|n| n.trim().is_empty());
                     view! {
                         <Button

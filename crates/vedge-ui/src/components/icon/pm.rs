@@ -12,7 +12,7 @@ pub static Pm: &icondata_core::IconData = &icondata_core::IconData {
     stroke_width: None,
     stroke: None,
     fill: None,
-    data: r###"<path
+    data: r#"<path
                 fill="currentColor"
                 d="
                 M 568.65 354.61
@@ -269,5 +269,5 @@ pub static Pm: &icondata_core::IconData = &icondata_core::IconData {
                 rx="1.94"
             />
             <rect fill="currentColor" x="463.39" y="595.44" width="84.76" height="3.92" rx="1.45" />
-"###,
+"#,
 };

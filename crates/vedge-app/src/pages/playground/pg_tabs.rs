@@ -52,7 +52,7 @@ fn make_basic_tabs(suffix: &'static str) -> Vec<Tab> {
 
 #[component]
 pub fn TabsPage() -> impl IntoView {
-    let controlled_active = RwSignal::new("overview-c".to_string());
+    let controlled_active = RwSignal::new("overview-c".to_owned());
 
     let overflow_tabs: Vec<Tab> = (0_u32..10)
         .map(|i| {
@@ -61,7 +61,7 @@ pub fn TabsPage() -> impl IntoView {
             let panel_label = label.clone();
             Tab {
                 id,
-                label: Box::new(move || view! { {label.clone()} }.into_any()),
+                label: Box::new(move || view! { {label} }.into_any()),
                 panel: Arc::new(move || {
                     let s = panel_label.clone();
                     view! { <p class="text-sm">{s}" content"</p> }.into_any()
@@ -134,13 +134,11 @@ pub fn TabsPage() -> impl IntoView {
                 />
                 <div class="mt-2 text-xs text-text-tertiary flex items-center gap-2">
                     "Active: "
-                    <code class="text-text-primary">
-                        {move || controlled_active.get()}
-                    </code>
+                    <code class="text-text-primary">{move || controlled_active.get()}</code>
                     <button
                         type="button"
                         class="btn btn--secondary btn--sm btn--rounded"
-                        on:click=move |_| controlled_active.set("overview-c".to_string())
+                        on:click=move |_| controlled_active.set("overview-c".to_owned())
                     >
                         "Reset to Overview"
                     </button>
@@ -152,9 +150,7 @@ pub fn TabsPage() -> impl IntoView {
                     Tab {
                         id: "t1".into(),
                         label: Box::new(|| view! { "Enabled A" }.into_any()),
-                        panel: Arc::new(|| {
-                            view! { <p class="text-sm">"A"</p> }.into_any()
-                        }),
+                        panel: Arc::new(|| { view! { <p class="text-sm">"A"</p> }.into_any() }),
                         disabled: false,
                     },
                     Tab {
@@ -168,9 +164,7 @@ pub fn TabsPage() -> impl IntoView {
                     Tab {
                         id: "t3".into(),
                         label: Box::new(|| view! { "Enabled C" }.into_any()),
-                        panel: Arc::new(|| {
-                            view! { <p class="text-sm">"C"</p> }.into_any()
-                        }),
+                        panel: Arc::new(|| { view! { <p class="text-sm">"C"</p> }.into_any() }),
                         disabled: false,
                     },
                 ] />

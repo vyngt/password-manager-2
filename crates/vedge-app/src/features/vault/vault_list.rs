@@ -6,7 +6,7 @@
 //! `on_select`. Keyboard model mirrors the 2.3 command palette.
 
 use crate::features::vault::vault_launch::Selected;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::either::Either;
 use leptos::prelude::*;
@@ -19,7 +19,7 @@ use wasm_bindgen::JsCast;
 
 /// Short display of an RFC3339 timestamp: just the `YYYY-MM-DD` date part.
 fn short_date(rfc3339: &str) -> String {
-    rfc3339.get(..10).unwrap_or(rfc3339).to_string()
+    rfc3339.get(..10).unwrap_or(rfc3339).to_owned()
 }
 
 /// Scroll the option at `idx` into view within the list (keyboard nav).
@@ -105,7 +105,12 @@ pub fn VaultList(
             <div class="px-3.5 pb-2.5 pt-3.5">
                 <div class="mb-2.5 flex items-center gap-2">
                     <span class="flex h-5.5 w-5.5 items-center justify-center rounded-md bg-primary text-white">
-                        <Icon attr:aria-hidden="true" icon=i::FaShieldHalvedSolid width="13" height="13" />
+                        <Icon
+                            attr:aria-hidden="true"
+                            icon=i::FaShieldHalvedSolid
+                            width="13"
+                            height="13"
+                        />
                     </span>
                     <span class="text-sm font-semibold text-text-primary">
                         {move || t!(i18n, unlock.your_vaults)}
@@ -120,9 +125,11 @@ pub fn VaultList(
                         view! { <Icon icon=i::FaMagnifyingGlassSolid width="13" height="13" /> }
                             .into_any()
                     })
-                    aria_label=Signal::derive(move || t_string!(i18n, unlock.search_vaults).to_string())
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, unlock.search_vaults).to_owned()
+                    })
                     placeholder=Signal::derive(move || {
-                        t_string!(i18n, unlock.search_vaults).to_string()
+                        t_string!(i18n, unlock.search_vaults).to_owned()
                     })
                     value=Signal::derive(move || query.get())
                     on_input=Callback::new(move |v: String| {
@@ -138,11 +145,13 @@ pub fn VaultList(
                 {move || {
                     let rows = filtered.get();
                     if rows.is_empty() {
-                        return Either::Left(view! {
-                            <div class="px-3 py-8 text-center text-sm text-foreground/40">
-                                {move || t!(i18n, unlock.no_match)}
-                            </div>
-                        });
+                        return Either::Left(
+                            view! {
+                                <div class="px-3 py-8 text-center text-sm text-foreground/40">
+                                    {move || t!(i18n, unlock.no_match)}
+                                </div>
+                            },
+                        );
                     }
                     let views = rows
                         .into_iter()
@@ -158,29 +167,29 @@ pub fn VaultList(
                             } else {
                                 i::FaFileCircleXmarkSolid
                             };
-
                             let is_hl = move || highlighted.get() == idx;
                             let sel_id = id.clone();
-                            // `Copy` Memo so the flag can be read in several
-                            // view positions without moving a captured String.
                             let is_selected = Memo::new(move |_| {
                                 selected.get().and_then(|s| s.id).as_deref()
                                     == Some(sel_id.as_str())
                             });
-
-                            // Clones for the various closures on this row.
                             let click_path = path.clone();
                             let click_id = id.clone();
                             let click_name = name.clone();
                             let editing_check_id = id.clone();
                             let disp_name = name.clone();
-                            let disp_path = path.clone();
+                            let disp_path = path;
                             let start_id = id.clone();
-                            let start_name = name.clone();
+                            let start_name = name;
                             let commit_id_kd = id.clone();
                             let commit_id_blur = id.clone();
                             let loc_id = id.clone();
-                            let rem_id = id.clone();
+                            let rem_id = id;
+
+                            // `Copy` Memo so the flag can be read in several
+                            // view positions without moving a captured String.
+
+                            // Clones for the various closures on this row.
 
                             view! {
                                 <div
@@ -193,18 +202,23 @@ pub fn VaultList(
                                     on:mouseenter=move |_: web_sys::MouseEvent| highlighted.set(idx)
                                     on:click=move |_: web_sys::MouseEvent| {
                                         if exists && editing_id.get().is_none() {
-                                            on_select.run(Selected {
-                                                path: click_path.clone(),
-                                                id: Some(click_id.clone()),
-                                                display_name: click_name.clone(),
-                                            });
+                                            on_select
+                                                .run(Selected {
+                                                    path: click_path.clone(),
+                                                    id: Some(click_id.clone()),
+                                                    display_name: click_name.clone(),
+                                                });
                                         }
                                     }
                                 >
                                     {move || {
-                                        is_selected.get().then(|| view! {
-                                            <span class="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded bg-primary"></span>
-                                        })
+                                        is_selected
+                                            .get()
+                                            .then(|| {
+                                                view! {
+                                                    <span class="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded bg-primary"></span>
+                                                }
+                                            })
                                     }}
                                     <span
                                         class="flex shrink-0 text-lg"
@@ -215,9 +229,6 @@ pub fn VaultList(
                                     </span>
                                     <div class="min-w-0 flex-1">
                                         {move || {
-                                            // Clone the captured ids/strings per re-run so this
-                                            // reactive closure stays `FnMut` (the inner handlers
-                                            // move their clones, not the originals).
                                             let kd_id = commit_id_kd.clone();
                                             let blur_id = commit_id_blur.clone();
                                             let name_txt = disp_name.clone();
@@ -225,147 +236,154 @@ pub fn VaultList(
                                             if editing_id.get().as_deref()
                                                 == Some(editing_check_id.as_str())
                                             {
-                                                Either::Left(view! {
-                                                    <Input
-                                                        id="vault-rename"
-                                                        input_ref=rename_ref
-                                                        class="w-full"
-                                                        aria_label=Signal::derive(move || {
-                                                            t_string!(i18n, unlock.vault_rename).to_string()
-                                                        })
-                                                        placeholder=Signal::derive(move || {
-                                                            t_string!(i18n, unlock.vault_rename_placeholder)
-                                                                .to_string()
-                                                        })
-                                                        value=Signal::derive(move || rename_draft.get())
-                                                        on_input=Callback::new(move |v: String| {
-                                                            rename_draft.set(v)
-                                                        })
-                                                        on:click=move |ev: web_sys::MouseEvent| {
-                                                            ev.stop_propagation()
-                                                        }
-                                                        on:keydown=move |ev: web_sys::KeyboardEvent| {
-                                                            match ev.key().as_str() {
-                                                                "Enter" => {
-                                                                    ev.prevent_default();
+                                                Either::Left(
+                                                    // Clone the captured ids/strings per re-run so this
+                                                    // reactive closure stays `FnMut` (the inner handlers
+                                                    // move their clones, not the originals).
+                                                    view! {
+                                                        <Input
+                                                            id="vault-rename"
+                                                            input_ref=rename_ref
+                                                            class="w-full"
+                                                            aria_label=Signal::derive(move || {
+                                                                t_string!(i18n, unlock.vault_rename).to_owned()
+                                                            })
+                                                            placeholder=Signal::derive(move || {
+                                                                t_string!(i18n, unlock.vault_rename_placeholder).to_owned()
+                                                            })
+                                                            value=Signal::derive(move || rename_draft.get())
+                                                            on_input=Callback::new(move |v: String| {
+                                                                rename_draft.set(v);
+                                                            })
+                                                            on:click=move |ev: web_sys::MouseEvent| {
+                                                                ev.stop_propagation();
+                                                            }
+                                                            on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                                                match ev.key().as_str() {
+                                                                    "Enter" => {
+                                                                        ev.prevent_default();
+                                                                        editing_id.set(None);
+                                                                        let t = rename_draft.get().trim().to_owned();
+                                                                        if !t.is_empty() {
+                                                                            on_rename_commit.run((kd_id.clone(), t));
+                                                                        }
+                                                                    }
+                                                                    "Escape" => {
+                                                                        ev.prevent_default();
+                                                                        editing_id.set(None);
+                                                                    }
+                                                                    _ => {}
+                                                                }
+                                                            }
+                                                            on:focusout=move |_: web_sys::FocusEvent| {
+                                                                if editing_id.get().as_deref() == Some(blur_id.as_str()) {
                                                                     editing_id.set(None);
-                                                                    let t = rename_draft
-                                                                        .get()
-                                                                        .trim()
-                                                                        .to_string();
+                                                                    let t = rename_draft.get().trim().to_owned();
                                                                     if !t.is_empty() {
-                                                                        on_rename_commit
-                                                                            .run((kd_id.clone(), t));
+                                                                        on_rename_commit.run((blur_id.clone(), t));
                                                                     }
                                                                 }
-                                                                "Escape" => {
-                                                                    ev.prevent_default();
-                                                                    editing_id.set(None);
-                                                                }
-                                                                _ => {}
                                                             }
-                                                        }
-                                                        on:focusout=move |_: web_sys::FocusEvent| {
-                                                            // Guard against the unmount-focusout double-fire
-                                                            // after Enter/Escape already cleared editing.
-                                                            if editing_id.get().as_deref()
-                                                                == Some(blur_id.as_str())
-                                                            {
-                                                                editing_id.set(None);
-                                                                let t = rename_draft
-                                                                    .get()
-                                                                    .trim()
-                                                                    .to_string();
-                                                                if !t.is_empty() {
-                                                                    on_rename_commit
-                                                                        .run((blur_id.clone(), t));
-                                                                }
-                                                            }
-                                                        }
-                                                    />
-                                                })
+                                                        />
+                                                    },
+                                                )
                                             } else {
-                                                Either::Right(view! {
-                                                    <div
-                                                        class="truncate text-[13px] font-medium"
-                                                        class=("text-primary", move || is_selected.get())
-                                                        class=("text-text-primary", move || !is_selected.get())
-                                                    >
-                                                        {name_txt}
-                                                    </div>
-                                                    <div class="truncate text-[11px] font-jetbrains-mono text-foreground/50">
-                                                        {path_txt}
-                                                    </div>
-                                                })
+                                                Either::Right(
+                                                    // Guard against the unmount-focusout double-fire
+                                                    // after Enter/Escape already cleared editing.
+                                                    view! {
+                                                        <div
+                                                            class="truncate text-[13px] font-medium"
+                                                            class=("text-primary", move || is_selected.get())
+                                                            class=("text-text-primary", move || !is_selected.get())
+                                                        >
+                                                            {name_txt}
+                                                        </div>
+                                                        <div class="truncate text-[11px] font-jetbrains-mono text-foreground/50">
+                                                            {path_txt}
+                                                        </div>
+                                                    },
+                                                )
                                             }
                                         }}
                                     </div>
                                     {if exists {
                                         let recency_view = recency
-                                            .clone()
-                                            .map(|d| view! {
-                                                <span class="text-[11px] text-foreground/40">{d}</span>
+                                            .map(|d| {
+
+                                                view! {
+                                                    <span class="text-[11px] text-foreground/40">{d}</span>
+                                                }
                                             });
-                                        Either::Left(view! {
-                                            <div class="flex shrink-0 items-center gap-1.5">
-                                                {recency_view}
-                                                <IconButton
-                                                    variant=Variant::Ghost
-                                                    size=Size::Xs
-                                                    class="text-foreground/40 opacity-0 transition-opacity group-hover:opacity-100"
-                                                    aria_label=Signal::derive(move || {
-                                                        t_string!(i18n, unlock.vault_rename).to_string()
-                                                    })
-                                                    on:click=move |ev: web_sys::MouseEvent| {
-                                                        ev.stop_propagation();
-                                                        editing_id.set(Some(start_id.clone()));
-                                                        rename_draft.set(start_name.clone());
-                                                        set_timeout(
-                                                            move || {
-                                                                if let Some(el) = rename_ref.get_untracked() {
-                                                                    let _ = el.focus();
-                                                                    el.select();
-                                                                }
-                                                            },
-                                                            Duration::from_millis(20),
-                                                        );
-                                                    }
-                                                >
-                                                    <Icon attr:aria-hidden="true" icon=i::FaPenSolid width="12" height="12" />
-                                                </IconButton>
-                                            </div>
-                                        })
+                                        Either::Left(
+                                            view! {
+                                                <div class="flex shrink-0 items-center gap-1.5">
+                                                    {recency_view}
+                                                    <IconButton
+                                                        variant=Variant::Ghost
+                                                        size=Size::Xs
+                                                        class="text-foreground/40 opacity-0 transition-opacity group-hover:opacity-100"
+                                                        aria_label=Signal::derive(move || {
+                                                            t_string!(i18n, unlock.vault_rename).to_owned()
+                                                        })
+                                                        on:click=move |ev: web_sys::MouseEvent| {
+                                                            ev.stop_propagation();
+                                                            editing_id.set(Some(start_id.clone()));
+                                                            rename_draft.set(start_name.clone());
+                                                            set_timeout(
+                                                                move || {
+                                                                    if let Some(el) = rename_ref.get_untracked() {
+                                                                        let _ = el.focus();
+                                                                        el.select();
+                                                                    }
+                                                                },
+                                                                Duration::from_millis(20),
+                                                            );
+                                                        }
+                                                    >
+                                                        <Icon
+                                                            attr:aria-hidden="true"
+                                                            icon=i::FaPenSolid
+                                                            width="12"
+                                                            height="12"
+                                                        />
+                                                    </IconButton>
+                                                </div>
+                                            },
+                                        )
                                     } else {
-                                        Either::Right(view! {
-                                            <div class="flex shrink-0 items-center gap-1.5">
-                                                <span
-                                                    class="rounded px-1.5 py-0.5 text-[10px]"
-                                                    style="color:var(--color-danger-text);background:var(--color-danger-muted)"
-                                                >
-                                                    {move || t!(i18n, unlock.vault_missing)}
-                                                </span>
-                                                <Button
-                                                    variant=Variant::Ghost
-                                                    size=Size::Sm
-                                                    on:click=move |ev: web_sys::MouseEvent| {
-                                                        ev.stop_propagation();
-                                                        on_locate.run(loc_id.clone());
-                                                    }
-                                                >
-                                                    {move || t!(i18n, unlock.vault_locate)}
-                                                </Button>
-                                                <Button
-                                                    variant=Variant::Ghost
-                                                    size=Size::Sm
-                                                    on:click=move |ev: web_sys::MouseEvent| {
-                                                        ev.stop_propagation();
-                                                        on_remove.run(rem_id.clone());
-                                                    }
-                                                >
-                                                    {move || t!(i18n, unlock.vault_remove)}
-                                                </Button>
-                                            </div>
-                                        })
+                                        Either::Right(
+                                            view! {
+                                                <div class="flex shrink-0 items-center gap-1.5">
+                                                    <span
+                                                        class="rounded px-1.5 py-0.5 text-[10px]"
+                                                        style="color:var(--color-danger-text);background:var(--color-danger-muted)"
+                                                    >
+                                                        {move || t!(i18n, unlock.vault_missing)}
+                                                    </span>
+                                                    <Button
+                                                        variant=Variant::Ghost
+                                                        size=Size::Sm
+                                                        on:click=move |ev: web_sys::MouseEvent| {
+                                                            ev.stop_propagation();
+                                                            on_locate.run(loc_id.clone());
+                                                        }
+                                                    >
+                                                        {move || t!(i18n, unlock.vault_locate)}
+                                                    </Button>
+                                                    <Button
+                                                        variant=Variant::Ghost
+                                                        size=Size::Sm
+                                                        on:click=move |ev: web_sys::MouseEvent| {
+                                                            ev.stop_propagation();
+                                                            on_remove.run(rem_id.clone());
+                                                        }
+                                                    >
+                                                        {move || t!(i18n, unlock.vault_remove)}
+                                                    </Button>
+                                                </div>
+                                            },
+                                        )
                                     }}
                                 </div>
                             }

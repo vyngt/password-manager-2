@@ -20,7 +20,7 @@ use crate::features::vault::context::ActiveVault;
 use crate::features::vault::entry_view::{type_icon, type_label_i18n};
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_filters::query_matches;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::either::Either;
 use leptos::prelude::*;
@@ -206,29 +206,29 @@ pub fn CommandPalette() -> impl IntoView {
         let mut actions: Vec<(ActionId, String)> = vec![
             (
                 ActionId::NewEntry,
-                t_string!(i18n, vault.cmd_new_entry).to_string(),
+                t_string!(i18n, vault.cmd_new_entry).to_owned(),
             ),
-            (ActionId::Lock, t_string!(i18n, vault.cmd_lock).to_string()),
+            (ActionId::Lock, t_string!(i18n, vault.cmd_lock).to_owned()),
         ];
         if selection_actions_enabled(sel.as_deref())
             && let Some(e) = &sel_entry
         {
             if is_editable(&e.entry_type) {
-                actions.push((ActionId::Edit, t_string!(i18n, vault.cmd_edit).to_string()));
+                actions.push((ActionId::Edit, t_string!(i18n, vault.cmd_edit).to_owned()));
             }
             // Move works for every type (Document / Folder included).
             actions.push((
                 ActionId::MoveToFolder,
-                t_string!(i18n, vault.cmd_move_folder).to_string(),
+                t_string!(i18n, vault.cmd_move_folder).to_owned(),
             ));
             if e.entry_type == EntryTypeDto::Login {
                 actions.push((
                     ActionId::CopyPassword,
-                    t_string!(i18n, vault.cmd_copy_password).to_string(),
+                    t_string!(i18n, vault.cmd_copy_password).to_owned(),
                 ));
                 actions.push((
                     ActionId::CopyUsername,
-                    t_string!(i18n, vault.cmd_copy_username).to_string(),
+                    t_string!(i18n, vault.cmd_copy_username).to_owned(),
                 ));
             }
         }
@@ -342,7 +342,12 @@ pub fn CommandPalette() -> impl IntoView {
             // Search header — search icon + input + esc badge.
             <div class="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
                 <span class="flex shrink-0 text-foreground/40">
-                    <Icon attr:aria-hidden="true" icon=i::FaMagnifyingGlassSolid width="16" height="16" />
+                    <Icon
+                        attr:aria-hidden="true"
+                        icon=i::FaMagnifyingGlassSolid
+                        width="16"
+                        height="16"
+                    />
                 </span>
                 <input
                     node_ref=input_ref
@@ -357,8 +362,8 @@ pub fn CommandPalette() -> impl IntoView {
                         (!build_rows().is_empty())
                             .then(|| format!("cmdk-opt-{}", highlighted.get()))
                     }
-                    aria-label=move || t_string!(i18n, vault.palette_placeholder).to_string()
-                    placeholder=move || t_string!(i18n, vault.palette_placeholder).to_string()
+                    aria-label=move || t_string!(i18n, vault.palette_placeholder).to_owned()
+                    placeholder=move || t_string!(i18n, vault.palette_placeholder).to_owned()
                     prop:value=move || query.get()
                     on:input:target=move |ev| {
                         query.set(ev.target().value());
@@ -386,7 +391,7 @@ pub fn CommandPalette() -> impl IntoView {
                                 <EmptyState
                                     icon=i::FaMagnifyingGlassSolid
                                     title=Signal::derive(move || {
-                                        t_string!(i18n, vault.palette_empty).to_string()
+                                        t_string!(i18n, vault.palette_empty).to_owned()
                                     })
                                 />
                             },
@@ -460,7 +465,12 @@ pub fn CommandPalette() -> impl IntoView {
                                         class=("text-primary", is_hl)
                                         class=("text-foreground/50", move || !is_hl())
                                     >
-                                        <Icon attr:aria-hidden="true" icon=icon width="16" height="16" />
+                                        <Icon
+                                            attr:aria-hidden="true"
+                                            icon=icon
+                                            width="16"
+                                            height="16"
+                                        />
                                     </span>
                                     <span
                                         class="flex-1 truncate"

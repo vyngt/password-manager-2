@@ -3,20 +3,21 @@
 //! - `tauri` — raw `invoke()` + `TauriWindow` FFI. The single FFI boundary.
 //! - `call` — generic `call<I, O>()` dispatcher. Crate-private.
 //! - `error` — `ApiError` enum mirroring the shell's `CommandError`.
-//! - `vault`, `entry`, `tag`, `document`, `password`, `maintenance`,
-//!   `recent`, `settings`, `device`, `emergency_kit`, `recovery`,
-//!   `window` — one module per command group in `vedge-tauri`.
+//! - `vault`, `entry`, `tag`, `document`, `password`, `recent`,
+//!   `settings`, `emergency_kit`, `window` — one module per command
+//!   group in `vedge-tauri`.
 
 pub mod call;
 pub mod error;
 pub mod tauri;
 
-// The per-domain command wrappers are a **complete** typed mirror of the shell's
-// `#[tauri::command]` surface — a ready-made API for every command. Not everything is
-// wired to UI yet, so a subset is unused. Rather than a blanket module-level allow (which
-// would also hide a wrapper that *becomes* dead after a refactor), unused wrappers in a
-// partially-wired module are marked `#[allow(dead_code)]` **per function**; only modules
-// whose *every* wrapper is still unused carry a module-level allow (below).
+// The per-domain command wrappers typed-mirror the shell's `#[tauri::command]` surface.
+// The 2.10.1 dead-code sweep removed wrappers with no call site and no near-term consumer
+// (e.g. server-side query variants superseded by client-side filtering, the bytes-based
+// document/emergency-kit variants superseded by path-based ones, and the wholly-parked
+// device/maintenance/recovery subsystems). A still-unused wrapper is kept only when it has a
+// documented near-term consumer, marked `#[allow(dead_code, reason = "…")]` **per function**;
+// a module whose *every* wrapper is still unused carries a single module-level allow (below).
 pub mod biometric;
 pub mod dialog;
 pub mod document;
@@ -28,14 +29,11 @@ pub mod tag;
 pub mod vault;
 pub mod window;
 
-// Wholly-parked subsystems — no UI calls any wrapper yet, so there are no wired functions
-// whose future death a per-function allow would protect. A single module allow is honest
-// here; drop it the moment the first wrapper gets wired (then switch to per-function).
-#[allow(dead_code)]
-pub mod device;
-#[allow(dead_code)]
-pub mod maintenance;
-#[allow(dead_code)]
+// Wholly-parked subsystem kept ahead of its consumer — every wrapper is still unused, so a
+// single module allow is honest here; drop it the moment the first wrapper gets wired (then
+// switch to per-function).
+#[allow(
+    dead_code,
+    reason = "Phase 3 Change-Password settings flow (change_password) — no Phase 2 consumer yet"
+)]
 pub mod password;
-#[allow(dead_code)]
-pub mod recovery;

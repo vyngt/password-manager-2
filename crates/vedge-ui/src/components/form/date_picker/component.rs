@@ -29,18 +29,20 @@ pub fn DatePicker(
     /// When `true`, renders just the calendar grid with no trigger or floating
     /// panel. Used by DateTimePicker to compose the calendar alongside a
     /// TimePicker inside a shared Popover.
-    #[prop(optional)] inline: bool,
+    #[prop(optional)]
+    inline: bool,
     /// `Month`-variant only: when `true`, the trigger displays as `MM/YYYY`
     /// (numeric) instead of the localized long form (e.g. `December 2030`). The
     /// calendar panel header is unaffected.
-    #[prop(optional)] month_numeric: bool,
+    #[prop(optional)]
+    month_numeric: bool,
     #[prop(optional, default = "")] aria_describedby: &'static str,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let initial = default_value.unwrap_or_else(|| DatePickerValue::empty_for(variant));
     let internal = RwSignal::new(initial);
     let effective: Memo<DatePickerValue> =
-        Memo::new(move |_| value.map(|s| s.get()).unwrap_or_else(|| internal.get()));
+        Memo::new(move |_| value.map_or_else(|| internal.get(), |s| s.get()));
 
     // Calendar state
     let view_month = RwSignal::new(YearMonth::from_date(today()));
@@ -50,11 +52,8 @@ pub fn DatePicker(
 
     // Panel state — inline mode keeps the panel permanently visible.
     let mounted = RwSignal::new(inline);
-    let data_state = RwSignal::<Option<&'static str>>::new(if inline {
-        Some("open")
-    } else {
-        None
-    });
+    let data_state =
+        RwSignal::<Option<&'static str>>::new(if inline { Some("open") } else { None });
     let panel_style = RwSignal::new(String::new());
 
     let trigger_ref = NodeRef::<leptos::html::Button>::new();
@@ -102,15 +101,15 @@ pub fn DatePicker(
     };
 
     // ---- Close ----
-    let close_sv = show_ver.clone();
-    let close_hv = hide_ver.clone();
+    let close_sv = Arc::clone(&show_ver);
+    let close_hv = Arc::clone(&hide_ver);
     let do_close = Callback::new(move |()| {
         close_sv.fetch_add(1, Ordering::Relaxed);
         data_state.set(Some("closed"));
         interim_start.set(None);
 
         let ver = close_hv.load(Ordering::Relaxed);
-        let hv = close_hv.clone();
+        let hv = Arc::clone(&close_hv);
         set_timeout(
             move || {
                 if hv.load(Ordering::Relaxed) == ver {
@@ -127,8 +126,8 @@ pub fn DatePicker(
     });
 
     // ---- Open ----
-    let open_sv = show_ver.clone();
-    let open_hv = hide_ver.clone();
+    let open_sv = show_ver;
+    let open_hv = hide_ver;
     let do_open = Callback::new(move |()| {
         if disabled {
             return;
@@ -156,7 +155,7 @@ pub fn DatePicker(
         mounted.set(true);
 
         let ver = open_sv.load(Ordering::Relaxed);
-        let sv2 = open_sv.clone();
+        let sv2 = Arc::clone(&open_sv);
         set_timeout(
             move || {
                 if sv2.load(Ordering::Relaxed) == ver {
@@ -285,11 +284,8 @@ pub fn DatePicker(
         }
     };
 
-    let placeholder_text = move || {
-        placeholder
-            .map(|s| s.get())
-            .unwrap_or_else(|| "Select date".to_string())
-    };
+    let placeholder_text =
+        move || placeholder.map_or_else(|| "Select date".to_owned(), |s| s.get());
 
     let handle_trigger_keydown = move |ev: web_sys::KeyboardEvent| match ev.key().as_str() {
         "Enter" | " " | "ArrowDown" => {

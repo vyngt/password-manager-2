@@ -166,7 +166,7 @@ fn PageWindowSection() -> impl IntoView {
                                 class="px-2 py-1 text-xs rounded border border-border bg-background text-text-primary hover:bg-surface-2"
                                 on:click=move |_| page.set(target)
                             >
-                                {format!("jump to {}", target)}
+                                {format!("jump to {target}")}
                             </button>
                         }
                     })

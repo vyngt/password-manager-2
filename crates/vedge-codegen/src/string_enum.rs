@@ -6,14 +6,19 @@ pub fn derive_string_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
 
-    let data_enum = match input.data {
-        Data::Enum(de) => de,
-        _ => panic!("#[derive(StringEnum)] can only be used on enums"),
+    let Data::Enum(data_enum) = input.data else {
+        return syn::Error::new_spanned(&name, "#[derive(StringEnum)] can only be used on enums")
+            .to_compile_error()
+            .into();
     };
 
     let variants: Vec<_> = data_enum.variants.iter().map(|v| &v.ident).collect();
 
-    let variant_strs: Vec<_> = variants.iter().map(|v| v.to_string()).collect();
+    let variant_strs: Vec<String> = data_enum
+        .variants
+        .iter()
+        .map(|v| v.ident.to_string())
+        .collect();
 
     let expanded = quote! {
         impl ::std::string::ToString for #name {

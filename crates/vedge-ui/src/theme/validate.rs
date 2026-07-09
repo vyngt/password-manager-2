@@ -154,7 +154,7 @@ fn check(
     };
 
     checks.push(ContrastResult {
-        pair_label: label.to_string(),
+        pair_label: label.to_owned(),
         ratio,
         required,
         pass,

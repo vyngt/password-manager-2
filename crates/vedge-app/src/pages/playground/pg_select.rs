@@ -39,7 +39,7 @@ pub fn SelectPage() -> impl IntoView {
                         "Selected: "
                         {move || {
                             let v = select_val.get();
-                            if v.is_empty() { "(none)".to_string() } else { v }
+                            if v.is_empty() { "(none)".to_owned() } else { v }
                         }}
                     </p>
                 </div>

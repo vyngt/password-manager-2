@@ -9,7 +9,7 @@
 use crate::api;
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
-use crate::i18n::*;
+use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -77,8 +77,8 @@ pub fn BiometricSetting() -> impl IntoView {
         error.set(None);
         busy.set(true);
         let path = vault_path();
-        let msg_wrong = t_string!(i18n, settings.biometric_wrong_password).to_string();
-        let msg_err = t_string!(i18n, settings.biometric_error).to_string();
+        let msg_wrong = t_string!(i18n, settings.biometric_wrong_password).to_owned();
+        let msg_err = t_string!(i18n, settings.biometric_error).to_owned();
         spawn_local(async move {
             match api::biometric::enroll(&path, &password).await {
                 Ok(()) => {
@@ -102,9 +102,9 @@ pub fn BiometricSetting() -> impl IntoView {
                 <div class="text-xs text-text-secondary mt-0.5">
                     {move || {
                         if available.get() {
-                            t_string!(i18n, settings.biometric_desc).to_string()
+                            t_string!(i18n, settings.biometric_desc).to_owned()
                         } else {
-                            t_string!(i18n, settings.biometric_unavailable).to_string()
+                            t_string!(i18n, settings.biometric_unavailable).to_owned()
                         }
                     }}
                 </div>
@@ -118,7 +118,7 @@ pub fn BiometricSetting() -> impl IntoView {
                             on_change=on_toggle
                             disabled=dis
                             aria_label=Signal::derive(move || {
-                                t_string!(i18n, settings.biometric).to_string()
+                                t_string!(i18n, settings.biometric).to_owned()
                             })
                         />
                     }
@@ -130,7 +130,7 @@ pub fn BiometricSetting() -> impl IntoView {
             open=Signal::derive(move || dialog_open.get())
             on_close=close
             size=DialogSize::Sm
-            close_label=Signal::derive(move || t_string!(i18n, settings.cancel).to_string())
+            close_label=Signal::derive(move || t_string!(i18n, settings.cancel).to_owned())
         >
             <DialogHeader>
                 <DialogTitle>{move || t!(i18n, settings.biometric_enroll_title)}</DialogTitle>
@@ -164,15 +164,15 @@ pub fn BiometricSetting() -> impl IntoView {
                         id="biometric-master-password"
                         input_type="password"
                         placeholder=Signal::derive(move || {
-                            t_string!(i18n, unlock.master_password).to_string()
+                            t_string!(i18n, unlock.master_password).to_owned()
                         })
                         value=Signal::derive(move || pw.get())
                         on_input=Callback::new(move |v: String| pw.set(v))
                         reveal_label=Signal::derive(move || {
-                            t_string!(i18n, onboarding.show_password).to_string()
+                            t_string!(i18n, onboarding.show_password).to_owned()
                         })
                         hide_label=Signal::derive(move || {
-                            t_string!(i18n, onboarding.hide_password).to_string()
+                            t_string!(i18n, onboarding.hide_password).to_owned()
                         })
                     />
                     {move || {

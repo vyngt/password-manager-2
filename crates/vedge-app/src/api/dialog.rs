@@ -6,10 +6,46 @@
 //! backend command (`create_vault`, `write_emergency_kit_pdf`) that does the
 //! actual file work.
 
+use std::cell::Cell;
+
 use serde::Serialize;
 
 use crate::api::error::ApiError;
 use crate::api::tauri::{dialog_open, dialog_save};
+
+thread_local! {
+    /// Depth of in-flight native dialogs. WASM is single-threaded, so a plain
+    /// `thread_local` counter is race-free. A native OS file dialog steals the
+    /// window's focus, which fires the DOM `blur` event — auto-lock must not
+    /// treat *our own* dialog as the user leaving the app.
+    /// See `crate::features::vault::auto_lock`.
+    static IN_DIALOG: Cell<u32> = const { Cell::new(0) };
+}
+
+/// True while a native file dialog opened by [`open`] / [`save`] is on screen.
+/// Read (untracked, non-reactive) by the auto-lock blur guard — safe to call
+/// from an owner-less JS callback because it touches only a `thread_local`.
+#[must_use]
+pub fn dialog_in_progress() -> bool {
+    IN_DIALOG.with(|c| c.get() > 0)
+}
+
+/// RAII marker: bumps the in-dialog counter for its lifetime and clears it on
+/// every exit path — including a dropped/cancelled future.
+struct DialogGuard;
+
+impl DialogGuard {
+    fn new() -> Self {
+        IN_DIALOG.with(|c| c.set(c.get().wrapping_add(1)));
+        Self
+    }
+}
+
+impl Drop for DialogGuard {
+    fn drop(&mut self) {
+        IN_DIALOG.with(|c| c.set(c.get().wrapping_sub(1)));
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DialogFilter {
@@ -31,8 +67,11 @@ pub struct SaveDialogOptions {
 /// Show a native save-file dialog. Returns the chosen path, or `None` when the
 /// user cancels.
 pub async fn save(options: &SaveDialogOptions) -> Result<Option<String>, ApiError> {
+    let _guard = DialogGuard::new();
     let args = serde_wasm_bindgen::to_value(options).map_err(ApiError::serialize)?;
-    let raw = dialog_save(args).await.map_err(ApiError::from_rejection)?;
+    let raw = dialog_save(args)
+        .await
+        .map_err(|e| ApiError::from_rejection(&e))?;
     // Resolves to a path string or `null` (cancelled).
     serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
 }
@@ -49,23 +88,45 @@ pub struct OpenDialogOptions {
 /// Show a native open-file dialog (single-select). Returns the chosen path, or
 /// `None` when the user cancels.
 pub async fn open(options: &OpenDialogOptions) -> Result<Option<String>, ApiError> {
+    let _guard = DialogGuard::new();
     let args = serde_wasm_bindgen::to_value(options).map_err(ApiError::serialize)?;
-    let raw = dialog_open(args).await.map_err(ApiError::from_rejection)?;
+    let raw = dialog_open(args)
+        .await
+        .map_err(|e| ApiError::from_rejection(&e))?;
     // Single-select resolves to a path string or `null` (cancelled).
     serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{DialogFilter, OpenDialogOptions, SaveDialogOptions};
+    use super::{
+        DialogFilter, DialogGuard, OpenDialogOptions, SaveDialogOptions, dialog_in_progress,
+    };
+
+    #[test]
+    fn dialog_guard_tracks_in_progress_and_nests() {
+        assert!(!dialog_in_progress());
+        {
+            let _outer = DialogGuard::new();
+            assert!(dialog_in_progress());
+            {
+                let _inner = DialogGuard::new();
+                assert!(dialog_in_progress());
+            }
+            // Inner dropped; outer still holds the flag.
+            assert!(dialog_in_progress());
+        }
+        // Both dropped; back to clear.
+        assert!(!dialog_in_progress());
+    }
 
     #[test]
     fn open_options_serialize_camel_case_and_omit_empty() {
         let opts = OpenDialogOptions {
-            title: Some("Open vault".to_string()),
+            title: Some("Open vault".to_owned()),
             filters: vec![DialogFilter {
-                name: "VEdge Vault".to_string(),
-                extensions: vec!["vdb".to_string()],
+                name: "VEdge Vault".to_owned(),
+                extensions: vec!["vdb".to_owned()],
             }],
         };
         let v = serde_json::to_value(&opts).unwrap();
@@ -80,11 +141,11 @@ mod tests {
     #[test]
     fn save_options_serialize_camel_case() {
         let opts = SaveDialogOptions {
-            title: Some("Save".to_string()),
-            default_path: Some("kit.pdf".to_string()),
+            title: Some("Save".to_owned()),
+            default_path: Some("kit.pdf".to_owned()),
             filters: vec![DialogFilter {
-                name: "PDF".to_string(),
-                extensions: vec!["pdf".to_string()],
+                name: "PDF".to_owned(),
+                extensions: vec!["pdf".to_owned()],
             }],
         };
         let v = serde_json::to_value(&opts).unwrap();

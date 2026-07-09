@@ -49,9 +49,8 @@ fn basic_items() -> Vec<MenuSection> {
 #[component]
 pub fn DropdownMenuPage() -> impl IntoView {
     let (last_action, set_last_action) = signal(String::new());
-    let make_action = move |name: &'static str| {
-        Callback::new(move |_: ()| set_last_action.set(name.to_string()))
-    };
+    let make_action =
+        move |name: &'static str| Callback::new(move |_: ()| set_last_action.set(name.to_owned()));
 
     let (open_count, set_open_count) = signal(0_u32);
     let (close_count, set_close_count) = signal(0_u32);
@@ -214,12 +213,7 @@ pub fn DropdownMenuPage() -> impl IntoView {
             <Section title="Grouped with keyboard shortcuts">
                 <DropdownMenu
                     trigger=Box::new(|| {
-                        view! {
-                            <Button variant=Variant::Secondary>
-                                "Sort by"
-                            </Button>
-                        }
-                            .into_any()
+                        view! { <Button variant=Variant::Secondary>"Sort by"</Button> }.into_any()
                     })
                     items=grouped_items
                 />
@@ -228,12 +222,7 @@ pub fn DropdownMenuPage() -> impl IntoView {
             <Section title="Link items (href)">
                 <DropdownMenu
                     trigger=Box::new(|| {
-                        view! {
-                            <Button variant=Variant::Secondary>
-                                "Open…"
-                            </Button>
-                        }
-                            .into_any()
+                        view! { <Button variant=Variant::Secondary>"Open…"</Button> }.into_any()
                     })
                     items=with_href
                 />
@@ -267,7 +256,11 @@ pub fn DropdownMenuPage() -> impl IntoView {
                 <DropdownMenu
                     disabled=true
                     trigger=Box::new(|| {
-                        view! { <Button variant=Variant::Secondary disabled=true>"Can't open"</Button> }
+                        view! {
+                            <Button variant=Variant::Secondary disabled=true>
+                                "Can't open"
+                            </Button>
+                        }
                             .into_any()
                     })
                     items=basic_items()
@@ -300,9 +293,12 @@ pub fn DropdownMenuPage() -> impl IntoView {
                     />
                     <div class="text-xs text-text-secondary">
                         "Opens: "
-                        <code class="text-text-primary">{move || open_count.get().to_string()}</code>
-                        " · Closes: "
-                        <code class="text-text-primary">{move || close_count.get().to_string()}</code>
+                        <code class="text-text-primary">
+                            {move || open_count.get().to_string()}
+                        </code> " · Closes: "
+                        <code class="text-text-primary">
+                            {move || close_count.get().to_string()}
+                        </code>
                     </div>
                 </div>
             </Section>
@@ -312,7 +308,7 @@ pub fn DropdownMenuPage() -> impl IntoView {
                 <code class="text-text-primary">
                     {move || {
                         let s = last_action.get();
-                        if s.is_empty() { "(none)".to_string() } else { s }
+                        if s.is_empty() { "(none)".to_owned() } else { s }
                     }}
                 </code>
             </div>

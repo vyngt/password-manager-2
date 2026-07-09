@@ -16,14 +16,14 @@ pub fn ProgressBar(
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let seq = PROGRESS_ID_SEQ.fetch_add(1, Ordering::Relaxed);
-    let label_id = StoredValue::new(format!("progress-label-{}", seq));
+    let label_id = StoredValue::new(format!("progress-label-{seq}"));
 
     let clamped = Memo::new(move |_| {
         let v = value.get();
         #[cfg(debug_assertions)]
         if !(0.0..=100.0).contains(&v) {
             web_sys::console::warn_1(
-                &format!("ProgressBar: value {} is outside 0–100 and was clamped.", v).into(),
+                &format!("ProgressBar: value {v} is outside 0–100 and was clamped.").into(),
             );
         }
         v.clamp(0.0, 100.0)

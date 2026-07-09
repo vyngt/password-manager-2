@@ -12,7 +12,7 @@ pub static VEdge: &icondata_core::IconData = &icondata_core::IconData {
     stroke_width: None,
     stroke: None,
     fill: None,
-    data: r###"<path
+    data: r#"<path
                 d="
                 M 390.90 648.16
                 Q 391.02 647.89 394.18 645.17
@@ -295,5 +295,5 @@ pub static VEdge: &icondata_core::IconData = &icondata_core::IconData {
                 Q 283.55 828.36 280.67 830.65
                 Q 273.72 836.19 263.59 844.33
                 Q 261.22 846.24 258.12 848.13
-                Z" />"###,
+                Z" />"#,
 };

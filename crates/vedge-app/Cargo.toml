@@ -25,5 +25,5 @@ vedge-ipc = { path = "../vedge-ipc" }
 [build-dependencies]
 leptos_i18n_build = { version = "0.6.2", features = ["csr"] }
 
-# TODO(lint-adoption): opt into `[lints] workspace = true` after the UI-layer
-# cleanup pass. See docs/CoreTracking.md §"Lint adoption".
+[lints]
+workspace = true

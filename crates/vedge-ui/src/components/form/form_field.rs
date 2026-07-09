@@ -58,12 +58,7 @@ pub fn FormField(
 
     view! {
         <div class=root_cls aria-required=required.then_some("true")>
-            <Label
-                html_for=id
-                required=required
-                status=status
-                disabled=disabled
-            >
+            <Label html_for=id required=required status=status disabled=disabled>
                 {move || text_or(label, "")}
             </Label>
             <div class="form-field__control">{children()}</div>

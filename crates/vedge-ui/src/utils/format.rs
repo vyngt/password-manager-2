@@ -17,7 +17,7 @@ pub fn format_bytes(n: u64) -> String {
     } else if n >= KB {
         format!("{:.0} KB", n as f64 / KB as f64)
     } else {
-        format!("{} B", n)
+        format!("{n} B")
     }
 }
 
@@ -32,6 +32,6 @@ pub fn format_float_display(val: f64) -> String {
     if val.is_finite() && val == val.trunc() {
         format!("{}", val as i64)
     } else {
-        format!("{}", val)
+        format!("{val}")
     }
 }

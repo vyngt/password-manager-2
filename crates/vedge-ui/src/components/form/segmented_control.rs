@@ -83,14 +83,13 @@ pub fn SegmentedControl(
         request_animation_frame(move || {
             if let Some(root) = root_ref.get_untracked() {
                 let raw: &web_sys::HtmlElement = &root;
-                let selector = format!("[data-value=\"{}\"]", val);
+                let selector = format!("[data-value=\"{val}\"]");
                 if let Ok(Some(el)) = raw.query_selector(&selector) {
                     if let Some(btn) = el.dyn_ref::<web_sys::HtmlElement>() {
                         let left = btn.offset_left();
                         let width = btn.offset_width();
                         indicator_style.set(format!(
-                            "transform: translateX({}px); width: {}px;",
-                            left, width
+                            "transform: translateX({left}px); width: {width}px;"
                         ));
                     }
                 }
@@ -104,7 +103,12 @@ pub fn SegmentedControl(
         }
     };
 
-    // Keyboard handler (roving tabindex)
+    // Keyboard handler (roving tabindex).
+    #[allow(
+        clippy::indexing_slicing,
+        reason = "indices are (idx ± 1) % option_count == opts.len() — provably in bounds; \
+                  rewriting to `.get()` would force a dead `None` branch on selection"
+    )]
     let handle_keydown = move |ev: web_sys::KeyboardEvent| {
         let key = ev.key();
         let is_nav = matches!(key.as_str(), "ArrowLeft" | "ArrowRight");
@@ -192,13 +196,12 @@ pub fn SegmentedControl(
                     let opt_disabled = opt.disabled;
                     let item_disabled = disabled || opt_disabled;
                     let is_active = {
-                        let v = val.clone();
+                        let v = val;
                         move || value.get() == v
                     };
                     let is_active2 = is_active.clone();
                     let tab_idx = move || if is_active2() { 0 } else { -1 };
                     let on_click = {
-                        let select_value = select_value.clone();
                         let val = val2.clone();
                         move |_: web_sys::MouseEvent| {
                             if !item_disabled {
