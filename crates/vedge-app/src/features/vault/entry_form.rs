@@ -681,7 +681,7 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
             anchor=anchor
             placement=PopoverPlacement::BottomEnd
         >
-            <div class="w-80">
+            <div class="w-96">
                 <GeneratorPanel on_use=on_use />
             </div>
         </Popover>
