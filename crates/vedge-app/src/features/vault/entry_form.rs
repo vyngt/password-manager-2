@@ -14,6 +14,7 @@ use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
+use vedge_generator::{RandomConfig, generate_random};
 use vedge_ipc::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, CommonMetaDto, EntryTypeDto, EnvVarDto,
     EnvVarsPayloadDto, FolderPayloadDto, IdentityPayloadDto, LoginPayloadDto, NotePayloadDto,
@@ -26,7 +27,11 @@ use vedge_ui::components::form::date_picker::{
     DatePicker, DatePickerValue, DatePickerVariant, YearMonth,
 };
 use vedge_ui::components::form::textarea::Textarea;
+use vedge_ui::components::popover::{Popover, PopoverPlacement};
 use vedge_ui::primitives::tokens::{Size, Variant};
+
+use crate::features::generator::generator_panel::GeneratorPanel;
+use crate::features::settings::generator_prefs::GeneratorPrefsCtx;
 
 /// The entry types the create picker offers. Excludes `Document` (needs a blob
 /// sidecar — slice 2.1.1) and `Folder` (created from the folder tree's "+", not
@@ -611,6 +616,78 @@ fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
     }
 }
 
+/// The Login password field with inline generate affordances (slice 3.3): the
+/// masked `Input`, a one-click **Generate** wand that fills from the last-used
+/// preset, and a caret that opens a [`Popover`]-hosted [`GeneratorPanel`] to tune
+/// + "Use". The buttons are siblings (the password `Input` renders its own eye
+/// and ignores a trailing slot) — mirrors [`SshPrivateKeyField`]'s layout.
+#[component]
+fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
+    let i18n = use_i18n();
+    let prefs = expect_context::<GeneratorPrefsCtx>().0;
+    let popover_open = RwSignal::new(false);
+    let field_ref = NodeRef::<leptos::html::Div>::new();
+    let anchor = Signal::derive(move || {
+        field_ref
+            .get()
+            .map(|el| -> web_sys::HtmlElement { el.into() })
+    });
+
+    // One click, no dialog: draw from the shared preset and fill the field signal.
+    // The engine's `Zeroizing<String>` is copied into the form's existing plain
+    // `String` field (pre-existing Phase-2 model) — no new persistence/exposure.
+    let quick_generate = Callback::new(move |()| {
+        if let Ok(g) = generate_random(&RandomConfig::from(prefs.get_untracked())) {
+            let pw = g.secret.as_str().to_owned();
+            data.update(|d| d.password = pw);
+        }
+    });
+    let on_use = Callback::new(move |secret: String| {
+        data.update(|d| d.password = secret);
+        popover_open.set(false);
+    });
+
+    view! {
+        <div node_ref=field_ref class="col-span-2 flex items-center gap-2">
+            <div class="flex-1">
+                {secret_field!(data, i18n, "ef-password", password, form_password)}
+            </div>
+            <IconButton
+                variant=Variant::Ghost
+                size=Size::Sm
+                on_click=quick_generate
+                aria_label=Signal::derive(move || {
+                    t_string!(i18n, vault.generate_password).to_owned()
+                })
+            >
+                <span aria-hidden="true">
+                    <Icon icon=i::FaWandMagicSparklesSolid />
+                </span>
+            </IconButton>
+            <IconButton
+                variant=Variant::Ghost
+                size=Size::Sm
+                on_click=Callback::new(move |()| popover_open.update(|o| *o = !*o))
+                aria_label=Signal::derive(move || t_string!(i18n, vault.generate_tune).to_owned())
+            >
+                <span aria-hidden="true">
+                    <Icon icon=i::FaAngleDownSolid />
+                </span>
+            </IconButton>
+        </div>
+        <Popover
+            open=popover_open
+            on_close=Callback::new(move |()| popover_open.set(false))
+            anchor=anchor
+            placement=PopoverPlacement::BottomEnd
+        >
+            <div class="w-80">
+                <GeneratorPanel on_use=on_use />
+            </div>
+        </Popover>
+    }
+}
+
 /// Renders the field set for the current entry type over a single
 /// `RwSignal<EntryFormData>`. The structural branch is driven by a `Memo` on
 /// `entry_type` so typing in a field never rebuilds the input tree (which would
@@ -628,7 +705,7 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                 EntryTypeDto::Login => {
                     view! {
                         {text_field!(data, i18n, "ef-username", username, form_identifier)}
-                        {secret_field!(data, i18n, "ef-password", password, form_password)}
+                        <LoginPasswordField data=data />
                         {secret_field!(data, i18n, "ef-totp", totp, field_totp)}
                     }
                         .into_any()
