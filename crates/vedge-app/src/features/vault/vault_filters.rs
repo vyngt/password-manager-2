@@ -11,11 +11,12 @@
 use crate::features::vault::entry_form::{type_from_key, type_to_key};
 use crate::features::vault::entry_view::type_label_i18n;
 use crate::features::vault::folder_tree::{FolderScope, scope_matches};
+use crate::features::vault::timestamps::ts_millis;
 use crate::features::vault::vault_search::VaultSearch;
 use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use vedge_ipc::{EntryTypeDto, IndexEntryDto, TagMetaDto};
 use vedge_ui::components::select::{Select, SelectItem};
@@ -75,14 +76,18 @@ pub fn filter_and_sort(
         .cloned()
         .collect();
 
-    // RFC-3339 millis-precision UTC (`…Z`) strings are fixed-width, so a lexical
-    // compare is chronological — no date parsing needed.
+    // Timestamps are RFC-3339 DTO *strings*, so they are parsed to the absolute
+    // instant before comparison — never compared lexically (a variable-width or
+    // non-`Z` form would sort by text, not by time). `sort_by_cached_key` parses
+    // once per element (O(n)) and is a stable sort, so equal instants keep input
+    // order. See [`super::timestamps`] for the standing rule.
     match sort {
         SortKey::NameAsc => out.sort_by_key(|e| e.name.to_lowercase()),
-        SortKey::RecentlyUpdated => out.sort_by(|a, b| b.updated_at.cmp(&a.updated_at)),
-        SortKey::RecentlyUsed => {
-            out.sort_by(|a, b| cmp_accessed_desc(&a.accessed_at, &b.accessed_at));
-        }
+        SortKey::RecentlyUpdated => out.sort_by_cached_key(|e| Reverse(ts_millis(&e.updated_at))),
+        SortKey::RecentlyUsed => out.sort_by_cached_key(|e| {
+            // `None`/unparseable → `i64::MIN` → `Reverse` largest → sorts last.
+            Reverse(e.accessed_at.as_deref().map_or(i64::MIN, ts_millis))
+        }),
         SortKey::Manual => out.sort_by(|a, b| {
             a.sort_order
                 .cmp(&b.sort_order)
@@ -150,16 +155,6 @@ pub fn query_matches(e: &IndexEntryDto, q: &str, tag_names: &HashMap<String, Str
         .iter()
         .filter_map(|id| tag_names.get(id))
         .any(|name| name.to_lowercase().contains(q))
-}
-
-/// `accessed_at` descending with `None` sorted last.
-fn cmp_accessed_desc(a: &Option<String>, b: &Option<String>) -> Ordering {
-    match (a, b) {
-        (Some(x), Some(y)) => y.cmp(x),
-        (Some(_), None) => Ordering::Less,
-        (None, Some(_)) => Ordering::Greater,
-        (None, None) => Ordering::Equal,
-    }
 }
 
 /// The entry types offered in the type facet — the listable variants (including
@@ -637,6 +632,60 @@ mod tests {
             SortKey::RecentlyUsed,
         );
         assert_eq!(ids(&r), ["b", "a", "c"]);
+    }
+
+    #[test]
+    fn sort_recently_updated_orders_by_instant_not_text() {
+        // Regression guard for the old lexical compare: `"12:…+02:00"` (10:00Z)
+        // is textually greater than `"11:…Z"` (11:00Z) but is the EARLIER instant.
+        // A correct descending-recency sort puts the `Z` value (later) first — the
+        // old `String::cmp` would have put "earlier" first and failed this test.
+        let mut earlier = entry("earlier", "Earlier");
+        earlier.updated_at = "2026-07-05T12:00:00.000+02:00".into(); // 10:00 UTC
+        let mut later = entry("later", "Later");
+        later.updated_at = "2026-07-05T11:00:00.000Z".into(); // 11:00 UTC
+        let items = vec![earlier, later];
+        let r = filter_and_sort(
+            &items,
+            &Filters::default(),
+            &HashMap::new(),
+            SortKey::RecentlyUpdated,
+        );
+        assert_eq!(ids(&r), ["later", "earlier"]);
+    }
+
+    #[test]
+    fn sort_recently_used_orders_by_instant_not_text() {
+        // Same lexical-vs-instant disagreement on `accessed_at`.
+        let mut earlier = entry("earlier", "Earlier");
+        earlier.accessed_at = Some("2026-07-05T12:00:00.000+02:00".into()); // 10:00 UTC
+        let mut later = entry("later", "Later");
+        later.accessed_at = Some("2026-07-05T11:00:00.000Z".into()); // 11:00 UTC
+        let items = vec![earlier, later];
+        let r = filter_and_sort(
+            &items,
+            &Filters::default(),
+            &HashMap::new(),
+            SortKey::RecentlyUsed,
+        );
+        assert_eq!(ids(&r), ["later", "earlier"]);
+    }
+
+    #[test]
+    fn sort_recently_updated_unparseable_is_total_and_last() {
+        // A garbage stamp maps to `i64::MIN` → sorts oldest (last), never panics.
+        let mut good = entry("good", "Good");
+        good.updated_at = "2026-01-01T00:00:00.000Z".into();
+        let mut bad = entry("bad", "Bad");
+        bad.updated_at = "not a timestamp".into();
+        let items = vec![bad, good];
+        let r = filter_and_sort(
+            &items,
+            &Filters::default(),
+            &HashMap::new(),
+            SortKey::RecentlyUpdated,
+        );
+        assert_eq!(ids(&r), ["good", "bad"]);
     }
 
     #[test]

@@ -6,10 +6,10 @@ pub mod theme;
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::shared::{StorageError, Timestamp};
+use crate::domain::shared::{StorageError, Timestamp, format_rfc3339_millis};
 
 pub(crate) fn ts_to_string(ts: &Timestamp) -> String {
-    ts.to_rfc3339()
+    format_rfc3339_millis(*ts)
 }
 
 pub(crate) fn string_to_ts(raw: &str) -> Result<Timestamp, StorageError> {
