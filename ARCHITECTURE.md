@@ -160,7 +160,9 @@ skips OS clipboard history / cloud sync and well-behaved managers, alongside the
 
 - **`vedge-app`** — Leptos CSR: pages under `/` (launch/unlock) and `/v` (the unlocked vault:
   list/detail/edit, search, command palette, folders, settings). State is signals/stores + a few
-  well-scoped contexts (`ActiveVault`, `VaultUiState`, `SecurityPrefsCtx`, `ThemeState`).
+  well-scoped contexts (`ActiveVault`, `VaultUiState`, `SecurityPrefsCtx`, `GeneratorPrefsCtx`,
+  `ThemeState`). App-global preferences (auto-lock/clipboard, the last-used generator preset) live in the
+  `app_settings` KV store under fixed keys (`security.prefs`, `generator.prefs`).
 - **`vedge-ui`** — the reusable component library and the OKLCH theme engine (light/dark/custom themes,
   injected as CSS custom properties). CSR-only; styles live in `styles/*.css` under `@layer components`.
 

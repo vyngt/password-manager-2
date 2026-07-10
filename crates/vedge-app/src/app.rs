@@ -4,6 +4,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::api;
+use crate::features::settings::generator_prefs::{self, GeneratorPrefs, GeneratorPrefsCtx};
 use crate::features::settings::security_prefs::{
     self, SecurityPrefs, SecurityPrefsCtx, SecurityPrefsLoaded,
 };
@@ -135,6 +136,18 @@ pub fn App() -> impl IntoView {
         spawn_local(async move {
             security.0.set(security_prefs::load().await);
             security_loaded.0.set(true);
+        });
+    });
+
+    // App-global generator preset (last-used charset config), shared by the
+    // inline quick-generate button, the expand-to-tune popover, and the
+    // standalone `/v/generator` panel. Defaults are a valid starting preset, so
+    // there's no load gate (nothing to hide before the persisted value arrives).
+    let gen_prefs = GeneratorPrefsCtx(RwSignal::new(GeneratorPrefs::default()));
+    provide_context(gen_prefs);
+    Effect::new(move |_| {
+        spawn_local(async move {
+            gen_prefs.0.set(generator_prefs::load().await);
         });
     });
 
