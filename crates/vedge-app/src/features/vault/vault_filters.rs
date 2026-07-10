@@ -193,9 +193,10 @@ fn sort_from_key(k: &str) -> SortKey {
     }
 }
 
-/// The filter/sort toolbar: search box + type / tag / view / sort dropdowns +
-/// a favorites toggle. Each control is bound to a page-owned `RwSignal`; the
-/// derived list (and the fetch source, for `trashed_view`) reacts in `vault.rs`.
+/// The filter/sort toolbar: search box + type / tag / sort dropdowns + a
+/// favorites toggle. Each control is bound to a page-owned `RwSignal`; the
+/// derived list reacts in `vault.rs`. (Active vs. Trash is now a sidebar folder,
+/// not a filter here — slice 3.6.)
 #[component]
 pub fn VaultFilters(
     search_query: RwSignal<String>,
@@ -203,7 +204,6 @@ pub fn VaultFilters(
     tag_id: RwSignal<Option<String>>,
     favorites_only: RwSignal<bool>,
     sort: RwSignal<SortKey>,
-    trashed_view: RwSignal<bool>,
     #[prop(into)] tags: Signal<Vec<TagMetaDto>>,
 ) -> impl IntoView {
     let i18n = use_i18n();
@@ -276,28 +276,6 @@ pub fn VaultFilters(
                             on_change=Callback::new(move |id: String| {
                                 tag_id.set(if id.is_empty() { None } else { Some(id) });
                             })
-                        />
-                    }
-                }}
-            </div>
-
-            // Active vs trashed — switches the fetch source in vault.rs.
-            <div class="w-32 shrink-0">
-                {move || {
-                    let options = vec![
-                        SelectItem::option("active", t_string!(i18n, vault.view_active).to_owned()),
-                        SelectItem::option("trash", t_string!(i18n, vault.view_trash).to_owned()),
-                    ];
-                    view! {
-                        <Select
-                            options=options
-                            value=Signal::derive(move || {
-                                if trashed_view.get() { "trash" } else { "active" }.to_owned()
-                            })
-                            aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_view_aria).to_owned()
-                            })
-                            on_change=Callback::new(move |v: String| trashed_view.set(v == "trash"))
                         />
                     }
                 }}

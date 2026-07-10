@@ -17,6 +17,7 @@ pub mod smart_folders;
 pub mod tag_assign;
 pub mod tag_manager;
 pub mod timestamps;
+pub mod trash_confirm;
 pub mod ui_state;
 pub mod vault_create_form;
 pub mod vault_detail;

@@ -25,6 +25,10 @@ pub fn VaultTable(
     #[prop(into)]
     tags: Signal<HashMap<String, TagMetaDto>>,
     on_delete: Callback<String>,
+    /// Restore a trashed entry to the active vault (trash view only). Takes the id.
+    on_restore: Callback<String>,
+    /// Permanently delete a trashed entry (trash view only) — opens the confirm. Takes the entry.
+    on_hard_delete: Callback<IndexEntryDto>,
     on_select: Callback<IndexEntryDto>,
     /// `(entry_id, next_state)` — flip the row's favorite flag.
     on_favorite: Callback<(String, bool)>,
@@ -85,6 +89,8 @@ pub fn VaultTable(
                                         hide_delete=hide_delete
                                         tags=tags
                                         on_delete=on_delete
+                                        on_restore=on_restore
+                                        on_hard_delete=on_hard_delete
                                         on_select=on_select
                                         on_favorite=on_favorite
                                         on_move_request=on_move_request
@@ -107,6 +113,8 @@ fn VaultTableRow(
     hide_delete: Signal<bool>,
     tags: Signal<HashMap<String, TagMetaDto>>,
     on_delete: Callback<String>,
+    on_restore: Callback<String>,
+    on_hard_delete: Callback<IndexEntryDto>,
     on_select: Callback<IndexEntryDto>,
     on_favorite: Callback<(String, bool)>,
     on_move_request: Callback<IndexEntryDto>,
@@ -117,6 +125,10 @@ fn VaultTableRow(
 
     let entry_for_select = item.clone();
     let entry_for_move = item.clone();
+    // Trash-view action cluster (shown when `hide_delete` is true): Restore takes
+    // the id, Delete-permanently takes the whole entry (to open the named confirm).
+    let restore_id = item.id.clone();
+    let entry_for_hard_delete = item.clone();
     let item_id = item.id.clone();
     // Stable per-entry hook for the e2e harness (slice 2.9.2) — lets a test
     // address a specific row without matching on (localized) cell text.
@@ -249,9 +261,46 @@ fn VaultTableRow(
             </td>
             <td class="p-3 text-sm text-foreground/60">{updated}</td>
             <td class="p-3">
-                <Show when=move || {
-                    !hide_delete.get()
-                }>
+                <Show
+                    when=move || { !hide_delete.get() }
+                    fallback=move || {
+                        let restore_id = restore_id.clone();
+                        let entry_for_hard_delete = entry_for_hard_delete.clone();
+                        // Trashed rows: Restore + Delete-permanently (the inverse
+                        // of the active-view Move + Delete). Clone per render — the
+                        // fallback is a re-runnable `Fn`.
+                        view! {
+                            <div class="flex items-center gap-1">
+                                <IconButton
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.restore).to_owned()
+                                    })
+                                    variant=Variant::Ghost
+                                    size=Size::Sm
+                                    on:click=move |ev: web_sys::MouseEvent| {
+                                        ev.stop_propagation();
+                                        on_restore.run(restore_id.clone());
+                                    }
+                                >
+                                    <Icon attr:aria-hidden="true" icon=i::FaTrashArrowUpSolid />
+                                </IconButton>
+                                <IconButton
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.delete_permanently).to_owned()
+                                    })
+                                    variant=Variant::Danger
+                                    size=Size::Sm
+                                    on:click=move |ev: web_sys::MouseEvent| {
+                                        ev.stop_propagation();
+                                        on_hard_delete.run(entry_for_hard_delete.clone());
+                                    }
+                                >
+                                    <Icon attr:aria-hidden="true" icon=i::FaTrashCanSolid />
+                                </IconButton>
+                            </div>
+                        }
+                    }
+                >
                     {
                         let item_id = item_id.clone();
                         let entry_for_move = entry_for_move.clone();
