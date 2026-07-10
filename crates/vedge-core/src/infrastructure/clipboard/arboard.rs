@@ -39,7 +39,41 @@ impl ClipboardProvider for ArboardClipboardProvider {
                 "clipboard mutex poisoned".into(),
             )));
         };
-        cb.set_text(text).map_err(|e| clipboard_err("set", &e))
+        // Every value handed to `set` is a secret (the only production caller is
+        // `place_text_on_clipboard`), so the platform *exclusion hints* are
+        // applied unconditionally — no per-call flag. They stop the value from
+        // being *captured* at set-time by clipboard history / cloud sync / third-
+        // party managers, which the 30 s clear timer can't undo. arboard 3.6
+        // exposes each hint on its `Set` builder under `default-features = false`
+        // (target-cfg-gated, not feature-gated), so no shim is needed.
+        let builder = cb.set();
+        // Windows: `ExcludeClipboardContentFromMonitorProcessing` — the documented
+        // superset that also suppresses Win+V history and cloud clipboard upload.
+        #[cfg(target_os = "windows")]
+        let builder = {
+            use arboard::SetExtWindows as _;
+            builder.exclude_from_monitoring()
+        };
+        // macOS: writes the `org.nspasteboard.ConcealedType` pasteboard type
+        // honored by well-behaved clipboard managers.
+        #[cfg(target_os = "macos")]
+        let builder = {
+            use arboard::SetExtApple as _;
+            builder.exclude_from_history()
+        };
+        // Linux/X11: advertises the concealment targets (incl.
+        // `x-kde-passwordManagerHint`) respected by Klipper and others. Wayland
+        // has no universal hint and arboard's Wayland exclusion is behind the
+        // `wayland-data-control` feature (off here) — documented residual risk.
+        #[cfg(all(
+            unix,
+            not(any(target_os = "macos", target_os = "android", target_os = "emscripten"))
+        ))]
+        let builder = {
+            use arboard::SetExtLinux as _;
+            builder.exclude_from_history()
+        };
+        builder.text(text).map_err(|e| clipboard_err("set", &e))
     }
 
     #[instrument(skip_all)]

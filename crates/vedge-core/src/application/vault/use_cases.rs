@@ -25,7 +25,7 @@ pub mod update_entry;
 
 pub use biometric::enroll_biometric;
 pub use change_password::{ChangePasswordInput, change_password};
-pub use copy_field::{CopyFieldInput, FieldSelector, copy_field};
+pub use copy_field::{CopyFieldInput, FieldSelector, copy_field, place_text_on_clipboard};
 pub use create_entry::{CreateEntryInput, CreateEntryOutput, create_entry};
 pub use create_vault::{CreateVault, CreateVaultInput, CreateVaultOutput};
 pub use document_ops::{
