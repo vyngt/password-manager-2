@@ -59,6 +59,8 @@ pub use random::{CharClasses, RandomConfig, generate_random, random_entropy_bits
 pub const MIN_LEN: u32 = 4;
 /// Maximum secret length the length-based modes will produce.
 pub const MAX_LEN: u32 = 128;
+/// Maximum number of secrets a single [`generate_many`] batch will produce.
+pub const MAX_BATCH: u32 = 50;
 
 /// A generated secret plus the entropy of the process that produced it.
 ///
@@ -89,6 +91,8 @@ pub enum GenError {
     EmptyPattern,
     /// A pattern was malformed (a dangling escape).
     InvalidPattern,
+    /// A bulk [`generate_many`] count was outside `[1, MAX_BATCH]`.
+    BatchOutOfRange,
 }
 
 impl core::fmt::Display for GenError {
@@ -100,6 +104,7 @@ impl core::fmt::Display for GenError {
             Self::WordCountOutOfRange => "word count out of range",
             Self::EmptyPattern => "pattern has no random tokens",
             Self::InvalidPattern => "invalid pattern",
+            Self::BatchOutOfRange => "batch count out of range",
         })
     }
 }
@@ -185,6 +190,43 @@ pub(crate) fn generate_with_spec<R: Rng>(
     }
 }
 
+/// Generate `count` independent secrets for `spec` from the OS/browser CSPRNG.
+///
+/// Each item is an independent CSPRNG draw (the RNG is fetched once and looped),
+/// so — for a fixed spec — every item carries the same `entropy_bits` but a
+/// distinct secret. The whole batch is a deliberate, bounded set of live copies
+/// (see the session-history memory-hygiene note); `count` is capped at
+/// [`MAX_BATCH`].
+///
+/// # Errors
+/// - [`GenError::BatchOutOfRange`] if `count` is not in `[1, MAX_BATCH]`.
+/// - The mode-specific [`GenError`] for the active arm (validated once, before
+///   the loop, so an invalid spec fails fast without allocating a partial batch).
+pub fn generate_many(spec: &GenSpec, count: u32) -> Result<Vec<GeneratedSecret>, GenError> {
+    generate_many_with(spec, count, &mut rand::rng())
+}
+
+/// Seeded core for [`generate_many`] — mirrors the [`generate`] /
+/// [`generate_with_spec`] split so tests can inject a deterministic RNG.
+pub(crate) fn generate_many_with<R: Rng>(
+    spec: &GenSpec,
+    count: u32,
+    rng: &mut R,
+) -> Result<Vec<GeneratedSecret>, GenError> {
+    if !(1..=MAX_BATCH).contains(&count) {
+        return Err(GenError::BatchOutOfRange);
+    }
+    // Validate the config once up front so an invalid spec fails fast without
+    // allocating (the entropy preview shares every arm's validation with
+    // `generate_with_spec`).
+    entropy_bits(spec)?;
+    let mut out = Vec::new();
+    for _ in 0..count {
+        out.push(generate_with_spec(spec, rng)?);
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,5 +281,77 @@ mod tests {
         assert_eq!(entropy_band(89.9), 3);
         assert_eq!(entropy_band(90.0), 4);
         assert_eq!(entropy_band(256.0), 4);
+    }
+
+    #[test]
+    fn generate_many_returns_exact_count_and_per_item_entropy() {
+        let spec = GenSpec::Random(RandomConfig::default());
+        let expected_bits = entropy_bits(&spec).unwrap();
+        let mut rng = StdRng::seed_from_u64(7);
+        let batch = generate_many_with(&spec, 12, &mut rng).unwrap();
+        assert_eq!(batch.len(), 12);
+        for item in &batch {
+            assert!(!item.secret.is_empty());
+            // Fixed config → identical process entropy for every item.
+            assert_eq!(item.entropy_bits, expected_bits);
+        }
+    }
+
+    #[test]
+    fn generate_many_is_deterministic_under_seed() {
+        let spec = GenSpec::Passphrase(PassphraseConfig::default());
+        let mut a = StdRng::seed_from_u64(99);
+        let mut b = StdRng::seed_from_u64(99);
+        let batch_a = generate_many_with(&spec, 8, &mut a).unwrap();
+        let batch_b = generate_many_with(&spec, 8, &mut b).unwrap();
+        let seq_a: Vec<&str> = batch_a.iter().map(|g| g.secret.as_str()).collect();
+        let seq_b: Vec<&str> = batch_b.iter().map(|g| g.secret.as_str()).collect();
+        assert_eq!(seq_a, seq_b);
+    }
+
+    #[test]
+    fn generate_many_items_are_distinct_for_high_entropy_spec() {
+        use std::collections::HashSet;
+        let spec = GenSpec::Random(RandomConfig::default()); // 20 chars, all classes → ~130 bits
+        let mut rng = StdRng::seed_from_u64(3);
+        let batch = generate_many_with(&spec, MAX_BATCH, &mut rng).unwrap();
+        let distinct: HashSet<&str> = batch.iter().map(|g| g.secret.as_str()).collect();
+        assert_eq!(distinct.len(), batch.len(), "all secrets should differ");
+    }
+
+    #[test]
+    fn generate_many_rejects_out_of_range_count() {
+        // `GeneratedSecret` is deliberately not `Debug`/`PartialEq`, so assert on
+        // the error via `matches!` rather than `assert_eq!` on the whole `Result`.
+        let spec = GenSpec::Pin(PinConfig::default());
+        let mut rng = StdRng::seed_from_u64(1);
+        assert!(matches!(
+            generate_many_with(&spec, 0, &mut rng),
+            Err(GenError::BatchOutOfRange)
+        ));
+        assert!(matches!(
+            generate_many_with(&spec, MAX_BATCH + 1, &mut rng),
+            Err(GenError::BatchOutOfRange)
+        ));
+    }
+
+    #[test]
+    fn generate_many_fails_fast_on_invalid_config() {
+        // Random with every class disabled → NoClassSelected, surfaced before the loop.
+        let cfg = RandomConfig {
+            classes: CharClasses {
+                lowercase: false,
+                uppercase: false,
+                digits: false,
+                symbols: false,
+            },
+            ..RandomConfig::default()
+        };
+        let spec = GenSpec::Random(cfg);
+        let mut rng = StdRng::seed_from_u64(1);
+        assert!(matches!(
+            generate_many_with(&spec, 10, &mut rng),
+            Err(GenError::NoClassSelected)
+        ));
     }
 }

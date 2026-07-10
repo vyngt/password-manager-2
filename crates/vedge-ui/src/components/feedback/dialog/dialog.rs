@@ -1,11 +1,57 @@
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::DialogSize;
 use leptos::prelude::*;
+use std::cell::Cell;
 use std::time::Duration;
 use wasm_bindgen::JsCast;
 
 const FOCUSABLE_SELECTOR: &str = "button:not([disabled]), [href], input:not([disabled]), \
     select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+thread_local! {
+    /// Number of open Dialogs currently holding the body scroll-lock. The
+    /// `dialog-scroll-lock` class is added on the 0→1 transition and removed on
+    /// 1→0, so a **nested** Dialog closing (e.g. the generator modal opened from
+    /// inside the Edit dialog) doesn't unlock body scroll while an outer Dialog
+    /// is still open.
+    static SCROLL_LOCKS: Cell<u32> = const { Cell::new(0) };
+}
+
+fn body_class_list() -> Option<web_sys::DomTokenList> {
+    web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.body())
+        .map(|b| b.class_list())
+}
+
+/// Acquire the shared body scroll-lock; adds the class only on the first hold.
+fn acquire_scroll_lock() {
+    let count = SCROLL_LOCKS.with(|c| {
+        let n = c.get() + 1;
+        c.set(n);
+        n
+    });
+    if count == 1 {
+        if let Some(cl) = body_class_list() {
+            let _ = cl.add_1("dialog-scroll-lock");
+        }
+    }
+}
+
+/// Release the shared body scroll-lock; removes the class only when the last
+/// holder releases.
+fn release_scroll_lock() {
+    let count = SCROLL_LOCKS.with(|c| {
+        let n = c.get().saturating_sub(1);
+        c.set(n);
+        n
+    });
+    if count == 0 {
+        if let Some(cl) = body_class_list() {
+            let _ = cl.remove_1("dialog-scroll-lock");
+        }
+    }
+}
 
 /// Context shared from `Dialog` to its subtree.
 ///
@@ -41,6 +87,9 @@ pub fn Dialog(
     let previously_focused: StoredValue<Option<web_sys::HtmlElement>> = StoredValue::new(None);
     let dialog_ref = NodeRef::<leptos::html::Div>::new();
     let children_stored = StoredValue::new(children);
+    // Per-instance guard so this Dialog contributes at most one hold to the
+    // shared scroll-lock refcount, even if the open Effect re-runs redundantly.
+    let scroll_locked: StoredValue<bool> = StoredValue::new(false);
 
     // Context for sub-components (DialogHeader/Title/Body/Footer). MUST be
     // provided via the explicit `<Provider>` scope around the dialog subtree in
@@ -72,11 +121,9 @@ pub fn Dialog(
             previously_focused.set_value(active_el);
 
             data_state.set(None);
-            if let Some(body) = web_sys::window()
-                .and_then(|w| w.document())
-                .and_then(|d| d.body())
-            {
-                let _ = body.class_list().add_1("dialog-scroll-lock");
+            if !scroll_locked.get_value() {
+                scroll_locked.set_value(true);
+                acquire_scroll_lock();
             }
 
             set_timeout(
@@ -88,11 +135,9 @@ pub fn Dialog(
             );
         } else {
             data_state.set(None);
-            if let Some(body) = web_sys::window()
-                .and_then(|w| w.document())
-                .and_then(|d| d.body())
-            {
-                let _ = body.class_list().remove_1("dialog-scroll-lock");
+            if scroll_locked.get_value() {
+                scroll_locked.set_value(false);
+                release_scroll_lock();
             }
             if let Some(el) = previously_focused.get_value() {
                 let _ = el.focus();
@@ -101,14 +146,12 @@ pub fn Dialog(
         }
     });
 
-    // Ensure scroll-lock class is removed if the Dialog is unmounted
-    // mid-animation (e.g. parent route change).
+    // Ensure this Dialog's scroll-lock hold is released if it is unmounted
+    // mid-open (e.g. parent route change), without disturbing other holders.
     on_cleanup(move || {
-        if let Some(body) = web_sys::window()
-            .and_then(|w| w.document())
-            .and_then(|d| d.body())
-        {
-            let _ = body.class_list().remove_1("dialog-scroll-lock");
+        if scroll_locked.get_value() {
+            scroll_locked.set_value(false);
+            release_scroll_lock();
         }
     });
 

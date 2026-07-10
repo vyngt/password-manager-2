@@ -26,23 +26,35 @@ use leptos::either::{Either, EitherOf5};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use vedge_generator::{
-    GenError, GenSpec, PatternConfig, RandomConfig, entropy_band, entropy_bits, generate,
+    GenError, GenSpec, MAX_BATCH, PatternConfig, RandomConfig, entropy_band, entropy_bits,
+    generate, generate_many,
 };
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{
-    Button, CopyButton, CopyFuture, IconButton, Input, PasswordStrengthMeter, SegmentOption,
-    SegmentedControl, Select, SelectItem, Slider, Toggle,
+    Button, CopyButton, CopyFuture, EmptyState, IconButton, Input, Label, NumberInput,
+    PasswordStrengthMeter, SegmentOption, SegmentedControl, Select, SelectItem, Slider, Toggle,
 };
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 use zeroize::Zeroizing;
 
 use crate::api;
+use crate::features::generator::history::{GeneratedHistoryCtx, HistoryItem};
 use crate::features::settings::generator_prefs::{
     self, GenMode, GeneratorPrefs, GeneratorPrefsCtx, SeparatorPref,
 };
 use crate::features::settings::security_prefs::SecurityPrefsCtx;
 use crate::i18n::{t, t_string, use_i18n};
+
+/// One row of a bulk-generate batch. Session-local (dropped on Regenerate / next
+/// batch / mode switch); its `Zeroizing` secret wipes on drop. The batch is always
+/// replaced wholesale, so the list is rendered by a plain map (no `<For>` keying —
+/// index keys would let a same-length new batch reuse stale row DOM).
+#[derive(Clone)]
+struct BulkRow {
+    secret: Zeroizing<String>,
+    entropy_bits: f64,
+}
 
 /// Build the active [`GenSpec`] from the persisted preset + the session pattern.
 fn build_spec(prefs: GeneratorPrefs, pattern: String) -> GenSpec {
@@ -67,9 +79,22 @@ pub fn GeneratorPanel(
 
     // Shared preset (last-used mode + per-mode config).
     let prefs = expect_context::<GeneratorPrefsCtx>().0;
+    // App-root session history (Zeroizing, capped, wiped on lock). Fed by
+    // Regenerate + bulk pick/copy below; provided once in `app.rs`.
+    let history = expect_context::<GeneratedHistoryCtx>();
     // Free-text pattern is session-local (keeps GeneratorPrefs `Copy`).
     let pattern_text = RwSignal::new(PatternConfig::default().pattern);
     let reveal = RwSignal::new(true);
+
+    // Bulk-generate state — all session-local. `bulk_count` is the requested N;
+    // `bulk` is the current batch (replaced wholesale, dropped→zeroized on the
+    // next batch / Regenerate / mode switch). The two sections default open on the
+    // standalone page and collapsed in the form popover (`on_use.is_some()`) so the
+    // popover stays compact until the user opts in.
+    let bulk_count = RwSignal::new(10u32);
+    let bulk = RwSignal::new(Vec::<BulkRow>::new());
+    let bulk_open = RwSignal::new(on_use.is_none());
+    let recent_open = RwSignal::new(on_use.is_none());
 
     // Seed with a first secret at mount (untracked — component body).
     let secret = RwSignal::new(
@@ -115,15 +140,63 @@ pub fn GeneratorPanel(
         })
     });
 
+    // Map any engine error to a localized message (event-handler / reactive
+    // context, so the `t_string!` reads have an owner). Shared by the bulk toast
+    // and the entropy-meter error line; the `BatchOutOfRange` arm keeps the match
+    // exhaustive even though `entropy_bits` never returns it.
+    let gen_err_msg = move |e: GenError| -> String {
+        match e {
+            GenError::NoClassSelected | GenError::EmptyEffectiveAlphabet => {
+                t_string!(i18n, generator.err_no_class).to_owned()
+            }
+            GenError::LengthOutOfRange => t_string!(i18n, generator.err_length).to_owned(),
+            GenError::WordCountOutOfRange => t_string!(i18n, generator.err_word_count).to_owned(),
+            GenError::EmptyPattern => t_string!(i18n, generator.err_empty_pattern).to_owned(),
+            GenError::InvalidPattern => t_string!(i18n, generator.err_invalid_pattern).to_owned(),
+            GenError::BatchOutOfRange => t_string!(i18n, generator.err_batch).to_owned(),
+        }
+    };
+
     // Synchronous — pure math, no `spawn_local`. Reads the preset untracked so the
     // handler doesn't subscribe. Copy closure, so both the button and the mode
-    // picker's `on_change` can invoke it.
+    // picker's `on_change` can invoke it. Each generation feeds the session history
+    // and drops the current bulk batch (the spec's "history fed by Regenerate" +
+    // "bulk cleared on regenerate").
     let regenerate = move |()| match generate(&build_spec(
         prefs.get_untracked(),
         pattern_text.get_untracked(),
     )) {
-        Ok(g) => secret.set(g.secret),
+        Ok(g) => {
+            history.push(g.secret.clone(), g.entropy_bits);
+            secret.set(g.secret);
+            bulk.set(Vec::new());
+        }
         Err(_) => secret.set(Zeroizing::default()),
+    };
+
+    // Bulk generate: N independent secrets from the active spec, replacing the
+    // batch. Pure/sync (≤50 short strings), so no spinner. Errors → a Danger toast.
+    let generate_batch = move |()| {
+        let count = bulk_count.get_untracked();
+        match generate_many(
+            &build_spec(prefs.get_untracked(), pattern_text.get_untracked()),
+            count,
+        ) {
+            Ok(items) => {
+                let rows = items
+                    .into_iter()
+                    .map(|g| BulkRow {
+                        secret: g.secret,
+                        entropy_bits: g.entropy_bits,
+                    })
+                    .collect::<Vec<_>>();
+                bulk.set(rows);
+            }
+            Err(e) => {
+                bulk.set(Vec::new());
+                show_error(gen_err_msg(e));
+            }
+        }
     };
 
     // Live entropy of the active *process*. Tracks every preset/pattern edit; the
@@ -273,23 +346,7 @@ pub fn GeneratorPanel(
                         )
                     }
                     Err(e) => {
-                        let msg = move || match e {
-                            GenError::NoClassSelected | GenError::EmptyEffectiveAlphabet => {
-                                t_string!(i18n, generator.err_no_class).to_owned()
-                            }
-                            GenError::LengthOutOfRange => {
-                                t_string!(i18n, generator.err_length).to_owned()
-                            }
-                            GenError::WordCountOutOfRange => {
-                                t_string!(i18n, generator.err_word_count).to_owned()
-                            }
-                            GenError::EmptyPattern => {
-                                t_string!(i18n, generator.err_empty_pattern).to_owned()
-                            }
-                            GenError::InvalidPattern => {
-                                t_string!(i18n, generator.err_invalid_pattern).to_owned()
-                            }
-                        };
+                        let msg = move || gen_err_msg(e);
                         Either::Right(view! { <p class="text-xs text-danger-text">{msg}</p> })
                     }
                 }}
@@ -325,6 +382,282 @@ pub fn GeneratorPanel(
                         >
                             {move || t_string!(i18n, generator.use_password).to_owned()}
                         </Button>
+                    }
+                })}
+
+            // ---- Bulk generate (collapsible) ----------------------------
+            <div class="space-y-3">
+                // Whole-row disclosure toggle — a clickable row (§7-sanctioned
+                // exception: whole clickable rows/cards, not a `Button`).
+                <button
+                    type="button"
+                    class="flex w-full items-center justify-between rounded-md py-1 text-left text-sm font-semibold text-text-primary"
+                    aria-expanded=move || bulk_open.get().to_string()
+                    on:click=move |_| bulk_open.update(|o| *o = !*o)
+                >
+                    <span>{move || t!(i18n, generator.bulk)}</span>
+                    <span
+                        class="text-text-secondary transition-transform"
+                        class:rotate-90=move || bulk_open.get()
+                        aria-hidden="true"
+                    >
+                        <Icon icon=i::FaChevronRightSolid />
+                    </span>
+                </button>
+                <Show when=move || bulk_open.get()>
+                    <div class="space-y-3">
+                        <div class="flex items-end gap-3">
+                            <div class="space-y-1.5">
+                                <Label html_for="gen-bulk-count">
+                                    {move || t!(i18n, generator.bulk_count)}
+                                </Label>
+                                <NumberInput
+                                    id="gen-bulk-count"
+                                    class="w-32"
+                                    value=Signal::derive(move || f64::from(bulk_count.get()))
+                                    min=Some(1.0)
+                                    max=Some(f64::from(MAX_BATCH))
+                                    step=1.0
+                                    on_change=Callback::new(move |v: f64| {
+                                        bulk_count.set(v.clamp(1.0, f64::from(MAX_BATCH)) as u32);
+                                    })
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, generator.bulk_count).to_owned()
+                                    })
+                                    decrement_label=Signal::derive(move || {
+                                        t_string!(i18n, generator.bulk_count_dec).to_owned()
+                                    })
+                                    increment_label=Signal::derive(move || {
+                                        t_string!(i18n, generator.bulk_count_inc).to_owned()
+                                    })
+                                />
+                            </div>
+                            <Button variant=Variant::Secondary on:click=move |_| generate_batch(())>
+                                {move || t!(i18n, generator.bulk_generate)}
+                            </Button>
+                        </div>
+                        <div class="space-y-2 max-h-56 overflow-y-auto">
+                            {move || {
+                                bulk.get()
+                                    .into_iter()
+                                    .map(|r: BulkRow| {
+                                        let plain = r.secret.as_str().to_owned();
+                                        let bits = r.entropy_bits;
+                                        let p_copy = plain.clone();
+                                        let use_cb = on_use
+                                            .map(move |cb| {
+                                                Callback::new(move |s: String| {
+                                                    history.push(Zeroizing::new(s.clone()), bits);
+                                                    cb.run(s);
+                                                })
+                                            });
+                                        let copied_cb = Callback::new(move |()| {
+                                            history.push(Zeroizing::new(p_copy.clone()), bits);
+                                        });
+                                        view! {
+                                            <SecretRow
+                                                secret=plain
+                                                entropy_bits=bits
+                                                copy_native=copy_native
+                                                on_use=use_cb
+                                                on_copied=Some(copied_cb)
+                                            />
+                                        }
+                                    })
+                                    .collect_view()
+                            }}
+                        </div>
+                    </div>
+                </Show>
+            </div>
+
+            // ---- Recent history (collapsible) ---------------------------
+            <div class="space-y-3">
+                <button
+                    type="button"
+                    class="flex w-full items-center justify-between rounded-md py-1 text-left text-sm font-semibold text-text-primary"
+                    aria-expanded=move || recent_open.get().to_string()
+                    on:click=move |_| recent_open.update(|o| *o = !*o)
+                >
+                    <span>
+                        {move || t!(i18n, generator.history)}
+                        {move || {
+                            let n = history.items.with(Vec::len);
+                            if n > 0 { format!(" ({n})") } else { String::new() }
+                        }}
+                    </span>
+                    <span
+                        class="text-text-secondary transition-transform"
+                        class:rotate-90=move || recent_open.get()
+                        aria-hidden="true"
+                    >
+                        <Icon icon=i::FaChevronRightSolid />
+                    </span>
+                </button>
+                <Show when=move || recent_open.get()>
+                    <Show
+                        when=move || history.items.with(|v| !v.is_empty())
+                        fallback=move || {
+                            view! {
+                                <EmptyState
+                                    icon=i::FaClockRotateLeftSolid
+                                    title=Signal::derive(move || {
+                                        t_string!(i18n, generator.history_empty).to_owned()
+                                    })
+                                    description=Signal::derive(move || {
+                                        t_string!(i18n, generator.history_lock_note).to_owned()
+                                    })
+                                />
+                            }
+                        }
+                    >
+                        <div class="space-y-2">
+                            <div class="space-y-2 max-h-56 overflow-y-auto">
+                                <For
+                                    each=move || history.items.get()
+                                    key=|it| it.id
+                                    children=move |it: HistoryItem| {
+                                        let plain = it.secret.as_str().to_owned();
+                                        let bits = it.entropy_bits;
+                                        view! {
+                                            <SecretRow
+                                                secret=plain
+                                                entropy_bits=bits
+                                                copy_native=copy_native
+                                                on_use=on_use
+                                            />
+                                        }
+                                    }
+                                />
+                            </div>
+                            <div class="flex items-center justify-between gap-2 pt-1">
+                                <span class="text-xs text-text-secondary">
+                                    {move || t!(i18n, generator.history_lock_note)}
+                                </span>
+                                <Button
+                                    variant=Variant::Ghost
+                                    size=Size::Sm
+                                    on:click=move |_| history.clear()
+                                >
+                                    {move || t!(i18n, generator.history_clear)}
+                                </Button>
+                            </div>
+                        </div>
+                    </Show>
+                </Show>
+            </div>
+        </div>
+    }
+}
+
+/// One masked secret row (bulk result or history entry): reveal + process
+/// entropy + copy + optional pick. The plaintext reaches the DOM as a bare
+/// `String` — the same documented residual as the primary Output row (the
+/// session buffers themselves stay `Zeroizing`).
+#[component]
+fn SecretRow(
+    secret: String,
+    entropy_bits: f64,
+    copy_native: Callback<String, CopyFuture>,
+    /// "Use/pick" this secret (fills the form) — shown only when present.
+    #[prop(into, default = None)]
+    on_use: Option<Callback<String>>,
+    /// Fired after a successful copy — bulk rows push into history; history rows
+    /// omit it (they're already there).
+    #[prop(into, default = None)]
+    on_copied: Option<Callback<()>>,
+) -> impl IntoView {
+    let i18n = use_i18n();
+    let reveal = RwSignal::new(false);
+    let char_count = secret.chars().count();
+    let copy_val = secret.clone();
+    let use_val = secret.clone();
+    let display = {
+        let s = secret;
+        move || {
+            if reveal.get() {
+                s.clone()
+            } else {
+                "•".repeat(char_count)
+            }
+        }
+    };
+    // Compact, glanceable process-entropy band (reuses the meter's band labels).
+    let band = entropy_band(entropy_bits);
+    let band_label = Signal::derive(move || {
+        match band {
+            1 => t_string!(i18n, generator.band_weak),
+            2 => t_string!(i18n, generator.band_fair),
+            3 => t_string!(i18n, generator.band_strong),
+            _ => t_string!(i18n, generator.band_excellent),
+        }
+        .to_owned()
+    });
+    let band_cls = match band {
+        1 => "text-danger-text",
+        2 => "text-warning-text",
+        3 => "text-text-secondary",
+        _ => "text-success-text",
+    };
+    let on_copy = on_copied.map(|cb| {
+        Callback::new(move |ok: bool| {
+            if ok {
+                cb.run(());
+            }
+        })
+    });
+    view! {
+        <div class="flex items-center gap-2 rounded-md border border-border p-2">
+            <code class="flex-1 select-all break-all font-mono text-xs text-text-primary min-h-[1rem]">
+                {display}
+            </code>
+            <span class=format!(
+                "shrink-0 whitespace-nowrap text-xs font-medium {band_cls}",
+            )>{move || band_label.get()}</span>
+            <IconButton
+                variant=Variant::Ghost
+                size=Size::Sm
+                aria_label=Signal::derive(move || {
+                    if reveal.get() {
+                        t_string!(i18n, generator.hide).to_owned()
+                    } else {
+                        t_string!(i18n, generator.reveal).to_owned()
+                    }
+                })
+                on_click=Callback::new(move |()| reveal.update(|r| *r = !*r))
+            >
+                <span aria-hidden="true">
+                    <Show
+                        when=move || reveal.get()
+                        fallback=|| view! { <Icon icon=i::FaEyeSolid /> }
+                    >
+                        <Icon icon=i::FaEyeSlashSolid />
+                    </Show>
+                </span>
+            </IconButton>
+            <CopyButton
+                value=Signal::derive(move || copy_val.clone())
+                copy_with=copy_native
+                label=Signal::derive(move || t_string!(i18n, generator.copy).to_owned())
+                copied_label=Signal::derive(move || t_string!(i18n, generator.copied).to_owned())
+                on_copy=on_copy
+            />
+            {on_use
+                .map(|cb| {
+                    let v = use_val.clone();
+                    view! {
+                        <IconButton
+                            variant=Variant::Ghost
+                            size=Size::Sm
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, generator.bulk_use).to_owned()
+                            })
+                            on_click=Callback::new(move |()| cb.run(v.clone()))
+                        >
+                            <span aria-hidden="true">
+                                <Icon icon=i::FaCheckSolid />
+                            </span>
+                        </IconButton>
                     }
                 })}
         </div>

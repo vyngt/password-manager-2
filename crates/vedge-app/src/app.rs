@@ -4,6 +4,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::api;
+use crate::features::generator::history::GeneratedHistoryCtx;
 use crate::features::settings::generator_prefs::{self, GeneratorPrefs, GeneratorPrefsCtx};
 use crate::features::settings::security_prefs::{
     self, SecurityPrefs, SecurityPrefsCtx, SecurityPrefsLoaded,
@@ -108,7 +109,8 @@ pub fn App() -> impl IntoView {
     );
 
     provide_context(theme.clone());
-    provide_context(ActiveVault::new());
+    let active = ActiveVault::new();
+    provide_context(active);
 
     // Boot into the *saved* active theme (falls back to the seeded light config
     // on error). `commit` re-derives, injects the `--color-*` cascade, and syncs
@@ -149,6 +151,23 @@ pub fn App() -> impl IntoView {
         spawn_local(async move {
             gen_prefs.0.set(generator_prefs::load().await);
         });
+    });
+
+    // Session-only history of panel-generated secrets (slice 3.5): held in
+    // `Zeroizing`, capped, never persisted. Provided here in the durable `App`
+    // body (above the router) so it survives the `/v` unmount that fires on lock.
+    let history = GeneratedHistoryCtx::new();
+    provide_context(history);
+    // Wipe on lock. All three lock paths (idle auto-lock, sidebar Lock, palette
+    // Lock) drive `active.path` Some→None; this prev-guarded Effect is the single
+    // choke point. Guarded so the initial mount and unlock (None/Some(false)→…)
+    // don't fire — only a true→false transition wipes. Evicted items zeroize on drop.
+    Effect::new(move |was_unlocked: Option<bool>| {
+        let unlocked = active.path.with(Option::is_some);
+        if was_unlocked == Some(true) && !unlocked {
+            history.clear();
+        }
+        unlocked
     });
 
     view! {
