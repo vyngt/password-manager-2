@@ -681,7 +681,11 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
             anchor=anchor
             placement=PopoverPlacement::BottomEnd
         >
-            <div class="w-80">
+            // Wide enough for the 5-mode picker (content-width `inline-flex`
+            // tabs) not to overflow, plus inner padding for breathing room on
+            // top of the popover panel's tight 4px. (Min window is 960px and the
+            // Popover clamps its position to the viewport, so no max-width needed.)
+            <div class="w-[30rem] p-4">
                 <GeneratorPanel on_use=on_use />
             </div>
         </Popover>

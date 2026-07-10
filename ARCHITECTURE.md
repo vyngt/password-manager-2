@@ -18,7 +18,7 @@ A single Cargo workspace of eight crates:
 | **`vedge-core`** | All business logic — domain model, use-cases, crypto, and storage. Clean-architecture layers `application/` · `domain/` · `infrastructure/`. No async runtime or UI of its own. |
 | **`vedge-tauri`** | The Tauri v2 desktop shell (the app binary). A thin adapter: `#[tauri::command]` handlers, `AppState` (session registry), DTO conversions, PDF/emergency-kit rendering. Zero business logic. |
 | **`vedge-ipc`** | The serde wire types shared frontend ↔ shell (DTOs + `ErrorEnvelope` + b64/timestamp helpers). Compiles to `wasm32`; no `vedge-core`/`tauri` deps. |
-| **`vedge-generator`** | Pure secret-generation engine (charset random mode + honest entropy). No SQLite/OS/serde deps; compiles native **and** `wasm32` (browser RNG via `getrandom`'s `wasm_js` feature), so the frontend generates with **zero IPC** and native shells reuse it. |
+| **`vedge-generator`** | Pure secret-generation engine — five modes (random / passphrase / PIN / pronounceable / pattern) dispatched through one `GenSpec` + `generate`/`entropy_bits`, each returning `(secret, entropy_bits)` from **one code path** so the meter can't disagree with the generator; **honest per-mode entropy** (process, not string length). Embeds the EFF 7776 wordlist via `include_str!` (the repo's first embedded asset). No SQLite/OS/serde deps; compiles native **and** `wasm32` (browser RNG via `getrandom`'s `wasm_js` feature), so the frontend generates with **zero IPC** and native shells reuse it. |
 | **`vedge-app`** | The Leptos **CSR** frontend application — pages, features, routing (`leptos_router`), i18n (`leptos_i18n`), and typed `api::*` wrappers over `invoke()`. |
 | **`vedge-ui`** | The Leptos **CSR** design-system component library (`foundation`/`form`/`feedback`/`data_display`/`icon`) + theme engine. |
 | **`vedge-codegen`** | Proc-macros (e.g. `#[derive(StringEnum)]`). |
@@ -161,8 +161,10 @@ skips OS clipboard history / cloud sync and well-behaved managers, alongside the
 - **`vedge-app`** — Leptos CSR: pages under `/` (launch/unlock) and `/v` (the unlocked vault:
   list/detail/edit, search, command palette, folders, settings). State is signals/stores + a few
   well-scoped contexts (`ActiveVault`, `VaultUiState`, `SecurityPrefsCtx`, `GeneratorPrefsCtx`,
-  `ThemeState`). App-global preferences (auto-lock/clipboard, the last-used generator preset) live in the
-  `app_settings` KV store under fixed keys (`security.prefs`, `generator.prefs`).
+  `ThemeState`). App-global preferences (auto-lock/clipboard, the last-used generator **mode + per-mode
+  preset**) live in the `app_settings` KV store under fixed keys (`security.prefs`, `generator.prefs`);
+  `GeneratorPrefs` is the app-side serde mirror of the engine configs and stays `Copy` (the free-text
+  pattern string is session-local, not persisted).
 - **`vedge-ui`** — the reusable component library and the OKLCH theme engine (light/dark/custom themes,
   injected as CSS custom properties). CSR-only; styles live in `styles/*.css` under `@layer components`.
 

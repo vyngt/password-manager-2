@@ -5,17 +5,21 @@ use leptos_icons::Icon;
 use wasm_bindgen::JsCast;
 
 /// A single segment option.
-#[derive(Clone, Debug)]
+///
+/// `label` is a [`TextProp`], so it accepts a static `&str` (playground/tests) or
+/// a reactive `Signal<String>` (i18n) and **relocalizes on language switch** —
+/// no `untrack` at the call site. Not `Debug` (a `TextProp` wraps a `Signal`).
+#[derive(Clone)]
 pub struct SegmentOption {
     pub value: String,
-    pub label: Option<String>,
+    pub label: Option<TextProp>,
     pub icon: Option<icondata_core::Icon>,
     pub aria_label: Option<String>,
     pub disabled: bool,
 }
 
 impl SegmentOption {
-    pub fn text(value: impl Into<String>, label: impl Into<String>) -> Self {
+    pub fn text(value: impl Into<String>, label: impl Into<TextProp>) -> Self {
         Self {
             value: value.into(),
             label: Some(label.into()),
@@ -42,7 +46,7 @@ impl SegmentOption {
     pub fn icon_text(
         value: impl Into<String>,
         icon: icondata_core::Icon,
-        label: impl Into<String>,
+        label: impl Into<TextProp>,
     ) -> Self {
         Self {
             value: value.into(),
@@ -223,7 +227,7 @@ pub fn SegmentedControl(
                             on:click=on_click
                         >
                             {opt.icon.map(|icon| view! { <Icon icon=icon /> })}
-                            {opt.label.clone().map(|label| view! { <span>{label}</span> })}
+                            {opt.label.map(|label| view! { <span>{move || label.get()}</span> })}
                         </button>
                     }
                 })

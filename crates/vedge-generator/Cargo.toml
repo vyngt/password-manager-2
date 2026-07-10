@@ -19,5 +19,11 @@ zeroize = "1"          # Zeroizing<String> — the generated secret is wiped on 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }
 
+# Test-only: assert the embedded EFF wordlist's SHA-256 so an accidental edit or
+# re-encoding fails CI. Version matches vedge-core, so Cargo.lock gains nothing;
+# kept out of [dependencies] so it never reaches the wasm/runtime surface.
+[dev-dependencies]
+sha2 = "0.11"
+
 [lints]
 workspace = true
