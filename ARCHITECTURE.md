@@ -11,13 +11,14 @@ claim below is drawn from `crates/vedge-core`. The canonical, deeper specs live 
 
 ## Workspace layout
 
-A single Cargo workspace of seven crates:
+A single Cargo workspace of eight crates:
 
 | Crate | Role |
 |---|---|
 | **`vedge-core`** | All business logic — domain model, use-cases, crypto, and storage. Clean-architecture layers `application/` · `domain/` · `infrastructure/`. No async runtime or UI of its own. |
 | **`vedge-tauri`** | The Tauri v2 desktop shell (the app binary). A thin adapter: `#[tauri::command]` handlers, `AppState` (session registry), DTO conversions, PDF/emergency-kit rendering. Zero business logic. |
 | **`vedge-ipc`** | The serde wire types shared frontend ↔ shell (DTOs + `ErrorEnvelope` + b64/timestamp helpers). Compiles to `wasm32`; no `vedge-core`/`tauri` deps. |
+| **`vedge-generator`** | Pure secret-generation engine (charset random mode + honest entropy). No SQLite/OS/serde deps; compiles native **and** `wasm32` (browser RNG via `getrandom`'s `wasm_js` feature), so the frontend generates with **zero IPC** and native shells reuse it. |
 | **`vedge-app`** | The Leptos **CSR** frontend application — pages, features, routing (`leptos_router`), i18n (`leptos_i18n`), and typed `api::*` wrappers over `invoke()`. |
 | **`vedge-ui`** | The Leptos **CSR** design-system component library (`foundation`/`form`/`feedback`/`data_display`/`icon`) + theme engine. |
 | **`vedge-codegen`** | Proc-macros (e.g. `#[derive(StringEnum)]`). |
