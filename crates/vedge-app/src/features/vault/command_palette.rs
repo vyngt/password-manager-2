@@ -43,6 +43,7 @@ const PALETTE_ENTRY_CAP: usize = 50;
 enum ActionId {
     NewEntry,
     Lock,
+    GeneratePassword,
     Edit,
     MoveToFolder,
     CopyPassword,
@@ -114,6 +115,7 @@ fn action_icon(id: ActionId) -> icondata::Icon {
     match id {
         ActionId::NewEntry => i::FaPlusSolid,
         ActionId::Lock => i::FaLockSolid,
+        ActionId::GeneratePassword => i::FaWandMagicSparklesSolid,
         ActionId::Edit => i::FaPenSolid,
         ActionId::MoveToFolder => i::FaFolderOpenSolid,
         ActionId::CopyPassword | ActionId::CopyUsername => i::FaCopySolid,
@@ -209,6 +211,10 @@ pub fn CommandPalette() -> impl IntoView {
                 t_string!(i18n, vault.cmd_new_entry).to_owned(),
             ),
             (ActionId::Lock, t_string!(i18n, vault.cmd_lock).to_owned()),
+            (
+                ActionId::GeneratePassword,
+                t_string!(i18n, vault.cmd_generate_password).to_owned(),
+            ),
         ];
         if selection_actions_enabled(sel.as_deref())
             && let Some(e) = &sel_entry
@@ -274,6 +280,9 @@ pub fn CommandPalette() -> impl IntoView {
                         active.path.set(None);
                         nav("/", Default::default());
                     });
+                }
+                ActionId::GeneratePassword => {
+                    use_navigate()("/v/generator", Default::default());
                 }
                 ActionId::Edit => {
                     ui.edit_request.update(|n| *n = n.wrapping_add(1));
@@ -525,6 +534,10 @@ mod tests {
         assert!(matches_command("Lock vault", "lock")); // case-insensitive substring
         assert!(matches_command("Lock vault", "VAULT"));
         assert!(!matches_command("Lock vault", "copy"));
+        // The unconditional "Generate password" action (slice 3.3) filters by label.
+        assert!(matches_command("Generate password", "generate"));
+        assert!(matches_command("Generate password", "PASSWORD"));
+        assert!(!matches_command("Generate password", "lock"));
     }
 
     #[test]

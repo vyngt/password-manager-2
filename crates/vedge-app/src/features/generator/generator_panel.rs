@@ -26,24 +26,33 @@ use vedge_generator::{RandomConfig, entropy_band, generate_random, random_entrop
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{
-    CopyButton, CopyFuture, IconButton, PasswordStrengthMeter, Slider, Toggle,
+    Button, CopyButton, CopyFuture, IconButton, PasswordStrengthMeter, Slider, Toggle,
 };
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 use zeroize::Zeroizing;
 
 use crate::api;
+use crate::features::settings::generator_prefs::{self, GeneratorPrefsCtx};
 use crate::features::settings::security_prefs::SecurityPrefsCtx;
 use crate::i18n::{t, t_string, use_i18n};
 
 #[component]
-pub fn GeneratorPanel() -> impl IntoView {
+pub fn GeneratorPanel(
+    /// When present, renders a "Use this password" button that emits the current
+    /// secret (used by the create/edit-form popover). When `None` (the standalone
+    /// `/v/generator` page) the panel keeps only reveal / copy / regenerate.
+    #[prop(into, default = None)]
+    on_use: Option<Callback<String>>,
+) -> impl IntoView {
     let i18n = use_i18n();
 
-    let cfg = RwSignal::new(RandomConfig::default());
+    // Shared preset (last-used config): the inline quick-generate button, this
+    // panel, and the standalone page all read/write one `GeneratorPrefsCtx`.
+    let prefs = expect_context::<GeneratorPrefsCtx>().0;
     let reveal = RwSignal::new(true);
-    // Seed with a first secret at mount (default config is always valid).
+    // Seed with a first secret at mount (any valid preset is fine).
     let secret = RwSignal::new(
-        generate_random(&RandomConfig::default())
+        generate_random(&RandomConfig::from(prefs.get_untracked()))
             .map(|g| g.secret)
             .unwrap_or_default(),
     );
@@ -89,16 +98,16 @@ pub fn GeneratorPanel() -> impl IntoView {
         })
     });
 
-    // Synchronous — pure math, no `spawn_local`. Reads the config untracked so the
+    // Synchronous — pure math, no `spawn_local`. Reads the preset untracked so the
     // handler doesn't subscribe to it.
-    let regenerate = move |()| match generate_random(&cfg.get_untracked()) {
+    let regenerate = move |()| match generate_random(&RandomConfig::from(prefs.get_untracked())) {
         Ok(g) => secret.set(g.secret),
         Err(_) => secret.set(Zeroizing::default()),
     };
 
     // Live entropy of the *process*. Gates the meter; the secret only changes on
-    // Regenerate, but the meter tracks every config edit.
-    let entropy = Memo::new(move |_| random_entropy_bits(&cfg.get()));
+    // Regenerate, but the meter tracks every preset edit.
+    let entropy = Memo::new(move |_| random_entropy_bits(&RandomConfig::from(prefs.get())));
     let band = Signal::derive(move || entropy.get().map_or(0, entropy_band));
     let band_labels = Signal::derive(move || {
         [
@@ -213,16 +222,22 @@ pub fn GeneratorPanel() -> impl IntoView {
                         {move || t!(i18n, generator.length)}
                     </span>
                     <span class="text-sm tabular-nums text-text-secondary">
-                        {move || cfg.get().length}
+                        {move || prefs.get().length}
                     </span>
                 </div>
                 <Slider
                     min=4.0
                     max=128.0
                     step=1.0
-                    value=Signal::derive(move || f64::from(cfg.get().length))
+                    value=Signal::derive(move || f64::from(prefs.get().length))
                     aria_label=Signal::derive(move || t_string!(i18n, generator.length).to_owned())
-                    on_change=Callback::new(move |v: f64| cfg.update(|c| c.length = v as u32))
+                    // Live update every drag tick (feeds the meter); persist once
+                    // on release so a drag isn't ~120 fire-and-forget KV writes.
+                    on_change=Callback::new(move |v: f64| prefs.update(|p| p.length = v as u32))
+                    on_change_end=Callback::new(move |v: f64| {
+                        prefs.update(|p| p.length = v as u32);
+                        generator_prefs::save(&prefs.get_untracked());
+                    })
                 />
             </div>
 
@@ -230,39 +245,69 @@ pub fn GeneratorPanel() -> impl IntoView {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                 <OptionToggle
                     label=Signal::derive(move || t_string!(i18n, generator.lowercase).to_owned())
-                    checked=Signal::derive(move || cfg.get().classes.lowercase)
-                    on_change=Callback::new(move |v: bool| cfg.update(|c| c.classes.lowercase = v))
+                    checked=Signal::derive(move || prefs.get().lowercase)
+                    on_change=Callback::new(move |v: bool| {
+                        prefs.update(|p| p.lowercase = v);
+                        generator_prefs::save(&prefs.get_untracked());
+                    })
                 />
                 <OptionToggle
                     label=Signal::derive(move || t_string!(i18n, generator.uppercase).to_owned())
-                    checked=Signal::derive(move || cfg.get().classes.uppercase)
-                    on_change=Callback::new(move |v: bool| cfg.update(|c| c.classes.uppercase = v))
+                    checked=Signal::derive(move || prefs.get().uppercase)
+                    on_change=Callback::new(move |v: bool| {
+                        prefs.update(|p| p.uppercase = v);
+                        generator_prefs::save(&prefs.get_untracked());
+                    })
                 />
                 <OptionToggle
                     label=Signal::derive(move || t_string!(i18n, generator.digits).to_owned())
-                    checked=Signal::derive(move || cfg.get().classes.digits)
-                    on_change=Callback::new(move |v: bool| cfg.update(|c| c.classes.digits = v))
+                    checked=Signal::derive(move || prefs.get().digits)
+                    on_change=Callback::new(move |v: bool| {
+                        prefs.update(|p| p.digits = v);
+                        generator_prefs::save(&prefs.get_untracked());
+                    })
                 />
                 <OptionToggle
                     label=Signal::derive(move || t_string!(i18n, generator.symbols).to_owned())
-                    checked=Signal::derive(move || cfg.get().classes.symbols)
-                    on_change=Callback::new(move |v: bool| cfg.update(|c| c.classes.symbols = v))
+                    checked=Signal::derive(move || prefs.get().symbols)
+                    on_change=Callback::new(move |v: bool| {
+                        prefs.update(|p| p.symbols = v);
+                        generator_prefs::save(&prefs.get_untracked());
+                    })
                 />
                 <OptionToggle
                     label=Signal::derive(move || {
                         t_string!(i18n, generator.exclude_ambiguous).to_owned()
                     })
-                    checked=Signal::derive(move || cfg.get().exclude_ambiguous)
-                    on_change=Callback::new(move |v: bool| cfg.update(|c| c.exclude_ambiguous = v))
+                    checked=Signal::derive(move || prefs.get().exclude_ambiguous)
+                    on_change=Callback::new(move |v: bool| {
+                        prefs.update(|p| p.exclude_ambiguous = v);
+                        generator_prefs::save(&prefs.get_untracked());
+                    })
                 />
                 <OptionToggle
                     label=Signal::derive(move || t_string!(i18n, generator.require_each).to_owned())
-                    checked=Signal::derive(move || cfg.get().require_each_selected)
+                    checked=Signal::derive(move || prefs.get().require_each_selected)
                     on_change=Callback::new(move |v: bool| {
-                        cfg.update(|c| c.require_each_selected = v);
+                        prefs.update(|p| p.require_each_selected = v);
+                        generator_prefs::save(&prefs.get_untracked());
                     })
                 />
             </div>
+
+            // ---- Use this password (form popover only) -------------------
+            {on_use
+                .map(|cb| {
+                    view! {
+                        <Button
+                            variant=Variant::Primary
+                            full_width=true
+                            on:click=move |_| cb.run(secret.with(|z| z.as_str().to_owned()))
+                        >
+                            {move || t_string!(i18n, generator.use_password).to_owned()}
+                        </Button>
+                    }
+                })}
         </div>
     }
 }
