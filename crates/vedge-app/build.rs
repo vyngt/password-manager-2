@@ -22,6 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "onboarding",
             "nav",
             "settings",
+            "generator",
         ])?
         .parse_options(options);
 

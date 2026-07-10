@@ -27,6 +27,10 @@ const SIDEBAR_ITEMS: &[SidebarRouteItem] = &[
         icon: icondata::FaKeySolid,
     },
     SidebarRouteItem {
+        path: "/v/generator",
+        icon: icondata::FaWandMagicSparklesSolid,
+    },
+    SidebarRouteItem {
         path: "/v/settings",
         icon: icondata::FaGearSolid,
     },
@@ -66,6 +70,7 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
     let is_active = move || location.pathname.get().starts_with(item.path);
     let label = Signal::derive(move || match item.path {
         "/v/settings" => t_string!(i18n, nav.settings).to_owned(),
+        "/v/generator" => t_string!(i18n, nav.generator).to_owned(),
         _ => t_string!(i18n, nav.vault).to_owned(),
     });
     let go = move |_: web_sys::MouseEvent| use_navigate()(item.path, Default::default());
