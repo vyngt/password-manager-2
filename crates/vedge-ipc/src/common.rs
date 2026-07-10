@@ -114,6 +114,18 @@ mod tests {
         assert_eq!(back.timestamp_millis(), ts.timestamp_millis());
     }
 
+    /// The DTO boundary the entry-list sort depends on must stay fixed-width
+    /// millis-`Z` (`…000Z`), never a variable-width / `+00:00` form — otherwise a
+    /// lexical compare downstream would disagree with instant order. Pins the
+    /// format alongside `vedge_core::domain::shared::format_rfc3339_millis`.
+    #[test]
+    fn ts_to_string_is_fixed_width_millis_z() {
+        use chrono::TimeZone;
+        // A whole-second instant still carries `.000` and ends in `Z`.
+        let ts = Utc.with_ymd_and_hms(2026, 1, 2, 3, 4, 5).unwrap();
+        assert_eq!(ts_to_string(ts), "2026-01-02T03:04:05.000Z");
+    }
+
     #[test]
     fn b64_fixed_rejects_wrong_length() {
         let err = b64_decode_fixed::<32>(&b64_encode(&[0u8; 16])).unwrap_err();
