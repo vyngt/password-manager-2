@@ -1,0 +1,3 @@
+# Keep the embedded EFF wordlist LF-only so its SHA-256 (hashed as WORDS.join("\n"))
+# is stable across checkouts regardless of core.autocrlf.
+crates/vedge-generator/src/wordlists/eff_large.txt -text eol=lf
