@@ -1,5 +1,5 @@
 use super::layout::VLayout;
-use super::manage::{settings::SettingsPage, vault::VaultPage};
+use super::manage::{generator::GeneratorPage, settings::SettingsPage, vault::VaultPage};
 use super::page::VPage;
 use leptos::prelude::*;
 use leptos_router::{
@@ -14,6 +14,7 @@ pub fn VRoutes() -> impl MatchNestedRoutes + Clone {
         <ParentRoute path=path!("/v") view=VLayout>
             <Route path=path!("/") view=VPage />
             <Route path=path!("/vault") view=VaultPage />
+            <Route path=path!("/generator") view=GeneratorPage />
             <Route path=path!("/settings") view=SettingsPage />
         </ParentRoute>
     }

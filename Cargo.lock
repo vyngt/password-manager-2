@@ -8937,11 +8937,13 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "uuid",
+ "vedge-generator",
  "vedge-ipc",
  "vedge-ui",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "zeroize",
 ]
 
 [[package]]
@@ -8999,6 +9001,15 @@ dependencies = [
  "tempfile",
  "thirtyfour",
  "tokio",
+]
+
+[[package]]
+name = "vedge-generator"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.4.2",
+ "rand 0.10.1",
+ "zeroize",
 ]
 
 [[package]]
