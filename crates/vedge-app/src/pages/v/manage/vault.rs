@@ -14,6 +14,7 @@ use crate::features::vault::smart_folders::{
     SmartFolder, SmartFolders, apply_preset, capture_preset,
 };
 use crate::features::vault::tag_manager::TagManager;
+use crate::features::vault::trash_confirm::{EmptyTrashDialog, PermanentDeleteDialog};
 use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
@@ -88,6 +89,10 @@ pub fn VaultPage() -> impl IntoView {
     let folder_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let customize_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let history_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    // Trash-view confirms (slice 3.6): the entry pending permanent deletion, and
+    // the empty-trash gate.
+    let hard_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
+    let empty_trash_open = RwSignal::new(false);
     // Saved "smart folder" filter presets (per-vault, persisted in app_settings).
     let smart_folders = RwSignal::new(Vec::<SmartFolder>::new());
 
@@ -394,11 +399,13 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
-    // Leaving the folder view when toggling active/trash (folders are an active-
-    // view concept). Guarded so the initial mount doesn't reset anything.
+    // Entering the Trash view clears the folder scope so the whole trashed list
+    // shows (`visible` filters by scope). Only on the false→true transition —
+    // *leaving* trash via an All/Unfiled click sets its own scope, which must not
+    // be clobbered back to All. Guarded so the initial mount resets nothing.
     Effect::new(move |prev: Option<bool>| {
         let t = trashed_view.get();
-        if prev.is_some_and(|p| p != t) {
+        if t && prev == Some(false) {
             current_scope.set(FolderScope::All);
         }
         t
@@ -626,6 +633,78 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // --- Trash actions (slice 3.6) ---
+    // Restore is non-destructive → act directly (no confirm). Clears the selection
+    // if the restored entry was open (it leaves the trashed list), then refreshes.
+    let on_restore = Callback::new(move |id: String| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_restore).to_owned();
+        let ok_msg = t_string!(i18n, vault.restored).to_owned();
+        let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
+        spawn_local(async move {
+            match api::entry::restore_entry(&vault_path, &id).await {
+                Ok(()) => {
+                    if was_selected {
+                        ui.selected_id.set(None);
+                    }
+                    show_success(ok_msg);
+                    refresh();
+                }
+                Err(e) => show_error(format!("{err_prefix}{e}")),
+            }
+        });
+    });
+
+    // Permanent delete: the row/detail action opens the named confirm.
+    let on_hard_delete = Callback::new(move |entry: IndexEntryDto| {
+        hard_delete_target.set(Some(entry));
+    });
+
+    // The confirm's action — MUST be `hard_delete_entry` (purges the Document blob
+    // sidecar + history + audits `PermanentlyDeleted`; soft-delete would leak the blob).
+    let on_hard_delete_confirm = Callback::new(move |id: String| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_hard_delete).to_owned();
+        let ok_msg = t_string!(i18n, vault.hard_deleted).to_owned();
+        let was_selected = ui.selected_id.get().as_deref() == Some(id.as_str());
+        spawn_local(async move {
+            match api::entry::hard_delete_entry(&vault_path, &id).await {
+                Ok(()) => {
+                    if was_selected {
+                        ui.selected_id.set(None);
+                    }
+                    show_success(ok_msg);
+                    refresh();
+                }
+                Err(e) => show_error(format!("{err_prefix}{e}")),
+            }
+        });
+    });
+
+    // Empty trash: loop `hard_delete_entry` over every trashed id (mirror `on_empty`;
+    // `items` holds the full trashed list in trash view). Stop on first error.
+    let on_empty_trash = Callback::new(move |()| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_hard_delete).to_owned();
+        let ok_msg = t_string!(i18n, vault.emptied_trash).to_owned();
+        let ids: Vec<String> = items.get_untracked().into_iter().map(|e| e.id).collect();
+        spawn_local(async move {
+            let mut failed = false;
+            for id in ids {
+                if let Err(e) = api::entry::hard_delete_entry(&vault_path, &id).await {
+                    show_error(format!("{err_prefix}{e}"));
+                    failed = true;
+                    break;
+                }
+            }
+            if !failed {
+                ui.selected_id.set(None);
+                show_success(ok_msg);
+            }
+            refresh();
+        });
+    });
+
     view! {
         <div class="h-full flex flex-col gap-4 p-4">
             <div class="flex items-center gap-3">
@@ -635,7 +714,6 @@ pub fn VaultPage() -> impl IntoView {
                     tag_id=tag_id
                     favorites_only=favorites_only
                     sort=sort
-                    trashed_view=trashed_view
                     tags=Signal::derive(move || tags.get())
                 />
                 <Button
@@ -668,6 +746,18 @@ pub fn VaultPage() -> impl IntoView {
                 >
                     {move || t!(i18n, vault.tag_manage)}
                 </Button>
+                // Empty-trash — only in Trash view, and only when there's something
+                // to empty (an empty list shows the "Trash is empty" state instead).
+                <Show when=move || trashed_view.get() && !items.get().is_empty()>
+                    <Button
+                        variant=Variant::Danger
+                        size=Size::Sm
+                        class="whitespace-nowrap"
+                        on:click=move |_| empty_trash_open.set(true)
+                    >
+                        {move || t!(i18n, vault.empty_trash_action)}
+                    </Button>
+                </Show>
             </div>
 
             <TagManager
@@ -687,6 +777,12 @@ pub fn VaultPage() -> impl IntoView {
             />
             <FolderCustomize target=customize_target on_apply=on_customize_apply />
             <EntryHistory target=history_target on_restored=on_saved />
+            <PermanentDeleteDialog target=hard_delete_target on_confirm=on_hard_delete_confirm />
+            <EmptyTrashDialog
+                open=empty_trash_open
+                count=Signal::derive(move || items.get().len())
+                on_confirm=on_empty_trash
+            />
 
             <Show when=move || ui.show_create.get()>
                 <VaultCreateForm show=ui.show_create on_created=on_created folders=folders />
@@ -704,26 +800,28 @@ pub fn VaultPage() -> impl IntoView {
             // the table (see VaultDetail) instead of competing for column width —
             // the folder tree + table now get the full row.
             <div class="relative flex-1 flex gap-4 min-h-0">
-                <Show when=move || !trashed_view.get()>
-                    <FolderTree
-                        items=Signal::derive(move || items.get())
-                        folders=folders
-                        scope=current_scope
-                        on_new_folder=on_new_folder
-                        on_move=on_move
-                        on_delete=on_delete
-                        on_rename=on_rename_folder
-                        on_customize=on_customize
-                    >
-                        <SmartFolders
-                            presets=Signal::derive(move || smart_folders.get())
-                            on_apply=on_apply_smart
-                            on_save=on_save_smart
-                            on_delete=on_delete_smart
-                            on_rename=on_rename_smart
-                        />
-                    </FolderTree>
-                </Show>
+                // The folder sidebar stays mounted in trash view — it hosts the
+                // always-visible All / Unfiled / Trash navigation and hides only its
+                // folder rows + new-folder chrome (gated inside on `trashed_view`).
+                <FolderTree
+                    items=Signal::derive(move || items.get())
+                    folders=folders
+                    scope=current_scope
+                    trashed_view=trashed_view
+                    on_new_folder=on_new_folder
+                    on_move=on_move
+                    on_delete=on_delete
+                    on_rename=on_rename_folder
+                    on_customize=on_customize
+                >
+                    <SmartFolders
+                        presets=Signal::derive(move || smart_folders.get())
+                        on_apply=on_apply_smart
+                        on_save=on_save_smart
+                        on_delete=on_delete_smart
+                        on_rename=on_rename_smart
+                    />
+                </FolderTree>
                 <Show
                     when=move || !loading.get()
                     fallback=move || {
@@ -740,6 +838,8 @@ pub fn VaultPage() -> impl IntoView {
                         hide_delete=Signal::derive(move || trashed_view.get())
                         tags=Signal::derive(move || tag_lookup.get())
                         on_delete=on_delete
+                        on_restore=on_restore
+                        on_hard_delete=on_hard_delete
                         on_select=on_select
                         on_favorite=on_favorite
                         on_move_request=on_move_request
@@ -764,6 +864,8 @@ pub fn VaultPage() -> impl IntoView {
                                     folders=folders
                                     on_move_request=on_move_request
                                     on_history_request=on_history_request
+                                    on_restore=on_restore
+                                    on_hard_delete=on_hard_delete
                                 />
                             }
                         })

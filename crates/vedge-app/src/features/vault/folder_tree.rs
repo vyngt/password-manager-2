@@ -19,7 +19,7 @@ use leptos_icons::Icon;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use vedge_ipc::{EntryTypeDto, IndexEntryDto};
-use vedge_ui::components::{Button, IconButton, Input, SidebarItem};
+use vedge_ui::components::{Button, IconButton, Input, Separator, SidebarItem};
 use vedge_ui::primitives::tokens::{Size, Variant};
 
 /// A node in the folder hierarchy (acyclic — see module docs).
@@ -364,6 +364,10 @@ pub fn FolderTree(
     #[prop(into)] items: Signal<Vec<IndexEntryDto>>,
     #[prop(into)] folders: Signal<Vec<FolderNode>>,
     scope: RwSignal<FolderScope>,
+    /// Whether the Trash "folder" is the active view (drives the `list_trashed`
+    /// fetch in `vault.rs`). Selecting Trash sets it; selecting All/Unfiled/a real
+    /// folder clears it. The folder-management chrome hides while it's true.
+    trashed_view: RwSignal<bool>,
     on_new_folder: Callback<(Option<String>, String)>,
     /// `(entry_id, destination)` — persist a drag-and-drop move.
     on_move: Callback<(String, Option<String>)>,
@@ -478,49 +482,58 @@ pub fn FolderTree(
             style:width=move || format!("{}vw", panel_frac.get() * 100.0)
         >
             <div class="flex-1 overflow-auto flex flex-col gap-0.5 p-2">
-                <div class="flex items-center justify-between px-1 py-0.5">
-                    <span class="text-foreground/50 text-xs uppercase tracking-wider">
-                        {move || t!(i18n, vault.folders_label)}
-                    </span>
-                    <IconButton
-                        variant=Variant::Ghost
-                        size=Size::Xs
-                        class="text-foreground/40"
-                        aria_label=Signal::derive(move || {
-                            t_string!(i18n, vault.folder_new).to_owned()
-                        })
-                        on:click=move |_: web_sys::MouseEvent| show_new.update(|v| *v = !*v)
-                    >
-                        <Icon attr:aria-hidden="true" icon=i::FaPlusSolid width="12" height="12" />
-                    </IconButton>
-                </div>
+                // Folder-management chrome (label + new-folder) hides in trash view —
+                // there are no folders to add or show while viewing the trash.
+                <Show when=move || !trashed_view.get()>
+                    <div class="flex items-center justify-between px-1 py-0.5">
+                        <span class="text-foreground/50 text-xs uppercase tracking-wider">
+                            {move || t!(i18n, vault.folders_label)}
+                        </span>
+                        <IconButton
+                            variant=Variant::Ghost
+                            size=Size::Xs
+                            class="text-foreground/40"
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.folder_new).to_owned()
+                            })
+                            on:click=move |_: web_sys::MouseEvent| show_new.update(|v| *v = !*v)
+                        >
+                            <Icon
+                                attr:aria-hidden="true"
+                                icon=i::FaPlusSolid
+                                width="12"
+                                height="12"
+                            />
+                        </IconButton>
+                    </div>
 
-                // Compact new-folder input, revealed by the header "+".
-                <Show when=move || show_new.get()>
-                    <Input
-                        id="folder-new"
-                        class="mb-1"
-                        autofocus=true
-                        placeholder=Signal::derive(move || {
-                            t_string!(i18n, vault.folder_new_placeholder).to_owned()
-                        })
-                        value=Signal::derive(move || new_name.get())
-                        on_input=Callback::new(move |v: String| new_name.set(v))
-                        on:keydown=move |ev: web_sys::KeyboardEvent| {
-                            match ev.key().as_str() {
-                                "Enter" => {
-                                    ev.prevent_default();
-                                    create();
+                    // Compact new-folder input, revealed by the header "+".
+                    <Show when=move || show_new.get()>
+                        <Input
+                            id="folder-new"
+                            class="mb-1"
+                            autofocus=true
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, vault.folder_new_placeholder).to_owned()
+                            })
+                            value=Signal::derive(move || new_name.get())
+                            on_input=Callback::new(move |v: String| new_name.set(v))
+                            on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                match ev.key().as_str() {
+                                    "Enter" => {
+                                        ev.prevent_default();
+                                        create();
+                                    }
+                                    "Escape" => {
+                                        ev.prevent_default();
+                                        new_name.set(String::new());
+                                        show_new.set(false);
+                                    }
+                                    _ => {}
                                 }
-                                "Escape" => {
-                                    ev.prevent_default();
-                                    new_name.set(String::new());
-                                    show_new.set(false);
-                                }
-                                _ => {}
                             }
-                        }
-                    />
+                        />
+                    </Show>
                 </Show>
 
                 // All items — the cleared scope (also a "move to root" drop target).
@@ -532,9 +545,16 @@ pub fn FolderTree(
                         view! { <Icon icon=i::FaLayerGroupSolid width="14" height="14" /> }
                             .into_any()
                     })
-                    badge=Box::new(move || view! { {move || counts.get().0} }.into_any())
-                    selected=Signal::derive(move || matches!(scope.get(), FolderScope::All))
-                    on_click=Callback::new(move |_: ()| scope.set(FolderScope::All))
+                    badge=Box::new(move || {
+                        view! { {move || (!trashed_view.get()).then(|| counts.get().0)} }.into_any()
+                    })
+                    selected=Signal::derive(move || {
+                        matches!(scope.get(), FolderScope::All) && !trashed_view.get()
+                    })
+                    on_click=Callback::new(move |_: ()| {
+                        trashed_view.set(false);
+                        scope.set(FolderScope::All);
+                    })
                     class=Signal::derive(move || {
                         if drag_over.get() == DROP_ALL {
                             "ring-1 ring-primary bg-primary/15".to_owned()
@@ -554,9 +574,16 @@ pub fn FolderTree(
                     icon=Box::new(|| {
                         view! { <Icon icon=i::FaInboxSolid width="14" height="14" /> }.into_any()
                     })
-                    badge=Box::new(move || view! { {move || counts.get().1} }.into_any())
-                    selected=Signal::derive(move || matches!(scope.get(), FolderScope::Unfiled))
-                    on_click=Callback::new(move |_: ()| scope.set(FolderScope::Unfiled))
+                    badge=Box::new(move || {
+                        view! { {move || (!trashed_view.get()).then(|| counts.get().1)} }.into_any()
+                    })
+                    selected=Signal::derive(move || {
+                        matches!(scope.get(), FolderScope::Unfiled) && !trashed_view.get()
+                    })
+                    on_click=Callback::new(move |_: ()| {
+                        trashed_view.set(false);
+                        scope.set(FolderScope::Unfiled);
+                    })
                     class=Signal::derive(move || {
                         if drag_over.get() == DROP_UNFILED {
                             "ring-1 ring-primary bg-primary/15".to_owned()
@@ -570,283 +597,306 @@ pub fn FolderTree(
                     on:drop=drop_on_root
                 />
 
-                <For
-                    each=rows
-                    key=|f| (
-                        f.id.clone(),
-                        f.name.clone(),
-                        f.depth,
-                        f.has_children,
-                        f.color.clone(),
-                        f.icon.clone(),
-                    )
-                    children=move |f| {
-                        let sel_id_a = f.id.clone();
-                        let sel_id_b = f.id.clone();
-                        let click_id = f.id.clone();
-                        let chev_id = f.id.clone();
-                        let col_id = f.id.clone();
-                        let cnt_id = f.id.clone();
-                        let over_id = f.id.clone();
-                        let over_id2 = f.id.clone();
-                        let over_id3 = f.id.clone();
-                        let enter_id = f.id.clone();
-                        let drop_id = f.id.clone();
-                        let drag_check_id = f.id.clone();
-                        let dragstart_id = f.id.clone();
-                        let rn_check_id = f.id.clone();
-                        let start_id = f.id.clone();
-                        let start_nm = f.name.clone();
-                        let cust_id = f.id.clone();
-                        let del_id = f.id.clone();
-                        let name = f.name.clone();
-                        let depth = f.depth;
-                        let has_children = f.has_children;
-                        let icon_data = folder_icon_from_key(f.icon.as_deref().unwrap_or_default());
-                        let icon_color = f.color.clone();
-                        let indent = format!(
-                            "padding-left:{}rem",
-                            (depth as f64).mul_add(0.85, 0.25),
-                        );
-                        let commit = move || {
-                            if let Some(id) = renaming.get_untracked() {
-                                on_rename.run((id, rename_value.get_untracked()));
-                            }
-                            renaming.set(None);
-                        };
-                        // Three clones — one per single-token drag-over ring toggle below
-                        // (`class=(...)` takes one token; multi-token strings break at runtime).
-                        // Commit an inline rename (shared by Enter + blur). Untracked
-                        // reads — invoked from event handlers, no-op once cleared.
-                        view! {
-                            <div
-                                class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
-                                class=(
-                                    "bg-primary/10",
-                                    move || {
-                                        matches!(
-                                            scope.get(),
-                                            FolderScope::Folder(ref s)
-                                            if *s == sel_id_a
-                                        )
-                                    },
-                                )
-                                class=(
-                                    "text-primary",
-                                    move || {
-                                        matches!(
-                                            scope.get(),
-                                            FolderScope::Folder(ref s)
-                                            if *s == sel_id_b
-                                        )
-                                    },
-                                )
-                                class=("ring-1", move || drag_over.get() == over_id)
-                                class=("ring-primary", move || drag_over.get() == over_id2)
-                                class=("bg-primary/15", move || drag_over.get() == over_id3)
-                                style=indent
-                                // Draggable as a move source (to reparent under another
-                                // folder / root) — but not while its rename input is open,
-                                // or the parent drag would hijack text selection.
-                                draggable=move || {
-                                    (renaming.get().as_deref() != Some(drag_check_id.as_str()))
-                                        .then_some("true")
+                // User folders hide in trash — the tree is derived from the loaded
+                // entry list, which is the *trashed* set while viewing the trash.
+                <Show when=move || !trashed_view.get()>
+                    <For
+                        each=rows
+                        key=|f| (
+                            f.id.clone(),
+                            f.name.clone(),
+                            f.depth,
+                            f.has_children,
+                            f.color.clone(),
+                            f.icon.clone(),
+                        )
+                        children=move |f| {
+                            let sel_id_a = f.id.clone();
+                            let sel_id_b = f.id.clone();
+                            let click_id = f.id.clone();
+                            let chev_id = f.id.clone();
+                            let col_id = f.id.clone();
+                            let cnt_id = f.id.clone();
+                            let over_id = f.id.clone();
+                            let over_id2 = f.id.clone();
+                            let over_id3 = f.id.clone();
+                            let enter_id = f.id.clone();
+                            let drop_id = f.id.clone();
+                            let drag_check_id = f.id.clone();
+                            let dragstart_id = f.id.clone();
+                            let rn_check_id = f.id.clone();
+                            let start_id = f.id.clone();
+                            let start_nm = f.name.clone();
+                            let cust_id = f.id.clone();
+                            let del_id = f.id.clone();
+                            let name = f.name.clone();
+                            let depth = f.depth;
+                            let has_children = f.has_children;
+                            let icon_data = folder_icon_from_key(
+                                f.icon.as_deref().unwrap_or_default(),
+                            );
+                            let icon_color = f.color.clone();
+                            let indent = format!(
+                                "padding-left:{}rem",
+                                (depth as f64).mul_add(0.85, 0.25),
+                            );
+                            let commit = move || {
+                                if let Some(id) = renaming.get_untracked() {
+                                    on_rename.run((id, rename_value.get_untracked()));
                                 }
-                                on:dragstart=move |ev: web_sys::DragEvent| {
-                                    if let Some(dt) = ev.data_transfer() {
-                                        let _ = dt.set_data("text/plain", &dragstart_id);
-                                    }
-                                }
-                                on:click=move |_: web_sys::MouseEvent| {
-                                    scope.set(FolderScope::Folder(click_id.clone()));
-                                }
-                                on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
-                                on:dragenter=move |_: web_sys::DragEvent| {
-                                    drag_over.set(enter_id.clone());
-                                }
-                                on:dragleave=move |_: web_sys::DragEvent| {
-                                    drag_over.set(String::new());
-                                }
-                                on:drop=move |ev: web_sys::DragEvent| drop_on_folder(
-                                    ev,
-                                    drop_id.clone(),
-                                )
-                            >
-                                {if has_children {
-                                    leptos::either::Either::Left(
-                                        view! {
-                                            <IconButton
-                                                variant=Variant::Ghost
-                                                size=Size::Xs
-                                                class="text-foreground/40"
-                                                aria_label=Signal::derive(move || {
-                                                    t_string!(i18n, vault.folder_toggle).to_owned()
-                                                })
-                                                on:click=move |ev: web_sys::MouseEvent| {
-                                                    ev.stop_propagation();
-                                                    collapsed
-                                                        .update(|c| {
-                                                            if !c.remove(&chev_id) {
-                                                                c.insert(chev_id.clone());
-                                                            }
-                                                        });
-                                                }
-                                            >
-                                                {move || {
-                                                    if collapsed.get().contains(&col_id) {
-                                                        leptos::either::Either::Left(
-                                                            view! {
-                                                                <Icon
-                                                                    attr:aria-hidden="true"
-                                                                    icon=i::FaChevronRightSolid
-                                                                    width="10"
-                                                                    height="10"
-                                                                />
-                                                            },
-                                                        )
-                                                    } else {
-                                                        leptos::either::Either::Right(
-                                                            view! {
-                                                                <Icon
-                                                                    attr:aria-hidden="true"
-                                                                    icon=i::FaChevronDownSolid
-                                                                    width="10"
-                                                                    height="10"
-                                                                />
-                                                            },
-                                                        )
-                                                    }
-                                                }}
-                                            </IconButton>
+                                renaming.set(None);
+                            };
+                            // Three clones — one per single-token drag-over ring toggle below
+                            // (`class=(...)` takes one token; multi-token strings break at runtime).
+                            // Commit an inline rename (shared by Enter + blur). Untracked
+                            // reads — invoked from event handlers, no-op once cleared.
+                            view! {
+                                <div
+                                    class="group flex items-center gap-1 w-full px-1 py-1.5 rounded text-sm cursor-pointer hover:bg-primary/5"
+                                    class=(
+                                        "bg-primary/10",
+                                        move || {
+                                            matches!(
+                                                scope.get(),
+                                                FolderScope::Folder(ref s)
+                                                if *s == sel_id_a
+                                            )
                                         },
                                     )
-                                } else {
-                                    leptos::either::Either::Right(
-                                        view! { <span class="w-4 shrink-0"></span> },
+                                    class=(
+                                        "text-primary",
+                                        move || {
+                                            matches!(
+                                                scope.get(),
+                                                FolderScope::Folder(ref s)
+                                                if *s == sel_id_b
+                                            )
+                                        },
                                     )
-                                }}
-                                <span
-                                    class="flex shrink-0 text-foreground/50"
-                                    style:color=move || icon_color.clone().unwrap_or_default()
+                                    class=("ring-1", move || drag_over.get() == over_id)
+                                    class=("ring-primary", move || drag_over.get() == over_id2)
+                                    class=("bg-primary/15", move || drag_over.get() == over_id3)
+                                    style=indent
+                                    // Draggable as a move source (to reparent under another
+                                    // folder / root) — but not while its rename input is open,
+                                    // or the parent drag would hijack text selection.
+                                    draggable=move || {
+                                        (renaming.get().as_deref() != Some(drag_check_id.as_str()))
+                                            .then_some("true")
+                                    }
+                                    on:dragstart=move |ev: web_sys::DragEvent| {
+                                        if let Some(dt) = ev.data_transfer() {
+                                            let _ = dt.set_data("text/plain", &dragstart_id);
+                                        }
+                                    }
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        scope.set(FolderScope::Folder(click_id.clone()));
+                                    }
+                                    on:dragover=move |ev: web_sys::DragEvent| ev.prevent_default()
+                                    on:dragenter=move |_: web_sys::DragEvent| {
+                                        drag_over.set(enter_id.clone());
+                                    }
+                                    on:dragleave=move |_: web_sys::DragEvent| {
+                                        drag_over.set(String::new());
+                                    }
+                                    on:drop=move |ev: web_sys::DragEvent| drop_on_folder(
+                                        ev,
+                                        drop_id.clone(),
+                                    )
                                 >
-                                    <Icon
-                                        attr:aria-hidden="true"
-                                        icon=icon_data
-                                        width="14"
-                                        height="14"
-                                    />
-                                </span>
-                                {move || {
-                                    if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
+                                    {if has_children {
                                         leptos::either::Either::Left(
                                             view! {
-                                                <Input
-                                                    id="folder-rename"
-                                                    class="flex-1 min-w-0"
-                                                    autofocus=true
-                                                    value=Signal::derive(move || rename_value.get())
-                                                    on_input=Callback::new(move |v: String| rename_value.set(v))
+                                                <IconButton
+                                                    variant=Variant::Ghost
+                                                    size=Size::Xs
+                                                    class="text-foreground/40"
+                                                    aria_label=Signal::derive(move || {
+                                                        t_string!(i18n, vault.folder_toggle).to_owned()
+                                                    })
                                                     on:click=move |ev: web_sys::MouseEvent| {
                                                         ev.stop_propagation();
+                                                        collapsed
+                                                            .update(|c| {
+                                                                if !c.remove(&chev_id) {
+                                                                    c.insert(chev_id.clone());
+                                                                }
+                                                            });
                                                     }
-                                                    on:keydown=move |ev: web_sys::KeyboardEvent| {
-                                                        match ev.key().as_str() {
-                                                            "Enter" => {
-                                                                ev.prevent_default();
-                                                                commit();
-                                                            }
-                                                            "Escape" => {
-                                                                ev.prevent_default();
-                                                                renaming.set(None);
-                                                            }
-                                                            _ => {}
+                                                >
+                                                    {move || {
+                                                        if collapsed.get().contains(&col_id) {
+                                                            leptos::either::Either::Left(
+                                                                view! {
+                                                                    <Icon
+                                                                        attr:aria-hidden="true"
+                                                                        icon=i::FaChevronRightSolid
+                                                                        width="10"
+                                                                        height="10"
+                                                                    />
+                                                                },
+                                                            )
+                                                        } else {
+                                                            leptos::either::Either::Right(
+                                                                view! {
+                                                                    <Icon
+                                                                        attr:aria-hidden="true"
+                                                                        icon=i::FaChevronDownSolid
+                                                                        width="10"
+                                                                        height="10"
+                                                                    />
+                                                                },
+                                                            )
                                                         }
-                                                    }
-                                                    on:focusout=move |_: web_sys::FocusEvent| commit()
-                                                />
+                                                    }}
+                                                </IconButton>
                                             },
                                         )
                                     } else {
-                                        let name = name.clone();
-                                        let name_title = name.clone();
                                         leptos::either::Either::Right(
-                                            view! {
-                                                <span class="flex-1 truncate" title=name_title>
-                                                    {name}
-                                                </span>
-                                            },
+                                            view! { <span class="w-4 shrink-0"></span> },
                                         )
-                                    }
-                                }}
-                                <span class="shrink-0 text-[10px] text-foreground/40">
-                                    {move || counts.get().2.get(&cnt_id).copied().unwrap_or(0)}
-                                </span>
-                                <IconButton
-                                    variant=Variant::Ghost
-                                    size=Size::Xs
-                                    class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_customize).to_owned()
-                                    })
-                                    on:click=move |ev: web_sys::MouseEvent| {
-                                        ev.stop_propagation();
-                                        on_customize.run(cust_id.clone());
-                                    }
-                                >
-                                    <Icon
-                                        attr:aria-hidden="true"
-                                        icon=i::FaPaletteSolid
-                                        width="10"
-                                        height="10"
-                                    />
-                                </IconButton>
-                                <IconButton
-                                    variant=Variant::Ghost
-                                    size=Size::Xs
-                                    class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_rename).to_owned()
-                                    })
-                                    on:click=move |ev: web_sys::MouseEvent| {
-                                        ev.stop_propagation();
-                                        renaming.set(Some(start_id.clone()));
-                                        rename_value.set(start_nm.clone());
-                                    }
-                                >
-                                    <Icon
-                                        attr:aria-hidden="true"
-                                        icon=i::FaPenSolid
-                                        width="10"
-                                        height="10"
-                                    />
-                                </IconButton>
-                                <IconButton
-                                    variant=Variant::Ghost
-                                    size=Size::Xs
-                                    class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_delete).to_owned()
-                                    })
-                                    on:click=move |ev: web_sys::MouseEvent| {
-                                        ev.stop_propagation();
-                                        on_delete.run(del_id.clone());
-                                    }
-                                >
-                                    <Icon
-                                        attr:aria-hidden="true"
-                                        icon=i::BiTrashRegular
-                                        width="10"
-                                        height="10"
-                                    />
-                                </IconButton>
-                            </div>
+                                    }}
+                                    <span
+                                        class="flex shrink-0 text-foreground/50"
+                                        style:color=move || icon_color.clone().unwrap_or_default()
+                                    >
+                                        <Icon
+                                            attr:aria-hidden="true"
+                                            icon=icon_data
+                                            width="14"
+                                            height="14"
+                                        />
+                                    </span>
+                                    {move || {
+                                        if renaming.get().as_deref() == Some(rn_check_id.as_str()) {
+                                            leptos::either::Either::Left(
+                                                view! {
+                                                    <Input
+                                                        id="folder-rename"
+                                                        class="flex-1 min-w-0"
+                                                        autofocus=true
+                                                        value=Signal::derive(move || rename_value.get())
+                                                        on_input=Callback::new(move |v: String| rename_value.set(v))
+                                                        on:click=move |ev: web_sys::MouseEvent| {
+                                                            ev.stop_propagation();
+                                                        }
+                                                        on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                                            match ev.key().as_str() {
+                                                                "Enter" => {
+                                                                    ev.prevent_default();
+                                                                    commit();
+                                                                }
+                                                                "Escape" => {
+                                                                    ev.prevent_default();
+                                                                    renaming.set(None);
+                                                                }
+                                                                _ => {}
+                                                            }
+                                                        }
+                                                        on:focusout=move |_: web_sys::FocusEvent| commit()
+                                                    />
+                                                },
+                                            )
+                                        } else {
+                                            let name = name.clone();
+                                            let name_title = name.clone();
+                                            leptos::either::Either::Right(
+                                                view! {
+                                                    <span class="flex-1 truncate" title=name_title>
+                                                        {name}
+                                                    </span>
+                                                },
+                                            )
+                                        }
+                                    }}
+                                    <span class="shrink-0 text-[10px] text-foreground/40">
+                                        {move || counts.get().2.get(&cnt_id).copied().unwrap_or(0)}
+                                    </span>
+                                    <IconButton
+                                        variant=Variant::Ghost
+                                        size=Size::Xs
+                                        class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
+                                        aria_label=Signal::derive(move || {
+                                            t_string!(i18n, vault.folder_customize).to_owned()
+                                        })
+                                        on:click=move |ev: web_sys::MouseEvent| {
+                                            ev.stop_propagation();
+                                            on_customize.run(cust_id.clone());
+                                        }
+                                    >
+                                        <Icon
+                                            attr:aria-hidden="true"
+                                            icon=i::FaPaletteSolid
+                                            width="10"
+                                            height="10"
+                                        />
+                                    </IconButton>
+                                    <IconButton
+                                        variant=Variant::Ghost
+                                        size=Size::Xs
+                                        class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40"
+                                        aria_label=Signal::derive(move || {
+                                            t_string!(i18n, vault.folder_rename).to_owned()
+                                        })
+                                        on:click=move |ev: web_sys::MouseEvent| {
+                                            ev.stop_propagation();
+                                            renaming.set(Some(start_id.clone()));
+                                            rename_value.set(start_nm.clone());
+                                        }
+                                    >
+                                        <Icon
+                                            attr:aria-hidden="true"
+                                            icon=i::FaPenSolid
+                                            width="10"
+                                            height="10"
+                                        />
+                                    </IconButton>
+                                    <IconButton
+                                        variant=Variant::Ghost
+                                        size=Size::Xs
+                                        class="shrink-0 opacity-0 group-hover:opacity-100 text-foreground/40 hover:text-danger"
+                                        aria_label=Signal::derive(move || {
+                                            t_string!(i18n, vault.folder_delete).to_owned()
+                                        })
+                                        on:click=move |ev: web_sys::MouseEvent| {
+                                            ev.stop_propagation();
+                                            on_delete.run(del_id.clone());
+                                        }
+                                    >
+                                        <Icon
+                                            attr:aria-hidden="true"
+                                            icon=i::BiTrashRegular
+                                            width="10"
+                                            height="10"
+                                        />
+                                    </IconButton>
+                                </div>
+                            }
                         }
-                    }
-                />
+                    />
+
+                </Show>
 
                 // Optional extra sidebar content (e.g. the smart-folders section),
                 // rendered below the folder list inside the same scrollable aside.
+                // Smart folders stay visible in trash — their content isn't derived
+                // from the trashed entry list; clicking one navigates back to active.
                 {children.map(|c| c())}
+
+                // Trash — a system "folder" (Finder / email style). Selecting it swaps
+                // the fetch source to the trashed list; the folder chrome above hides,
+                // but All / Unfiled / Trash stay as the always-visible navigation.
+                <Separator />
+                <SidebarItem
+                    label=Signal::derive(move || t_string!(i18n, vault.view_trash).to_owned())
+                    icon=Box::new(|| {
+                        view! { <Icon icon=i::BiTrashRegular width="14" height="14" /> }.into_any()
+                    })
+                    aria_label=Signal::derive(move || t_string!(i18n, vault.view_trash).to_owned())
+                    selected=Signal::derive(move || trashed_view.get())
+                    on_click=Callback::new(move |_: ()| trashed_view.set(true))
+                />
             </div>
 
             // Drag handle — pointer-capture resize (20–40vw).
