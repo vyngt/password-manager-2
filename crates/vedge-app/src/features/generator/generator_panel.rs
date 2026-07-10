@@ -7,11 +7,12 @@
 //! instant a class is toggled — even before Regenerate — and can never disagree
 //! with the generator (both call the engine's one entropy code path).
 //!
-//! **Copy** uses `CopyButton` (browser clipboard) — a deliberate placeholder:
-//! slice 3.2 reroutes it through a hardened native `copy_text` so copied secrets
-//! skip OS clipboard history/cloud sync. There is no OS-clipboard auto-clear on
-//! this path yet (3.2). The plain `String` that reaches the DOM for display/copy
-//! is outside Rust's zeroize control — a documented residual, not a regression.
+//! **Copy** routes through the hardened native `copy_text` command (slice 3.2)
+//! via `CopyButton`'s `copy_with` strategy — so the copied secret carries the OS
+//! no-history / no-cloud exclusion hints and is auto-cleared after the configured
+//! delay (`SecurityPrefs.clipboard_clear_seconds`). The plain `String` that
+//! reaches the DOM for display, and crosses IPC once for the copy, is outside
+//! Rust's zeroize control — a documented residual, not a regression.
 //!
 //! Entropy bands come from `entropy_band` (charset math) — **not** from the
 //! `password_strength` (zxcvbn) scorer, which is for *user-entered* passwords and
@@ -22,10 +23,16 @@ use leptos::either::Either;
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use vedge_generator::{RandomConfig, entropy_band, generate_random, random_entropy_bits};
-use vedge_ui::components::{CopyButton, IconButton, PasswordStrengthMeter, Slider, Toggle};
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::components::{
+    CopyButton, CopyFuture, IconButton, PasswordStrengthMeter, Slider, Toggle,
+};
+use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 use zeroize::Zeroizing;
 
+use crate::api;
+use crate::features::settings::security_prefs::SecurityPrefsCtx;
 use crate::i18n::{t, t_string, use_i18n};
 
 #[component]
@@ -40,6 +47,47 @@ pub fn GeneratorPanel() -> impl IntoView {
             .map(|g| g.secret)
             .unwrap_or_default(),
     );
+
+    // Copy routes through the hardened native `copy_text` command (slice 3.2).
+    // Toast helpers read the dismiss label `untrack`ed so they're safe to call
+    // from inside `spawn_local`.
+    let sec = expect_context::<SecurityPrefsCtx>();
+    let toast = use_toast();
+    let show_success = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, generator.dismiss).to_owned());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Success)
+                .dismiss_label(dismiss),
+        );
+    };
+    let show_error = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, generator.dismiss).to_owned());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
+    // Route the copy through the hardened native command. The returned bool
+    // drives `CopyButton`'s check-mark; the toast gives the explicit result.
+    let copy_native = Callback::new(move |v: String| -> CopyFuture {
+        // Read locale strings + prefs in the handler body (reactive owner
+        // present); reading them inside the future would trip the "outside a
+        // reactive tracking context" warning.
+        let secs = sec.0.get_untracked().clipboard_clear_seconds;
+        let ok_msg = t_string!(i18n, generator.copied).to_owned();
+        let err_msg = t_string!(i18n, generator.copy_failed).to_owned();
+        Box::pin(async move {
+            if api::clipboard::copy_text(&v, Some(secs)).await.is_ok() {
+                show_success(ok_msg);
+                true
+            } else {
+                show_error(err_msg);
+                false
+            }
+        })
+    });
 
     // Synchronous — pure math, no `spawn_local`. Reads the config untracked so the
     // handler doesn't subscribe to it.
@@ -106,13 +154,10 @@ pub fn GeneratorPanel() -> impl IntoView {
                 </IconButton>
                 <CopyButton
                     value=copy_value
-                    show_toast=true
+                    copy_with=copy_native
                     label=Signal::derive(move || t_string!(i18n, generator.copy).to_owned())
                     copied_label=Signal::derive(move || {
                         t_string!(i18n, generator.copied).to_owned()
-                    })
-                    toast_dismiss_label=Signal::derive(move || {
-                        t_string!(i18n, generator.dismiss).to_owned()
                     })
                 />
                 <IconButton
