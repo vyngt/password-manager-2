@@ -23,12 +23,12 @@ use vedge_ipc::{
 use vedge_ui::components::Button;
 use vedge_ui::components::IconButton;
 use vedge_ui::components::Input;
+use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::form::date_picker::{
     DatePicker, DatePickerValue, DatePickerVariant, YearMonth,
 };
 use vedge_ui::components::form::textarea::Textarea;
-use vedge_ui::components::popover::{Popover, PopoverPlacement};
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
 use crate::features::generator::generator_panel::GeneratorPanel;
 use crate::features::settings::generator_prefs::GeneratorPrefsCtx;
@@ -618,20 +618,16 @@ fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
 
 /// The Login password field with inline generate affordances (slice 3.3): the
 /// masked `Input`, a one-click **Generate** wand that fills from the last-used
-/// preset, and a caret that opens a [`Popover`]-hosted [`GeneratorPanel`] to tune
+/// preset, and a caret that opens a [`Dialog`]-hosted [`GeneratorPanel`] to tune
 /// + "Use". The buttons are siblings (the password `Input` renders its own eye
-/// and ignores a trailing slot) — mirrors [`SshPrivateKeyField`]'s layout.
+/// and ignores a trailing slot) — mirrors [`SshPrivateKeyField`]'s layout. The
+/// generator is a **modal** (not an anchored popover) so it renders above the
+/// Edit dialog it is opened from and its long body scrolls.
 #[component]
 fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
     let i18n = use_i18n();
     let prefs = expect_context::<GeneratorPrefsCtx>().0;
-    let popover_open = RwSignal::new(false);
-    let field_ref = NodeRef::<leptos::html::Div>::new();
-    let anchor = Signal::derive(move || {
-        field_ref
-            .get()
-            .map(|el| -> web_sys::HtmlElement { el.into() })
-    });
+    let generator_open = RwSignal::new(false);
 
     // One click, no dialog: draw from the shared preset and fill the field signal.
     // The engine's `Zeroizing<String>` is copied into the form's existing plain
@@ -644,11 +640,11 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
     });
     let on_use = Callback::new(move |secret: String| {
         data.update(|d| d.password = secret);
-        popover_open.set(false);
+        generator_open.set(false);
     });
 
     view! {
-        <div node_ref=field_ref class="col-span-2 flex items-center gap-2">
+        <div class="col-span-2 flex items-center gap-2">
             <div class="flex-1">
                 {secret_field!(data, i18n, "ef-password", password, form_password)}
             </div>
@@ -667,7 +663,7 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
             <IconButton
                 variant=Variant::Ghost
                 size=Size::Sm
-                on_click=Callback::new(move |()| popover_open.update(|o| *o = !*o))
+                on_click=Callback::new(move |()| generator_open.update(|o| *o = !*o))
                 aria_label=Signal::derive(move || t_string!(i18n, vault.generate_tune).to_owned())
             >
                 <span aria-hidden="true">
@@ -675,20 +671,22 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
                 </span>
             </IconButton>
         </div>
-        <Popover
-            open=popover_open
-            on_close=Callback::new(move |()| popover_open.set(false))
-            anchor=anchor
-            placement=PopoverPlacement::BottomEnd
+        // A centered modal (not an anchored popover): it portals above the Edit
+        // dialog it is opened from, and its `DialogBody` scrolls when the mode
+        // picker + controls + bulk/recent sections exceed the viewport.
+        <Dialog
+            open=generator_open
+            on_close=Callback::new(move |()| generator_open.set(false))
+            size=DialogSize::Md
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
         >
-            // Wide enough for the 5-mode picker (content-width `inline-flex`
-            // tabs) not to overflow, plus inner padding for breathing room on
-            // top of the popover panel's tight 4px. (Min window is 960px and the
-            // Popover clamps its position to the viewport, so no max-width needed.)
-            <div class="w-[30rem] p-4">
+            <DialogHeader>
+                <DialogTitle>{move || t!(i18n, vault.generate_tune)}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
                 <GeneratorPanel on_use=on_use />
-            </div>
-        </Popover>
+            </DialogBody>
+        </Dialog>
     }
 }
 

@@ -32,7 +32,7 @@ use vedge_generator::{
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{
-    Button, CopyButton, CopyFuture, EmptyState, IconButton, Input, NumberInput,
+    Button, CopyButton, CopyFuture, EmptyState, IconButton, Input, Label, NumberInput,
     PasswordStrengthMeter, SegmentOption, SegmentedControl, Select, SelectItem, Slider, Toggle,
 };
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
@@ -406,10 +406,14 @@ pub fn GeneratorPanel(
                 </button>
                 <Show when=move || bulk_open.get()>
                     <div class="space-y-3">
-                        <div class="flex items-end gap-2">
-                            <div class="w-28">
+                        <div class="flex items-end gap-3">
+                            <div class="space-y-1.5">
+                                <Label html_for="gen-bulk-count">
+                                    {move || t!(i18n, generator.bulk_count)}
+                                </Label>
                                 <NumberInput
                                     id="gen-bulk-count"
+                                    class="w-32"
                                     value=Signal::derive(move || f64::from(bulk_count.get()))
                                     min=Some(1.0)
                                     max=Some(f64::from(MAX_BATCH))
