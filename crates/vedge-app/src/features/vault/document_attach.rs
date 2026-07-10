@@ -119,9 +119,9 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
                     show.set(false);
                     on_attached.run(());
                 }
-                // `DocumentTooLarge` collapses to `Invalid` on the wire; surface
-                // the friendly, localized message for that specific case.
-                Err(ApiError::Invalid(m)) if m.contains("too large") => show_error(too_large),
+                // `DocumentTooLarge` is a dedicated wire kind — match it
+                // structurally and surface the friendly, localized message.
+                Err(ApiError::DocumentTooLarge) => show_error(too_large),
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             submitting.set(false);

@@ -52,7 +52,9 @@ enum ActionId {
 
 /// One rendered/selectable palette row. Entries carry only what the palette
 /// needs (id to select, name + type to show) — not the whole `IndexEntryDto`.
-#[derive(Clone)]
+/// `PartialEq` so the row list can live in a `Memo` (skips downstream re-renders
+/// when the recomputed rows are identical).
+#[derive(Clone, PartialEq)]
 enum PaletteRow {
     Action {
         id: ActionId,
@@ -194,10 +196,22 @@ pub fn CommandPalette() -> impl IntoView {
         );
     });
 
-    // Build the flat, ordered (actions-first) row list from the current query,
-    // loaded entries/tags, and selection. `Copy` so both the view and the
-    // keydown handler can call it.
-    let build_rows = move || -> Vec<PaletteRow> {
+    // Tag `id -> name` lookup, rebuilt only when the loaded `tags` change (not on
+    // every keystroke) so `query_matches` can match a tag's display name.
+    let tag_map = Memo::new(move |_| {
+        tags.get()
+            .into_iter()
+            .map(|t| (t.id, t.name))
+            .collect::<HashMap<String, String>>()
+    });
+
+    // The flat, ordered (actions-first) row list. A `Memo` so it recomputes only
+    // when an input signal (query / entries / selection / tags / locale) actually
+    // changes — not on every reactive read (the view alone reads it ~3× per render,
+    // plus once per arrow key). `Copy`, so both the view and the keydown handler
+    // read it. Locale reads via `t_string!` are owner-safe inside a `Memo` and make
+    // the rows relocalize on a language switch.
+    let rows = Memo::new(move |_| -> Vec<PaletteRow> {
         let q = query.get();
         let all = entries.get();
         let sel = ui.selected_id.get();
@@ -239,27 +253,27 @@ pub fn CommandPalette() -> impl IntoView {
             }
         }
 
-        let mut rows: Vec<PaletteRow> = actions
+        let mut out: Vec<PaletteRow> = actions
             .into_iter()
             .filter(|(_, label)| matches_command(label, &q))
             .map(|(id, label)| PaletteRow::Action { id, label })
             .collect();
 
         let ql = q.trim().to_lowercase();
-        let tag_map: HashMap<String, String> =
-            tags.get().into_iter().map(|t| (t.id, t.name)).collect();
-        rows.extend(
-            all.iter()
-                .filter(|e| query_matches(e, &ql, &tag_map))
-                .take(PALETTE_ENTRY_CAP)
-                .map(|e| PaletteRow::Entry {
-                    id: e.id.clone(),
-                    name: e.name.clone(),
-                    entry_type: e.entry_type.clone(),
-                }),
-        );
-        rows
-    };
+        tag_map.with(|tm| {
+            out.extend(
+                all.iter()
+                    .filter(|e| query_matches(e, &ql, tm))
+                    .take(PALETTE_ENTRY_CAP)
+                    .map(|e| PaletteRow::Entry {
+                        id: e.id.clone(),
+                        name: e.name.clone(),
+                        entry_type: e.entry_type.clone(),
+                    }),
+            );
+        });
+        out
+    });
 
     // Run the selected row, then close the palette. `Copy` (captures only Copy
     // signals; `use_navigate()` is called inline, like `LockButton`).
@@ -285,7 +299,18 @@ pub fn CommandPalette() -> impl IntoView {
                     use_navigate()("/v/generator", Default::default());
                 }
                 ActionId::Edit => {
-                    ui.edit_request.update(|n| *n = n.wrapping_add(1));
+                    // `edit_request` is observed by `VaultDetail`'s Effect, which
+                    // lives only on the vault route. Navigate there first, then
+                    // defer the pulse one macrotask: a synchronous bump would land
+                    // before the (re)mounted Effect captures its `prev` baseline
+                    // and be swallowed — so Edit no-ops from `/v/generator` etc.
+                    // The `set_timeout` runs after the microtask flush that mounts
+                    // the route (same ordering rationale as the focus timeout).
+                    use_navigate()("/v/vault", Default::default());
+                    set_timeout(
+                        move || ui.edit_request.update(|n| *n = n.wrapping_add(1)),
+                        Duration::from_millis(0),
+                    );
                 }
                 ActionId::MoveToFolder => {
                     ui.move_request.update(|n| *n = n.wrapping_add(1));
@@ -314,7 +339,7 @@ pub fn CommandPalette() -> impl IntoView {
     let on_key = move |ev: web_sys::KeyboardEvent| match ev.key().as_str() {
         "ArrowDown" => {
             ev.prevent_default();
-            let len = build_rows().len();
+            let len = rows.with(Vec::len);
             if len > 0 {
                 highlighted.update(|h| *h = (*h + 1) % len);
                 scroll_into_view(list_ref, highlighted.get_untracked());
@@ -322,7 +347,7 @@ pub fn CommandPalette() -> impl IntoView {
         }
         "ArrowUp" => {
             ev.prevent_default();
-            let len = build_rows().len();
+            let len = rows.with(Vec::len);
             if len > 0 {
                 highlighted.update(|h| *h = if *h == 0 { len - 1 } else { *h - 1 });
                 scroll_into_view(list_ref, highlighted.get_untracked());
@@ -330,12 +355,12 @@ pub fn CommandPalette() -> impl IntoView {
         }
         "Enter" => {
             ev.prevent_default();
-            let rows = build_rows();
-            if rows.is_empty() {
+            let current = rows.get();
+            if current.is_empty() {
                 return;
             }
-            let idx = highlighted.get().min(rows.len() - 1);
-            if let Some(row) = rows.get(idx) {
+            let idx = highlighted.get().min(current.len() - 1);
+            if let Some(row) = current.get(idx) {
                 run_row(row.clone());
             }
         }
@@ -366,10 +391,11 @@ pub fn CommandPalette() -> impl IntoView {
                     spellcheck="false"
                     role="combobox"
                     aria-controls="cmdk-listbox"
-                    aria-expanded=move || (!build_rows().is_empty()).to_string()
+                    aria-expanded=move || rows.with(|r| (!r.is_empty()).to_string())
                     aria-activedescendant=move || {
-                        (!build_rows().is_empty())
-                            .then(|| format!("cmdk-opt-{}", highlighted.get()))
+                        rows.with(|r| {
+                            (!r.is_empty()).then(|| format!("cmdk-opt-{}", highlighted.get()))
+                        })
                     }
                     aria-label=move || t_string!(i18n, vault.palette_placeholder).to_owned()
                     placeholder=move || t_string!(i18n, vault.palette_placeholder).to_owned()
@@ -393,7 +419,7 @@ pub fn CommandPalette() -> impl IntoView {
                 class="overflow-auto px-2 py-2 max-h-[360px]"
             >
                 {move || {
-                    let rows = build_rows();
+                    let rows = rows.get();
                     if rows.is_empty() {
                         return Either::Left(
                             view! {

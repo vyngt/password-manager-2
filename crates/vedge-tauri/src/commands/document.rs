@@ -94,9 +94,9 @@ fn read_document_for_import(src_path: &str) -> Result<(String, String, Vec<u8>),
         .map_err(|e| CommandError::Storage(format!("stat document: {e}")))?
         .len();
     if len > DOCUMENT_SIZE_LIMIT_BYTES {
-        return Err(CommandError::Invalid(format!(
-            "document too large: {len} bytes exceeds {DOCUMENT_SIZE_LIMIT_BYTES} bytes"
-        )));
+        // Dedicated typed kind (not `Invalid`) so the frontend matches it
+        // structurally — mirrors the use-case's `VaultError::DocumentTooLarge`.
+        return Err(CommandError::DocumentTooLarge);
     }
     let filename = filename_from_path(path);
     let mime_type = mime_from_extension(path);
@@ -303,8 +303,8 @@ mod tests {
         drop(f);
 
         match read_document_for_import(big.to_str().unwrap()) {
-            Err(CommandError::Invalid(m)) => assert!(m.contains("too large"), "got: {m}"),
-            other => panic!("expected Invalid(too large), got {other:?}"),
+            Err(CommandError::DocumentTooLarge) => {}
+            other => panic!("expected DocumentTooLarge, got {other:?}"),
         }
     }
 
