@@ -158,25 +158,26 @@ pub fn GeneratorPanel(
         generator_prefs::save(&prefs.get_untracked());
         regenerate(());
     });
-    // Picker labels + separator options are built once (untracked) — non-reactive
-    // option lists; they don't relocalize on live language switch (Select/segmented
-    // precedent). Separator options live in a `StoredValue` so the swapped
-    // passphrase arm can re-read them on every mode switch.
-    let mode_options: Vec<SegmentOption> = untrack(|| {
-        GenMode::ALL
-            .into_iter()
-            .map(|m| {
-                let label = match m {
-                    GenMode::Random => t_string!(i18n, generator.mode_random),
-                    GenMode::Passphrase => t_string!(i18n, generator.mode_passphrase),
-                    GenMode::Pin => t_string!(i18n, generator.mode_pin),
-                    GenMode::Pronounceable => t_string!(i18n, generator.mode_pronounceable),
-                    GenMode::Pattern => t_string!(i18n, generator.mode_pattern),
-                };
-                SegmentOption::text(m.as_value(), label.to_owned())
-            })
-            .collect()
-    });
+    // Mode-picker labels are **reactive** — `Signal::derive` defers the `t_string!`
+    // read to render time (no eager read in the body → no `untrack`), so the
+    // picker relocalizes on live language switch. `SegmentOption::text` accepts a
+    // `Signal<String>` via its `TextProp` label.
+    let mode_options: Vec<SegmentOption> = GenMode::ALL
+        .into_iter()
+        .map(|m| {
+            let label = Signal::derive(move || match m {
+                GenMode::Random => t_string!(i18n, generator.mode_random).to_owned(),
+                GenMode::Passphrase => t_string!(i18n, generator.mode_passphrase).to_owned(),
+                GenMode::Pin => t_string!(i18n, generator.mode_pin).to_owned(),
+                GenMode::Pronounceable => t_string!(i18n, generator.mode_pronounceable).to_owned(),
+                GenMode::Pattern => t_string!(i18n, generator.mode_pattern).to_owned(),
+            });
+            SegmentOption::text(m.as_value(), label)
+        })
+        .collect();
+    // Separator options are built once (untracked) — the `Select` component's
+    // option list is non-reactive, so these don't relocalize on live language
+    // switch. Stored so the swapped passphrase arm can re-read them per mode switch.
     let separator_options = StoredValue::new(untrack(|| {
         SeparatorPref::ALL
             .into_iter()
