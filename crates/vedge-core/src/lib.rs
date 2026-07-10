@@ -41,9 +41,9 @@ pub use application::vault::use_cases::{
     delete_tag, enroll_biometric, entries_by_domain, entries_by_folder, entries_by_tag,
     export_document, export_emergency_kit, get_entry, get_history_value, hard_delete_entry,
     import_document, list_active_entries, list_history, list_tags, list_trashed_entries,
-    lock_vault, move_entry, normalize_tag_name, recover_vault, rename_tag, restore_entry,
-    restore_from_history, run_maintenance, search_entries, set_favorite, set_sort_order, set_tags,
-    soft_delete_entry, update_entry,
+    lock_vault, move_entry, normalize_tag_name, place_text_on_clipboard, recover_vault, rename_tag,
+    restore_entry, restore_from_history, run_maintenance, search_entries, set_favorite,
+    set_sort_order, set_tags, soft_delete_entry, update_entry,
 };
 pub use domain::vault::emergency_kit::EmergencyKitContent;
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};

@@ -87,6 +87,7 @@ pub fn run() {
             commands::entry::restore_entry,
             commands::entry::hard_delete_entry,
             commands::entry::copy_field,
+            commands::clipboard::copy_text,
             commands::entry::move_entry,
             commands::entry::set_favorite,
             commands::entry::set_sort_order,

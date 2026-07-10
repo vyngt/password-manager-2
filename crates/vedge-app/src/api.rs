@@ -19,6 +19,7 @@ pub mod tauri;
 // documented near-term consumer, marked `#[allow(dead_code, reason = "…")]` **per function**;
 // a module whose *every* wrapper is still unused carries a single module-level allow (below).
 pub mod biometric;
+pub mod clipboard;
 pub mod dialog;
 pub mod document;
 pub mod emergency_kit;

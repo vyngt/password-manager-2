@@ -120,12 +120,32 @@ pub(super) fn place_field_on_clipboard(
     field: &FieldSelector,
     clear_after_secs: u32,
 ) -> Result<(), VaultError> {
-    let mut value = extract_field(payload, field)?;
-    session.clipboard.set(&value)?;
-    value.zeroize();
+    let value = extract_field(payload, field)?;
+    place_text_on_clipboard(&session.clipboard, value, clear_after_secs)
+}
+
+/// Place a secret on the OS clipboard and schedule its background clear.
+///
+/// Writes `text` through the injected [`ClipboardProvider`] (which applies the
+/// platform exclusion hints), zeroizes our copy, then spawns a detached task
+/// that clears the clipboard after `clear_after_secs`.
+///
+/// Shared by [`copy_field`] / `copy_history_field` (decrypted entry fields) and
+/// the generic `copy_text` command (renderer-generated secrets — the password
+/// generator and, later, bulk-generate). The clear task holds only an
+/// `Arc<dyn ClipboardProvider>` — no `&VaultSession` — so it survives the user
+/// locking/dropping the session. **Requires an ambient Tokio runtime** (the
+/// Tauri command context and `#[tokio::test]` both provide one).
+pub fn place_text_on_clipboard(
+    clipboard: &Arc<dyn ClipboardProvider>,
+    mut text: Zeroizing<String>,
+    clear_after_secs: u32,
+) -> Result<(), VaultError> {
+    clipboard.set(&text)?;
+    text.zeroize();
 
     // Detached — outlives this session if the user locks. `Arc` is cheap.
-    let clipboard: Arc<dyn ClipboardProvider> = Arc::clone(&session.clipboard);
+    let clipboard: Arc<dyn ClipboardProvider> = Arc::clone(clipboard);
     let delay = Duration::from_secs(u64::from(clear_after_secs));
     tokio::spawn(async move {
         tokio::time::sleep(delay).await;
@@ -199,4 +219,58 @@ fn generate_totp(seed_b32: &str) -> Result<String, VaultError> {
         .map_err(|e| VaultError::MalformedPayload(format!("TOTP init: {e}")))?;
     totp.generate_current()
         .map_err(|e| VaultError::MalformedPayload(format!("TOTP generate: {e}")))
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::clone_on_ref_ptr)]
+
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use zeroize::Zeroizing;
+
+    use super::place_text_on_clipboard;
+    use crate::application::vault::ports::clipboard::ClipboardProvider;
+    use crate::infrastructure::clipboard::MemoryClipboardProvider;
+
+    /// The generic copy path writes the secret through the injected
+    /// `ClipboardProvider` (the same port `ArboardClipboardProvider` hardens),
+    /// not any renderer/browser path. A far-future clear delay keeps the value
+    /// live for the assertion.
+    #[tokio::test]
+    async fn place_text_on_clipboard_routes_through_provider() {
+        let cb = Arc::new(MemoryClipboardProvider::new());
+        let provider: Arc<dyn ClipboardProvider> = cb.clone();
+
+        place_text_on_clipboard(&provider, Zeroizing::new("s3cr3t-value".to_owned()), 3600)
+            .unwrap();
+
+        assert_eq!(cb.peek().as_deref(), Some("s3cr3t-value"));
+        assert_eq!(
+            cb.set_count(),
+            1,
+            "set routed through the provider exactly once"
+        );
+    }
+
+    /// The detached background clear task still schedules for the generic path.
+    /// `clear_after_secs = 0` fires it almost immediately.
+    #[tokio::test]
+    async fn place_text_on_clipboard_schedules_clear() {
+        let cb = Arc::new(MemoryClipboardProvider::new());
+        let provider: Arc<dyn ClipboardProvider> = cb.clone();
+
+        place_text_on_clipboard(&provider, Zeroizing::new("ephemeral".to_owned()), 0).unwrap();
+        assert_eq!(cb.set_count(), 1);
+
+        // Yield to the spawned clear task (real timer, ~0 s delay).
+        for _ in 0..50 {
+            if cb.peek().is_none() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        assert_eq!(cb.peek(), None, "the clear timer should have fired");
+    }
 }

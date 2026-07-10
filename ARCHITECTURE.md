@@ -150,6 +150,12 @@ Command errors cross as a `{kind, message}` `ErrorEnvelope`. Plaintext secrets s
 wherever possible (e.g. copy-to-clipboard is a backend command with auto-clear); the one sanctioned,
 audited exception is the explicit "reveal" (`get_entry`).
 
+Every clipboard write — `copy_field`, `copy_history_field`, and the generic `copy_text` used by the
+renderer-side copies (the password generator and the Secret Key display) — funnels through one hardened
+`ClipboardProvider::set`, which marks the payload with the platform **no-history / no-cloud exclusion
+hints** (Windows monitor-processing exclusion, macOS `ConcealedType`, X11 password-manager hint) so it
+skips OS clipboard history / cloud sync and well-behaved managers, alongside the timed auto-clear.
+
 ## Frontend
 
 - **`vedge-app`** — Leptos CSR: pages under `/` (launch/unlock) and `/v` (the unlocked vault:
