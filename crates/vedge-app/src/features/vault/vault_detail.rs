@@ -56,6 +56,10 @@ pub fn VaultDetail(
     on_move_request: Callback<IndexEntryDto>,
     /// Open the version-history panel for this entry.
     on_history_request: Callback<IndexEntryDto>,
+    /// Restore a trashed entry to the active vault (trashed detail only). Takes the id.
+    on_restore: Callback<String>,
+    /// Permanently delete a trashed entry (trashed detail only) — opens the confirm. Takes the entry.
+    on_hard_delete: Callback<IndexEntryDto>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
@@ -99,6 +103,11 @@ pub fn VaultDetail(
     let fav_id = entry.id.clone();
     let is_fav = entry.is_favorite;
     let entry_for_move = entry.clone();
+    // Trashed detail (tombstone) actions: Restore by id, Delete-permanently by
+    // entry (opens the named confirm). `is_trashed` is constant for this mount.
+    let is_trashed = entry.is_trashed;
+    let restore_id = entry.id.clone();
+    let entry_for_hard_delete = entry.clone();
     let folder_of = entry.folder_id.clone();
     // Exclude this folder (+ its descendants) from its own parent picker so an
     // edit can't build a cycle; non-folder entries get every folder as a target.
@@ -266,31 +275,42 @@ pub fn VaultDetail(
                     {move || t!(i18n, vault.detail_title)}
                 </h3>
                 <div class="flex items-center gap-1">
-                    <IconButton
-                        aria_label=Signal::derive(move || {
-                            if is_fav {
-                                t_string!(i18n, vault.unfavorite).to_owned()
-                            } else {
-                                t_string!(i18n, vault.favorite).to_owned()
+                    // Favorite + history are hidden for a trashed entry — the detail
+                    // is a read-only tombstone (Restore / Delete-permanently only).
+                    {(!is_trashed)
+                        .then(|| {
+                            view! {
+                                <IconButton
+                                    aria_label=Signal::derive(move || {
+                                        if is_fav {
+                                            t_string!(i18n, vault.unfavorite).to_owned()
+                                        } else {
+                                            t_string!(i18n, vault.favorite).to_owned()
+                                        }
+                                    })
+                                    variant=Variant::Ghost
+                                    size=Size::Sm
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        on_favorite.run((fav_id.clone(), !is_fav));
+                                    }
+                                >
+                                    {if is_fav {
+                                        Either::Left(
+                                            view! {
+                                                <Icon attr:aria-hidden="true" icon=i::FaStarSolid />
+                                            },
+                                        )
+                                    } else {
+                                        Either::Right(
+                                            view! {
+                                                <Icon attr:aria-hidden="true" icon=i::FaStarRegular />
+                                            },
+                                        )
+                                    }}
+                                </IconButton>
                             }
-                        })
-                        variant=Variant::Ghost
-                        size=Size::Sm
-                        on:click=move |_: web_sys::MouseEvent| {
-                            on_favorite.run((fav_id.clone(), !is_fav));
-                        }
-                    >
-                        {if is_fav {
-                            Either::Left(
-                                view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> },
-                            )
-                        } else {
-                            Either::Right(
-                                view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> },
-                            )
-                        }}
-                    </IconButton>
-                    {has_history
+                        })}
+                    {(has_history && !is_trashed)
                         .then(|| {
                             view! {
                                 <IconButton
@@ -330,6 +350,8 @@ pub fn VaultDetail(
                         let tag_entry_id = tag_entry_id.clone();
                         let folder_of = folder_of.clone();
                         let entry_for_move = entry_for_move.clone();
+                        let restore_id = restore_id.clone();
+                        let entry_for_hard_delete = entry_for_hard_delete.clone();
                         // Edit now happens in the roomy `<Dialog>` below; while editing,
                         // the compact read aside collapses to just its header (renders None).
                         view! {
@@ -460,56 +482,94 @@ pub fn VaultDetail(
                             </dl>
 
                             <div class="flex flex-col gap-2 mt-4">
-                                {copy_buttons(i18n, copy_type, on_copy)}
-                                <Button
-                                    variant=Variant::Secondary
-                                    size=Size::Sm
-                                    full_width=true
-                                    on:click=move |_: web_sys::MouseEvent| {
-                                        on_move_request.run(entry_for_move.clone());
-                                    }
-                                >
-                                    {move || t!(i18n, vault.folder_move)}
-                                </Button>
-                                {is_editable
-                                    .then(|| {
+                                {if is_trashed {
+                                    Either::Left(
+                                        // Tombstone actions — replace copy/move/edit/export.
                                         view! {
                                             <Button
                                                 variant=Variant::Secondary
                                                 size=Size::Sm
                                                 full_width=true
-                                                on:click=start_edit
+                                                on:click=move |_: web_sys::MouseEvent| {
+                                                    on_restore.run(restore_id.clone());
+                                                }
                                             >
-                                                {move || t!(i18n, vault.edit)}
+                                                {move || t!(i18n, vault.restore)}
                                             </Button>
-                                        }
-                                    })}
-                                {is_document
-                                    .then(|| {
-                                        view! {
                                             <Button
-                                                variant=Variant::Primary
+                                                variant=Variant::Danger
                                                 size=Size::Sm
                                                 full_width=true
-                                                on:click=export_doc
+                                                on:click=move |_: web_sys::MouseEvent| {
+                                                    on_hard_delete.run(entry_for_hard_delete.clone());
+                                                }
                                             >
-                                                {move || t!(i18n, vault.export)}
+                                                {move || t!(i18n, vault.delete_permanently)}
                                             </Button>
-                                        }
-                                    })}
+                                        },
+                                    )
+                                } else {
+                                    Either::Right(
+                                        view! {
+                                            {copy_buttons(i18n, copy_type, on_copy)}
+                                            <Button
+                                                variant=Variant::Secondary
+                                                size=Size::Sm
+                                                full_width=true
+                                                on:click=move |_: web_sys::MouseEvent| {
+                                                    on_move_request.run(entry_for_move.clone());
+                                                }
+                                            >
+                                                {move || t!(i18n, vault.folder_move)}
+                                            </Button>
+                                            {is_editable
+                                                .then(|| {
+                                                    view! {
+                                                        <Button
+                                                            variant=Variant::Secondary
+                                                            size=Size::Sm
+                                                            full_width=true
+                                                            on:click=start_edit
+                                                        >
+                                                            {move || t!(i18n, vault.edit)}
+                                                        </Button>
+                                                    }
+                                                })}
+                                            {is_document
+                                                .then(|| {
+                                                    view! {
+                                                        <Button
+                                                            variant=Variant::Primary
+                                                            size=Size::Sm
+                                                            full_width=true
+                                                            on:click=export_doc
+                                                        >
+                                                            {move || t!(i18n, vault.export)}
+                                                        </Button>
+                                                    }
+                                                })}
+                                        },
+                                    )
+                                }}
                             </div>
 
-                            // Tagging lives here (read view) so it works for any
-                            // type — Document included — without entering edit mode.
-                            <div class="mt-4 pt-4 border-t border-secondary/15">
-                                <TagAssign
-                                    entry_id=tag_entry_id
-                                    initial=tag_ids
-                                    catalog=tags
-                                    on_tags=on_tags
-                                    on_catalog=on_catalog
-                                />
-                            </div>
+                            // Tagging lives here (read view) so it works for any type —
+                            // Document included — without entering edit mode. Hidden for
+                            // a trashed entry (read-only tombstone).
+                            {(!is_trashed)
+                                .then(|| {
+                                    view! {
+                                        <div class="mt-4 pt-4 border-t border-secondary/15">
+                                            <TagAssign
+                                                entry_id=tag_entry_id
+                                                initial=tag_ids
+                                                catalog=tags
+                                                on_tags=on_tags
+                                                on_catalog=on_catalog
+                                            />
+                                        </div>
+                                    }
+                                })}
                         }
                     })
             }}
