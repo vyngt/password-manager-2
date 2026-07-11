@@ -12,34 +12,16 @@
 //! Mutations go through the **UI** (so Leptos state stays in sync); `invoke()`
 //! is used only for read-only assertions. A few genuinely fragile terminal
 //! mutations (history restore, folder move, theme set) use `invoke()` directly
-//! and are asserted via `invoke()` — noted inline. Text/aria selectors assume
-//! the default **English** locale.
+//! and are asserted via `invoke()` — noted inline. Controls are located by
+//! **`data-testid`** (locale-independent); inputs keep their DOM `id`s.
 
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
+use thirtyfour::By;
 
 use vedge_e2e::{MASTER_PASSWORD, Session, TestEnv, app_binary};
-
-/// English UI strings (i18n keys in comments) — see `crates/vedge-app/locales/en`.
-mod ui {
-    pub const NEW_VAULT: &str = "New"; // unlock.new_vault
-    pub const NEXT: &str = "Next"; // onboarding.next
-    pub const CREATE_VAULT: &str = "Create vault"; // onboarding.create
-    pub const FINISH: &str = "Finish"; // onboarding.finish
-    pub const ACK_ARIA: &str = "I have saved my Secret Key"; // onboarding.ack_aria
-    pub const UNLOCK: &str = "Unlock"; // unlock.unlock
-    pub const NEW_ITEM: &str = "+ New"; // vault.new_item
-    pub const SAVE: &str = "Save"; // vault.save
-    pub const EDIT: &str = "Edit"; // vault.edit
-    pub const TYPE_ARIA: &str = "Entry type"; // vault.type_picker_aria
-    pub const TYPE_NOTE: &str = "Note"; // vault.type_note
-    pub const VERSION_HISTORY: &str = "Version history"; // vault.version_history (aria)
-    pub const FAVORITE: &str = "Add to favorites"; // vault.favorite (aria)
-    pub const FOLDER_NEW: &str = "New folder"; // vault.folder_new (aria)
-    pub const LOCK: &str = "Lock"; // unlock.lock (aria)
-}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
@@ -60,41 +42,9 @@ async fn daily_loop() -> Result<()> {
         .context("console-clean guard self-test")?;
 
     // ---- step 1: create a vault (UI wizard) → land unlocked -------------------
-    session
-        .click_button_text(ui::NEW_VAULT)
+    create_and_unlock(&session, &vault)
         .await
-        .context("launch screen: New vault")?;
-    session.fill_id("vault-path", &vault).await?;
-    session
-        .click_button_text(ui::NEXT)
-        .await
-        .context("wizard: Next")?;
-    session.fill_id("master-password", MASTER_PASSWORD).await?;
-    session
-        .fill_id("master-password-confirm", MASTER_PASSWORD)
-        .await?;
-    session
-        .click_button_text(ui::CREATE_VAULT)
-        .await
-        .context("wizard: Create vault (runs Argon2 — may take a few seconds)")?;
-    // Step 3 of the wizard shows the Secret Key; acknowledge + finish.
-    session
-        .wait_for(
-            thirtyfour::By::XPath(format!("//*[@aria-label='{}']", ui::ACK_ARIA)),
-            Duration::from_secs(45),
-        )
-        .await
-        .context("wizard: Secret Key screen (acknowledge checkbox)")?;
-    // The ack is a custom checkbox: its native <input> is sr-only, so a plain
-    // WebDriver click is "not interactable". Scripted click toggles it + fires
-    // on:change, which enables Finish.
-    session.js_click_aria(ui::ACK_ARIA).await?;
-    session
-        .click_button_text(ui::FINISH)
-        .await
-        .context("wizard: Finish")?;
-
-    assert_unlocked(&session, &vault, true).await?;
+        .context("create + unlock via the wizard")?;
     session
         .assert_console_clean()
         .await
@@ -125,12 +75,12 @@ async fn daily_loop() -> Result<()> {
     // ---- step 4: edit → new version; history shows it → restore --------------
     open_entry(&session, &github_id).await?;
     session
-        .click_button_text(ui::EDIT)
+        .click_testid("detail-edit")
         .await
         .context("drawer: Edit")?;
     session.fill_id("ef-username", "octocat-renamed").await?;
     session
-        .click_button_text(ui::SAVE)
+        .click_testid("entry-save")
         .await
         .context("edit dialog: Save")?;
 
@@ -148,12 +98,12 @@ async fn daily_loop() -> Result<()> {
     // Open the history panel from the (still-open) detail drawer and confirm the
     // prior version renders. Don't re-click the row — it would toggle the drawer.
     session
-        .click_aria(ui::VERSION_HISTORY)
+        .click_testid("detail-history")
         .await
         .context("open version history")?;
     session
         .wait_for(
-            thirtyfour::By::Css("div[role='dialog']"),
+            By::Css("div[role='dialog']".to_string()),
             Duration::from_secs(5),
         )
         .await
@@ -183,7 +133,7 @@ async fn daily_loop() -> Result<()> {
     session.fill_id("vault-search", "GitHub").await?;
     wait_row_count(&session, 1, Duration::from_secs(5)).await?;
     session
-        .click_aria(ui::FAVORITE)
+        .click_testid("row-favorite")
         .await
         .context("favorite the GitHub row")?;
     session.fill_id("vault-search", "").await?;
@@ -199,7 +149,7 @@ async fn daily_loop() -> Result<()> {
 
     // Create a folder via the sidebar, assert it exists (folders are entries).
     session
-        .click_aria(ui::FOLDER_NEW)
+        .click_testid("folder-new-toggle")
         .await
         .context("sidebar: New folder")?;
     session.fill_id("folder-new", "Work").await?;
@@ -238,7 +188,7 @@ async fn daily_loop() -> Result<()> {
         .context("set_active_theme")?;
 
     session
-        .click_aria(ui::LOCK)
+        .click_testid("vault-lock")
         .await
         .context("Lock the vault")?;
     assert_unlocked(&session, &vault, false)
@@ -267,7 +217,7 @@ async fn daily_loop() -> Result<()> {
     click_vault_option(&session).await?;
     session.fill_id("master-password", MASTER_PASSWORD).await?;
     session
-        .click_button_text(ui::UNLOCK)
+        .click_testid("unlock-submit")
         .await
         .context("unlock panel: Unlock")?;
     assert_unlocked(&session, &vault, true)
@@ -292,49 +242,352 @@ async fn daily_loop() -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
+// Phase-3 feature scenarios (each a separate #[ignore] test so a failure names
+// the feature it broke — not one mega-test).
+// ---------------------------------------------------------------------------
+
+/// 3.3 — the inline generate **wand** on the Login password field fills the
+/// field from the last-used preset (zero IPC).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn generate_into_login_form() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+    let session = Session::launch(&env, &app).await.context("launch")?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+
+    session
+        .click_testid("vault-new-entry")
+        .await
+        .context("+ New (Login)")?;
+    session
+        .by_id("ef-password")
+        .await
+        .context("Login form up")?;
+    session
+        .click_testid("login-generate-wand")
+        .await
+        .context("click generate wand")?;
+    let pw = session
+        .by_id("ef-password")
+        .await?
+        .prop("value")
+        .await?
+        .unwrap_or_default();
+    assert!(!pw.is_empty(), "generate wand should populate ef-password");
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
+/// 3.5 — session-only generator history is **wiped on lock** (never persisted).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn generator_history_wipes_on_lock() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+    let session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+
+    // Generate a secret in the panel (Regenerate pushes it to session history),
+    // then confirm the Recent list shows a row.
+    open_generator_panel(&session).await?;
+    session
+        .click_testid("gen-regenerate")
+        .await
+        .context("regenerate (pushes to history)")?;
+    session
+        .click_testid("gen-history-toggle")
+        .await
+        .context("expand Recent")?;
+    wait_until(Duration::from_secs(5), || async {
+        Ok(session.count_css("[data-testid='gen-history-row']").await? >= 1)
+    })
+    .await
+    .context("Recent should populate after regenerate")?;
+    session.close_dialog().await?;
+
+    // Lock → unlock → reopen the panel: Recent must be empty (wiped on lock).
+    session.click_testid("vault-lock").await.context("lock")?;
+    assert_unlocked(&session, &vault, false).await?;
+    unlock_ui(&session, &vault).await?;
+
+    open_generator_panel(&session).await?;
+    session
+        .click_testid("gen-history-toggle")
+        .await
+        .context("expand Recent (post-unlock)")?;
+    // Give the list a beat to render, then assert it is empty.
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let n = session.count_css("[data-testid='gen-history-row']").await?;
+    assert_eq!(
+        n, 0,
+        "session history must be wiped on lock (found {n} rows)"
+    );
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
+/// 3.6 — the Trash sidebar folder's verbs: Restore, Delete-permanently, Empty.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn trash_restore_delete_empty() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+    let session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+
+    add_login(&session, "Alpha", "a", "pw-a").await?;
+    add_login(&session, "Bravo", "b", "pw-b").await?;
+    add_login(&session, "Charlie", "c", "pw-c").await?;
+    wait_row_count(&session, 3, Duration::from_secs(10)).await?;
+
+    // Trash all three (setup mutation via invoke; the Trash view re-fetches on
+    // navigation, so the DOM reflects it when we open the folder).
+    for e in list_entries(&session, &vault).await? {
+        if let Some(id) = e.get("id").and_then(Value::as_str) {
+            session
+                .invoke(
+                    "soft_delete_entry",
+                    json!({ "vault_path": vault, "entry_id": id }),
+                )
+                .await
+                .context("soft_delete_entry")?;
+        }
+    }
+
+    session
+        .click_testid("sidebar-trash")
+        .await
+        .context("open Trash folder")?;
+    wait_row_count(&session, 3, Duration::from_secs(10))
+        .await
+        .context("3 trashed rows")?;
+
+    // Restore one → two remain.
+    session
+        .click_testid("row-restore")
+        .await
+        .context("restore a trashed entry")?;
+    wait_row_count(&session, 2, Duration::from_secs(10))
+        .await
+        .context("2 trashed after restore")?;
+
+    // Permanently delete one (confirm) → one remains.
+    session
+        .click_testid("row-delete-permanent")
+        .await
+        .context("delete permanently")?;
+    session
+        .click_testid("confirm-delete-permanent")
+        .await
+        .context("confirm permanent delete")?;
+    wait_row_count(&session, 1, Duration::from_secs(10))
+        .await
+        .context("1 trashed after permanent delete")?;
+
+    // Empty trash (confirm) → zero.
+    session
+        .click_testid("trash-empty")
+        .await
+        .context("empty trash")?;
+    session
+        .click_testid("confirm-empty-trash")
+        .await
+        .context("confirm empty trash")?;
+    wait_row_count(&session, 0, Duration::from_secs(10))
+        .await
+        .context("0 trashed after empty")?;
+
+    // The restored entry is back in the active vault.
+    session
+        .click_testid("sidebar-all")
+        .await
+        .context("back to All items")?;
+    wait_row_count(&session, 1, Duration::from_secs(10))
+        .await
+        .context("1 active (restored) entry")?;
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
+/// 2.6 / 3.8 — lock-on-blur honors the in-dialog guard: a real window blur locks,
+/// but a blur while a (native) dialog is open does not. The pref is off by
+/// default, so we enable it and restart so the layout's listener boots with it on;
+/// the "dialog open" state is faked via the debug-only `__vedge_test_dialog` hook.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn lock_on_blur_respects_dialog_guard() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+    let mut session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+
+    // Enable lock-on-blur (default off) by persisting the pref, then restart so
+    // the /v layout's auto-lock listener boots with it enabled.
+    session
+        .invoke(
+            "set_app_setting",
+            json!({
+                "key": "security.prefs",
+                "value": { "auto_lock_minutes": 15, "lock_on_blur": true, "clipboard_clear_seconds": 30 }
+            }),
+        )
+        .await
+        .context("persist lock_on_blur=true")?;
+    session.close().await;
+    session = Session::launch(&env, &app).await.context("relaunch")?;
+    unlock_ui(&session, &vault).await?;
+
+    // Negative: with a "dialog in progress", a blur must NOT lock.
+    session.set_dialog_in_progress(true).await?;
+    session.dispatch_window_blur().await?;
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    let still = session
+        .invoke("is_unlocked", json!({ "vault_path": vault }))
+        .await?
+        .as_bool()
+        .unwrap_or(false);
+    assert!(still, "blur while a dialog is open must NOT lock the vault");
+    session.set_dialog_in_progress(false).await?;
+
+    // Positive: a real blur (no dialog) locks.
+    session.dispatch_window_blur().await?;
+    assert_unlocked(&session, &vault, false)
+        .await
+        .context("a plain blur should lock the vault")?;
+
+    session.close().await;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // UI flows
 // ---------------------------------------------------------------------------
 
+/// Unlock the (single) vault from the launch picker with the master password.
+async fn unlock_ui(s: &Session, vault: &str) -> Result<()> {
+    click_vault_option(s).await?;
+    s.fill_id("master-password", MASTER_PASSWORD).await?;
+    s.click_testid("unlock-submit")
+        .await
+        .context("unlock panel: Unlock")?;
+    assert_unlocked(s, vault, true).await?;
+    Ok(())
+}
+
+/// Open the generator panel via the inline Login-password caret (the standalone
+/// route needs nav we don't drive; the caret hosts the same panel in a dialog).
+async fn open_generator_panel(s: &Session) -> Result<()> {
+    s.click_testid("vault-new-entry")
+        .await
+        .context("+ New (Login)")?;
+    s.by_id("ef-password").await.context("Login form up")?;
+    s.click_testid("login-generate-tune")
+        .await
+        .context("open generator panel")?;
+    s.wait_for(
+        By::Css("div[role='dialog']".to_string()),
+        Duration::from_secs(5),
+    )
+    .await
+    .context("generator panel dialog")?;
+    Ok(())
+}
+
+/// Drive the create-vault wizard from the launch screen to a freshly unlocked
+/// vault (create → Secret-Key ack → Finish). Shared by the daily loop and the
+/// per-feature scenarios below.
+async fn create_and_unlock(s: &Session, vault: &str) -> Result<()> {
+    s.click_testid("launch-new-vault")
+        .await
+        .context("launch screen: New vault")?;
+    s.fill_id("vault-path", vault).await?;
+    s.click_testid("onboarding-next")
+        .await
+        .context("wizard: Next")?;
+    s.fill_id("master-password", MASTER_PASSWORD).await?;
+    s.fill_id("master-password-confirm", MASTER_PASSWORD)
+        .await?;
+    s.click_testid("onboarding-create")
+        .await
+        .context("wizard: Create vault (Argon2 — fast-KDF seam keeps it quick)")?;
+    // Step 3 shows the Secret Key; its ack checkbox is sr-only, so js-click it.
+    s.wait_for(
+        By::Css("[data-testid='onboarding-ack']".to_string()),
+        Duration::from_secs(45),
+    )
+    .await
+    .context("wizard: Secret Key screen")?;
+    s.js_click_testid("onboarding-ack").await?;
+    s.click_testid("onboarding-finish")
+        .await
+        .context("wizard: Finish")?;
+    assert_unlocked(s, vault, true).await?;
+    Ok(())
+}
+
 async fn add_login(s: &Session, name: &str, user: &str, pass: &str) -> Result<()> {
-    s.click_button_text(ui::NEW_ITEM)
+    s.click_testid("vault-new-entry")
         .await
         .with_context(|| format!("open add form for {name}"))?;
     s.fill_id("ef-name", name).await?;
     s.fill_id("ef-username", user).await?;
     s.fill_id("ef-password", pass).await?;
-    s.click_button_text(ui::SAVE)
+    s.click_testid("entry-save")
         .await
         .with_context(|| format!("save login {name}"))?;
     Ok(())
 }
 
 async fn add_note(s: &Session, name: &str, content: &str) -> Result<()> {
-    s.click_button_text(ui::NEW_ITEM)
+    s.click_testid("vault-new-entry")
         .await
         .context("open add form for note")?;
-    // Switch the type picker (custom Select) from the default to Note.
-    s.click_aria(ui::TYPE_ARIA)
-        .await
-        .context("open entry-type picker")?;
-    let opt = thirtyfour::By::XPath(format!(
-        "//*[@role='option'][normalize-space(.)='{}']",
-        ui::TYPE_NOTE
-    ));
-    s.wait_for(opt, Duration::from_secs(5))
-        .await
-        .context("Note option")?
-        .click()
-        .await
-        .context("select Note type")?;
+    // Switch the entry-type picker (a `vedge-ui` Select) from Login to Note.
+    // Scope by the create-form testid — the vault toolbar also has filter
+    // comboboxes, so a bare `[role=combobox]` would open the wrong one. Each
+    // option carries a locale-independent `data-value` = the type key ("Note").
+    s.wait_for(
+        By::Css("[data-testid='entry-type-select'] [role='combobox']".to_string()),
+        Duration::from_secs(5),
+    )
+    .await
+    .context("open entry-type picker")?
+    .click()
+    .await
+    .context("click type picker")?;
+    s.wait_for(
+        By::Css("[data-testid='entry-type-select'] [role='option'][data-value='Note']".to_string()),
+        Duration::from_secs(5),
+    )
+    .await
+    .context("Note option")?
+    .click()
+    .await
+    .context("select Note type")?;
     s.fill_id("ef-name", name).await?;
     s.fill_id("ef-note", content).await?;
-    s.click_button_text(ui::SAVE).await.context("save note")?;
+    s.click_testid("entry-save").await.context("save note")?;
     Ok(())
 }
 
 /// Click an entry row (opens the detail drawer). Uses the `data-entry-id` hook.
 async fn open_entry(s: &Session, id: &str) -> Result<()> {
-    let by = thirtyfour::By::Css(format!("tr[data-entry-id='{id}']"));
+    let by = By::Css(format!("tr[data-entry-id='{id}']"));
     s.wait_for(by, Duration::from_secs(5))
         .await
         .with_context(|| format!("entry row {id}"))?
@@ -347,7 +600,7 @@ async fn open_entry(s: &Session, id: &str) -> Result<()> {
 /// Click the (single) vault row in the launch-screen picker.
 async fn click_vault_option(s: &Session) -> Result<()> {
     s.wait_for(
-        thirtyfour::By::Css("[role='option']"),
+        By::Css("[role='option']".to_string()),
         Duration::from_secs(10),
     )
     .await

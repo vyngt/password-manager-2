@@ -651,6 +651,7 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
             <IconButton
                 variant=Variant::Ghost
                 size=Size::Sm
+                attr:data-testid="login-generate-wand"
                 on_click=quick_generate
                 aria_label=Signal::derive(move || {
                     t_string!(i18n, vault.generate_password).to_owned()
@@ -663,6 +664,7 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
             <IconButton
                 variant=Variant::Ghost
                 size=Size::Sm
+                attr:data-testid="login-generate-tune"
                 on_click=Callback::new(move |()| generator_open.update(|o| *o = !*o))
                 aria_label=Signal::derive(move || t_string!(i18n, vault.generate_tune).to_owned())
             >

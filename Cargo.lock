@@ -8926,6 +8926,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "icondata",
+ "js-sys",
  "leptos",
  "leptos_i18n",
  "leptos_i18n_build",

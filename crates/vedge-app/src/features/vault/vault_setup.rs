@@ -151,6 +151,7 @@ pub fn VaultSetup() -> impl IntoView {
                                             <Button
                                                 variant=Variant::Primary
                                                 disabled=!enabled
+                                                attr:data-testid="onboarding-next"
                                                 on:click=move |_| current_step.set(1)
                                             >
                                                 {move || t!(i18n, onboarding.next)}
@@ -227,6 +228,7 @@ pub fn VaultSetup() -> impl IntoView {
                                             <Button
                                                 variant=Variant::Primary
                                                 disabled=!enabled
+                                                attr:data-testid="onboarding-create"
                                                 on:click=move |_| {
                                                     if creating.get() {
                                                         return;
@@ -344,7 +346,10 @@ pub fn VaultSetup() -> impl IntoView {
                                         {move || t!(i18n, onboarding.download_kit)}
                                     </Button>
                                 </div>
-                                <div class="flex items-center gap-2 text-sm text-text-primary">
+                                <div
+                                    class="flex items-center gap-2 text-sm text-text-primary"
+                                    data-testid="onboarding-ack"
+                                >
                                     <Checkbox
                                         checked=Signal::derive(move || acknowledged.get())
                                         on_change=Callback::new(move |v: bool| acknowledged.set(v))
@@ -361,6 +366,7 @@ pub fn VaultSetup() -> impl IntoView {
                                             <Button
                                                 variant=Variant::Primary
                                                 disabled=!enabled
+                                                attr:data-testid="onboarding-finish"
                                                 on:click=move |_| {
                                                     active.path.set(Some(path.get()));
                                                     let nav = use_navigate();

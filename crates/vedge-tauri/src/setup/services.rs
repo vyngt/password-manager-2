@@ -80,6 +80,30 @@ fn resolve_app_dir(app: &tauri::App) -> Result<std::path::PathBuf, ComposeError>
     }
 }
 
+/// Select the biometric authenticator. **Production always uses the platform
+/// authenticator** (`platform_authenticator` → Windows Hello / a no-op stub). The
+/// e2e/test path may swap in the deterministic in-memory
+/// `MemoryBiometricAuthenticator` (reports available, never prompts) so the
+/// enroll → lock → unlock-via-biometric flow runs headlessly — but only under
+/// **two** gates that can't both hold in a shipped bundle: a debug build
+/// (`cfg(debug_assertions)`, absent in the release bundle) **and** the explicit
+/// `VEDGE_E2E_BIOMETRIC_MEMORY` env var (set by the e2e harness). Mirrors
+/// `resolve_app_dir`'s env-first, cfg-gated seam.
+#[cfg(debug_assertions)]
+fn resolve_biometric(crypto: Arc<dyn CryptoProvider>) -> Arc<dyn BiometricAuthenticator> {
+    if std::env::var_os("VEDGE_E2E_BIOMETRIC_MEMORY").is_some_and(|v| !v.is_empty()) {
+        return Arc::new(
+            vedge_core::infrastructure::biometric::MemoryBiometricAuthenticator::new(),
+        );
+    }
+    platform_authenticator(crypto)
+}
+
+#[cfg(not(debug_assertions))]
+fn resolve_biometric(crypto: Arc<dyn CryptoProvider>) -> Arc<dyn BiometricAuthenticator> {
+    platform_authenticator(crypto)
+}
+
 /// Build an [`AppState`] from the running `tauri::App`.
 ///
 /// Runs once at startup. The `app.db` connection, the migrations, and the
@@ -111,7 +135,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
     let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
     let kdf: Arc<dyn KeyDerivationProvider> = Arc::new(Argon2idKdfProvider::new());
     let keychain: Arc<dyn KeychainProvider> = Arc::new(OsKeychainProvider::new());
-    let biometric: Arc<dyn BiometricAuthenticator> = platform_authenticator(Arc::clone(&crypto));
+    let biometric: Arc<dyn BiometricAuthenticator> = resolve_biometric(Arc::clone(&crypto));
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(ArboardClipboardProvider::new()?);
 
     // Pre-wire the unlock use case so per-vault repo/blob construction is

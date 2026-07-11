@@ -314,6 +314,7 @@ pub fn VaultDetail(
                         .then(|| {
                             view! {
                                 <IconButton
+                                    attr:data-testid="detail-history"
                                     aria_label=Signal::derive(move || {
                                         t_string!(i18n, vault.version_history).to_owned()
                                     })
@@ -490,6 +491,7 @@ pub fn VaultDetail(
                                                 variant=Variant::Secondary
                                                 size=Size::Sm
                                                 full_width=true
+                                                attr:data-testid="detail-restore"
                                                 on:click=move |_: web_sys::MouseEvent| {
                                                     on_restore.run(restore_id.clone());
                                                 }
@@ -500,6 +502,7 @@ pub fn VaultDetail(
                                                 variant=Variant::Danger
                                                 size=Size::Sm
                                                 full_width=true
+                                                attr:data-testid="detail-delete-permanent"
                                                 on:click=move |_: web_sys::MouseEvent| {
                                                     on_hard_delete.run(entry_for_hard_delete.clone());
                                                 }
@@ -529,6 +532,7 @@ pub fn VaultDetail(
                                                             variant=Variant::Secondary
                                                             size=Size::Sm
                                                             full_width=true
+                                                            attr:data-testid="detail-edit"
                                                             on:click=start_edit
                                                         >
                                                             {move || t!(i18n, vault.edit)}

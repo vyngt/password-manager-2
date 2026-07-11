@@ -60,6 +60,7 @@ pub fn EntryFormBody(
                                 .collect();
                             view! {
                                 <Select
+                                    attr:data-testid="entry-type-select"
                                     options=options
                                     value=Signal::derive(move || {
                                         data.with(|d| type_to_key(&d.entry_type).to_owned())
@@ -90,6 +91,7 @@ pub fn EntryFormBody(
             <Button
                 variant=Variant::Ghost
                 size=Size::Sm
+                attr:data-testid="entry-cancel"
                 on:click=move |_: web_sys::MouseEvent| on_cancel.run(())
             >
                 {move || t!(i18n, vault.cancel)}
@@ -103,6 +105,7 @@ pub fn EntryFormBody(
                         size=Size::Sm
                         disabled=busy
                         loading=is_saving
+                        attr:data-testid="entry-save"
                         on:click=move |_: web_sys::MouseEvent| on_save.run(())
                     >
                         {move || t!(i18n, vault.save)}

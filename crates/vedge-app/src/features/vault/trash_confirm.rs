@@ -60,6 +60,7 @@ pub fn PermanentDeleteDialog(
                         <Button
                             variant=Variant::Danger
                             size=Size::Sm
+                            attr:data-testid="confirm-delete-permanent"
                             on:click=move |_: web_sys::MouseEvent| {
                                 if let Some(e) = target.get_untracked() {
                                     on_confirm.run(e.id);
@@ -117,6 +118,7 @@ pub fn EmptyTrashDialog(
                         <Button
                             variant=Variant::Danger
                             size=Size::Sm
+                            attr:data-testid="confirm-empty-trash"
                             on:click=move |_: web_sys::MouseEvent| {
                                 on_confirm.run(());
                                 close.run(());

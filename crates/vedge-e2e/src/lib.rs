@@ -14,6 +14,15 @@
 //!   single-instance lock (so the restart test can relaunch the app).
 //! - **vault dir** — a second temp dir holds the `.vdb`; the create wizard is
 //!   pointed at it via the `#vault-path` input.
+//! - **fast KDF** — [`Session::launch`] sets `VEDGE_E2E_FAST_KDF=1` so
+//!   `create_vault` uses a cheap Argon2 profile (m 8 / t 1 / p 1) instead of the
+//!   256 MiB production KDF that otherwise dominates the run. **Test-only,
+//!   release-impossible**: gated behind `cfg(debug_assertions)` *and* the env var
+//!   (see `vedge-tauri` `resolve_kdf_seam`), so it can't exist in a shipped bundle.
+//! - **in-memory biometric** — `VEDGE_E2E_BIOMETRIC_MEMORY=1` swaps the platform
+//!   authenticator for the deterministic `MemoryBiometricAuthenticator` (reports
+//!   available, never prompts) so the biometric scenario runs headlessly. Same
+//!   two-factor gating (`resolve_biometric`).
 //! - **keychain** — the real OS keychain is used (Windows-first): the create
 //!   wizard writes the Secret Key, UI-unlock reads it back non-interactively.
 //!   The credential is keyed by the temp vault path, so runs don't collide; it
@@ -25,11 +34,16 @@
 //! (`is_unlocked`, `list_entries`, `list_history`, `get_active_theme`). An IPC
 //! mutation would not update the Leptos view, so the DOM assertions would drift.
 //!
-//! ## Locale
-//! Text/`aria-label` selectors assume the app renders the **default English**
-//! locale. A machine defaulting to a non-`en` browser locale would need the
-//! locale forced to `en` first (documented limitation; the `data-testid` sweep
-//! is the future hardening).
+//! ## Selectors — `data-testid` (locale-independent)
+//! Interactive controls are located by **stable `data-testid`** attributes
+//! (`by_testid` / `click_testid` / `js_click_testid`), so a copy edit or a locale
+//! switch never breaks the suite. Form **inputs** keep their existing DOM `id`s
+//! (`vault-path`, `master-password`, `ef-*`, `vault-search`, `folder-new`,
+//! `gen-bulk-count`) used via `fill_id`. A few structural hooks are reused
+//! directly: `tr[data-entry-row]` / `tr[data-entry-id]` (rows), `[role='option']`
+//! (vault picker + Select options, plus `[data-value=…]` for a specific option),
+//! `[role='combobox']` (a Select trigger), `div[role='dialog']`. The testid naming
+//! convention is documented in the crate README.
 
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
@@ -159,6 +173,12 @@ impl Session {
         // The app process (spawned by tauri-driver → native driver → app)
         // inherits this env, so `resolve_app_dir` isolates app.db.
         cmd.env("VEDGE_DATA_DIR", env.data_dir_path());
+        // Test-only seams (each also gated behind `cfg(debug_assertions)`, so
+        // they are absent from a release bundle): a cheap Argon2 profile so
+        // create+unlock don't dominate the run, and the in-memory biometric stub
+        // so the biometric scenario runs without a real Hello/Touch-ID prompt.
+        cmd.env("VEDGE_E2E_FAST_KDF", "1");
+        cmd.env("VEDGE_E2E_BIOMETRIC_MEMORY", "1");
         if let Some(native) = std::env::var_os("VEDGE_E2E_NATIVE_DRIVER") {
             cmd.arg("--native-driver").arg(native);
         }
@@ -385,8 +405,93 @@ impl Session {
         Ok(())
     }
 
+    /// Wait for an element by `data-testid` (the primary, locale-independent hook).
+    pub async fn by_testid(&self, id: &str) -> Result<WebElement> {
+        self.wait_for(
+            By::Css(format!("[data-testid='{id}']")),
+            Duration::from_secs(10),
+        )
+        .await
+        .with_context(|| format!("element [data-testid={id:?}]"))
+    }
+
+    /// Click an element by `data-testid`.
+    pub async fn click_testid(&self, id: &str) -> Result<()> {
+        let el = self.by_testid(id).await?;
+        el.click()
+            .await
+            .with_context(|| format!("click [data-testid={id:?}]"))?;
+        Ok(())
+    }
+
+    /// Scripted `.click()` on a `data-testid` element — for visually-hidden
+    /// controls (e.g. the sr-only "I saved my Secret Key" acknowledgement) that
+    /// WebDriver refuses to click as "not interactable".
+    pub async fn js_click_testid(&self, id: &str) -> Result<()> {
+        self.by_testid(id).await?;
+        // If the testid is on a wrapper around an sr-only control (e.g. the ack
+        // checkbox), click the inner input/label/button — clicking the wrapper
+        // itself wouldn't toggle it. For a directly-tagged control there is no
+        // such descendant, so we fall back to clicking the host.
+        let script = r#"
+            const id = arguments[0];
+            const host = document.querySelector('[data-testid="' + id + '"]');
+            if (!host) { return "not-found"; }
+            const target = host.querySelector('input, label, button') || host;
+            target.click();
+            return "ok";
+        "#;
+        let ret = self
+            .driver()
+            .execute(script, vec![json!(id)])
+            .await
+            .with_context(|| format!("js-click [data-testid={id:?}]"))?;
+        if ret.json().as_str() == Some("not-found") {
+            bail!("no element [data-testid={id:?}] for js-click");
+        }
+        Ok(())
+    }
+
+    /// Count elements matching a CSS selector (0 if none). Used for "history is
+    /// empty" / row-count style assertions.
+    pub async fn count_css(&self, css: &str) -> Result<usize> {
+        Ok(self
+            .driver()
+            .find_all(By::Css(css.to_string()))
+            .await
+            .unwrap_or_default()
+            .len())
+    }
+
+    /// Dispatch a synthetic window `blur` (for the lock-on-blur assertions —
+    /// WebDriver can't truly defocus the OS window, but the app listens on the
+    /// DOM `blur` event).
+    pub async fn dispatch_window_blur(&self) -> Result<()> {
+        self.driver()
+            .execute("window.dispatchEvent(new Event('blur'));", vec![])
+            .await
+            .context("dispatch window blur")?;
+        Ok(())
+    }
+
+    /// Toggle the debug-only in-dialog flag via the `window.__vedge_test_dialog`
+    /// hook installed by `app.rs` (debug builds only). Lets the negative
+    /// lock-on-blur assertion simulate an open native dialog.
+    pub async fn set_dialog_in_progress(&self, on: bool) -> Result<()> {
+        self.driver()
+            .execute(
+                "if (window.__vedge_test_dialog) { window.__vedge_test_dialog(arguments[0]); } \
+                 else { throw new Error('__vedge_test_dialog missing (release build?)'); }",
+                vec![json!(on)],
+            )
+            .await
+            .context("call window.__vedge_test_dialog")?;
+        Ok(())
+    }
+
     /// Click a `<button>` whose trimmed visible text equals `text`
-    /// (English-locale coupled — see module docs).
+    /// (English-locale coupled — prefer `click_testid`; kept for the rare control
+    /// without a testid).
     pub async fn click_button_text(&self, text: &str) -> Result<()> {
         let xpath = format!("//button[normalize-space(.)={}]", xpath_literal(text));
         let el = self

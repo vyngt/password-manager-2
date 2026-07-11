@@ -493,6 +493,7 @@ pub fn FolderTree(
                             variant=Variant::Ghost
                             size=Size::Xs
                             class="text-foreground/40"
+                            attr:data-testid="folder-new-toggle"
                             aria_label=Signal::derive(move || {
                                 t_string!(i18n, vault.folder_new).to_owned()
                             })
@@ -540,6 +541,7 @@ pub fn FolderTree(
                 // Drop-target highlight rides the reactive `class`; drag handlers spread
                 // onto SidebarItem's root button (same element the click nav uses).
                 <SidebarItem
+                    attr:data-testid="sidebar-all"
                     label=Signal::derive(move || t_string!(i18n, vault.folder_root).to_owned())
                     icon=Box::new(|| {
                         view! { <Icon icon=i::FaLayerGroupSolid width="14" height="14" /> }
@@ -889,6 +891,7 @@ pub fn FolderTree(
                 // but All / Unfiled / Trash stay as the always-visible navigation.
                 <Separator />
                 <SidebarItem
+                    attr:data-testid="sidebar-trash"
                     label=Signal::derive(move || t_string!(i18n, vault.view_trash).to_owned())
                     icon=Box::new(|| {
                         view! { <Icon icon=i::BiTrashRegular width="14" height="14" /> }.into_any()
