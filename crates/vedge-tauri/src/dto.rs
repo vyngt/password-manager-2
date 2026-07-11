@@ -16,6 +16,7 @@
 //!   `Vec<u8>` (e.g. document import) where the JS array route is
 //!   preferred.
 
+pub mod audit;
 pub mod common;
 pub mod emergency_kit;
 pub mod entry;

@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod generator;
 pub mod settings;
 pub mod vault;

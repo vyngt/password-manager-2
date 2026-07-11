@@ -79,6 +79,8 @@ pub fn run() {
             commands::vault::by_folder,
             commands::vault::by_domain,
             commands::vault::list_tags,
+            // ---- audit log (slice 4.1) ----
+            commands::audit::list_audit,
             // ---- entry CRUD + clipboard + move ----
             commands::entry::create_entry,
             commands::entry::update_entry,

@@ -102,7 +102,7 @@ fn BasicSection() -> impl IntoView {
     let columns = vec![
         ColumnDef {
             id: "name",
-            header: "Name",
+            header: "Name".into(),
             col_type: ColumnType::Text,
             sortable: false,
             width: ColumnWidth::Flexible,
@@ -111,7 +111,7 @@ fn BasicSection() -> impl IntoView {
         },
         ColumnDef {
             id: "category",
-            header: "Category",
+            header: "Category".into(),
             col_type: ColumnType::Text,
             sortable: false,
             width: ColumnWidth::Fixed(140),
@@ -120,7 +120,7 @@ fn BasicSection() -> impl IntoView {
         },
         ColumnDef {
             id: "modified",
-            header: "Modified",
+            header: "Modified".into(),
             col_type: ColumnType::Date,
             sortable: false,
             width: ColumnWidth::Fixed(120),
@@ -168,7 +168,7 @@ fn SortableSection() -> impl IntoView {
     let columns = vec![
         ColumnDef {
             id: "name",
-            header: "Name",
+            header: "Name".into(),
             col_type: ColumnType::Text,
             sortable: true,
             width: ColumnWidth::Flexible,
@@ -177,7 +177,7 @@ fn SortableSection() -> impl IntoView {
         },
         ColumnDef {
             id: "category",
-            header: "Category",
+            header: "Category".into(),
             col_type: ColumnType::Text,
             sortable: false,
             width: ColumnWidth::Fixed(140),
@@ -186,7 +186,7 @@ fn SortableSection() -> impl IntoView {
         },
         ColumnDef {
             id: "modified",
-            header: "Modified",
+            header: "Modified".into(),
             col_type: ColumnType::Date,
             sortable: true,
             width: ColumnWidth::Fixed(120),
@@ -236,7 +236,7 @@ fn ColumnTypesSection() -> impl IntoView {
     let columns = vec![
         ColumnDef {
             id: "name",
-            header: "Text",
+            header: "Text".into(),
             col_type: ColumnType::Text,
             sortable: false,
             width: ColumnWidth::Flexible,
@@ -245,7 +245,7 @@ fn ColumnTypesSection() -> impl IntoView {
         },
         ColumnDef {
             id: "category",
-            header: "Badge",
+            header: "Badge".into(),
             col_type: ColumnType::Badge,
             sortable: false,
             width: ColumnWidth::Fixed(120),
@@ -257,7 +257,7 @@ fn ColumnTypesSection() -> impl IntoView {
         },
         ColumnDef {
             id: "modified",
-            header: "Date",
+            header: "Date".into(),
             col_type: ColumnType::Date,
             sortable: false,
             width: ColumnWidth::Fixed(100),
@@ -266,7 +266,7 @@ fn ColumnTypesSection() -> impl IntoView {
         },
         ColumnDef {
             id: "fingerprint",
-            header: "Mono",
+            header: "Mono".into(),
             col_type: ColumnType::Mono,
             sortable: false,
             width: ColumnWidth::MinMax(160, 260),
@@ -275,7 +275,7 @@ fn ColumnTypesSection() -> impl IntoView {
         },
         ColumnDef {
             id: "custom",
-            header: "Custom",
+            header: "Custom".into(),
             col_type: ColumnType::Custom,
             sortable: false,
             width: ColumnWidth::Fixed(140),
@@ -295,7 +295,7 @@ fn ColumnTypesSection() -> impl IntoView {
         },
         ColumnDef {
             id: "action",
-            header: "",
+            header: "".into(),
             col_type: ColumnType::Action,
             sortable: false,
             width: ColumnWidth::Fixed(44),
@@ -337,7 +337,7 @@ fn SelectableSection() -> impl IntoView {
     let columns = vec![
         ColumnDef {
             id: "name",
-            header: "Name",
+            header: "Name".into(),
             col_type: ColumnType::Text,
             sortable: false,
             width: ColumnWidth::Flexible,
@@ -346,7 +346,7 @@ fn SelectableSection() -> impl IntoView {
         },
         ColumnDef {
             id: "category",
-            header: "Category",
+            header: "Category".into(),
             col_type: ColumnType::Text,
             sortable: false,
             width: ColumnWidth::Fixed(140),
@@ -400,7 +400,7 @@ fn RowClickVsSelectionSection() -> impl IntoView {
 
     let columns_click = vec![ColumnDef {
         id: "name",
-        header: "Name",
+        header: "Name".into(),
         col_type: ColumnType::Text,
         sortable: false,
         width: ColumnWidth::Flexible,
@@ -472,7 +472,7 @@ fn LoadingSection() -> impl IntoView {
         vec![
             ColumnDef {
                 id: "name",
-                header: "Name",
+                header: "Name".into(),
                 col_type: ColumnType::Text,
                 sortable: false,
                 width: ColumnWidth::Flexible,
@@ -481,7 +481,7 @@ fn LoadingSection() -> impl IntoView {
             },
             ColumnDef {
                 id: "category",
-                header: "Category",
+                header: "Category".into(),
                 col_type: ColumnType::Text,
                 sortable: false,
                 width: ColumnWidth::Fixed(140),
@@ -546,7 +546,7 @@ fn EmptySection() -> impl IntoView {
         vec![
             ColumnDef {
                 id: "name",
-                header: "Name",
+                header: "Name".into(),
                 col_type: ColumnType::Text,
                 sortable: false,
                 width: ColumnWidth::Flexible,
@@ -555,7 +555,7 @@ fn EmptySection() -> impl IntoView {
             },
             ColumnDef {
                 id: "category",
-                header: "Category",
+                header: "Category".into(),
                 col_type: ColumnType::Text,
                 sortable: false,
                 width: ColumnWidth::Fixed(140),
@@ -626,7 +626,7 @@ fn KitchenSinkSection() -> impl IntoView {
     let columns = vec![
         ColumnDef {
             id: "name",
-            header: "Name",
+            header: "Name".into(),
             col_type: ColumnType::Custom,
             sortable: true,
             width: ColumnWidth::Flexible,
@@ -655,7 +655,7 @@ fn KitchenSinkSection() -> impl IntoView {
         },
         ColumnDef {
             id: "category",
-            header: "Category",
+            header: "Category".into(),
             col_type: ColumnType::Badge,
             sortable: false,
             width: ColumnWidth::Fixed(120),
@@ -667,7 +667,7 @@ fn KitchenSinkSection() -> impl IntoView {
         },
         ColumnDef {
             id: "fingerprint",
-            header: "Fingerprint",
+            header: "Fingerprint".into(),
             col_type: ColumnType::Mono,
             sortable: false,
             width: ColumnWidth::MinMax(160, 240),
@@ -676,7 +676,7 @@ fn KitchenSinkSection() -> impl IntoView {
         },
         ColumnDef {
             id: "modified",
-            header: "Modified",
+            header: "Modified".into(),
             col_type: ColumnType::Date,
             sortable: true,
             width: ColumnWidth::Fixed(100),
@@ -685,7 +685,7 @@ fn KitchenSinkSection() -> impl IntoView {
         },
         ColumnDef {
             id: "action",
-            header: "",
+            header: "".into(),
             col_type: ColumnType::Action,
             sortable: false,
             width: ColumnWidth::Fixed(44),
