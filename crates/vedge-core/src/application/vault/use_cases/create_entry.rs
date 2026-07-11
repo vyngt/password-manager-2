@@ -49,9 +49,14 @@ pub async fn create_entry(
     let entry_id = EntryId::new();
     let version: i64 = 1;
 
+    // A fresh entry's secret material is, by definition, new — stamp its age
+    // now (slice 4.3). Owned by the write path; the frontend never supplies it.
+    let when = now();
+    let mut rewritten = input.payload;
+    rewritten.meta_mut().secret_changed_at = Some(when);
+
     // Serialize under a named boundary so callers can grep for encryption
     // sites. `to_encryptable_json` returns `Zeroizing<Vec<u8>>`.
-    let rewritten = input.payload;
     let payload_bytes = rewritten.to_encryptable_json()?;
 
     // Fresh DEK — wraps immediately under the session KEK.
@@ -62,7 +67,6 @@ pub async fn create_entry(
     // `dek` and `payload_bytes` go out of scope at the end of this fn,
     // zeroizing their buffers.
 
-    let when = now();
     let row = EntryRow {
         id: entry_id.clone(),
         version,

@@ -240,6 +240,9 @@ pub fn changed_fields(prev: &serde_json::Value, cur: &serde_json::Value) -> Vec<
         "folder_id",
         "payload_schema",
         "entry_type",
+        // Derived age stamp owned by the write path (4.3) — bumps *because* a
+        // secret changed, so surfacing it would double the real field's chip.
+        "secret_changed_at",
     ];
     let empty = serde_json::Map::new();
     let p = prev.as_object().unwrap_or(&empty);
@@ -330,7 +333,10 @@ mod tests {
         let cur = json!({
             "entry_type": "Card", "name": "Visa",
             "is_favorite": true, "sort_order": 9, "tag_ids": ["t1"], "folder_id": "f1",
-            "payload_schema": 1, "number": "4111"
+            "payload_schema": 1, "number": "4111",
+            // The 4.3 age stamp is UI-meta: bumping it must not read as a content
+            // change (it would double the real field's chip).
+            "secret_changed_at": "2026-07-12T00:00:00Z"
         });
         // Only UI-meta changed → no content field reported.
         assert!(changed_fields(&prev, &cur).is_empty());

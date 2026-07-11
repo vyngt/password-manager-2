@@ -20,6 +20,7 @@ use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::{AuditAction, EntryHistoryRow};
 use crate::domain::vault::errors::VaultError;
+use crate::domain::vault::health;
 use crate::domain::vault::index::IndexEntry;
 use crate::domain::vault::payloads::EntryPayload;
 use crate::domain::vault::totp::TotpUpdate;
@@ -65,30 +66,40 @@ pub async fn update_entry(
         .crypto
         .unwrap_dek(&existing.dek_wrapped, session.kek.expose())?;
 
-    // Resolve the TOTP enrolment intent for Login payloads. The seed no longer
-    // crosses to WASM, so `Unchanged` must carry forward the stored seed — which
-    // means decrypting the existing payload here (reusing the DEK we just
-    // unwrapped). `Set`/`Clear` need no decrypt; non-Login payloads are inert.
+    // Decrypt the existing payload ONCE (reusing the DEK we just unwrapped),
+    // unconditionally. Two callers need it: carrying forward an unchanged TOTP
+    // seed (the seed no longer crosses to WASM — the 4.2 door), and deciding
+    // whether `secret_changed_at` should bump (4.3). Non-Login updates now pay
+    // one decrypt+parse; the DEK unwrap was already unconditional.
+    let old = super::refs::decrypt_row_with_dek(session.crypto.as_ref(), &dek, &existing)?;
+    let when = now();
+
+    // Resolve the TOTP enrolment intent for Login payloads. `Set`/`Clear`
+    // enrol/remove; `Unchanged` carries the stored seed forward from `old`.
     let mut new_payload = input.payload;
     if let EntryPayload::Login(login) = &mut new_payload {
         match input.totp {
             TotpUpdate::Set(secret) => login.totp_secret = Some(secret),
             TotpUpdate::Clear => login.totp_secret = None,
             TotpUpdate::Unchanged => {
-                let aad_old = entry_aad(&existing.id, existing.version)?;
-                let plaintext = session.crypto.decrypt_entry(
-                    &dek,
-                    &existing.nonce,
-                    &existing.ciphertext,
-                    &aad_old,
-                )?;
-                if let EntryPayload::Login(old) = EntryPayload::from_decrypted_json(&plaintext)? {
-                    login.totp_secret = old.totp_secret;
+                if let EntryPayload::Login(old_login) = &old {
+                    login.totp_secret.clone_from(&old_login.totp_secret);
                 }
-                drop(plaintext);
             }
         }
     }
+
+    // Stamp secret age: bump only when a secret-bearing field actually changed;
+    // otherwise carry the prior stamp forward, so editing a non-secret field
+    // does not reset the entry's apparent secret age.
+    let secret_stamp = if health::secrets_differ(&old, &new_payload) {
+        Some(when)
+    } else {
+        old.meta().secret_changed_at
+    };
+    new_payload.meta_mut().secret_changed_at = secret_stamp;
+    drop(old);
+
     let payload_bytes = new_payload.to_encryptable_json()?;
 
     let aad = entry_aad(&input.entry_id, new_version)?;
@@ -109,7 +120,6 @@ pub async fn update_entry(
         .prune_history_keep(&input.entry_id, HISTORY_MAX_VERSIONS)
         .await?;
 
-    let when = now();
     let mut row = existing;
     row.version = new_version;
     row.nonce = nonce;

@@ -3,6 +3,7 @@ pub mod crypto_constants;
 pub mod emergency_kit;
 pub mod entities;
 pub mod errors;
+pub mod health;
 pub mod index;
 pub mod kdf_params;
 pub mod otpauth;
@@ -19,6 +20,10 @@ pub use crypto_constants::{
 pub use emergency_kit::EmergencyKitContent;
 pub use entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
 pub use errors::VaultError;
+pub use health::{
+    AgeConfidence, Finding, FindingKind, HealthReport, HealthScanInput, HealthSummary, SecretField,
+    Severity, SkipReason, Skipped, WeakPolicy,
+};
 pub use index::{IndexEntry, TagMeta, VaultIndex};
 pub use kdf_params::KdfParams;
 pub use otpauth::{TotpEnrolment, parse_totp_input};

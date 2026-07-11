@@ -102,6 +102,8 @@ pub fn run() {
             // ---- TOTP (slice 4.2) ----
             commands::totp::reveal_totp,
             commands::totp::parse_totp_enrolment,
+            // ---- password health (slice 4.3) ----
+            commands::health::scan_health,
             // ---- tag ops ----
             commands::tag::create_tag,
             commands::tag::rename_tag,

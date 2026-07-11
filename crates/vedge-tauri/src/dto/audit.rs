@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn audit_action_mapping_is_total() {
         use AuditAction::{
-            BiometricUnlocked, Created, Deleted, Exported, Locked, PasswordChanged,
+            BiometricUnlocked, Created, Deleted, Exported, HealthScanned, Locked, PasswordChanged,
             PermanentlyDeleted, RecoveryUsed, Restored, TagCreated, TagDeleted, TagRenamed,
             TotpRevealed, Unlocked, Updated, Viewed,
         };
@@ -108,15 +108,16 @@ mod tests {
             RecoveryUsed,
             BiometricUnlocked,
             TotpRevealed,
+            HealthScanned,
         ];
-        assert_eq!(all.len(), 16);
+        assert_eq!(all.len(), 17);
         for a in &all {
             // Compile-time tripwire: a new AuditAction variant makes this match
             // non-exhaustive and fails to build, forcing a wire-format review.
             match a {
                 Unlocked | Locked | Created | Viewed | Updated | Deleted | Restored
                 | PermanentlyDeleted | Exported | PasswordChanged | TagCreated | TagRenamed
-                | TagDeleted | RecoveryUsed | BiometricUnlocked | TotpRevealed => {}
+                | TagDeleted | RecoveryUsed | BiometricUnlocked | TotpRevealed | HealthScanned => {}
             }
             // to_dto emits the raw name; from_dto parses it back losslessly.
             let event = AuditEvent {
