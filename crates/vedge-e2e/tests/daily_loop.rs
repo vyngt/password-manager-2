@@ -557,11 +557,12 @@ async fn add_note(s: &Session, name: &str, content: &str) -> Result<()> {
     s.click_testid("vault-new-entry")
         .await
         .context("open add form for note")?;
-    // Switch the entry-type picker (a `vedge-ui` Select) from Login to Note. The
-    // trigger is the only `role=combobox` in the create form; each option carries
-    // a locale-independent `data-value` = the type key ("Note").
+    // Switch the entry-type picker (a `vedge-ui` Select) from Login to Note.
+    // Scope by the create-form testid — the vault toolbar also has filter
+    // comboboxes, so a bare `[role=combobox]` would open the wrong one. Each
+    // option carries a locale-independent `data-value` = the type key ("Note").
     s.wait_for(
-        By::Css("[role='combobox']".to_string()),
+        By::Css("[data-testid='entry-type-select'] [role='combobox']".to_string()),
         Duration::from_secs(5),
     )
     .await
@@ -570,7 +571,7 @@ async fn add_note(s: &Session, name: &str, content: &str) -> Result<()> {
     .await
     .context("click type picker")?;
     s.wait_for(
-        By::Css("[role='option'][data-value='Note']".to_string()),
+        By::Css("[data-testid='entry-type-select'] [role='option'][data-value='Note']".to_string()),
         Duration::from_secs(5),
     )
     .await

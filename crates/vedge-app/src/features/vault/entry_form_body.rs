@@ -60,6 +60,7 @@ pub fn EntryFormBody(
                                 .collect();
                             view! {
                                 <Select
+                                    attr:data-testid="entry-type-select"
                                     options=options
                                     value=Signal::derive(move || {
                                         data.with(|d| type_to_key(&d.entry_type).to_owned())
