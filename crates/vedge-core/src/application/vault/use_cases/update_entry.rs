@@ -22,6 +22,7 @@ use crate::domain::vault::entities::{AuditAction, EntryHistoryRow};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::IndexEntry;
 use crate::domain::vault::payloads::EntryPayload;
+use crate::domain::vault::totp::TotpUpdate;
 
 use super::entry_history::HISTORY_MAX_VERSIONS;
 
@@ -30,6 +31,10 @@ pub struct UpdateEntryInput {
     /// Complete replacement payload. Callers own the merge logic (read the
     /// current payload, mutate, pass back).
     pub payload: EntryPayload,
+    /// TOTP enrolment intent (Login only). Since the seed no longer crosses to
+    /// WASM (the 4.2 door), `Unchanged` (the default) carries the stored seed
+    /// forward — resolved here, the one place with access to decrypt it.
+    pub totp: TotpUpdate,
 }
 
 #[instrument(skip_all, fields(entry_id = %input.entry_id))]
@@ -60,7 +65,30 @@ pub async fn update_entry(
         .crypto
         .unwrap_dek(&existing.dek_wrapped, session.kek.expose())?;
 
-    let new_payload = input.payload;
+    // Resolve the TOTP enrolment intent for Login payloads. The seed no longer
+    // crosses to WASM, so `Unchanged` must carry forward the stored seed — which
+    // means decrypting the existing payload here (reusing the DEK we just
+    // unwrapped). `Set`/`Clear` need no decrypt; non-Login payloads are inert.
+    let mut new_payload = input.payload;
+    if let EntryPayload::Login(login) = &mut new_payload {
+        match input.totp {
+            TotpUpdate::Set(secret) => login.totp_secret = Some(secret),
+            TotpUpdate::Clear => login.totp_secret = None,
+            TotpUpdate::Unchanged => {
+                let aad_old = entry_aad(&existing.id, existing.version)?;
+                let plaintext = session.crypto.decrypt_entry(
+                    &dek,
+                    &existing.nonce,
+                    &existing.ciphertext,
+                    &aad_old,
+                )?;
+                if let EntryPayload::Login(old) = EntryPayload::from_decrypted_json(&plaintext)? {
+                    login.totp_secret = old.totp_secret;
+                }
+                drop(plaintext);
+            }
+        }
+    }
     let payload_bytes = new_payload.to_encryptable_json()?;
 
     let aad = entry_aad(&input.entry_id, new_version)?;
@@ -93,5 +121,8 @@ pub async fn update_entry(
 
     let index_entry = IndexEntry::from_payload(&new_payload, &row);
     session.index.update_entry(index_entry);
+    // A content edit re-arms the TOTP reveal audit: a re-enrolled seed is a
+    // distinct secret exposure and should audit again this session (slice 4.2).
+    session.revealed_totp.remove(&input.entry_id);
     Ok(())
 }

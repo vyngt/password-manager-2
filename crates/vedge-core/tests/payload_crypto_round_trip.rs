@@ -46,6 +46,7 @@ fn login_round_trip() {
         username: "alice".into(),
         password: SecretString::from("hunter2"),
         totp_secret: Some(SecretString::from("JBSWY3DPEHPK3PXP")),
+        totp_params: vedge_core::TotpParams::default(),
         recovery_codes: vec![SecretString::from("code-1"), SecretString::from("code-2")],
     }));
     let EntryPayload::Login(l) = out else {

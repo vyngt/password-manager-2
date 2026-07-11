@@ -89,7 +89,7 @@ mod tests {
         use AuditAction::{
             BiometricUnlocked, Created, Deleted, Exported, Locked, PasswordChanged,
             PermanentlyDeleted, RecoveryUsed, Restored, TagCreated, TagDeleted, TagRenamed,
-            Unlocked, Updated, Viewed,
+            TotpRevealed, Unlocked, Updated, Viewed,
         };
         let all = [
             Unlocked,
@@ -107,15 +107,16 @@ mod tests {
             TagDeleted,
             RecoveryUsed,
             BiometricUnlocked,
+            TotpRevealed,
         ];
-        assert_eq!(all.len(), 15);
+        assert_eq!(all.len(), 16);
         for a in &all {
             // Compile-time tripwire: a new AuditAction variant makes this match
             // non-exhaustive and fails to build, forcing a wire-format review.
             match a {
                 Unlocked | Locked | Created | Viewed | Updated | Deleted | Restored
                 | PermanentlyDeleted | Exported | PasswordChanged | TagCreated | TagRenamed
-                | TagDeleted | RecoveryUsed | BiometricUnlocked => {}
+                | TagDeleted | RecoveryUsed | BiometricUnlocked | TotpRevealed => {}
             }
             // to_dto emits the raw name; from_dto parses it back losslessly.
             let event = AuditEvent {

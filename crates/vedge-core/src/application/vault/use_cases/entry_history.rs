@@ -26,6 +26,7 @@ use crate::domain::vault::crypto_constants::{DEK_LEN, NONCE_LEN};
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
+use crate::domain::vault::totp::TotpUpdate;
 
 use super::copy_field::FieldSelector;
 
@@ -157,6 +158,7 @@ pub async fn get_history_value(
 pub async fn copy_history_field(
     session: &VaultSession,
     input: CopyHistoryFieldInput,
+    now: u64,
 ) -> Result<(), VaultError> {
     if !session.index.entries.contains_key(&input.entry_id) {
         return Err(VaultError::EntryNotFound(input.entry_id.clone()));
@@ -167,6 +169,7 @@ pub async fn copy_history_field(
         &payload,
         &input.field,
         input.clear_after_secs,
+        now,
     )?;
     drop(payload);
 
@@ -198,11 +201,24 @@ pub async fn restore_from_history(
         ));
     }
 
+    // `update_entry` treats `totp` as authoritative (the seed no longer travels
+    // via the payload alone). A restore must revert to the *snapshot's* TOTP, not
+    // carry the current one forward, so translate the snapshot seed into an
+    // explicit `Set`/`Clear` intent.
+    let totp = match &payload {
+        EntryPayload::Login(l) => l
+            .totp_secret
+            .as_ref()
+            .map_or(TotpUpdate::Clear, |s| TotpUpdate::Set(s.clone())),
+        _ => TotpUpdate::Unchanged,
+    };
+
     super::update_entry::update_entry(
         session,
         super::update_entry::UpdateEntryInput {
             entry_id: entry_id.clone(),
             payload,
+            totp,
         },
     )
     .await

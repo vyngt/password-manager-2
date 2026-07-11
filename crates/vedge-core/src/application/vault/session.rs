@@ -19,6 +19,7 @@
 //! them directly. External callers touch only the public `index()`/
 //! `vault_id()`/`lock()` surface.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use zeroize::Zeroize;
@@ -27,7 +28,7 @@ use crate::application::vault::ports::blob_store::BlobStore;
 use crate::application::vault::ports::clipboard::ClipboardProvider;
 use crate::application::vault::ports::crypto::CryptoProvider;
 use crate::application::vault::ports::repository::VaultRepository;
-use crate::domain::shared::VaultId;
+use crate::domain::shared::{EntryId, VaultId};
 use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::entities::VaultConfig;
 use crate::domain::vault::index::VaultIndex;
@@ -52,6 +53,12 @@ pub struct VaultSession {
     pub(crate) crypto: Arc<dyn CryptoProvider>,
     pub(crate) blob: Arc<dyn BlobStore>,
     pub(crate) clipboard: Arc<dyn ClipboardProvider>,
+
+    /// Entries whose TOTP code has been revealed this session (slice 4.2). Drives
+    /// audit-once-per-(session, entry): the first `reveal_totp` writes a
+    /// `TotpRevealed` row, period-boundary refreshes don't. Non-secret (ids only);
+    /// dropped with the session on lock, so the next unlock audits again.
+    pub(crate) revealed_totp: HashSet<EntryId>,
 }
 
 impl VaultSession {
@@ -77,6 +84,7 @@ impl VaultSession {
             crypto,
             blob,
             clipboard,
+            revealed_totp: HashSet::new(),
         }
     }
 

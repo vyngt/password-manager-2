@@ -49,6 +49,7 @@ fn login_wire_format() {
         username: "alice".into(),
         password: SecretString::from("hunter2"),
         totp_secret: Some(SecretString::from("JBSWY3DPEHPK3PXP")),
+        totp_params: vedge_core::TotpParams::default(),
         recovery_codes: vec![SecretString::from("code-1"), SecretString::from("code-2")],
     });
 
@@ -65,6 +66,7 @@ fn login_wire_format() {
         "username": "alice",
         "password": "hunter2",
         "totp_secret": "JBSWY3DPEHPK3PXP",
+        "totp_params": {"algorithm": "Sha1", "digits": 6, "period": 30},
         "recovery_codes": ["code-1", "code-2"],
     });
     assert_eq!(to_value(&p), expected);
@@ -318,6 +320,7 @@ fn login_debug_does_not_leak_password() {
         username: "alice".into(),
         password: SecretString::from("hunter2"),
         totp_secret: None,
+        totp_params: vedge_core::TotpParams::default(),
         recovery_codes: vec![],
     };
     let debug = format!("{p:?}");

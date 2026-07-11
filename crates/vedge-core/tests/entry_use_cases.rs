@@ -41,6 +41,7 @@ fn login_payload(name: &str, pw: &str) -> EntryPayload {
         username: "alice".into(),
         password: SecretString::from(pw),
         totp_secret: None,
+        totp_params: vedge_core::TotpParams::default(),
         recovery_codes: vec![],
     })
 }
@@ -100,6 +101,7 @@ async fn update_bumps_version_and_refreshes_nonce() {
         UpdateEntryInput {
             entry_id: id.clone(),
             payload: login_payload("gh", "pw2"),
+            totp: vedge_core::TotpUpdate::Unchanged,
         },
     )
     .await
@@ -212,6 +214,7 @@ async fn update_rejects_nonexistent_entry() {
         UpdateEntryInput {
             entry_id: EntryId::new(),
             payload: login_payload("gh", "pw"),
+            totp: vedge_core::TotpUpdate::Unchanged,
         },
     )
     .await

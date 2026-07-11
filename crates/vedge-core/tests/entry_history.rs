@@ -46,6 +46,7 @@ fn login(name: &str, pw: &str) -> EntryPayload {
         username: "alice".into(),
         password: SecretString::from(pw),
         totp_secret: None,
+        totp_params: vedge_core::TotpParams::default(),
         recovery_codes: vec![],
     })
 }
@@ -68,6 +69,7 @@ async fn update_login(session: &mut VaultSession, id: &EntryId, pw: &str) {
         UpdateEntryInput {
             entry_id: id.clone(),
             payload: login("GitHub", pw),
+            totp: vedge_core::TotpUpdate::Unchanged,
         },
     )
     .await

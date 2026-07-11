@@ -28,6 +28,7 @@ pub mod entry;
 pub mod recent;
 pub mod settings;
 pub mod tag;
+pub mod totp;
 pub mod vault;
 pub mod window;
 

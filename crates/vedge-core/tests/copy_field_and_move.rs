@@ -14,6 +14,7 @@ use std::time::Duration;
 use common::{Harness, build_unlock};
 use secrecy::SecretString;
 
+use vedge_core::TotpParams;
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
@@ -43,6 +44,7 @@ fn login(name: &str, pw: &str, totp: Option<&str>) -> EntryPayload {
         username: "alice".into(),
         password: SecretString::from(pw),
         totp_secret: totp.map(|s| SecretString::from(s.to_owned())),
+        totp_params: TotpParams::default(),
         recovery_codes: vec![],
     })
 }
@@ -63,7 +65,7 @@ async fn copy_password_puts_value_on_clipboard() {
 
     let mut input = CopyFieldInput::new(id, FieldSelector::Password);
     input.clear_after_secs = 9999; // we don't want the clear to fire during the test
-    copy_field(&mut session, input).await.unwrap();
+    copy_field(&mut session, input, 0).await.unwrap();
 
     assert_eq!(h.clipboard.peek().as_deref(), Some("hunter2"));
 }
@@ -87,7 +89,7 @@ async fn copy_wrong_field_for_type_errors() {
 
     let mut input = CopyFieldInput::new(id, FieldSelector::Password);
     input.clear_after_secs = 9999;
-    let err = copy_field(&mut session, input).await.unwrap_err();
+    let err = copy_field(&mut session, input, 0).await.unwrap_err();
     assert!(matches!(err, VaultError::FieldNotApplicable));
 }
 
@@ -109,7 +111,7 @@ async fn copy_totp_produces_six_digits() {
 
     let mut input = CopyFieldInput::new(id, FieldSelector::TotpCode);
     input.clear_after_secs = 9999;
-    copy_field(&mut session, input).await.unwrap();
+    copy_field(&mut session, input, 0).await.unwrap();
 
     let code = h.clipboard.peek().unwrap();
     assert_eq!(code.len(), 6);
@@ -132,7 +134,7 @@ async fn copy_totp_without_secret_errors() {
 
     let mut input = CopyFieldInput::new(id, FieldSelector::TotpCode);
     input.clear_after_secs = 9999;
-    let err = copy_field(&mut session, input).await.unwrap_err();
+    let err = copy_field(&mut session, input, 0).await.unwrap_err();
     assert!(matches!(err, VaultError::FieldNotApplicable));
 }
 
@@ -157,6 +159,7 @@ async fn clipboard_clears_after_delay() {
             field: FieldSelector::Password,
             clear_after_secs: 1,
         },
+        0,
     )
     .await
     .unwrap();

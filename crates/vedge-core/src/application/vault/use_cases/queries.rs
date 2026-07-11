@@ -87,6 +87,7 @@ mod tests {
             username: "u".into(),
             password: SecretString::from("p"),
             totp_secret: None,
+            totp_params: crate::domain::vault::totp::TotpParams::default(),
             recovery_codes: vec![],
         })
     }

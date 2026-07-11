@@ -71,6 +71,16 @@ pub enum VaultError {
     #[error("requested field is not present on this entry type")]
     FieldNotApplicable,
 
+    // --- TOTP (slice 4.2) ---
+    #[error("invalid TOTP parameters: {0}")]
+    InvalidTotpParams(String),
+
+    #[error("HOTP is not supported — only time-based (TOTP) codes")]
+    HotpNotSupported,
+
+    #[error("otpauth-migration:// import is not supported yet")]
+    TotpMigrationNotSupported,
+
     // --- crypto ---
     #[error("wrong password or Secret Key")]
     WrongCredentials,
