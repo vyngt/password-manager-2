@@ -82,7 +82,26 @@ in an opt-in CI job.
 
 - **A lint for the reactive/`spawn_local` footgun** — reading a signal (or `t!`/`t_string!`) inside a `spawn_local` future runs outside a reactive owner and warns at runtime. A grep/`cargo-dylint` check would catch it *at build time*; until then the e2e **console-clean guard** (level 4) nets it at runtime, and the convention holds: read signals in the handler body, move plain values into the async block.
 - **Component/DOM unit tests** — the e2e level (4) now covers mounted-and-driven flows end-to-end; a lighter component-test tier is still absent (highest-fidelity coverage lives in the e2e daily loop).
-- **E2e in CI** — the `mise e2e` job is documented but not yet enabled (needs a runner with a display + the platform driver; `xvfb-run` on Linux). See the crate README.
+
+## Continuous integration (slice 3.8)
+
+Two CI substrates, so a fast dev pace never exhausts GitHub-hosted runner minutes:
+
+- **GitHub Actions — the authoritative PR gate.** `.github/workflows/ci.yml` runs the core gate
+  (`mise ci` + `mise audit`) on **`pull_request` into `develop`/`master` + manual dispatch only — no
+  `push` trigger**, so feature-branch commits fire nothing (≈ one run per PR). `.github/workflows/e2e.yml`
+  runs `mise e2e` on **manual dispatch only** (Windows runners bill at 2×; a nightly schedule is left
+  commented-out), with `runner` selectable — point it at a **self-hosted Windows runner** (your machine
+  already has WebView2 + msedgedriver) for zero hosted minutes. The e2e job enables the fast-KDF +
+  in-memory-biometric seams via the harness env.
+- **Local Jenkins in Docker — off GitHub entirely.** `Jenkinsfile` + `ci/jenkins/` bring up a Dockerised
+  Jenkins controller (toolchain baked in) that runs the same core gate on demand. See
+  [`ci/jenkins/README.md`](../ci/jenkins/README.md). Core gate only — e2e stays on the `mise e2e` /
+  GitHub-e2e path (needs a display + WebDriver).
+
+The e2e suite is **locale-independent** as of 3.8: controls are located by `data-testid`, not English text.
+It also runs a **fast-KDF seam** (`VEDGE_E2E_FAST_KDF`, debug-only + release-impossible) so create/unlock no
+longer dominate the run.
 
 ## Rule of thumb
 

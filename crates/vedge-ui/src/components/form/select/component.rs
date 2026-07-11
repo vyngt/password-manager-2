@@ -459,6 +459,10 @@ fn render_option(
     };
 
     let val_click = opt.value;
+    // Stable, locale-independent option hook (mirrors `SegmentedControl`'s
+    // `data-value`) so tests/consumers can target an option by its value rather
+    // than its translated label.
+    let value_attr = val_click.clone();
     let on_click = move |_: web_sys::MouseEvent| {
         if !opt_disabled {
             select_value(val_click.clone());
@@ -475,6 +479,7 @@ fn render_option(
         <div
             class=option_cls
             role="option"
+            data-value=value_attr
             aria-selected=move || is_selected_aria().to_string()
             aria-disabled=if opt_disabled { Some("true") } else { None }
             on:click=on_click

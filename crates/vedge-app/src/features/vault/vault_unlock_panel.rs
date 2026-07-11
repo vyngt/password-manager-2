@@ -132,6 +132,7 @@ pub fn VaultUnlockPanel(
                                                                 size=Size::Lg
                                                                 full_width=true
                                                                 loading=busy
+                                                                attr:data-testid="unlock-submit"
                                                                 on:click=move |_: web_sys::MouseEvent| on_unlock.run(())
                                                             >
                                                                 {move || t!(i18n, unlock.unlock)}

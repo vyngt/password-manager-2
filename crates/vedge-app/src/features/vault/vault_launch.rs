@@ -350,6 +350,7 @@ pub fn VaultLaunch() -> impl IntoView {
                     <div class="flex gap-2">
                         <Button
                             variant=Variant::Primary
+                            attr:data-testid="launch-new-vault"
                             on:click=move |_: web_sys::MouseEvent| on_new.run(())
                         >
                             {move || t!(i18n, unlock.new_vault)}

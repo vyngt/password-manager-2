@@ -84,8 +84,38 @@ fn fallback_tokens(config: &ThemeConfig) -> ThemeTokens {
     }
 }
 
+/// Install debug-only JS test hooks on `window` for the e2e harness.
+///
+/// Currently just `window.__vedge_test_dialog(on: bool)`, which toggles the
+/// renderer-side in-dialog counter so the lock-on-blur **negative** e2e assertion
+/// can simulate an open native dialog (a native OS dialog can't be driven in
+/// `WebDriver`). Absent from release builds (`cfg(debug_assertions)`). The `Closure`
+/// is intentionally `forget`-leaked — it must outlive this call, and there is
+/// exactly one for the app's lifetime.
+#[cfg(debug_assertions)]
+fn install_test_hooks() {
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen::closure::Closure;
+
+    let Some(win) = web_sys::window() else {
+        return;
+    };
+    let cb = Closure::<dyn Fn(bool)>::new(|on: bool| {
+        crate::api::dialog::test_set_dialog_in_progress(on);
+    });
+    let _ = js_sys::Reflect::set(
+        &win,
+        &wasm_bindgen::JsValue::from_str("__vedge_test_dialog"),
+        cb.as_ref().unchecked_ref(),
+    );
+    cb.forget();
+}
+
 #[component]
 pub fn App() -> impl IntoView {
+    #[cfg(debug_assertions)]
+    install_test_hooks();
+
     let config = default_theme_config();
     let tokens = derive_tokens(&config).unwrap_or_else(|_| {
         web_sys::console::error_1(

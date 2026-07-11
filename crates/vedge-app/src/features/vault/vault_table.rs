@@ -221,6 +221,7 @@ fn VaultTableRow(
         >
             <td class="p-3">
                 <IconButton
+                    attr:data-testid="row-favorite"
                     aria_label=Signal::derive(move || {
                         if is_fav {
                             t_string!(i18n, vault.unfavorite).to_owned()
@@ -272,6 +273,7 @@ fn VaultTableRow(
                         view! {
                             <div class="flex items-center gap-1">
                                 <IconButton
+                                    attr:data-testid="row-restore"
                                     aria_label=Signal::derive(move || {
                                         t_string!(i18n, vault.restore).to_owned()
                                     })
@@ -285,6 +287,7 @@ fn VaultTableRow(
                                     <Icon attr:aria-hidden="true" icon=i::FaTrashArrowUpSolid />
                                 </IconButton>
                                 <IconButton
+                                    attr:data-testid="row-delete-permanent"
                                     aria_label=Signal::derive(move || {
                                         t_string!(i18n, vault.delete_permanently).to_owned()
                                     })
@@ -310,6 +313,7 @@ fn VaultTableRow(
                         view! {
                             <div class="flex items-center gap-1">
                                 <IconButton
+                                    attr:data-testid="row-move"
                                     aria_label=Signal::derive(move || {
                                         t_string!(i18n, vault.folder_move).to_owned()
                                     })
@@ -323,6 +327,7 @@ fn VaultTableRow(
                                     <Icon attr:aria-hidden="true" icon=i::FaFolderOpenSolid />
                                 </IconButton>
                                 <IconButton
+                                    attr:data-testid="row-delete"
                                     aria_label=Signal::derive(move || {
                                         t_string!(i18n, vault.delete).to_owned()
                                     })

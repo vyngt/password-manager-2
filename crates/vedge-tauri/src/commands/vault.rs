@@ -58,6 +58,26 @@ fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
 }
 
+/// Resolve the KDF profile for `create_vault`. **Production always yields `None`**
+/// → the use case applies `KdfParams::argon2id_default()` (256 MiB / t3 / p4). The
+/// e2e/test path may inject a fast profile, but only under **two** gates that can't
+/// both hold in a shipped bundle: a debug build (`cfg(debug_assertions)`, absent in
+/// the release bundle from `cargo tauri build`) **and** the explicit
+/// `VEDGE_E2E_FAST_KDF` env var (set by the e2e harness). A fast KDF reachable in
+/// production would gut the vault's key-stretching, so the release build compiles
+/// this to a bare `None` and `KdfParams::fast` does not exist there at all.
+#[cfg(debug_assertions)]
+fn resolve_kdf_seam() -> Option<vedge_core::domain::vault::kdf_params::KdfParams> {
+    std::env::var_os("VEDGE_E2E_FAST_KDF")
+        .filter(|v| !v.is_empty())
+        .map(|_| vedge_core::domain::vault::kdf_params::KdfParams::fast())
+}
+
+#[cfg(not(debug_assertions))]
+fn resolve_kdf_seam() -> Option<vedge_core::domain::vault::kdf_params::KdfParams> {
+    None
+}
+
 // ---- unlock / lock / is_unlocked --------------------------------------------
 
 #[tauri::command(rename_all = "snake_case")]
@@ -116,7 +136,7 @@ pub async fn create_vault(
             vault_path,
             master_password,
             secret_key,
-            kdf_params: None,
+            kdf_params: resolve_kdf_seam(),
         })
         .await?;
 
