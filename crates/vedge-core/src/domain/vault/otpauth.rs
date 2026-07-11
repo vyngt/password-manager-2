@@ -93,8 +93,8 @@ fn parse_uri(rest: &str) -> Result<TotpEnrolment, VaultError> {
         }
     }
 
-    let secret_raw =
-        secret_raw.ok_or_else(|| VaultError::MalformedPayload("otpauth URI missing secret".into()))?;
+    let secret_raw = secret_raw
+        .ok_or_else(|| VaultError::MalformedPayload("otpauth URI missing secret".into()))?;
     let secret = normalize_and_validate_secret(&secret_raw)?;
 
     let (label_issuer, account) = split_label(&percent_decode(label)?);
@@ -164,7 +164,10 @@ fn parse_period(s: &str) -> Result<u32, VaultError> {
 /// `(None, Some(account))`. Leading spaces on the account are conventional.
 fn split_label(label: &str) -> (Option<String>, Option<String>) {
     if let Some((iss, acc)) = label.split_once(':') {
-        (Some(iss.trim().to_owned()), Some(acc.trim_start().to_owned()))
+        (
+            Some(iss.trim().to_owned()),
+            Some(acc.trim_start().to_owned()),
+        )
     } else {
         let a = label.trim();
         (None, (!a.is_empty()).then(|| a.to_owned()))
@@ -179,9 +182,9 @@ fn normalize_and_validate_secret(raw: &str) -> Result<SecretString, VaultError> 
     }
     // Strict-decode to validate; store the normalized Base32 (what the engine
     // re-decodes). A bad character surfaces here at enrol, not at first display.
-    BASE32_NOPAD.decode(normalized.as_bytes()).map_err(|e| {
-        VaultError::MalformedPayload(format!("invalid Base32 TOTP secret ({e})"))
-    })?;
+    BASE32_NOPAD
+        .decode(normalized.as_bytes())
+        .map_err(|e| VaultError::MalformedPayload(format!("invalid Base32 TOTP secret ({e})")))?;
     Ok(SecretString::from(normalized.to_string()))
 }
 
@@ -203,7 +206,8 @@ fn percent_decode(s: &str) -> Result<String, VaultError> {
             out.push(b);
         }
     }
-    String::from_utf8(out).map_err(|_| VaultError::MalformedPayload("invalid UTF-8 in otpauth URI".into()))
+    String::from_utf8(out)
+        .map_err(|_| VaultError::MalformedPayload("invalid UTF-8 in otpauth URI".into()))
 }
 
 #[cfg(test)]
@@ -255,8 +259,10 @@ mod tests {
     #[test]
     fn otpauth_empty_issuer_param_falls_back_to_label() {
         // An explicit but empty `issuer=` must not null out the label issuer.
-        let e = parse_totp_input(&format!("otpauth://totp/GitHub:bob?secret={SECRET}&issuer="))
-            .unwrap();
+        let e = parse_totp_input(&format!(
+            "otpauth://totp/GitHub:bob?secret={SECRET}&issuer="
+        ))
+        .unwrap();
         assert_eq!(e.issuer.as_deref(), Some("GitHub"));
     }
 
@@ -272,8 +278,8 @@ mod tests {
 
     #[test]
     fn otpauth_rejects_hotp() {
-        let err = parse_totp_input(&format!("otpauth://hotp/x?secret={SECRET}&counter=0"))
-            .unwrap_err();
+        let err =
+            parse_totp_input(&format!("otpauth://hotp/x?secret={SECRET}&counter=0")).unwrap_err();
         assert!(matches!(err, VaultError::HotpNotSupported));
     }
 

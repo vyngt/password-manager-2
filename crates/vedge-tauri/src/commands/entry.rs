@@ -25,14 +25,14 @@ use tracing::instrument;
 use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
     CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, TotpUpdate,
-    UpdateEntryInput, copy_field as copy_field_core,
-    copy_history_field as copy_history_field_core, create_entry as create_entry_core,
-    get_entry as get_entry_core, get_history_value as get_history_value_core,
-    hard_delete_entry as hard_delete_entry_core, list_history as list_history_core,
-    move_entry as move_entry_core, restore_entry as restore_entry_core,
-    restore_from_history as restore_from_history_core, set_favorite as set_favorite_core,
-    set_sort_order as set_sort_order_core, set_tags as set_tags_core,
-    soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
+    UpdateEntryInput, copy_field as copy_field_core, copy_history_field as copy_history_field_core,
+    create_entry as create_entry_core, get_entry as get_entry_core,
+    get_history_value as get_history_value_core, hard_delete_entry as hard_delete_entry_core,
+    list_history as list_history_core, move_entry as move_entry_core,
+    restore_entry as restore_entry_core, restore_from_history as restore_from_history_core,
+    set_favorite as set_favorite_core, set_sort_order as set_sort_order_core,
+    set_tags as set_tags_core, soft_delete_entry as soft_delete_entry_core,
+    update_entry as update_entry_core,
 };
 
 use crate::dto::entry::{

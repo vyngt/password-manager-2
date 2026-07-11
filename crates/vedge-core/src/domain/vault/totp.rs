@@ -169,11 +169,7 @@ fn decode_secret(seed: &SecretString) -> Result<Zeroizing<Vec<u8>>, VaultError> 
 /// HMAC(key, msg) dispatched over the three supported hashes. Explicit arms (not
 /// a generic) to sidestep the `Hmac<D>` trait-bound thicket; each result lives
 /// in a zeroizing buffer.
-fn hmac_sha(
-    alg: TotpAlgorithm,
-    key: &[u8],
-    msg: &[u8],
-) -> Result<Zeroizing<Vec<u8>>, VaultError> {
+fn hmac_sha(alg: TotpAlgorithm, key: &[u8], msg: &[u8]) -> Result<Zeroizing<Vec<u8>>, VaultError> {
     let bytes = match alg {
         TotpAlgorithm::Sha1 => {
             let mut m = Hmac::<Sha1>::new_from_slice(key)
@@ -230,8 +226,7 @@ mod tests {
     // seed the prose implies. Encoding all three explicitly is the whole test.
     const K_SHA1: &[u8] = b"12345678901234567890";
     const K_SHA256: &[u8] = b"12345678901234567890123456789012";
-    const K_SHA512: &[u8] =
-        b"1234567890123456789012345678901234567890123456789012345678901234";
+    const K_SHA512: &[u8] = b"1234567890123456789012345678901234567890123456789012345678901234";
 
     fn code_at(key: &[u8], alg: TotpAlgorithm, now: u64) -> String {
         let seed = SecretString::from(BASE32_NOPAD.encode(key));
@@ -246,8 +241,14 @@ mod tests {
     #[test]
     fn totp_rfc6238_vectors_sha1() {
         assert_eq!(code_at(K_SHA1, TotpAlgorithm::Sha1, 59), "94287082");
-        assert_eq!(code_at(K_SHA1, TotpAlgorithm::Sha1, 1_111_111_109), "07081804");
-        assert_eq!(code_at(K_SHA1, TotpAlgorithm::Sha1, 1_234_567_890), "89005924");
+        assert_eq!(
+            code_at(K_SHA1, TotpAlgorithm::Sha1, 1_111_111_109),
+            "07081804"
+        );
+        assert_eq!(
+            code_at(K_SHA1, TotpAlgorithm::Sha1, 1_234_567_890),
+            "89005924"
+        );
     }
 
     #[test]
@@ -292,7 +293,10 @@ mod tests {
                 digits: 6,
                 period: 30,
             };
-            let now = u64::try_from(counter).unwrap_or(0).checked_mul(30).unwrap_or(0);
+            let now = u64::try_from(counter)
+                .unwrap_or(0)
+                .checked_mul(30)
+                .unwrap_or(0);
             let got = generate(&seed, p, now).unwrap().code.to_string();
             assert_eq!(&got, want, "counter {counter}");
         }

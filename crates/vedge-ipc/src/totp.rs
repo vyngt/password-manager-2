@@ -98,8 +98,7 @@ mod tests {
             serde_json::to_string(&set).unwrap(),
             r#"{"kind":"Set","value":"SEED"}"#
         );
-        let back: TotpUpdateDto =
-            serde_json::from_str(r#"{"kind":"Set","value":"SEED"}"#).unwrap();
+        let back: TotpUpdateDto = serde_json::from_str(r#"{"kind":"Set","value":"SEED"}"#).unwrap();
         assert!(matches!(back, TotpUpdateDto::Set(s) if s == "SEED"));
 
         assert_eq!(

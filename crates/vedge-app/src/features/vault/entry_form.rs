@@ -640,7 +640,9 @@ fn TotpEnrolField(data: RwSignal<EntryFormData>) -> impl IntoView {
     view! {
         <div class="col-span-2 space-y-1">
             <div class="flex items-center gap-3">
-                <label class="text-xs text-foreground/60">{move || t!(i18n, vault.field_totp)}</label>
+                <label class="text-xs text-foreground/60">
+                    {move || t!(i18n, vault.field_totp)}
+                </label>
                 <span class="text-xs text-text-secondary" data-testid="ef-totp-status">
                     {status}
                 </span>

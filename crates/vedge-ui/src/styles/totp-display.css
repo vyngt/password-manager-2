@@ -56,7 +56,12 @@
         font-weight: var(--font-weight-medium);
         color: var(--color-text-primary);
         letter-spacing: 0.06em;
-        user-select: all;
+        /* Non-selectable on purpose: the only sanctioned way to lift the code is
+           the Copy button, which routes through the 3.2-hardened backend
+           clipboard (no history / no cloud sync). Allowing text selection would
+           let Ctrl+C bypass that and land the code in Windows clipboard history. */
+        -webkit-user-select: none;
+        user-select: none;
     }
 
     .totp-display__code--dim {

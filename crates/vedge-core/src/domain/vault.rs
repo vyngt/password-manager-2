@@ -21,11 +21,11 @@ pub use entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
 pub use errors::VaultError;
 pub use index::{IndexEntry, TagMeta, VaultIndex};
 pub use kdf_params::KdfParams;
+pub use otpauth::{TotpEnrolment, parse_totp_input};
 pub use payloads::{
     Address, ApiKeyPayload, CURRENT_PAYLOAD_SCHEMA, CardPayload, CommonMeta, DocumentPayload,
     EntryPayload, EntryType, EnvVar, EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload,
     NotePayload, SshKeyPayload, TagPayload, UnknownPayload,
 };
 pub use recovery::{RECOVERY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
-pub use otpauth::{TotpEnrolment, parse_totp_input};
 pub use totp::{TotpAlgorithm, TotpCode, TotpParams, TotpUpdate};

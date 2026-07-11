@@ -31,12 +31,14 @@ fn group_digits(code: &str) -> String {
 #[component]
 pub fn TotpDisplay(
     /// The already-generated code (NOT the seed).
-    #[prop(into)] code: Signal<String>,
+    #[prop(into)]
+    code: Signal<String>,
     #[prop(into)] seconds_remaining: Signal<u32>,
     #[prop(into, default = Signal::stored(30))] period: Signal<u32>,
     /// Invoked when the copy affordance is activated. When `None`, no copy
     /// button renders (the consumer offers its own hardened copy path).
-    #[prop(into, default = None)] on_copy: Option<Callback<()>>,
+    #[prop(into, default = None)]
+    on_copy: Option<Callback<()>>,
     #[prop(into, default = TextProp::default())] copy_label: TextProp,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -64,13 +66,7 @@ pub fn TotpDisplay(
                     height="80"
                     aria-hidden="true"
                 >
-                    <circle
-                        class="totp-display__ring-track"
-                        cx="40"
-                        cy="40"
-                        r="34"
-                        fill="none"
-                    />
+                    <circle class="totp-display__ring-track" cx="40" cy="40" r="34" fill="none" />
                     <circle
                         class="totp-display__ring-fg"
                         class=("totp-display__ring-fg--warn", move || is_dim.get())
@@ -94,17 +90,18 @@ pub fn TotpDisplay(
                 </span>
             </div>
 
-            {on_copy.map(|cb| {
-                view! {
-                    <button
-                        type="button"
-                        class="totp-display__copy"
-                        on:click=move |_: web_sys::MouseEvent| cb.run(())
-                    >
-                        {move || text_or(copy_label, "Copy code")}
-                    </button>
-                }
-            })}
+            {on_copy
+                .map(|cb| {
+                    view! {
+                        <button
+                            type="button"
+                            class="totp-display__copy"
+                            on:click=move |_: web_sys::MouseEvent| cb.run(())
+                        >
+                            {move || text_or(copy_label, "Copy code")}
+                        </button>
+                    }
+                })}
         </div>
     }
 }

@@ -11,8 +11,8 @@ pub fn TotpDisplayPage() -> impl IntoView {
         <div class="p-6 max-w-4xl mx-auto space-y-6">
             <h1 class="text-xl font-semibold text-text-primary">"TotpDisplay"</h1>
             <p class="text-sm text-text-secondary">
-                "Secret-agnostic: the consumer passes an already-generated "
-                <code>"code"</code>" + "<code>"seconds_remaining"</code>
+                "Secret-agnostic: the consumer passes an already-generated " <code>"code"</code>
+                " + "<code>"seconds_remaining"</code>
                 " (vedge-ui can't generate). The ring is driven by stroke-dashoffset from the countdown."
             </p>
 

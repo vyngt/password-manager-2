@@ -523,7 +523,10 @@ pub fn VaultDetail(
                                             {is_login
                                                 .then(|| {
                                                     view! {
-                                                        <TotpReveal entry_id=totp_entry_id.clone() on_copy=on_copy />
+                                                        <TotpReveal
+                                                            entry_id=totp_entry_id.clone()
+                                                            on_copy=on_copy
+                                                        />
                                                     }
                                                 })}
                                             <Button

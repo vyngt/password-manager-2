@@ -88,7 +88,13 @@ pub async fn copy_field(
 
     // 3. Extract the requested field, place it on the clipboard (zeroizing our
     //    copy), and schedule the background clear.
-    place_field_on_clipboard(session, &payload, &input.field, input.clear_after_secs, now_unix)?;
+    place_field_on_clipboard(
+        session,
+        &payload,
+        &input.field,
+        input.clear_after_secs,
+        now_unix,
+    )?;
 
     // Drop decrypted secrets before auditing.
     drop(payload);

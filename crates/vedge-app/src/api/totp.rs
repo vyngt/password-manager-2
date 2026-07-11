@@ -14,7 +14,14 @@ pub async fn reveal_totp(vault_path: &str, entry_id: &str) -> Result<TotpCodeDto
         vault_path: &'a str,
         entry_id: &'a str,
     }
-    call("reveal_totp", &Args { vault_path, entry_id }).await
+    call(
+        "reveal_totp",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
 }
 
 /// Parse an `otpauth://` URI or a bare Base32 secret into enrolment fields

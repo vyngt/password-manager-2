@@ -14,13 +14,13 @@ use std::time::Duration;
 use common::{Harness, build_unlock};
 use secrecy::SecretString;
 
+use vedge_core::TotpParams;
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     CopyFieldInput, CreateEntryInput, FieldSelector, UnlockVaultInput, copy_field, create_entry,
     move_entry, set_favorite, set_sort_order, set_tags,
 };
-use vedge_core::TotpParams;
 use vedge_core::domain::shared::{EntryId, TagId};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{

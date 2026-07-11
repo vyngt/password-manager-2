@@ -27,7 +27,11 @@ pub const fn totp_algorithm_from_dto(a: TotpAlgorithmDto) -> TotpAlgorithm {
 }
 
 #[must_use]
-pub const fn totp_params_from_dto(algorithm: TotpAlgorithmDto, digits: u8, period: u32) -> TotpParams {
+pub const fn totp_params_from_dto(
+    algorithm: TotpAlgorithmDto,
+    digits: u8,
+    period: u32,
+) -> TotpParams {
     TotpParams {
         algorithm: totp_algorithm_from_dto(algorithm),
         digits,

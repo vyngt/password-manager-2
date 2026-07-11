@@ -58,9 +58,12 @@ async fn create(session: &mut VaultSession, payload: EntryPayload) -> EntryId {
 }
 
 async fn stored_totp(session: &mut VaultSession, id: &EntryId) -> Option<String> {
-    let payload = get_entry(session, GetEntryInput {
-        entry_id: id.clone(),
-    })
+    let payload = get_entry(
+        session,
+        GetEntryInput {
+            entry_id: id.clone(),
+        },
+    )
     .await
     .unwrap();
     let EntryPayload::Login(l) = payload else {
@@ -110,11 +113,14 @@ async fn reveal_totp_re_audits_after_update() {
 
     // A content edit re-arms the audit within the same session (Unchanged keeps
     // the seed). The next reveal audits again.
-    update_entry(&mut session, UpdateEntryInput {
-        entry_id: id.clone(),
-        payload: login("gh-renamed", None),
-        totp: TotpUpdate::Unchanged,
-    })
+    update_entry(
+        &mut session,
+        UpdateEntryInput {
+            entry_id: id.clone(),
+            payload: login("gh-renamed", None),
+            totp: TotpUpdate::Unchanged,
+        },
+    )
     .await
     .unwrap();
 
@@ -180,15 +186,21 @@ async fn update_entry_unchanged_preserves_totp() {
 
     // Simulate an edit-form save: the DTO carries NO seed → payload has None +
     // the intent is Unchanged. The door must preserve the stored seed.
-    update_entry(&mut session, UpdateEntryInput {
-        entry_id: id.clone(),
-        payload: login("gh-renamed", None),
-        totp: TotpUpdate::Unchanged,
-    })
+    update_entry(
+        &mut session,
+        UpdateEntryInput {
+            entry_id: id.clone(),
+            payload: login("gh-renamed", None),
+            totp: TotpUpdate::Unchanged,
+        },
+    )
     .await
     .unwrap();
 
-    assert_eq!(stored_totp(&mut session, &id).await.as_deref(), Some(SECRET));
+    assert_eq!(
+        stored_totp(&mut session, &id).await.as_deref(),
+        Some(SECRET)
+    );
 }
 
 #[tokio::test]
@@ -199,21 +211,30 @@ async fn update_entry_set_and_clear_totp() {
     assert_eq!(stored_totp(&mut session, &id).await, None);
 
     // Set enrols.
-    update_entry(&mut session, UpdateEntryInput {
-        entry_id: id.clone(),
-        payload: login("gh", None),
-        totp: TotpUpdate::Set(SecretString::from(SECRET)),
-    })
+    update_entry(
+        &mut session,
+        UpdateEntryInput {
+            entry_id: id.clone(),
+            payload: login("gh", None),
+            totp: TotpUpdate::Set(SecretString::from(SECRET)),
+        },
+    )
     .await
     .unwrap();
-    assert_eq!(stored_totp(&mut session, &id).await.as_deref(), Some(SECRET));
+    assert_eq!(
+        stored_totp(&mut session, &id).await.as_deref(),
+        Some(SECRET)
+    );
 
     // Clear removes.
-    update_entry(&mut session, UpdateEntryInput {
-        entry_id: id.clone(),
-        payload: login("gh", None),
-        totp: TotpUpdate::Clear,
-    })
+    update_entry(
+        &mut session,
+        UpdateEntryInput {
+            entry_id: id.clone(),
+            payload: login("gh", None),
+            totp: TotpUpdate::Clear,
+        },
+    )
     .await
     .unwrap();
     assert_eq!(stored_totp(&mut session, &id).await, None);
