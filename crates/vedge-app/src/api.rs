@@ -18,6 +18,7 @@ pub mod tauri;
 // device/maintenance/recovery subsystems). A still-unused wrapper is kept only when it has a
 // documented near-term consumer, marked `#[allow(dead_code, reason = "…")]` **per function**;
 // a module whose *every* wrapper is still unused carries a single module-level allow (below).
+pub mod audit;
 pub mod biometric;
 pub mod clipboard;
 pub mod dialog;

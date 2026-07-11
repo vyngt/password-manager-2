@@ -8,6 +8,7 @@ pub mod entry_history;
 pub mod export_emergency_kit;
 pub mod get_entry;
 pub mod hard_delete_entry;
+pub mod list_audit;
 pub mod lock_vault;
 pub mod move_entry;
 pub mod queries;
@@ -38,6 +39,7 @@ pub use entry_history::{
 pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
 pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
+pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
 pub use lock_vault::lock_vault;
 pub use move_entry::move_entry;
 pub use queries::{

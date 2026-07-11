@@ -1,3 +1,4 @@
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Align, BadgeVariant, SortDirection};
 use leptos::prelude::*;
 use std::sync::Arc;
@@ -60,7 +61,9 @@ where
 /// One column's definition. Generic over the row type `T`.
 pub struct ColumnDef<T: 'static> {
     pub id: &'static str,
-    pub header: &'static str,
+    /// Header label. `TextProp` (not `&'static str`) so headers relocalize on a
+    /// language switch without rebuilding the `columns` Vec.
+    pub header: TextProp,
     pub col_type: ColumnType,
     pub sortable: bool,
     pub width: ColumnWidth,

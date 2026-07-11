@@ -464,7 +464,7 @@ fn render_header_cell<T: 'static>(
         view! {
             <th class=full_cls scope="col" aria-sort=aria_sort>
                 <button type="button" class="data-table__sort-btn" on:click=on_click>
-                    <span>{header}</span>
+                    <span>{move || header.get()}</span>
                     {sort_icon}
                 </button>
             </th>
@@ -473,7 +473,7 @@ fn render_header_cell<T: 'static>(
     } else {
         view! {
             <th class=full_cls scope="col">
-                {header}
+                {move || header.get()}
             </th>
         }
         .into_any()

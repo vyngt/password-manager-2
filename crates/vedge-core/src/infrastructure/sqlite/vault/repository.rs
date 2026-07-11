@@ -3,13 +3,15 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, Order,
-    QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
 };
 
 use crate::application::vault::ports::VaultRepository;
 use crate::domain::shared::{EntryId, StorageError, TagId, Timestamp};
-use crate::domain::vault::entities::{AuditEvent, EntryHistoryRow, EntryRow, TagRow, VaultConfig};
+use crate::domain::vault::entities::{
+    AuditAction, AuditEvent, AuditPage, AuditQuery, EntryHistoryRow, EntryRow, TagRow, VaultConfig,
+};
 use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::sqlite::vault::entities::audit_log::{
     self as audit_entity, Column as AuditCol,
@@ -392,6 +394,69 @@ impl VaultRepository for SqliteVaultRepository {
             .await
             .map_err(db_err)?;
         Ok(res.rows_affected)
+    }
+
+    async fn query_audit(&self, q: &AuditQuery) -> Result<AuditPage, VaultError> {
+        // All predicates are applied in SQL — filtering the *page* in memory
+        // would break pagination (100 rows filtered to 3 is not a page of 3).
+        let mut cond = Condition::all();
+        if let Some(id) = &q.entry_id {
+            cond = cond.add(AuditCol::EntryId.eq(id.as_str()));
+        }
+        if !q.actions.is_empty() {
+            let names: Vec<&str> = q.actions.iter().map(AuditAction::as_str).collect();
+            cond = cond.add(AuditCol::Action.is_in(names));
+        }
+        // Lexical string comparison == chronological because `occurred_at` is
+        // written exclusively through `format_rfc3339_millis` (fixed-width
+        // `…T…:…:….000Z`); see `domain/shared/timestamps.rs`. `since` inclusive,
+        // `until` exclusive.
+        if let Some(s) = &q.since {
+            cond = cond.add(AuditCol::OccurredAt.gte(ts_to_string(s)));
+        }
+        if let Some(u) = &q.until {
+            cond = cond.add(AuditCol::OccurredAt.lt(ts_to_string(u)));
+        }
+
+        let total = audit_entity::Entity::find()
+            .filter(cond.clone())
+            .count(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+
+        let rows = audit_entity::Entity::find()
+            .filter(cond)
+            .order_by(AuditCol::OccurredAt, Order::Desc)
+            // Stable tiebreak: `occurred_at` is millisecond-precision, so bulk
+            // writes (empty-trash cascade, bulk-generate, tag ops) routinely
+            // collide within one ms. Without a unique secondary key, SQLite's
+            // order among ties is unspecified and can differ between the count
+            // and the paged reads → a colliding row shows on two pages or is
+            // skipped. The PK is a ULID (monotonic), so `id DESC` also stays
+            // chronological within a tie group.
+            .order_by(AuditCol::Id, Order::Desc)
+            .limit(u64::from(q.limit))
+            .offset(u64::from(q.offset))
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+
+        // LENIENT mapper: a row whose `action` string this build cannot parse is
+        // skipped + warned, not propagated. 4.2/4.3 add action variants, so a
+        // downgraded build will meet rows it can't parse — degrade one row
+        // instead of failing the page. (`total` counts skipped rows; documented.)
+        let events = rows
+            .into_iter()
+            .filter_map(|m| match audit_map::model_to_domain(m) {
+                Ok(e) => Some(e),
+                Err(e) => {
+                    tracing::warn!(error = %e, "skipping unparseable audit row");
+                    None
+                }
+            })
+            .collect();
+
+        Ok(AuditPage { events, total })
     }
 
     async fn rewrap_all_deks(
