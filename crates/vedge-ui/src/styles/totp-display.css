@@ -51,6 +51,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        /* The code can wrap to two lines inside the 80px ring (a 6–8 digit code
+           is wider than the ring). Center the wrapped lines — without this the
+           equal-width lines default to `text-align: left` and hug the left edge,
+           reading as off-centre. Tight line-height keeps the stack inside the ring. */
+        text-align: center;
+        line-height: 1.1;
         font-family: var(--font-mono);
         font-size: var(--text-2xl);
         font-weight: var(--font-weight-medium);
