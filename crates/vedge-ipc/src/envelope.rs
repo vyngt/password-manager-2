@@ -20,6 +20,7 @@ pub mod kind {
     pub const BIOMETRIC: &str = "Biometric";
     pub const STORAGE: &str = "Storage";
     pub const INVALID: &str = "Invalid";
+    pub const DOCUMENT_TOO_LARGE: &str = "DocumentTooLarge";
     pub const ALREADY_EXISTS: &str = "AlreadyExists";
     pub const INTERNAL: &str = "Internal";
 }

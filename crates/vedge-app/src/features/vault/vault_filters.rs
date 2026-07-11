@@ -82,17 +82,17 @@ pub fn filter_and_sort(
     // once per element (O(n)) and is a stable sort, so equal instants keep input
     // order. See [`super::timestamps`] for the standing rule.
     match sort {
-        SortKey::NameAsc => out.sort_by_key(|e| e.name.to_lowercase()),
+        // `sort_by_cached_key` lowercases once per element (O(n)) rather than on
+        // every comparison, and is stable — equal keys keep input order.
+        SortKey::NameAsc => out.sort_by_cached_key(|e| e.name.to_lowercase()),
         SortKey::RecentlyUpdated => out.sort_by_cached_key(|e| Reverse(ts_millis(&e.updated_at))),
         SortKey::RecentlyUsed => out.sort_by_cached_key(|e| {
             // `None`/unparseable → `i64::MIN` → `Reverse` largest → sorts last.
             Reverse(e.accessed_at.as_deref().map_or(i64::MIN, ts_millis))
         }),
-        SortKey::Manual => out.sort_by(|a, b| {
-            a.sort_order
-                .cmp(&b.sort_order)
-                .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
-        }),
+        // A `(u32, String)` tuple key is `Ord` (sort_order asc, ties by name) and
+        // caches the lowercase once — same order as the prior `sort_by` comparator.
+        SortKey::Manual => out.sort_by_cached_key(|e| (e.sort_order, e.name.to_lowercase())),
     }
     out
 }

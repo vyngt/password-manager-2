@@ -4,7 +4,7 @@ use leptos::prelude::*;
 ///
 /// Use this for any user-facing text that may need i18n support (aria-labels, etc.).
 ///
-/// ```rust
+/// ```ignore
 /// // Static (playground, tests)
 /// aria_label="Close"
 ///

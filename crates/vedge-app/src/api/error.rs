@@ -41,6 +41,10 @@ pub enum ApiError {
     Storage(String),
     #[error("invalid input: {0}")]
     Invalid(String),
+    /// A document import exceeded the 50 MiB cap. A dedicated kind so callers
+    /// match it structurally and show the localized message (no `contains(..)`).
+    #[error("document too large")]
+    DocumentTooLarge,
     #[error("a vault already exists at this location")]
     AlreadyExists,
     #[error("internal error")]
@@ -88,6 +92,7 @@ impl ApiError {
             envelope::kind::BIOMETRIC => Self::Biometric(msg),
             envelope::kind::STORAGE => Self::Storage(msg),
             envelope::kind::INVALID => Self::Invalid(msg),
+            envelope::kind::DOCUMENT_TOO_LARGE => Self::DocumentTooLarge,
             envelope::kind::ALREADY_EXISTS => Self::AlreadyExists,
             envelope::kind::INTERNAL => Self::Internal,
             other => Self::Transport(format!("unknown error kind `{other}`: {msg}")),
@@ -137,6 +142,14 @@ mod tests {
             ApiError::Biometric(m) => assert_eq!(m, "no biometric enrollment"),
             other => panic!("unexpected: {other:?}"),
         }
+    }
+
+    #[test]
+    fn maps_document_too_large() {
+        assert!(matches!(
+            ApiError::from_envelope(env("DocumentTooLarge", None)),
+            ApiError::DocumentTooLarge
+        ));
     }
 
     #[test]
