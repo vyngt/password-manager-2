@@ -161,7 +161,8 @@ skips OS clipboard history / cloud sync and well-behaved managers, alongside the
 ## Frontend
 
 - **`vedge-app`** — Leptos CSR: pages under `/` (launch/unlock) and `/v` (the unlocked vault:
-  list/detail/edit, search, command palette, folders, settings). State is signals/stores + a few
+  list/detail/edit, search, command palette, folders — including a **Trash** sidebar folder for
+  soft-deleted entries with restore / delete-permanently / empty-trash — settings). State is signals/stores + a few
   well-scoped contexts (`ActiveVault`, `VaultUiState`, `SecurityPrefsCtx`, `GeneratorPrefsCtx`,
   `GeneratedHistoryCtx`, `ThemeState`). App-global preferences (auto-lock/clipboard, the last-used
   generator **mode + per-mode preset**) live in the `app_settings` KV store under fixed keys
@@ -192,3 +193,11 @@ Four testing layers (host `cargo test` · wasm wire-codec · manual `cargo tauri
 e2e) plus the CI gates (`fmt` / `leptosfmt` / `clippy -D warnings` whole-workspace / `wasm` check) and a
 supply-chain gate (`cargo audit` + `cargo deny`). See [`docs/testing.md`](docs/testing.md) and
 [`README.md`](README.md#development) for the commands (`mise ci`, `mise audit`, `mise e2e`).
+
+CI runs on **two substrates**: GitHub Actions (`.github/workflows/ci.yml` — the authoritative PR gate,
+triggered by PR-into-`develop`/`master` + manual dispatch only, deliberately **no `push`**; `e2e.yml`
+dispatch-only) and a local **Jenkins-in-Docker** controller (`Jenkinsfile` + `ci/jenkins/`) that runs
+the same core gate off GitHub — both pinned to the project's dev rust toolchain so CI clippy == local.
+The WebDriver e2e drives a fast, locale-independent (`data-testid`) daily-loop; its Argon2 fast-KDF and
+in-memory-biometric **test seams are release-impossible** — gated on **both** `cfg(debug_assertions)`
+**and** an explicit `VEDGE_E2E_*` env var, so they compile out of any `cargo tauri build` (release) bundle.

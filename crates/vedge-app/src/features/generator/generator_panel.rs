@@ -18,7 +18,8 @@
 //! once for the copy, is outside Rust's zeroize control — a documented residual.
 //!
 //! Entropy bands come from `entropy_band` (process-entropy math) — **not** from
-//! the `password_strength` (zxcvbn) scorer, which is for *user-entered* passwords
+//! the `password_strength` heuristic scorer (a length + char-class estimate, *not*
+//! zxcvbn — the crate is not a dependency), which is for *user-entered* passwords
 //! and is kept strictly separate per the generator-entropy research note.
 
 use icondata as i;
