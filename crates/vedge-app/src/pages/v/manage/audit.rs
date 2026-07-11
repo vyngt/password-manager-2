@@ -138,175 +138,182 @@ pub fn AuditPage() -> impl IntoView {
     });
 
     view! {
-        <div class="p-6 max-w-5xl mx-auto space-y-4" data-testid="audit-page">
-            <h1 class="text-xl font-semibold text-text-primary">
-                {move || t_string!(i18n, audit.title).to_owned()}
-            </h1>
+        <div class="h-full overflow-y-auto p-6" data-testid="audit-page">
+            <div class="max-w-5xl mx-auto space-y-4">
+                <h1 class="text-xl font-semibold text-text-primary">
+                    {move || t_string!(i18n, audit.title).to_owned()}
+                </h1>
 
-            // ---- Filter bar ----
-            <div class="flex flex-wrap items-end gap-3">
-                <div class="flex flex-col gap-1" data-testid="audit-filter-action">
-                    <span class="text-xs text-text-secondary">
-                        {move || t_string!(i18n, audit.filter_action).to_owned()}
-                    </span>
-                    {move || {
-                        let mut options = vec![
-                            SelectItem::option(
-                                "",
-                                t_string!(i18n, audit.filter_all_actions).to_owned(),
-                            ),
-                        ];
-                        options
-                            .extend(
-                                AUDIT_ACTIONS
-                                    .iter()
-                                    .map(|a| SelectItem::option(*a, action_label(i18n, a))),
-                            );
-                        view! {
-                            <Select
-                                options=options
-                                value=Signal::derive(move || {
-                                    view_state
-                                        .with(|v| v.filters.action.clone().unwrap_or_default())
-                                })
-                                aria_label=Signal::derive(move || {
-                                    t_string!(i18n, audit.filter_action).to_owned()
-                                })
-                                on_change=Callback::new(move |val: String| {
-                                    view_state
-                                        .update(|v| {
-                                            v.set_action(if val.is_empty() { None } else { Some(val) });
-                                        });
-                                })
-                            />
-                        }
-                    }}
-                </div>
-
-                <div class="flex flex-col gap-1" data-testid="audit-filter-entry">
-                    <span class="text-xs text-text-secondary">
-                        {move || t_string!(i18n, audit.filter_entry).to_owned()}
-                    </span>
-                    {move || {
-                        let mut options = vec![
-                            SelectItem::option(
-                                "",
-                                t_string!(i18n, audit.filter_all_entries).to_owned(),
-                            ),
-                        ];
-                        options
-                            .extend(
-                                index.get().into_iter().map(|e| SelectItem::option(e.id, e.name)),
-                            );
-                        view! {
-                            <Select
-                                options=options
-                                value=Signal::derive(move || {
-                                    view_state
-                                        .with(|v| v.filters.entry_id.clone().unwrap_or_default())
-                                })
-                                aria_label=Signal::derive(move || {
-                                    t_string!(i18n, audit.filter_entry).to_owned()
-                                })
-                                on_change=Callback::new(move |val: String| {
-                                    view_state
-                                        .update(|v| {
-                                            v.set_entry(if val.is_empty() { None } else { Some(val) });
-                                        });
-                                })
-                            />
-                        }
-                    }}
-                </div>
-
-                <div class="flex flex-col gap-1" data-testid="audit-filter-since">
-                    <span class="text-xs text-text-secondary">
-                        {move || t_string!(i18n, audit.filter_since).to_owned()}
-                    </span>
-                    <DatePicker
-                        id="audit-since"
-                        value=Signal::derive(move || {
-                            DatePickerValue::Single(view_state.with(|v| v.filters.since))
-                        })
-                        placeholder=Signal::derive(move || {
-                            t_string!(i18n, audit.filter_any_date).to_owned()
-                        })
-                        on_change=Callback::new(move |val: DatePickerValue| {
-                            view_state.update(|v| v.set_since(val.as_single()));
-                        })
-                    />
-                </div>
-
-                <div class="flex flex-col gap-1" data-testid="audit-filter-until">
-                    <span class="text-xs text-text-secondary">
-                        {move || t_string!(i18n, audit.filter_until).to_owned()}
-                    </span>
-                    <DatePicker
-                        id="audit-until"
-                        value=Signal::derive(move || {
-                            DatePickerValue::Single(view_state.with(|v| v.filters.until))
-                        })
-                        placeholder=Signal::derive(move || {
-                            t_string!(i18n, audit.filter_any_date).to_owned()
-                        })
-                        on_change=Callback::new(move |val: DatePickerValue| {
-                            view_state.update(|v| v.set_until(val.as_single()));
-                        })
-                    />
-                </div>
-            </div>
-
-            // ---- Localized summary (Pagination's own summary is hardcoded English) ----
-            <p class="text-xs text-text-tertiary" data-testid="audit-summary">
-                {move || {
-                    let total = page_data.with(|p| p.total);
-                    if total == 0 {
-                        Either::Left(view! { {move || t!(i18n, audit.summary_empty)} })
-                    } else {
-                        let offset = u64::from(view_state.with(|v| v.offset));
-                        let count = page_data.with(|p| p.events.len()) as u64;
-                        let start = offset + 1;
-                        let end = offset + count;
-                        Either::Right(
+                // ---- Filter bar ----
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="flex flex-col gap-1" data-testid="audit-filter-action">
+                        <span class="text-xs text-text-secondary">
+                            {move || t_string!(i18n, audit.filter_action).to_owned()}
+                        </span>
+                        {move || {
+                            let mut options = vec![
+                                SelectItem::option(
+                                    "",
+                                    t_string!(i18n, audit.filter_all_actions).to_owned(),
+                                ),
+                            ];
+                            options
+                                .extend(
+                                    AUDIT_ACTIONS
+                                        .iter()
+                                        .map(|a| SelectItem::option(*a, action_label(i18n, a))),
+                                );
                             view! {
-                                {t!(i18n, audit.summary, start = start, end = end, total = total)}
-                            },
-                        )
+                                <Select
+                                    options=options
+                                    value=Signal::derive(move || {
+                                        view_state
+                                            .with(|v| v.filters.action.clone().unwrap_or_default())
+                                    })
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, audit.filter_action).to_owned()
+                                    })
+                                    on_change=Callback::new(move |val: String| {
+                                        view_state
+                                            .update(|v| {
+                                                v.set_action(if val.is_empty() { None } else { Some(val) });
+                                            });
+                                    })
+                                />
+                            }
+                        }}
+                    </div>
+
+                    <div class="flex flex-col gap-1" data-testid="audit-filter-entry">
+                        <span class="text-xs text-text-secondary">
+                            {move || t_string!(i18n, audit.filter_entry).to_owned()}
+                        </span>
+                        {move || {
+                            let mut options = vec![
+                                SelectItem::option(
+                                    "",
+                                    t_string!(i18n, audit.filter_all_entries).to_owned(),
+                                ),
+                            ];
+                            options
+                                .extend(
+                                    index
+                                        .get()
+                                        .into_iter()
+                                        .map(|e| SelectItem::option(e.id, e.name)),
+                                );
+                            view! {
+                                <Select
+                                    options=options
+                                    value=Signal::derive(move || {
+                                        view_state
+                                            .with(|v| v.filters.entry_id.clone().unwrap_or_default())
+                                    })
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, audit.filter_entry).to_owned()
+                                    })
+                                    on_change=Callback::new(move |val: String| {
+                                        view_state
+                                            .update(|v| {
+                                                v.set_entry(if val.is_empty() { None } else { Some(val) });
+                                            });
+                                    })
+                                />
+                            }
+                        }}
+                    </div>
+
+                    <div class="flex flex-col gap-1" data-testid="audit-filter-since">
+                        <span class="text-xs text-text-secondary">
+                            {move || t_string!(i18n, audit.filter_since).to_owned()}
+                        </span>
+                        <DatePicker
+                            id="audit-since"
+                            value=Signal::derive(move || {
+                                DatePickerValue::Single(view_state.with(|v| v.filters.since))
+                            })
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, audit.filter_any_date).to_owned()
+                            })
+                            on_change=Callback::new(move |val: DatePickerValue| {
+                                view_state.update(|v| v.set_since(val.as_single()));
+                            })
+                        />
+                    </div>
+
+                    <div class="flex flex-col gap-1" data-testid="audit-filter-until">
+                        <span class="text-xs text-text-secondary">
+                            {move || t_string!(i18n, audit.filter_until).to_owned()}
+                        </span>
+                        <DatePicker
+                            id="audit-until"
+                            value=Signal::derive(move || {
+                                DatePickerValue::Single(view_state.with(|v| v.filters.until))
+                            })
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, audit.filter_any_date).to_owned()
+                            })
+                            on_change=Callback::new(move |val: DatePickerValue| {
+                                view_state.update(|v| v.set_until(val.as_single()));
+                            })
+                        />
+                    </div>
+                </div>
+
+                // ---- Localized summary (Pagination's own summary is hardcoded English) ----
+                <p class="text-xs text-text-tertiary" data-testid="audit-summary">
+                    {move || {
+                        let total = page_data.with(|p| p.total);
+                        if total == 0 {
+                            Either::Left(view! { {move || t!(i18n, audit.summary_empty)} })
+                        } else {
+                            let offset = u64::from(view_state.with(|v| v.offset));
+                            let count = page_data.with(|p| p.events.len()) as u64;
+                            let start = offset + 1;
+                            let end = offset + count;
+                            Either::Right(
+                                view! {
+                                    {t!(
+                                        i18n, audit.summary, start = start, end = end, total = total
+                                    )}
+                                },
+                            )
+                        }
+                    }}
+                </p>
+
+                <AuditTable page=page_data names=names loading=loading />
+
+                // ---- Pagination (hidden for a single page) ----
+                {move || {
+                    if total_pages.get() <= 1 {
+                        ().into_any()
+                    } else {
+                        view! {
+                            <div data-testid="audit-pagination">
+                                <Pagination
+                                    model=PaginationModel::Offset
+                                    page=page_num
+                                    total_pages=total_pages
+                                    prev_label=Signal::derive(move || {
+                                        t_string!(i18n, audit.prev).to_owned()
+                                    })
+                                    next_label=Signal::derive(move || {
+                                        t_string!(i18n, audit.next).to_owned()
+                                    })
+                                    nav_label=Signal::derive(move || {
+                                        t_string!(i18n, audit.pagination_nav).to_owned()
+                                    })
+                                    on_page_change=Callback::new(move |p: u32| {
+                                        view_state.update(|v| v.offset = (p - 1) * AUDIT_PAGE_SIZE);
+                                    })
+                                />
+                            </div>
+                        }
+                            .into_any()
                     }
                 }}
-            </p>
-
-            <AuditTable page=page_data names=names loading=loading />
-
-            // ---- Pagination (hidden for a single page) ----
-            {move || {
-                if total_pages.get() <= 1 {
-                    ().into_any()
-                } else {
-                    view! {
-                        <div data-testid="audit-pagination">
-                            <Pagination
-                                model=PaginationModel::Offset
-                                page=page_num
-                                total_pages=total_pages
-                                prev_label=Signal::derive(move || {
-                                    t_string!(i18n, audit.prev).to_owned()
-                                })
-                                next_label=Signal::derive(move || {
-                                    t_string!(i18n, audit.next).to_owned()
-                                })
-                                nav_label=Signal::derive(move || {
-                                    t_string!(i18n, audit.pagination_nav).to_owned()
-                                })
-                                on_page_change=Callback::new(move |p: u32| {
-                                    view_state.update(|v| v.offset = (p - 1) * AUDIT_PAGE_SIZE);
-                                })
-                            />
-                        </div>
-                    }
-                        .into_any()
-                }
-            }}
+            </div>
         </div>
     }
 }
