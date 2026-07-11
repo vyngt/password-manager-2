@@ -5,6 +5,7 @@ use leptos::task::spawn_local;
 
 use crate::api;
 use crate::features::generator::history::GeneratedHistoryCtx;
+use crate::features::health::context::HealthReportCtx;
 use crate::features::settings::generator_prefs::{self, GeneratorPrefs, GeneratorPrefsCtx};
 use crate::features::settings::security_prefs::{
     self, SecurityPrefs, SecurityPrefsCtx, SecurityPrefsLoaded,
@@ -188,6 +189,11 @@ pub fn App() -> impl IntoView {
     // body (above the router) so it survives the `/v` unmount that fires on lock.
     let history = GeneratedHistoryCtx::new();
     provide_context(history);
+    // Last password-health scan (slice 4.3b): held here (above the router) so it
+    // survives navigation across `/v/*`, and — like the generator history — it is
+    // sensitive derived data, so it is wiped on lock by the same Effect below.
+    let health = HealthReportCtx::new();
+    provide_context(health);
     // Wipe on lock. All three lock paths (idle auto-lock, sidebar Lock, palette
     // Lock) drive `active.path` Some→None; this prev-guarded Effect is the single
     // choke point. Guarded so the initial mount and unlock (None/Some(false)→…)
@@ -196,6 +202,7 @@ pub fn App() -> impl IntoView {
         let unlocked = active.path.with(Option::is_some);
         if was_unlocked == Some(true) && !unlocked {
             history.clear();
+            health.clear();
         }
         unlocked
     });
