@@ -26,7 +26,9 @@ ENV RUSTUP_HOME=/opt/rust/rustup \
     MISE_DATA_DIR=/opt/rust/mise \
     PATH=/opt/rust/cargo/bin:${PATH}
 
-RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile default \
+# Pinned to match the project's dev toolchain so CI clippy == local clippy (a
+# newer stable's stricter lints would diverge). Bump in lockstep with local.
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.96.0 --profile default \
     && rustup target add wasm32-unknown-unknown \
     && rustup component add rustfmt clippy \
     && cargo install leptosfmt cargo-deny --locked \

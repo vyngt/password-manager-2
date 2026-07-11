@@ -36,7 +36,7 @@ jobs:
             libsoup-3.0-dev
 
       - name: Install Rust (stable + rustfmt + clippy + wasm32)
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: rustfmt, clippy
           targets: wasm32-unknown-unknown

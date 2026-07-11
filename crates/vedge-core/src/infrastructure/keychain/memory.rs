@@ -32,7 +32,7 @@ impl Default for MemoryKeychainProvider {
 impl Drop for MemoryKeychainProvider {
     fn drop(&mut self) {
         if let Ok(mut map) = self.store.lock() {
-            for (_k, v) in map.iter_mut() {
+            for v in map.values_mut() {
                 v.fill(0);
             }
         }
