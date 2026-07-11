@@ -27,6 +27,10 @@ const SIDEBAR_ITEMS: &[SidebarRouteItem] = &[
         icon: icondata::FaKeySolid,
     },
     SidebarRouteItem {
+        path: "/v/audit",
+        icon: icondata::FaClockRotateLeftSolid,
+    },
+    SidebarRouteItem {
         path: "/v/generator",
         icon: icondata::FaWandMagicSparklesSolid,
     },
@@ -53,6 +57,16 @@ fn nav_item_class(active: bool, collapsed: bool) -> String {
     format!("{layout} {state}")
 }
 
+/// Stable, locale-independent e2e hook for a sidebar nav row.
+fn nav_testid(path: &str) -> &'static str {
+    match path {
+        "/v/audit" => "nav-audit",
+        "/v/generator" => "nav-generator",
+        "/v/settings" => "nav-settings",
+        _ => "nav-vault",
+    }
+}
+
 /// Row layout + hover styling for a non-nav sidebar button (Lock).
 fn nav_button_class(collapsed: bool) -> String {
     let layout = if collapsed {
@@ -71,8 +85,10 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
     let label = Signal::derive(move || match item.path {
         "/v/settings" => t_string!(i18n, nav.settings).to_owned(),
         "/v/generator" => t_string!(i18n, nav.generator).to_owned(),
+        "/v/audit" => t_string!(i18n, nav.audit).to_owned(),
         _ => t_string!(i18n, nav.vault).to_owned(),
     });
+    let testid = nav_testid(item.path);
     let go = move |_: web_sys::MouseEvent| use_navigate()(item.path, Default::default());
     // Keyboard activation for the `role="button"` divs (Enter / Space), so the
     // nav isn't mouse-only.
@@ -98,6 +114,7 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
                                 <div
                                     role="button"
                                     tabindex="0"
+                                    data-testid=testid
                                     aria-label=move || label.get()
                                     class=nav_item_class(active, true)
                                     on:click=go
@@ -121,6 +138,7 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
                         <div
                             role="button"
                             tabindex="0"
+                            data-testid=testid
                             class=nav_item_class(active, false)
                             on:click=go
                             on:keydown=go_key

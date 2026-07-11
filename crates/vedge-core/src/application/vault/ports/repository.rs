@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 
 use crate::domain::shared::{EntryId, TagId, Timestamp};
-use crate::domain::vault::entities::{AuditEvent, EntryHistoryRow, EntryRow, TagRow, VaultConfig};
+use crate::domain::vault::entities::{
+    AuditEvent, AuditPage, AuditQuery, EntryHistoryRow, EntryRow, TagRow, VaultConfig,
+};
 use crate::domain::vault::errors::VaultError;
 
 #[async_trait]
@@ -47,6 +49,11 @@ pub trait VaultRepository: Send + Sync {
         limit: u32,
     ) -> Result<Vec<AuditEvent>, VaultError>;
     async fn delete_audit_before(&self, cutoff: Timestamp) -> Result<u64, VaultError>;
+    /// A filtered, paged read over `audit_log`. All predicates are applied in
+    /// SQL; `total` is the full match count ignoring limit/offset. A stored
+    /// `action` string this build cannot parse is skipped + warned, not
+    /// propagated as an error (forward-compat for actions added in later slices).
+    async fn query_audit(&self, q: &AuditQuery) -> Result<AuditPage, VaultError>;
 
     /// Atomic re-wrap during `ChangePassword`.
     ///

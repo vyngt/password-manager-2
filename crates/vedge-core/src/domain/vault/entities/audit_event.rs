@@ -81,3 +81,32 @@ pub struct AuditEvent {
     pub occurred_at: Timestamp,
     pub device_id: Option<DeviceId>,
 }
+
+/// A filtered, paged read over `audit_log`.
+///
+/// Every predicate is applied in SQL — filtering in memory would break
+/// pagination (a page of 100 rows filtered down to 3 is not a page of 3
+/// results). `limit` is clamped by the use case, not here.
+#[derive(Debug, Clone, Default)]
+pub struct AuditQuery {
+    /// Scope to one entry; `None` = all events (including vault-level events
+    /// whose `entry_id` is `NULL`).
+    pub entry_id: Option<EntryId>,
+    /// Empty = all actions.
+    pub actions: Vec<AuditAction>,
+    /// Inclusive lower bound on `occurred_at`.
+    pub since: Option<Timestamp>,
+    /// Exclusive upper bound on `occurred_at`.
+    pub until: Option<Timestamp>,
+    pub limit: u32,
+    pub offset: u32,
+}
+
+/// One page of the audit trail plus the total match count.
+#[derive(Debug, Clone)]
+pub struct AuditPage {
+    pub events: Vec<AuditEvent>,
+    /// Total rows matching the filter, ignoring limit/offset — drives the
+    /// "showing 1–50 of N" summary and the page count.
+    pub total: u64,
+}

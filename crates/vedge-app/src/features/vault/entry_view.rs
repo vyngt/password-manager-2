@@ -57,6 +57,18 @@ pub fn long_date(rfc3339: &str) -> String {
     )
 }
 
+/// Clock time (`%H:%M:%S`, UTC) for the audit trail, where events are dense in
+/// time (many per minute) and a date alone is useless. `2026-07-11T09:14:03.000Z`
+/// → `09:14:03`. Returns the raw input unchanged if it doesn't parse — never
+/// panics. UTC to match [`long_date`] (both render the stamp's own `Z` offset).
+#[must_use]
+pub fn clock_time(rfc3339: &str) -> String {
+    chrono::DateTime::parse_from_rfc3339(rfc3339).map_or_else(
+        |_| rfc3339.to_owned(),
+        |dt| dt.format("%H:%M:%S").to_string(),
+    )
+}
+
 /// Coarse "time ago" bucket for the history panel's sub-label. Pure so the
 /// caller passes `now` (millis since epoch) — the component supplies it from
 /// `chrono::Utc::now()`. The localized wording lives in the view.
@@ -106,7 +118,19 @@ pub fn human_size(bytes: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{RelTime, human_size, long_date, relative_time, short_date};
+    use super::{RelTime, clock_time, human_size, long_date, relative_time, short_date};
+
+    #[test]
+    fn clock_time_formats_hms() {
+        assert_eq!(clock_time("2026-07-11T09:14:03.000Z"), "09:14:03");
+        assert_eq!(clock_time("2026-01-02T00:00:00.000Z"), "00:00:00");
+    }
+
+    #[test]
+    fn clock_time_degrades_on_bad_input() {
+        assert_eq!(clock_time("not-a-timestamp"), "not-a-timestamp");
+        assert_eq!(clock_time(""), "");
+    }
 
     #[test]
     fn short_date_trims_time() {
