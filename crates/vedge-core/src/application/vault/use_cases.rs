@@ -15,6 +15,7 @@ pub mod queries;
 pub mod recover_vault;
 pub mod refs;
 pub mod restore_entry;
+pub mod reveal_totp;
 pub mod run_maintenance;
 pub mod set_favorite;
 pub mod set_sort_order;
@@ -48,6 +49,7 @@ pub use queries::{
 };
 pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use restore_entry::restore_entry;
+pub use reveal_totp::reveal_totp;
 pub use run_maintenance::{MaintenanceReport, run_maintenance};
 pub use set_favorite::set_favorite;
 pub use set_sort_order::set_sort_order;

@@ -11,6 +11,7 @@ use super::entry_form_body::EntryFormBody;
 use super::entry_view::{human_size, short_date, type_label_i18n};
 use super::folder_tree::{FolderNode, folder_display_name, folder_icon_from_key, folder_style};
 use super::tag_assign::TagAssign;
+use super::totp_reveal::TotpReveal;
 use crate::api;
 use crate::api::dialog::SaveDialogOptions;
 use crate::features::vault::context::ActiveVault;
@@ -122,6 +123,9 @@ pub fn VaultDetail(
     let created = short_date(&entry.created_at);
     let copy_type = entry.entry_type.clone();
     let label_type = entry.entry_type.clone();
+    // The two-factor reveal block is Login-only.
+    let is_login = matches!(entry.entry_type, EntryTypeDto::Login);
+    let totp_entry_id = entry.id.clone();
     let is_editable = !matches!(
         entry.entry_type,
         EntryTypeDto::Document | EntryTypeDto::Unknown(_)
@@ -353,6 +357,7 @@ pub fn VaultDetail(
                         let entry_for_move = entry_for_move.clone();
                         let restore_id = restore_id.clone();
                         let entry_for_hard_delete = entry_for_hard_delete.clone();
+                        let totp_entry_id = totp_entry_id.clone();
                         // Edit now happens in the roomy `<Dialog>` below; while editing,
                         // the compact read aside collapses to just its header (renders None).
                         view! {
@@ -515,6 +520,12 @@ pub fn VaultDetail(
                                     Either::Right(
                                         view! {
                                             {copy_buttons(i18n, copy_type, on_copy)}
+                                            {is_login
+                                                .then(|| {
+                                                    view! {
+                                                        <TotpReveal entry_id=totp_entry_id.clone() on_copy=on_copy />
+                                                    }
+                                                })}
                                             <Button
                                                 variant=Variant::Secondary
                                                 size=Size::Sm

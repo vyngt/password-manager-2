@@ -1,0 +1,93 @@
+@layer components {
+    /* ============================================================
+     TotpDisplay — rotating code + circular countdown ring
+     ============================================================ */
+    .totp-display {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+    }
+
+    .totp-display__ring {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        flex-shrink: 0;
+    }
+
+    .totp-display__ring-svg {
+        display: block;
+        width: 80px;
+        height: 80px;
+    }
+
+    .totp-display__ring-track {
+        stroke: var(--color-border);
+        stroke-width: 3;
+    }
+
+    .totp-display__ring-fg {
+        stroke: var(--color-primary);
+        stroke-width: 3;
+        /* Driven by stroke-dashoffset from the countdown state — never a CSS
+           `animation: linear`, which drifts when the tab is backgrounded. The
+           short transition just smooths the per-second steps. */
+        transition:
+            stroke-dashoffset var(--duration-base) linear,
+            stroke var(--duration-fast) var(--ease-out);
+    }
+
+    /* Final seconds: amber ring. The colour flip is instant (a warning signal,
+       not an animation); the offset keeps its smoothing transition. */
+    .totp-display__ring-fg--warn {
+        stroke: var(--color-warning);
+        transition: stroke-dashoffset var(--duration-base) linear;
+    }
+
+    .totp-display__code {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: var(--text-2xl);
+        font-weight: var(--font-weight-medium);
+        color: var(--color-text-primary);
+        letter-spacing: 0.06em;
+        user-select: all;
+    }
+
+    .totp-display__code--dim {
+        color: var(--color-text-tertiary);
+    }
+
+    .totp-display__copy {
+        appearance: none;
+        border: none;
+        background: none;
+        padding: var(--space-1) var(--space-2);
+        font-family: inherit;
+        font-size: var(--text-sm);
+        color: var(--color-primary);
+        cursor: pointer;
+    }
+
+    .totp-display__copy:hover {
+        text-decoration: underline;
+    }
+
+    .totp-display__copy:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .totp-display__ring-fg,
+        .totp-display__ring-fg--warn {
+            transition: none;
+        }
+    }
+}

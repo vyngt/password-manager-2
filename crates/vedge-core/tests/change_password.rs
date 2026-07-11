@@ -44,6 +44,7 @@ fn login(name: &str, pw: &str) -> EntryPayload {
         username: "alice".into(),
         password: SecretString::from(pw),
         totp_secret: None,
+        totp_params: vedge_core::TotpParams::default(),
         recovery_codes: vec![],
     })
 }

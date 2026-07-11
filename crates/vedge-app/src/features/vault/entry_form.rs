@@ -10,15 +10,17 @@
 //! a `get_entry` reveal). The [`EntryForm`] component renders the active type's
 //! field set over a single `RwSignal<EntryFormData>`.
 
+use crate::api;
 use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use vedge_generator::{RandomConfig, generate_random};
 use vedge_ipc::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, CommonMetaDto, EntryTypeDto, EnvVarDto,
     EnvVarsPayloadDto, FolderPayloadDto, IdentityPayloadDto, LoginPayloadDto, NotePayloadDto,
-    PayloadDto, SshKeyPayloadDto,
+    PayloadDto, SshKeyPayloadDto, TotpAlgorithmDto, TotpUpdateDto,
 };
 use vedge_ui::components::Button;
 use vedge_ui::components::IconButton;
@@ -105,7 +107,14 @@ pub struct EntryFormData {
     // Login.
     pub username: String,
     pub password: String,
-    pub totp: String,
+    // TOTP (slice 4.2 door): the seed never round-trips through the form. The
+    // form tracks the *presence* + params + an enrolment *intent*; the stored
+    // seed is preserved server-side when the intent is `Unchanged`.
+    pub has_totp: bool,
+    pub totp_intent: TotpUpdateDto,
+    pub totp_algorithm: TotpAlgorithmDto,
+    pub totp_digits: u8,
+    pub totp_period: u32,
 
     // Card.
     pub cardholder_name: String,
@@ -181,7 +190,11 @@ impl EntryFormData {
             url: String::new(),
             username: String::new(),
             password: String::new(),
-            totp: String::new(),
+            has_totp: false,
+            totp_intent: TotpUpdateDto::Unchanged,
+            totp_algorithm: TotpAlgorithmDto::Sha1,
+            totp_digits: 6,
+            totp_period: 30,
             cardholder_name: String::new(),
             card_number: String::new(),
             card_expiry: String::new(),
@@ -278,7 +291,11 @@ impl EntryFormData {
                 meta,
                 username: self.username.clone(),
                 password: self.password.clone(),
-                totp_secret: non_empty(&self.totp),
+                has_totp: self.has_totp,
+                totp_algorithm: self.totp_algorithm,
+                totp_digits: self.totp_digits,
+                totp_period: self.totp_period,
+                totp: self.totp_intent.clone(),
                 recovery_codes: self.recovery_codes.clone(),
             }),
             EntryTypeDto::Card => {
@@ -384,7 +401,13 @@ impl EntryFormData {
             PayloadDto::Login(p) => {
                 d.username = p.username.clone();
                 d.password = p.password.clone();
-                d.totp = p.totp_secret.clone().unwrap_or_default();
+                // Door: the seed is absent from the DTO. Track presence + params;
+                // an untouched form keeps the stored seed via `Unchanged`.
+                d.has_totp = p.has_totp;
+                d.totp_algorithm = p.totp_algorithm;
+                d.totp_digits = p.totp_digits;
+                d.totp_period = p.totp_period;
+                d.totp_intent = TotpUpdateDto::Unchanged;
                 d.recovery_codes = p.recovery_codes.clone();
             }
             PayloadDto::Card(p) => {
@@ -560,6 +583,131 @@ macro_rules! secret_field {
     }};
 }
 
+/// TOTP enrolment field (slice 4.2 door). The seed never round-trips through the
+/// form — it tracks presence + params + an intent (`Unchanged`/`Set`/`Clear`).
+/// Pasting an `otpauth://` URI or bare Base32 secret parses (server-side,
+/// stateless) into `Set` + params; "Remove" sets `Clear`; an untouched field
+/// stays `Unchanged`, so `update_entry` preserves the stored seed.
+#[component]
+fn TotpEnrolField(data: RwSignal<EntryFormData>) -> impl IntoView {
+    let i18n = use_i18n();
+    let paste = RwSignal::new(String::new());
+    let parse_error = RwSignal::new(false);
+
+    let status = move || {
+        data.with(|d| match &d.totp_intent {
+            TotpUpdateDto::Set(_) => t_string!(i18n, vault.totp_will_set).to_owned(),
+            TotpUpdateDto::Clear => t_string!(i18n, vault.totp_will_remove).to_owned(),
+            TotpUpdateDto::Unchanged => {
+                if d.has_totp {
+                    t_string!(i18n, vault.totp_configured).to_owned()
+                } else {
+                    t_string!(i18n, vault.totp_none).to_owned()
+                }
+            }
+        })
+    };
+
+    // Parse is stateless (no session) — the raw string already came from WASM.
+    let do_parse = move || {
+        let raw = paste.get_untracked();
+        if raw.trim().is_empty() {
+            return;
+        }
+        parse_error.set(false);
+        spawn_local(async move {
+            match api::totp::parse_totp_enrolment(&raw).await {
+                Ok(e) => {
+                    data.update(|d| {
+                        d.totp_intent = TotpUpdateDto::Set(e.secret);
+                        d.totp_algorithm = e.algorithm;
+                        d.totp_digits = e.digits;
+                        d.totp_period = e.period;
+                        d.has_totp = true;
+                    });
+                    paste.set(String::new());
+                }
+                Err(_) => parse_error.set(true),
+            }
+        });
+    };
+
+    let remove =
+        move |_: web_sys::MouseEvent| data.update(|d| d.totp_intent = TotpUpdateDto::Clear);
+    let undo =
+        move |_: web_sys::MouseEvent| data.update(|d| d.totp_intent = TotpUpdateDto::Unchanged);
+
+    view! {
+        <div class="col-span-2 space-y-1">
+            <div class="flex items-center gap-3">
+                <label class="text-xs text-foreground/60">{move || t!(i18n, vault.field_totp)}</label>
+                <span class="text-xs text-text-secondary" data-testid="ef-totp-status">
+                    {status}
+                </span>
+                {move || {
+                    data.with(|d| d.has_totp && matches!(d.totp_intent, TotpUpdateDto::Unchanged))
+                        .then(|| {
+                            view! {
+                                <button
+                                    type="button"
+                                    class="text-xs text-danger hover:underline"
+                                    on:click=remove
+                                >
+                                    {move || t!(i18n, vault.totp_remove)}
+                                </button>
+                            }
+                        })
+                }}
+                {move || {
+                    data.with(|d| !matches!(d.totp_intent, TotpUpdateDto::Unchanged))
+                        .then(|| {
+                            view! {
+                                <button
+                                    type="button"
+                                    class="text-xs text-text-tertiary hover:underline"
+                                    on:click=undo
+                                >
+                                    {move || t!(i18n, vault.totp_undo)}
+                                </button>
+                            }
+                        })
+                }}
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex-1">
+                    <Input
+                        id="ef-totp"
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, vault.totp_paste_placeholder).to_owned()
+                        })
+                        value=Signal::derive(move || paste.get())
+                        on_input=Callback::new(move |v: String| paste.set(v))
+                    />
+                </div>
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    attr:data-testid="ef-totp-apply"
+                    on:click=move |_: web_sys::MouseEvent| do_parse()
+                >
+                    {move || t!(i18n, vault.totp_apply)}
+                </Button>
+            </div>
+            {move || {
+                parse_error
+                    .get()
+                    .then(|| {
+                        view! {
+                            <p class="text-xs text-danger">
+                                {move || t!(i18n, vault.totp_parse_error)}
+                            </p>
+                        }
+                    })
+            }}
+        </div>
+    }
+}
+
 /// The SSH private key (PEM) field: a roomy `col-span-2` multi-line monospace
 /// textarea with a reveal toggle — unlike the single-line masked `secret_field!`,
 /// a PEM block needs several lines. Masking is display-only
@@ -710,7 +858,7 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                     view! {
                         {text_field!(data, i18n, "ef-username", username, form_identifier)}
                         <LoginPasswordField data=data />
-                        {secret_field!(data, i18n, "ef-totp", totp, field_totp)}
+                        <TotpEnrolField data=data />
                     }
                         .into_any()
                 }
@@ -901,7 +1049,7 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
 #[cfg(test)]
 mod tests {
     use super::{EntryFormData, EntryFormError};
-    use vedge_ipc::{EntryTypeDto, PayloadDto};
+    use vedge_ipc::{EntryTypeDto, PayloadDto, TotpAlgorithmDto, TotpUpdateDto};
 
     fn base(ty: EntryTypeDto) -> EntryFormData {
         let mut d = EntryFormData::new(ty);
@@ -924,7 +1072,8 @@ mod tests {
             panic!("login");
         };
         assert_eq!(p.username, "alice");
-        assert!(p.totp_secret.is_none());
+        assert!(!p.has_totp);
+        assert!(matches!(p.totp, TotpUpdateDto::Unchanged));
         assert!(p.recovery_codes.is_empty());
     }
 
@@ -972,7 +1121,13 @@ mod tests {
         d.url = "https://example.com".into();
         d.username = "alice".into();
         d.password = "s3cret".into();
-        d.totp = "JBSWY3DPEHPK3PXP".into();
+        // Door: the form carries presence + params + an `Unchanged` intent, not
+        // the seed. `Unchanged` is the only intent that round-trips (the outbound
+        // DTO always sends `Unchanged`; a `Set`/`Clear` is a one-way action).
+        d.has_totp = true;
+        d.totp_algorithm = TotpAlgorithmDto::Sha256;
+        d.totp_digits = 8;
+        d.totp_period = 60;
         d.recovery_codes = vec!["r1".into()];
         let round = EntryFormData::from_payload(&d.to_payload().unwrap());
         assert_eq!(round, d);

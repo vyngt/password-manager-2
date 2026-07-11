@@ -23,9 +23,9 @@ use crate::features::audit::filters::{AUDIT_PAGE_SIZE, AuditView};
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::{t, t_string, use_i18n};
 
-/// The 15 `AuditAction` names in the same order as the core enum. Used to build
+/// The 16 `AuditAction` names in the same order as the core enum. Used to build
 /// the action-filter dropdown; each is localized via [`action_label`].
-const AUDIT_ACTIONS: [&str; 15] = [
+const AUDIT_ACTIONS: [&str; 16] = [
     "Unlocked",
     "Locked",
     "Created",
@@ -41,6 +41,7 @@ const AUDIT_ACTIONS: [&str; 15] = [
     "TagDeleted",
     "RecoveryUsed",
     "BiometricUnlocked",
+    "TotpRevealed",
 ];
 
 #[component]

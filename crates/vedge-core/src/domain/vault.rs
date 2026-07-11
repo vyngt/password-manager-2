@@ -5,8 +5,10 @@ pub mod entities;
 pub mod errors;
 pub mod index;
 pub mod kdf_params;
+pub mod otpauth;
 pub mod payloads;
 pub mod recovery;
+pub mod totp;
 
 pub use aad::{blob_aad, entry_aad, tag_aad};
 pub use crypto_constants::{
@@ -25,3 +27,5 @@ pub use payloads::{
     NotePayload, SshKeyPayload, TagPayload, UnknownPayload,
 };
 pub use recovery::{RECOVERY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
+pub use otpauth::{TotpEnrolment, parse_totp_input};
+pub use totp::{TotpAlgorithm, TotpCode, TotpParams, TotpUpdate};

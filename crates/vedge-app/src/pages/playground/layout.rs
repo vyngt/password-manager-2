@@ -80,6 +80,10 @@ const GROUPS: &[SidebarGroup] = &[
                 name: "Tooltip Icon Button",
                 path: "/playground/tooltip-icon-button",
             },
+            SidebarItem {
+                name: "TOTP Display",
+                path: "/playground/totp-display",
+            },
         ],
     },
     SidebarGroup {

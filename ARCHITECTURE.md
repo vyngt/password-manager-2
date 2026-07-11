@@ -150,7 +150,13 @@ Command errors cross as a `{kind, message}` `ErrorEnvelope` — each `CommandErr
 `kind` string (the `envelope::kind::*` constants) the frontend matches structurally into `ApiError`,
 never by parsing `message` (e.g. `DocumentTooLarge` is its own kind, not a `contains("too large")`).
 Plaintext secrets stay backend-side wherever possible (e.g. copy-to-clipboard is a backend command with
-auto-clear); the one sanctioned, audited exception is the explicit "reveal" (`get_entry`).
+auto-clear); the one sanctioned, audited exception is the explicit "reveal" (`get_entry`). **The TOTP
+seed is held to a stricter rule (slice 4.2 — the "door"):** it flows WASM → core on enrolment only and
+**never** core → WASM — `get_entry` omits it (`LoginPayloadDto` carries a non-invertible `has_totp` flag,
+not the seed). The 6–8-digit **code** is a permitted derivative: short-lived, non-invertible to the
+seed, worthless once expired, produced server-side by the audited `reveal_totp`. Generalizing that seed
+rule to the other payload secrets (`password`, recovery codes, card `cvv`, SSH key) is a backlogged
+follow-up that would actually clean the renderer.
 
 Every clipboard write — `copy_field`, `copy_history_field`, and the generic `copy_text` used by the
 renderer-side copies (the password generator and the Secret Key display) — funnels through one hardened

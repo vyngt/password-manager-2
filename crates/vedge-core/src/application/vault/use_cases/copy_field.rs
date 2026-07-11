@@ -29,6 +29,7 @@ use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
+use crate::domain::vault::totp;
 
 /// Which field of the decrypted entry to copy.
 #[derive(Debug, Clone)]
@@ -70,6 +71,7 @@ impl CopyFieldInput {
 pub async fn copy_field(
     session: &mut VaultSession,
     input: CopyFieldInput,
+    now_unix: u64,
 ) -> Result<(), VaultError> {
     // 1. Fetch ciphertext row — the index doesn't hold secrets.
     let row = session.repo.get_entry(&input.entry_id).await?;
@@ -86,7 +88,7 @@ pub async fn copy_field(
 
     // 3. Extract the requested field, place it on the clipboard (zeroizing our
     //    copy), and schedule the background clear.
-    place_field_on_clipboard(session, &payload, &input.field, input.clear_after_secs)?;
+    place_field_on_clipboard(session, &payload, &input.field, input.clear_after_secs, now_unix)?;
 
     // Drop decrypted secrets before auditing.
     drop(payload);
@@ -119,8 +121,9 @@ pub(super) fn place_field_on_clipboard(
     payload: &EntryPayload,
     field: &FieldSelector,
     clear_after_secs: u32,
+    now: u64,
 ) -> Result<(), VaultError> {
-    let value = extract_field(payload, field)?;
+    let value = extract_field(payload, field, now)?;
     place_text_on_clipboard(&session.clipboard, value, clear_after_secs)
 }
 
@@ -176,6 +179,7 @@ const fn field_name(f: &FieldSelector) -> &'static str {
 fn extract_field(
     payload: &EntryPayload,
     field: &FieldSelector,
+    now: u64,
 ) -> Result<Zeroizing<String>, VaultError> {
     match (payload, field) {
         (EntryPayload::Login(p), FieldSelector::Username) => Ok(Zeroizing::new(p.username.clone())),
@@ -186,7 +190,8 @@ fn extract_field(
             let Some(secret) = p.totp_secret.as_ref() else {
                 return Err(VaultError::FieldNotApplicable);
             };
-            Ok(Zeroizing::new(generate_totp(secret.expose_secret())?))
+            // Same engine + injected clock as `reveal_totp` — one code path.
+            Ok(totp::generate(secret, p.totp_params, now)?.code)
         }
         (EntryPayload::Card(p), FieldSelector::CardNumber) => {
             Ok(Zeroizing::new(p.number.expose_secret().to_owned()))
@@ -207,18 +212,6 @@ fn extract_field(
         }
         _ => Err(VaultError::FieldNotApplicable),
     }
-}
-
-/// RFC 6238 TOTP (SHA-1, 6 digits, 30-second period) — matches the defaults
-/// every authenticator app uses. Returns a 6-digit numeric string.
-fn generate_totp(seed_b32: &str) -> Result<String, VaultError> {
-    let bytes = totp_rs::Secret::Encoded(seed_b32.to_owned())
-        .to_bytes()
-        .map_err(|_| VaultError::MalformedPayload("invalid TOTP secret encoding".into()))?;
-    let totp = totp_rs::TOTP::new(totp_rs::Algorithm::SHA1, 6, 1, 30, bytes)
-        .map_err(|e| VaultError::MalformedPayload(format!("TOTP init: {e}")))?;
-    totp.generate_current()
-        .map_err(|e| VaultError::MalformedPayload(format!("TOTP generate: {e}")))
 }
 
 #[cfg(test)]

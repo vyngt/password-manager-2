@@ -166,6 +166,7 @@ impl Harness {
             username: username.to_owned(),
             password: SecretString::from(password),
             totp_secret: None,
+            totp_params: vedge_core::TotpParams::default(),
             recovery_codes: vec![],
         });
         let payload_bytes = payload.to_encryptable_json().unwrap();

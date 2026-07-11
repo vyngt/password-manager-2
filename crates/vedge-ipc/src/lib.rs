@@ -30,6 +30,7 @@ pub mod error;
 pub mod misc;
 pub mod settings;
 pub mod tag;
+pub mod totp;
 
 pub use audit::{AuditEventDto, AuditPageDto, AuditQueryDto};
 pub use common::{
@@ -53,3 +54,4 @@ pub use settings::{
     RecentVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
 };
 pub use tag::{CreateTagDto, RenameTagDto, TagMetaDto};
+pub use totp::{TotpAlgorithmDto, TotpCodeDto, TotpEnrolmentDto, TotpUpdateDto};
