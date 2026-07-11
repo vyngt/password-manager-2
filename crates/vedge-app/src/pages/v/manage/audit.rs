@@ -65,9 +65,14 @@ pub fn AuditPage() -> impl IntoView {
     });
     let loading = RwSignal::new(false);
     let index = RwSignal::new(Vec::<IndexEntryDto>::new());
+    // Generation token: only the newest in-flight fetch may apply its result, so
+    // an out-of-order (slow) response can't overwrite a fresher page.
+    let req_gen = StoredValue::new(0_u32);
 
     // id -> name, for zero-decrypt entry-name resolution + the entry filter.
-    let names = Signal::derive(move || {
+    // A `Memo` (not `Signal::derive`) so the map is rebuilt only when `index`
+    // changes — not on every audit-page fetch / filter toggle that reads it.
+    let names = Memo::new(move |_| {
         index
             .get()
             .into_iter()
@@ -102,9 +107,17 @@ pub fn AuditPage() -> impl IntoView {
         }
         let query = untrack(|| view_state.get()).to_query();
         let err_prefix = untrack(|| t_string!(i18n, audit.err_load).to_owned());
+        let token = req_gen.get_value().wrapping_add(1);
+        req_gen.set_value(token);
         loading.set(true);
         spawn_local(async move {
-            match api::audit::list_audit(&path, &query).await {
+            let result = api::audit::list_audit(&path, &query).await;
+            // A newer request superseded this one → drop the stale response so it
+            // can't overwrite a fresher page (or latch `loading` off early).
+            if req_gen.get_value() != token {
+                return;
+            }
+            match result {
                 Ok(p) => page_data.set(p),
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
@@ -162,7 +175,7 @@ pub fn AuditPage() -> impl IntoView {
                                 on_change=Callback::new(move |val: String| {
                                     view_state
                                         .update(|v| {
-                                            v.set_action(if val.is_empty() { None } else { Some(val) })
+                                            v.set_action(if val.is_empty() { None } else { Some(val) });
                                         });
                                 })
                             />
@@ -198,7 +211,7 @@ pub fn AuditPage() -> impl IntoView {
                                 on_change=Callback::new(move |val: String| {
                                     view_state
                                         .update(|v| {
-                                            v.set_entry(if val.is_empty() { None } else { Some(val) })
+                                            v.set_entry(if val.is_empty() { None } else { Some(val) });
                                         });
                                 })
                             />
@@ -219,11 +232,7 @@ pub fn AuditPage() -> impl IntoView {
                             t_string!(i18n, audit.filter_any_date).to_owned()
                         })
                         on_change=Callback::new(move |val: DatePickerValue| {
-                            let d = match val {
-                                DatePickerValue::Single(d) => d,
-                                _ => None,
-                            };
-                            view_state.update(|v| v.set_since(d));
+                            view_state.update(|v| v.set_since(val.as_single()));
                         })
                     />
                 </div>
@@ -241,11 +250,7 @@ pub fn AuditPage() -> impl IntoView {
                             t_string!(i18n, audit.filter_any_date).to_owned()
                         })
                         on_change=Callback::new(move |val: DatePickerValue| {
-                            let d = match val {
-                                DatePickerValue::Single(d) => d,
-                                _ => None,
-                            };
-                            view_state.update(|v| v.set_until(d));
+                            view_state.update(|v| v.set_until(val.as_single()));
                         })
                     />
                 </div>

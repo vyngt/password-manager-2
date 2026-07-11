@@ -30,8 +30,11 @@ struct AuditRow {
     time_display: String,
 }
 
-/// Badge severity by action: `Danger` for destructive/recovery, `Warning` for
-/// state-changing, `Info` for session lifecycle, `Default` otherwise.
+/// Badge severity by action, per the 4.1 spec's severity table: `Danger` for
+/// destructive/recovery (permanent-delete, recovery-used), `Warning` for
+/// sensitive mutations (delete, password-change, export), `Info` for session
+/// lifecycle (unlock / biometric-unlock / lock), and `Default` for everything
+/// else (create, update, restore, tag ops, …).
 #[must_use]
 pub fn severity(action: &str) -> BadgeVariant {
     match action {

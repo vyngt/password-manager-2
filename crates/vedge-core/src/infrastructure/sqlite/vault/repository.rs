@@ -427,6 +427,14 @@ impl VaultRepository for SqliteVaultRepository {
         let rows = audit_entity::Entity::find()
             .filter(cond)
             .order_by(AuditCol::OccurredAt, Order::Desc)
+            // Stable tiebreak: `occurred_at` is millisecond-precision, so bulk
+            // writes (empty-trash cascade, bulk-generate, tag ops) routinely
+            // collide within one ms. Without a unique secondary key, SQLite's
+            // order among ties is unspecified and can differ between the count
+            // and the paged reads → a colliding row shows on two pages or is
+            // skipped. The PK is a ULID (monotonic), so `id DESC` also stays
+            // chronological within a tie group.
+            .order_by(AuditCol::Id, Order::Desc)
             .limit(u64::from(q.limit))
             .offset(u64::from(q.offset))
             .all(self.conn.as_ref())

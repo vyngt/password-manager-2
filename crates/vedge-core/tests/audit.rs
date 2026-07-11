@@ -263,6 +263,42 @@ async fn query_audit_paginates() {
 }
 
 #[tokio::test]
+async fn query_audit_paginates_stably_on_equal_timestamps() {
+    // Every row shares one millisecond — the ULID-id tiebreak must still give a
+    // total order so each row lands on exactly one page (no dup, no skip).
+    let h = Harness::fresh().await;
+    let same = ts("2026-01-01T00:00:00.000Z");
+    let events: Vec<AuditEvent> = (0..120)
+        .map(|_| ev(AuditAction::Viewed, None, same))
+        .collect();
+    append_all(&h, &events).await;
+
+    let mut seen = std::collections::HashSet::new();
+    for offset in [0_u32, 50, 100] {
+        let page = h
+            .repo
+            .query_audit(&AuditQuery {
+                limit: 50,
+                offset,
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        for e in page.events {
+            assert!(
+                seen.insert(e.id),
+                "a row appeared on two pages (unstable order)"
+            );
+        }
+    }
+    assert_eq!(
+        seen.len(),
+        120,
+        "every row must appear exactly once across the pages"
+    );
+}
+
+#[tokio::test]
 async fn query_audit_skips_unparseable_action() {
     let h = Harness::fresh().await;
     append_all(

@@ -70,6 +70,9 @@ impl AuditView {
     }
 }
 
+/// A calendar `NaiveDate` → the RFC-3339 **UTC** midnight of that day. The audit
+/// page renders timestamps in UTC too (`entry_view::{long_date, clock_time}` use
+/// the stored `Z` offset), so a UTC day boundary matches what the user sees.
 fn day_start(d: NaiveDate) -> String {
     format!("{}T00:00:00.000Z", d.format("%Y-%m-%d"))
 }
