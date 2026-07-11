@@ -99,6 +99,9 @@ pub fn run() {
             commands::entry::get_history_value,
             commands::entry::copy_history_field,
             commands::entry::restore_history,
+            // ---- TOTP (slice 4.2) ----
+            commands::totp::reveal_totp,
+            commands::totp::parse_totp_enrolment,
             // ---- tag ops ----
             commands::tag::create_tag,
             commands::tag::rename_tag,

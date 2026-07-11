@@ -42,6 +42,7 @@ use super::pg_toast::ToastPage;
 use super::pg_toggle::TogglePage;
 use super::pg_tooltip::TooltipPage;
 use super::pg_tooltip_icon_button::TooltipIconButtonPage;
+use super::pg_totp_display::TotpDisplayPage;
 use super::theme::ThemePage;
 use leptos::prelude::*;
 use leptos_router::{
@@ -72,6 +73,7 @@ pub fn PlayGroundRoutes() -> impl MatchNestedRoutes + Clone {
             <Route path=path!("/step-indicator") view=StepIndicatorPage />
             <Route path=path!("/tabs") view=TabsPage />
             <Route path=path!("/tooltip-icon-button") view=TooltipIconButtonPage />
+            <Route path=path!("/totp-display") view=TotpDisplayPage />
             // Form
             <Route path=path!("/checkbox") view=CheckboxPage />
             <Route path=path!("/color-picker") view=ColorPickerPage />

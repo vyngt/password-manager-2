@@ -26,6 +26,10 @@ pub enum AuditAction {
     /// releasing the stored KEK, instead of the master password. Distinguishes
     /// biometric unlocks from normal unlocks in the audit timeline.
     BiometricUnlocked,
+    /// A Login entry's TOTP code was revealed (slice 4.2). Audited once per
+    /// (session, entry); period-boundary refreshes in the same session are
+    /// silent. Only the derived code is exposed — never the seed.
+    TotpRevealed,
 }
 
 impl AuditAction {
@@ -47,6 +51,7 @@ impl AuditAction {
             Self::TagDeleted => "TagDeleted",
             Self::RecoveryUsed => "RecoveryUsed",
             Self::BiometricUnlocked => "BiometricUnlocked",
+            Self::TotpRevealed => "TotpRevealed",
         }
     }
 
@@ -68,6 +73,7 @@ impl AuditAction {
             "TagDeleted" => Self::TagDeleted,
             "RecoveryUsed" => Self::RecoveryUsed,
             "BiometricUnlocked" => Self::BiometricUnlocked,
+            "TotpRevealed" => Self::TotpRevealed,
             _ => return None,
         })
     }

@@ -12,6 +12,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::common::{CommonMetaDto, EntryTypeDto};
+use crate::totp::{TotpAlgorithmDto, TotpUpdateDto};
 
 // ---- IndexEntryDto -----------------------------------------------------------
 
@@ -89,10 +90,31 @@ pub struct LoginPayloadDto {
     pub meta: CommonMetaDto,
     pub username: String,
     pub password: String,
+    /// Non-invertible presence flag — the seed itself does **not** cross to WASM
+    /// (the 4.2 door). Drives the detail view (show TOTP?) and the edit form
+    /// (add vs replace/remove).
     #[serde(default)]
-    pub totp_secret: Option<String>,
+    pub has_totp: bool,
+    /// TOTP metadata — safe to cross (the form must edit it).
+    #[serde(default)]
+    pub totp_algorithm: TotpAlgorithmDto,
+    #[serde(default = "default_totp_digits")]
+    pub totp_digits: u8,
+    #[serde(default = "default_totp_period")]
+    pub totp_period: u32,
+    /// Inbound enrolment intent; ignored on the outbound (reveal) direction.
+    #[serde(default)]
+    pub totp: TotpUpdateDto,
     #[serde(default)]
     pub recovery_codes: Vec<String>,
+}
+
+const fn default_totp_digits() -> u8 {
+    6
+}
+
+const fn default_totp_period() -> u32 {
+    30
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,7 +221,30 @@ pub enum PayloadDto {
 mod tests {
     #![allow(clippy::unwrap_used)]
 
-    use super::HistoryEntryDto;
+    use super::{HistoryEntryDto, LoginPayloadDto};
+
+    /// The door's wire test: the outbound Login DTO exposes `has_totp` but never
+    /// the raw seed. A stray `totp_secret` key would reopen it.
+    #[test]
+    fn login_dto_omits_totp_secret() {
+        let dto: LoginPayloadDto = serde_json::from_value(serde_json::json!({
+            "meta": { "name": "gh", "entry_type": "Login" },
+            "username": "alice",
+            "password": "pw",
+            "has_totp": true,
+            "totp_algorithm": "Sha1",
+            "totp_digits": 6,
+            "totp_period": 30,
+        }))
+        .unwrap();
+        let out = serde_json::to_value(&dto).unwrap();
+        assert!(
+            out.get("totp_secret").is_none(),
+            "the seed must not cross the door"
+        );
+        assert_eq!(out.get("has_totp"), Some(&serde_json::Value::Bool(true)));
+        assert_eq!(out.get("totp_digits"), Some(&serde_json::json!(6)));
+    }
 
     #[test]
     fn history_entry_snapshot_round_trips() {

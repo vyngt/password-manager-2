@@ -14,4 +14,5 @@ pub mod recent;
 pub mod recovery;
 pub mod settings;
 pub mod tag;
+pub mod totp;
 pub mod vault;

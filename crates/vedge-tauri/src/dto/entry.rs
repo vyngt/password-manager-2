@@ -7,6 +7,9 @@ pub use vedge_ipc::{
 };
 
 use secrecy::{ExposeSecret, SecretString};
+use vedge_ipc::TotpUpdateDto;
+
+use crate::dto::totp::{totp_algorithm_to_dto, totp_params_from_dto};
 
 use vedge_core::HistoryVersion;
 use vedge_core::domain::shared::{EntryId, TagId};
@@ -111,11 +114,20 @@ pub fn payload_from_dto(dto: PayloadDto) -> Result<EntryPayload, CommandError> {
         PayloadDto::Login(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::Login;
+            // The seed crosses only as an enrolment intent (the door). `Set`
+            // enrols it now (create + the resolved value on update); the
+            // `Unchanged` carry-forward is handled by `update_entry`. Params
+            // cross freely — form-editable metadata.
+            let totp_secret = match &d.totp {
+                TotpUpdateDto::Set(s) => Some(SecretString::from(s.clone())),
+                TotpUpdateDto::Unchanged | TotpUpdateDto::Clear => None,
+            };
             EntryPayload::Login(LoginPayload {
                 meta,
                 username: d.username,
                 password: SecretString::from(d.password),
-                totp_secret: d.totp_secret.map(SecretString::from),
+                totp_secret,
+                totp_params: totp_params_from_dto(d.totp_algorithm, d.totp_digits, d.totp_period),
                 recovery_codes: d
                     .recovery_codes
                     .into_iter()
@@ -218,7 +230,12 @@ pub fn payload_to_dto(p: &EntryPayload) -> Result<PayloadDto, CommandError> {
             meta: common_meta_to_dto(&x.meta),
             username: x.username.clone(),
             password: x.password.expose_secret().to_owned(),
-            totp_secret: x.totp_secret.as_ref().map(|s| s.expose_secret().to_owned()),
+            // The seed does NOT cross the door — only its presence + params.
+            has_totp: x.totp_secret.is_some(),
+            totp_algorithm: totp_algorithm_to_dto(x.totp_params.algorithm),
+            totp_digits: x.totp_params.digits,
+            totp_period: x.totp_params.period,
+            totp: TotpUpdateDto::Unchanged,
             recovery_codes: x
                 .recovery_codes
                 .iter()
@@ -312,22 +329,35 @@ mod tests {
     }
 
     #[test]
-    fn login_round_trips_through_dto() {
+    fn login_round_trips_but_totp_seed_stays_behind_the_door() {
         let p = EntryPayload::Login(LoginPayload {
             meta: minimal_meta(EntryType::Login),
             username: "alice".into(),
             password: SecretString::from("hunter2"),
             totp_secret: Some(SecretString::from("JBSWY3DPEHPK3PXP")),
+            totp_params: vedge_core::TotpParams::default(),
             recovery_codes: vec![SecretString::from("code-1")],
         });
         let dto = payload_to_dto(&p).unwrap();
+        // Outbound: presence flag set, seed absent.
+        let PayloadDto::Login(d) = &dto else {
+            panic!("wrong variant")
+        };
+        assert!(d.has_totp);
+
+        // A plain `from_dto` (intent defaults to `Unchanged`) does NOT restore
+        // the seed — that is `update_entry`'s carry-forward job, not the
+        // converter's. The password still round-trips normally.
         let back = payload_from_dto(dto).unwrap();
         let EntryPayload::Login(b) = back else {
             panic!("wrong variant")
         };
         assert_eq!(b.username, "alice");
         assert_eq!(b.password.expose_secret(), "hunter2");
-        assert_eq!(b.totp_secret.unwrap().expose_secret(), "JBSWY3DPEHPK3PXP");
+        assert!(
+            b.totp_secret.is_none(),
+            "the seed must not survive the door"
+        );
         assert_eq!(b.recovery_codes[0].expose_secret(), "code-1");
     }
 

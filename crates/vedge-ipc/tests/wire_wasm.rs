@@ -156,7 +156,12 @@ fn payload_login_adjacent_decodes() {
         },
         username: "alice".into(),
         password: "s3cret".into(),
-        totp_secret: None,
+        // The 4.2 door: the seed is absent; presence flag + params + intent cross.
+        has_totp: true,
+        totp_algorithm: TotpAlgorithmDto::Sha256,
+        totp_digits: 8,
+        totp_period: 60,
+        totp: TotpUpdateDto::Unchanged,
         recovery_codes: vec![],
     });
     match shell_to_frontend(&dto) {
@@ -166,6 +171,11 @@ fn payload_login_adjacent_decodes() {
             assert_eq!(p.username, "alice");
             assert_eq!(p.password, "s3cret");
             assert_eq!(p.meta.url.as_deref(), Some("https://github.com"));
+            // Door + params survive the real wasm codec (int coercion + tagged enum).
+            assert!(p.has_totp);
+            assert_eq!(p.totp_algorithm, TotpAlgorithmDto::Sha256);
+            assert_eq!(p.totp_digits, 8);
+            assert_eq!(p.totp_period, 60);
         }
         other => panic!("expected Login, got {other:?}"),
     }

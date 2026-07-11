@@ -18,13 +18,14 @@
 //! drop with the DTO as soon as the use case returns.
 
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use tracing::instrument;
 
 use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
-    CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, UpdateEntryInput,
-    copy_field as copy_field_core, copy_history_field as copy_history_field_core,
+    CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, TotpUpdate,
+    UpdateEntryInput, copy_field as copy_field_core, copy_history_field as copy_history_field_core,
     create_entry as create_entry_core, get_entry as get_entry_core,
     get_history_value as get_history_value_core, hard_delete_entry as hard_delete_entry_core,
     list_history as list_history_core, move_entry as move_entry_core,
@@ -39,11 +40,20 @@ use crate::dto::entry::{
     payload_to_dto, tag_id_from_str,
 };
 use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
+use crate::dto::totp::totp_update_from_dto;
 use crate::error::CommandError;
 use crate::state::AppState;
 
 fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
+}
+
+/// Host unix-seconds at the command boundary — injected into the shared TOTP
+/// engine so `copy_field` and `reveal_totp` derive the same code.
+fn host_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -81,12 +91,19 @@ pub async fn update_entry(
     let mut guard = handle.lock().await;
 
     let id = entry_id_from_str(&entry_id);
+    // Extract the TOTP enrolment intent before the DTO is consumed. `Unchanged`
+    // (the default) makes `update_entry` carry the stored seed forward.
+    let totp = match &payload {
+        PayloadDto::Login(d) => totp_update_from_dto(&d.totp),
+        _ => TotpUpdate::Unchanged,
+    };
     let domain_payload = payload_from_dto(payload)?;
     update_entry_core(
         &mut guard,
         UpdateEntryInput {
             entry_id: id,
             payload: domain_payload,
+            totp,
         },
     )
     .await?;
@@ -189,6 +206,7 @@ pub async fn copy_field(
             field: field_selector_from_dto(field),
             clear_after_secs: clear_after_secs.unwrap_or(30),
         },
+        host_now(),
     )
     .await?;
     Ok(())
@@ -345,6 +363,7 @@ pub async fn copy_history_field(
             field: field_selector_from_dto(field),
             clear_after_secs: clear_after_secs.unwrap_or(30),
         },
+        host_now(),
     )
     .await?;
     Ok(())
@@ -400,6 +419,7 @@ mod tests {
                     username: "alice".into(),
                     password: SecretString::from("hunter2"),
                     totp_secret: None,
+                    totp_params: vedge_core::TotpParams::default(),
                     recovery_codes: vec![],
                 }),
             },

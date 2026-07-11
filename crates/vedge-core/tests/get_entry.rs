@@ -61,6 +61,7 @@ async fn get_entry_roundtrips_login() {
             username: "alice".into(),
             password: SecretString::from("hunter2"),
             totp_secret: Some(SecretString::from("GEZDGNBVGY3TQOJQ".to_owned())),
+            totp_params: vedge_core::TotpParams::default(),
             recovery_codes: vec![SecretString::from("code-1"), SecretString::from("code-2")],
         }),
     )

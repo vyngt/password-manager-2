@@ -43,6 +43,7 @@ mod pg_toast;
 mod pg_toggle;
 mod pg_tooltip;
 mod pg_tooltip_icon_button;
+mod pg_totp_display;
 mod routes;
 mod theme;
 mod theme_api;

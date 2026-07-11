@@ -41,6 +41,7 @@ fn login_with_tags(name: &str, tag_ids: Vec<TagId>) -> EntryPayload {
         username: "alice".into(),
         password: SecretString::from("pw"),
         totp_secret: None,
+        totp_params: vedge_core::TotpParams::default(),
         recovery_codes: vec![],
     })
 }

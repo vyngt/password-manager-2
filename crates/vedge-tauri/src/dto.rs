@@ -23,3 +23,4 @@ pub mod entry;
 pub mod misc;
 pub mod settings;
 pub mod tag;
+pub mod totp;
