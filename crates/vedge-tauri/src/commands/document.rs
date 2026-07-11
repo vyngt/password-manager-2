@@ -285,11 +285,15 @@ mod tests {
             filename_from_path(Path::new("/tmp/dir/report.pdf")),
             "report.pdf"
         );
+        assert_eq!(filename_from_path(Path::new("bare")), "bare");
+        // Backslash is a path separator only on Windows — on Unix the whole
+        // `C:\Users\me\key.txt` is one component. Assert the Windows split only
+        // where it actually applies (surfaced by the Linux CI, slice 3.8).
+        #[cfg(windows)]
         assert_eq!(
             filename_from_path(Path::new(r"C:\Users\me\key.txt")),
             "key.txt"
         );
-        assert_eq!(filename_from_path(Path::new("bare")), "bare");
     }
 
     #[test]

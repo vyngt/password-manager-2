@@ -314,6 +314,7 @@ pub fn GeneratorPanel(
                 <IconButton
                     variant=Variant::Ghost
                     size=Size::Sm
+                    attr:data-testid="gen-regenerate"
                     aria_label=Signal::derive(move || {
                         t_string!(i18n, generator.regenerate).to_owned()
                     })
@@ -392,6 +393,7 @@ pub fn GeneratorPanel(
                 <button
                     type="button"
                     class="flex w-full items-center justify-between rounded-md py-1 text-left text-sm font-semibold text-text-primary"
+                    data-testid="gen-bulk-toggle"
                     aria-expanded=move || bulk_open.get().to_string()
                     on:click=move |_| bulk_open.update(|o| *o = !*o)
                 >
@@ -432,7 +434,11 @@ pub fn GeneratorPanel(
                                     })
                                 />
                             </div>
-                            <Button variant=Variant::Secondary on:click=move |_| generate_batch(())>
+                            <Button
+                                variant=Variant::Secondary
+                                attr:data-testid="gen-bulk-generate"
+                                on:click=move |_| generate_batch(())
+                            >
                                 {move || t!(i18n, generator.bulk_generate)}
                             </Button>
                         </div>
@@ -476,6 +482,7 @@ pub fn GeneratorPanel(
                 <button
                     type="button"
                     class="flex w-full items-center justify-between rounded-md py-1 text-left text-sm font-semibold text-text-primary"
+                    data-testid="gen-history-toggle"
                     aria-expanded=move || recent_open.get().to_string()
                     on:click=move |_| recent_open.update(|o| *o = !*o)
                 >
@@ -521,6 +528,7 @@ pub fn GeneratorPanel(
                                         let bits = it.entropy_bits;
                                         view! {
                                             <SecretRow
+                                                attr:data-testid="gen-history-row"
                                                 secret=plain
                                                 entropy_bits=bits
                                                 copy_native=copy_native
@@ -537,6 +545,7 @@ pub fn GeneratorPanel(
                                 <Button
                                     variant=Variant::Ghost
                                     size=Size::Sm
+                                    attr:data-testid="gen-history-clear"
                                     on:click=move |_| history.clear()
                                 >
                                     {move || t!(i18n, generator.history_clear)}

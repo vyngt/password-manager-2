@@ -30,6 +30,27 @@ pub fn dialog_in_progress() -> bool {
     IN_DIALOG.with(|c| c.get() > 0)
 }
 
+/// **Test-only, debug-gated** manual override of the in-dialog counter, for the
+/// e2e lock-on-blur assertion. `on = true` bumps the counter (as if a native
+/// dialog were open), `false` clears one level — so a test can dispatch a
+/// synthetic window `blur` and assert the vault does **not** lock while a dialog
+/// is "in progress" (the positive case — a plain blur *does* lock — needs no
+/// hook). Exposed to JS as `window.__vedge_test_dialog(on)` (installed in
+/// `app.rs`). Absent from release builds (`cfg(debug_assertions)`) — unreachable
+/// in a shipped bundle. `DialogGuard` is private RAII and can't be held across two
+/// JS calls, hence this explicit setter.
+#[cfg(debug_assertions)]
+pub fn test_set_dialog_in_progress(on: bool) {
+    IN_DIALOG.with(|c| {
+        let cur = c.get();
+        c.set(if on {
+            cur.wrapping_add(1)
+        } else {
+            cur.wrapping_sub(1)
+        });
+    });
+}
+
 /// RAII marker: bumps the in-dialog counter for its lifetime and clears it on
 /// every exit path — including a dropped/cancelled future.
 struct DialogGuard;

@@ -1,0 +1,25 @@
+# Local Dockerised Jenkins for the VEdge core gate. Brings up a single
+# controller (with the toolchain baked in — see Dockerfile) that runs the
+# `Jenkinsfile` pipeline on its built-in node. Off GitHub entirely.
+#
+#   docker compose -f ci/jenkins/docker-compose.yml up -d --build
+#
+# Then open http://localhost:8080 and follow ci/jenkins/README.md.
+services:
+  jenkins:
+    build:
+      # Repo root as context so nothing is needed beyond this dir; the image
+      # only bakes the toolchain (the repo is checked out by the pipeline job).
+      context: ../..
+      dockerfile: ci/jenkins/Dockerfile
+    image: vedge-jenkins:local
+    container_name: vedge-jenkins
+    ports:
+      - "8080:8080"   # web UI
+      - "50000:50000" # inbound agents (unused with the built-in node, kept standard)
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:

@@ -720,6 +720,7 @@ pub fn VaultPage() -> impl IntoView {
                     variant=Variant::Primary
                     size=Size::Sm
                     class="whitespace-nowrap"
+                    attr:data-testid="vault-new-entry"
                     on:click=move |_| {
                         show_attach.set(false);
                         ui.show_create.update(|v| *v = !*v);
@@ -753,6 +754,7 @@ pub fn VaultPage() -> impl IntoView {
                         variant=Variant::Danger
                         size=Size::Sm
                         class="whitespace-nowrap"
+                        attr:data-testid="trash-empty"
                         on:click=move |_| empty_trash_open.set(true)
                     >
                         {move || t!(i18n, vault.empty_trash_action)}

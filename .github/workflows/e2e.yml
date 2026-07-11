@@ -1,0 +1,61 @@
+name: e2e (opt-in)
+
+# The WebDriver daily-loop + Phase-3 scenarios. Opt-in ONLY — it needs a display
+# and the platform WebDriver, and Windows runners bill at 2×, so it never runs
+# automatically. Dispatch it by hand. The cheapest home is a **self-hosted
+# Windows runner** (your dev machine already has WebView2 + msedgedriver from
+# 2.9.2): register one, then pick `self-hosted` for the `runner` input below.
+#
+# A nightly schedule is intentionally left commented-out — uncomment only if you
+# have a self-hosted runner (otherwise it would burn hosted minutes every night):
+#
+# schedule:
+#   - cron: "0 6 * * *"
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner (self-hosted = your machine = zero GitHub minutes)"
+        type: choice
+        default: windows-latest
+        options:
+          - windows-latest
+          - self-hosted
+
+jobs:
+  e2e:
+    name: daily-loop + phase-3 scenarios
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable + wasm32)
+        uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry + target
+        uses: Swatinem/rust-cache@v2
+
+      # trunk builds the (debug) wasm bundle; tauri-driver drives the app. On a
+      # self-hosted runner these are typically already installed — the install is
+      # idempotent. msedgedriver must be on PATH and version-matched to WebView2
+      # (see crates/vedge-e2e/README.md); on a self-hosted machine it already is.
+      - name: Install trunk + tauri-driver
+        uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+
+      - name: Install tauri-driver
+        run: cargo install tauri-driver --locked
+
+      # `mise e2e` = trunk build (debug wasm) → cargo build --features
+      # custom-protocol → cargo test -p vedge-e2e -- --ignored --test-threads=1.
+      # The fast-KDF + in-memory-biometric seams are enabled by the harness env.
+      - name: Install mise
+        uses: jdx/mise-action@v2
+        with:
+          install: false
+
+      - name: Run e2e (mise e2e)
+        run: mise run e2e

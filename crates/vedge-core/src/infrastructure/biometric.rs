@@ -31,6 +31,10 @@ pub use stub::StubBiometricAuthenticator;
 /// key); every other target → a stub that reports `is_available() == false` (macOS
 /// Touch ID lands in a future follow-up; Linux is password-only by design).
 #[must_use]
+// Windows consumes `crypto` (`WindowsHelloAuthenticator::new(crypto)`); the
+// non-Windows arms only drop it, so clippy flags a by-value arg there. The
+// signature must stay by-value for the Windows path — allow it off-Windows.
+#[cfg_attr(not(windows), allow(clippy::needless_pass_by_value))]
 pub fn platform_authenticator(crypto: Arc<dyn CryptoProvider>) -> Arc<dyn BiometricAuthenticator> {
     #[cfg(windows)]
     {

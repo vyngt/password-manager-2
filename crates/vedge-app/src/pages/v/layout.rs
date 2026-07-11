@@ -243,6 +243,7 @@ fn LockButton(collapsed: RwSignal<bool>) -> impl IntoView {
                                 <button
                                     type="button"
                                     class=nav_button_class(true)
+                                    data-testid="vault-lock"
                                     on:click=on_lock
                                     aria-label=move || label.get()
                                 >
@@ -263,6 +264,7 @@ fn LockButton(collapsed: RwSignal<bool>) -> impl IntoView {
                         <button
                             type="button"
                             class=nav_button_class(false)
+                            data-testid="vault-lock"
                             on:click=on_lock
                             aria-label=move || label.get()
                         >

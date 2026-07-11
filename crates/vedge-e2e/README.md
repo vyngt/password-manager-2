@@ -98,25 +98,42 @@ cmdkey /list | Select-String vedge      # find them
 cmdkey /delete:<target>                  # remove one
 ```
 
-## CI (documented, not yet enabled)
+## CI (opt-in, wired in 3.8)
 
-An opt-in e2e job would need: the built binary, `tauri-driver`, the platform
-WebDriver, and a display. On Linux, wrap the run in `xvfb-run` and install
-`libwebkit2gtk-4.1` + the secret-service (for the keyring). On Windows, ensure
-WebView2 + a matching `msedgedriver`. Keep it a separate, opt-in job — the
-default CI stays fast and headless.
+The e2e job is defined in **`.github/workflows/e2e.yml`** and runs on **manual
+dispatch only** (Windows runners bill at 2×), with a `runner` input — point it at
+a **self-hosted Windows runner** (your dev machine already has WebView2 +
+msedgedriver) for zero GitHub-hosted minutes. A nightly `schedule` is left
+commented-out. The core gate (`mise ci` + `mise audit`) runs on PRs
+(`.github/workflows/ci.yml`) and, off GitHub, in the local Dockerised Jenkins
+(`ci/jenkins/`). An opt-in Linux e2e job would additionally need `xvfb-run` +
+`libwebkit2gtk-4.1` + the secret-service (keyring).
+
+## Selector convention — `data-testid`
+
+Controls are located by **stable `data-testid`** attributes (kebab-case, semantic:
+`onboarding-create`, `entry-save`, `sidebar-trash`, `row-restore`,
+`login-generate-wand`, …) via `by_testid` / `click_testid` / `js_click_testid`.
+This keeps the suite **locale-independent** — a copy edit or a locale switch never
+breaks it. Form **inputs** keep their DOM `id`s (`ef-*`, `vault-search`,
+`vault-path`, `master-password`, `folder-new`, `gen-bulk-count`), used via
+`fill_id`. A few structural hooks are reused directly: `tr[data-entry-row]` /
+`tr[data-entry-id]` (rows), `[role='option']` (+ `[data-value=…]` for a specific
+Select option), `[role='combobox']` (a Select trigger), `div[role='dialog']`.
+When adding a scenario, tag the new control with `data-testid` at its call site
+(`attr:data-testid="…"` spreads onto `vedge-ui` `Button`/`IconButton`/`SidebarItem`)
+rather than selecting by text.
 
 ## Notes / limitations
 
-- **English locale assumed.** Button/`aria-label` selectors match the default
-  English strings (`crates/vedge-app/locales/en`). A machine defaulting to a
-  non-`en` browser locale would need the locale forced to `en`. Hardening this
-  with `data-testid` attributes across the ~30 daily-loop call sites is a
-  follow-up.
 - **Mutations via UI, assertions via IPC.** Actions go through the UI so the
   Leptos view and backend session stay in sync; `invoke()` is used only for
   read-only assertions. A few terminal mutations (history restore, folder move,
-  theme set) use `invoke()` directly and are noted inline.
+  theme set, and per-scenario setup like `soft_delete_entry` / persisting a pref)
+  use `invoke()` directly and are noted inline.
+- **Deterministic seams (3.8).** `Session::launch` sets `VEDGE_E2E_FAST_KDF=1`
+  (cheap Argon2) and `VEDGE_E2E_BIOMETRIC_MEMORY=1` (in-memory biometric stub).
+  Both are **debug-only + env-gated**, so they cannot exist in a release bundle.
 
 ## References
 
