@@ -11,6 +11,7 @@ pub fn PaginationPage() -> impl IntoView {
 
             <OffsetBasicSection />
             <OffsetFullSection />
+            <SummaryOverrideSection />
             <OffsetSmallTotalSection />
             <OffsetCompactSection />
             <CursorSection />
@@ -68,6 +69,35 @@ fn OffsetFullSection() -> impl IntoView {
                 "page " {move || page.get()} " · size " {move || page_size.get()}
                 " · derived total_pages " {move || total_pages.get()}
             </div>
+        </Section>
+    }
+}
+
+#[component]
+fn SummaryOverrideSection() -> impl IntoView {
+    // Consumers pass an already-interpolated, localized summary via `TextProp`; the
+    // built-in English "start–end of total" is the fallback when the prop is empty.
+    let page = RwSignal::new(1u32);
+    view! {
+        <Section title="Offset — localized summary / summary_empty overrides">
+            <Pagination
+                model=PaginationModel::Offset
+                page=page
+                total_pages=Signal::stored(3u32)
+                total_items=Signal::stored(57u32)
+                page_size=Signal::stored(20u32)
+                summary="Rows 1 through 20 (of 57 total)"
+                on_page_change=Callback::new(move |p: u32| page.set(p))
+            />
+            // Zero-state: `summary_empty` override.
+            <Pagination
+                model=PaginationModel::Offset
+                page=Signal::stored(1u32)
+                total_pages=Signal::stored(1u32)
+                total_items=Signal::stored(0u32)
+                page_size=Signal::stored(20u32)
+                summary_empty="Nothing here yet"
+            />
         </Section>
     }
 }
