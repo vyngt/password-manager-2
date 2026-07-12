@@ -249,10 +249,10 @@ pub fn GeneratorPanel(
             SegmentOption::text(m.as_value(), label)
         })
         .collect();
-    // Separator options are built once (untracked) — the `Select` component's
-    // option list is non-reactive, so these don't relocalize on live language
-    // switch. Stored so the swapped passphrase arm can re-read them per mode switch.
-    let separator_options = StoredValue::new(untrack(|| {
+    // Separator options as a reactive `Signal` — the `Select` component now reads
+    // its option list reactively, so the labels relocalize on a live language switch
+    // (and the swapped passphrase arm re-reads them per mode switch).
+    let separator_options = Signal::derive(move || {
         SeparatorPref::ALL
             .into_iter()
             .map(|s| {
@@ -266,7 +266,7 @@ pub fn GeneratorPanel(
                 SelectItem::option(s.as_value(), label.to_owned())
             })
             .collect::<Vec<_>>()
-    }));
+    });
 
     view! {
         <div class="space-y-6">
@@ -781,7 +781,7 @@ fn RandomControls(prefs: RwSignal<GeneratorPrefs>) -> impl IntoView {
 #[component]
 fn PassphraseControls(
     prefs: RwSignal<GeneratorPrefs>,
-    separator_options: StoredValue<Vec<SelectItem>>,
+    separator_options: Signal<Vec<SelectItem>>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     view! {
@@ -802,7 +802,7 @@ fn PassphraseControls(
                     {move || t!(i18n, generator.separator)}
                 </span>
                 <Select
-                    options=separator_options.get_value()
+                    options=separator_options
                     value=Signal::derive(move || prefs.get().separator.as_value().to_owned())
                     aria_label=Signal::derive(move || {
                         t_string!(i18n, generator.separator).to_owned()

@@ -116,7 +116,11 @@ pub fn AuditPage() -> impl IntoView {
             let result = api::audit::list_audit(&path, &query).await;
             // A newer request superseded this one → drop the stale response so it
             // can't overwrite a fresher page (or latch `loading` off early).
-            if req_gen.get_value() != token {
+            // `try_get_value` (not `get_value`): the page may have unmounted
+            // mid-flight (sidebar nav, idle auto-lock, or OS screen lock), disposing
+            // this token — `get_value` would panic on the disposed value. Mirrors
+            // the health page's scan guard (`health.rs`).
+            if req_gen.try_get_value() != Some(token) {
                 return;
             }
             match result {
@@ -152,77 +156,76 @@ pub fn AuditPage() -> impl IntoView {
                         <span class="text-xs text-text-secondary">
                             {move || t_string!(i18n, audit.filter_action).to_owned()}
                         </span>
-                        {move || {
-                            let mut options = vec![
-                                SelectItem::option(
-                                    "",
-                                    t_string!(i18n, audit.filter_all_actions).to_owned(),
-                                ),
-                            ];
-                            options
-                                .extend(
-                                    AUDIT_ACTIONS
-                                        .iter()
-                                        .map(|a| SelectItem::option(*a, action_label(i18n, a))),
-                                );
-                            view! {
-                                <Select
-                                    options=options
-                                    value=Signal::derive(move || {
-                                        view_state
-                                            .with(|v| v.filters.action.clone().unwrap_or_default())
-                                    })
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, audit.filter_action).to_owned()
-                                    })
-                                    on_change=Callback::new(move |val: String| {
-                                        view_state
-                                            .update(|v| {
-                                                v.set_action(if val.is_empty() { None } else { Some(val) });
-                                            });
-                                    })
-                                />
-                            }
-                        }}
+                        // `options` is a reactive `Signal` so a locale switch
+                        // relocalizes the labels in place — the Select keeps its
+                        // open/highlight/type-ahead state (no remount wrapper).
+                        <Select
+                            options=Signal::derive(move || {
+                                let mut options = vec![
+                                    SelectItem::option(
+                                        "",
+                                        t_string!(i18n, audit.filter_all_actions).to_owned(),
+                                    ),
+                                ];
+                                options
+                                    .extend(
+                                        AUDIT_ACTIONS
+                                            .iter()
+                                            .map(|a| SelectItem::option(*a, action_label(i18n, a))),
+                                    );
+                                options
+                            })
+                            value=Signal::derive(move || {
+                                view_state.with(|v| v.filters.action.clone().unwrap_or_default())
+                            })
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, audit.filter_action).to_owned()
+                            })
+                            on_change=Callback::new(move |val: String| {
+                                view_state
+                                    .update(|v| {
+                                        v.set_action(if val.is_empty() { None } else { Some(val) });
+                                    });
+                            })
+                        />
                     </div>
 
                     <div class="flex flex-col gap-1" data-testid="audit-filter-entry">
                         <span class="text-xs text-text-secondary">
                             {move || t_string!(i18n, audit.filter_entry).to_owned()}
                         </span>
-                        {move || {
-                            let mut options = vec![
-                                SelectItem::option(
-                                    "",
-                                    t_string!(i18n, audit.filter_all_entries).to_owned(),
-                                ),
-                            ];
-                            options
-                                .extend(
-                                    index
-                                        .get()
-                                        .into_iter()
-                                        .map(|e| SelectItem::option(e.id, e.name)),
-                                );
-                            view! {
-                                <Select
-                                    options=options
-                                    value=Signal::derive(move || {
-                                        view_state
-                                            .with(|v| v.filters.entry_id.clone().unwrap_or_default())
-                                    })
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, audit.filter_entry).to_owned()
-                                    })
-                                    on_change=Callback::new(move |val: String| {
-                                        view_state
-                                            .update(|v| {
-                                                v.set_entry(if val.is_empty() { None } else { Some(val) });
-                                            });
-                                    })
-                                />
-                            }
-                        }}
+                        // Reactive `options`: relocalizes the "all entries" label and
+                        // rebuilds when the entry index changes — without remounting.
+                        <Select
+                            options=Signal::derive(move || {
+                                let mut options = vec![
+                                    SelectItem::option(
+                                        "",
+                                        t_string!(i18n, audit.filter_all_entries).to_owned(),
+                                    ),
+                                ];
+                                options
+                                    .extend(
+                                        index
+                                            .get()
+                                            .into_iter()
+                                            .map(|e| SelectItem::option(e.id, e.name)),
+                                    );
+                                options
+                            })
+                            value=Signal::derive(move || {
+                                view_state.with(|v| v.filters.entry_id.clone().unwrap_or_default())
+                            })
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, audit.filter_entry).to_owned()
+                            })
+                            on_change=Callback::new(move |val: String| {
+                                view_state
+                                    .update(|v| {
+                                        v.set_entry(if val.is_empty() { None } else { Some(val) });
+                                    });
+                            })
+                        />
                     </div>
 
                     <div class="flex flex-col gap-1" data-testid="audit-filter-since">
@@ -262,7 +265,11 @@ pub fn AuditPage() -> impl IntoView {
                     </div>
                 </div>
 
-                // ---- Localized summary (Pagination's own summary is hardcoded English) ----
+                // Localized result-count summary. Kept as the page's own element (above
+                // the table): Pagination's built-in summary is now localizable, but
+                // moving this into it would reposition/restyle it, add an aria-live +
+                // empty nav landmark for single/empty results, and duplicate the paging
+                // numbers. DRIFT vs the spec's "delete this <p>" — see 4.6b changelog.
                 <p class="text-xs text-text-tertiary" data-testid="audit-summary">
                     {move || {
                         let total = page_data.with(|p| p.total);

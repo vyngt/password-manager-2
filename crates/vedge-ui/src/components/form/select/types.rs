@@ -1,5 +1,5 @@
 /// A single selectable option.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectOption {
     pub value: String,
     pub label: String,
@@ -17,14 +17,14 @@ impl SelectOption {
 }
 
 /// A labeled group of options.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectGroup {
     pub label: String,
     pub options: Vec<SelectOption>,
 }
 
 /// Either a standalone option or a group of options.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SelectItem {
     Option(SelectOption),
     Group(SelectGroup),

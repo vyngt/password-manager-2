@@ -9,7 +9,7 @@ use wasm_bindgen::JsCast;
 
 #[component]
 pub fn Select(
-    options: Vec<SelectItem>,
+    #[prop(into)] options: Signal<Vec<SelectItem>>,
     #[prop(into, default = None)] value: Option<Signal<String>>,
     #[prop(optional, default = "")] default_value: &'static str,
     #[prop(into, default = TextProp::default())] placeholder: TextProp,
@@ -23,9 +23,12 @@ pub fn Select(
     let internal = RwSignal::new(default_value.to_owned());
     let selected = Memo::new(move |_| value.map_or_else(|| internal.get(), |s| s.get()));
 
-    // Flatten for keyboard navigation
-    let flat_options = StoredValue::new(flatten_options(&options));
-    let items = StoredValue::new(options);
+    // Flatten for keyboard navigation. A `Memo` (not a snapshot) so a reactive
+    // `options` (e.g. a locale switch rebuilding the labels) relocalizes the trigger
+    // label + option list **without remounting** — the panel/highlight/type-ahead
+    // state below all survive — while re-flattening only when `options` actually
+    // changes (the keyboard handlers / trigger label read it per event).
+    let flat_options = Memo::new(move |_| flatten_options(&options.get()));
 
     // Panel state (same pattern as ColorPicker)
     let mounted = RwSignal::new(false);
@@ -113,7 +116,7 @@ pub fn Select(
 
         // Highlight current selection
         let sel = selected.get_untracked();
-        let flat = flat_options.get_value();
+        let flat = flat_options.get();
         let idx = flat.iter().position(|o| o.value == sel);
         highlighted.set(idx);
 
@@ -158,7 +161,7 @@ pub fn Select(
         if sel.is_empty() {
             return None;
         }
-        let flat = flat_options.get_value();
+        let flat = flat_options.get();
         flat.iter()
             .find(|o| o.value == sel)
             .map(|o| o.label.clone())
@@ -200,7 +203,7 @@ pub fn Select(
 
     // ---- Panel keyboard ----
     let handle_panel_keydown = move |ev: web_sys::KeyboardEvent| {
-        let flat = flat_options.get_value();
+        let flat = flat_options.get();
         let len = flat.len();
         if len == 0 {
             return;
@@ -292,11 +295,22 @@ pub fn Select(
     };
 
     // ---- Build option views (rendered inside Show) ----
+    // The render order matches `flatten_options`, so a running counter gives each
+    // option its flat index — no per-option `flat_options.get()` re-flatten (that was
+    // O(n²) allocations per open for a large list).
     let render_items = move || {
-        items
-            .get_value()
+        let mut flat_idx = 0usize;
+        options
+            .get()
             .into_iter()
-            .map(|item| render_select_item(item, flat_options, highlighted, selected, select_value))
+            .map(|item| {
+                let base = flat_idx;
+                flat_idx += match &item {
+                    SelectItem::Option(_) => 1,
+                    SelectItem::Group(g) => g.options.len(),
+                };
+                render_select_item(item, base, highlighted, selected, select_value)
+            })
             .collect::<Vec<_>>()
     };
 
@@ -380,14 +394,14 @@ pub fn Select(
 
 fn render_select_item(
     item: SelectItem,
-    flat_options: StoredValue<Vec<super::types::SelectOption>>,
+    base_flat_idx: usize,
     highlighted: RwSignal<Option<usize>>,
     selected: Memo<String>,
     select_value: impl Fn(String) + Copy + 'static,
 ) -> impl IntoView {
     match item {
         SelectItem::Option(opt) => {
-            render_option(opt, flat_options, highlighted, selected, select_value).into_any()
+            render_option(opt, base_flat_idx, highlighted, selected, select_value).into_any()
         }
         SelectItem::Group(group) => {
             let label = group.label.clone();
@@ -399,9 +413,10 @@ fn render_select_item(
                     {group
                         .options
                         .into_iter()
-                        .map(|opt| render_option(
+                        .enumerate()
+                        .map(|(i, opt)| render_option(
                             opt,
-                            flat_options,
+                            base_flat_idx + i,
                             highlighted,
                             selected,
                             select_value,
@@ -416,22 +431,14 @@ fn render_select_item(
 
 fn render_option(
     opt: super::types::SelectOption,
-    flat_options: StoredValue<Vec<super::types::SelectOption>>,
+    flat_idx: usize,
     highlighted: RwSignal<Option<usize>>,
     selected: Memo<String>,
     select_value: impl Fn(String) + Copy + 'static,
 ) -> impl IntoView {
-    let val = opt.value.clone();
     let val2 = opt.value.clone();
     let label = opt.label.clone();
     let opt_disabled = opt.disabled;
-
-    // Find this option's flat index
-    let flat_idx = flat_options
-        .get_value()
-        .iter()
-        .position(|o| o.value == val)
-        .unwrap_or(0);
 
     let is_selected_cls = {
         let v = val2.clone();
