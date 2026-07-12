@@ -2,6 +2,7 @@ use crate::components::form::select::{Select, SelectItem};
 use crate::components::foundation::button::Button;
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Variant};
+use crate::utils::text::text_or;
 use icondata as i;
 use leptos::either::{Either, EitherOf3};
 use leptos::prelude::*;
@@ -46,6 +47,14 @@ pub fn Pagination(
     #[prop(into, default = TextProp::from("Next page"))] next_label: TextProp,
     #[prop(into, default = TextProp::from("Rows per page"))] page_size_label: TextProp,
     #[prop(into, default = TextProp::from("Pagination"))] nav_label: TextProp,
+    /// Localized summary text, already interpolated by the consumer (e.g.
+    /// "Showing 1–20 of 57"). Empty → the built-in English "start–end of total".
+    /// Rendered in the Offset model when `total_items` + `page_size` are supplied.
+    #[prop(into, default = TextProp::default())]
+    summary: TextProp,
+    /// Localized zero-state summary. Empty → the built-in English "0 of 0".
+    #[prop(into, default = TextProp::default())]
+    summary_empty: TextProp,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView {
     let root_cls = ["pagination", class].join(" ");
@@ -84,7 +93,9 @@ pub fn Pagination(
     });
 
     // ---- Center zone: summary label (offset only, when total_items provided) ----
-    let summary = (model == PaginationModel::Offset)
+    // Consumer-provided localized `summary`/`summary_empty` win; the built-in
+    // English "start–end of total" is the standalone fallback.
+    let summary_view = (model == PaginationModel::Offset)
         .then(|| {
             total_items.zip(page_size).map(|(items_sig, size_sig)| {
                 let p = page;
@@ -93,7 +104,11 @@ pub fn Pagination(
                         {move || {
                             let total = items_sig.get();
                             if total == 0 {
-                                return String::from("0 of 0");
+                                return text_or(summary_empty, "0 of 0");
+                            }
+                            let localized = summary.get();
+                            if !localized.is_empty() {
+                                return localized;
                             }
                             let size = size_sig.get().max(1);
                             let current = p.get().max(1);
@@ -267,7 +282,7 @@ pub fn Pagination(
     view! {
         <nav aria-label=move || nav_label.get() class=root_cls>
             {size_control}
-            {summary}
+            {summary_view}
             {controls}
         </nav>
     }

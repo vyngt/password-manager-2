@@ -65,7 +65,12 @@ pub fn TotpReveal(entry_id: String, on_copy: Callback<FieldSelectorDto>) -> impl
         let err_prefix = untrack(|| t_string!(i18n, vault.err_reveal_totp).to_owned());
         spawn_local(async move {
             let result = api::totp::reveal_totp(&vault_path, &id).await;
-            refreshing.set_value(false);
+            // Post-await: the detail drawer may have unmounted mid-reveal (entry
+            // switch, idle auto-lock, or OS screen lock), disposing these
+            // component-scoped values. Use the `try_*` forms so a disposed write is
+            // an explicit no-op rather than leaning on `set_value`/`update_value`'s
+            // implicit swallow.
+            refreshing.try_set_value(false);
             match result {
                 Ok(c) => {
                     code.set(c.code);
@@ -73,7 +78,7 @@ pub fn TotpReveal(entry_id: String, on_copy: Callback<FieldSelectorDto>) -> impl
                     period.set(c.period);
                     shown.set(true);
                     // Start the 1s ticker once, after the first successful reveal.
-                    ticker.update_value(|slot| {
+                    ticker.try_update_value(|slot| {
                         if slot.is_none() {
                             let tick = move || {
                                 // Idle while a refresh is in flight (never re-fire a
@@ -104,7 +109,7 @@ pub fn TotpReveal(entry_id: String, on_copy: Callback<FieldSelectorDto>) -> impl
                 Err(e) => {
                     show_error(format!("{err_prefix}{e}"));
                     shown.set(false);
-                    ticker.update_value(|slot| {
+                    ticker.try_update_value(|slot| {
                         if let Some(td) = slot.take() {
                             td();
                         }

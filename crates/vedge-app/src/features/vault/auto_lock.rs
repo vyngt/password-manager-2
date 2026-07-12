@@ -167,18 +167,29 @@ pub fn AutoLock() -> impl IntoView {
                 return;
             };
             checking.set_value(true);
+            // Read the localized toast copy BEFORE the await, while still mounted:
+            // `expired_msg`/`dismiss_msg` are component-local `Memo`s and a read on a
+            // disposed `Memo` PANICS. The view can unmount mid-poll (idle lock, nav,
+            // OS screen-lock), so capture the strings now and move them into the future.
+            let expired = expired_msg.get_untracked();
+            let dismiss = dismiss_msg.get_untracked();
             spawn_local(async move {
                 // Lock ONLY on a definitive "backend says locked" (`Ok(false)`). An
                 // `Err` means "couldn't ask" (a transient IPC blip) — skip this
                 // tick rather than eject the user mid-task.
                 let locked = matches!(api::vault::is_unlocked(&p).await, Ok(false));
-                checking.set_value(false);
+                // Post-await the view may be gone: the `try_*` guard writes are no-ops.
+                // Deliberately NOT an early-return — the `toast` (app-level context) and
+                // `lock_trigger` (a component `RwSignal`; `.update` no-ops once disposed)
+                // still run so a real backend lock propagates. The toast copy was read
+                // pre-await above (the `Memo`s would panic if read here after disposal).
+                checking.try_set_value(false);
                 if locked {
-                    locking.set_value(true);
+                    locking.try_set_value(true);
                     toast.show(
-                        ToastInput::new(expired_msg.get_untracked())
+                        ToastInput::new(expired)
                             .variant(ToastVariant::Warning)
-                            .dismiss_label(dismiss_msg.get_untracked()),
+                            .dismiss_label(dismiss),
                     );
                     lock_trigger.update(|n| *n = n.wrapping_add(1));
                 }
