@@ -7,17 +7,17 @@
 //! (the event-driven `WTSRegisterSessionNotification` route was rejected for
 //! exactly that cost; see the slice spec).
 //!
-//! ## 🔴 Flag-semantics gate (slice 4.5b) — why this is wired to nothing
+//! ## Flag-semantics — confirmed on-device (slice 4.5b)
 //!
-//! The lock/unlock *sense* of `SessionFlags` is documented as **possibly inverted
-//! on the console session** (reportedly since Windows 7). An inversion would lock
-//! the vault whenever the screen is *un*locked — worse than no feature at all.
-//! Until an on-device Win+L smoke confirms the sense on the target machine,
-//! [`WindowsScreenLockWatcher::is_screen_locked`] **logs the raw flag and returns
-//! `Ok(false)` on a successful query** (a query failure returns `Err`, which the
-//! scheduler fails open on) — so either way it **never locks the vault**.
-//! Post-smoke, the single marked line below becomes the confirmed interpretation.
-//! The smoke result is recorded in this slice's changelog (acceptance criterion #1).
+//! The lock/unlock *sense* of `SessionFlags` is documented as possibly **inverted
+//! on the console session** (reportedly since Windows 7) — an inversion would lock
+//! the vault whenever the screen is *un*locked. So it was **smoked before wiring**
+//! (acceptance criterion #1): on the target (2026-07-12) `SessionFlags` read **`1`
+//! (`WTS_SESSIONSTATE_UNLOCK`) while unlocked** and **`0` (`WTS_SESSIONSTATE_LOCK`)
+//! while locked** — the documented, non-inverted sense. So [`WindowsScreenLockWatcher::is_screen_locked`]
+//! returns `Ok(flags == 0)`. A query failure returns `Err`, which the scheduler
+//! fails open on (never locks). The raw flag is still logged on change for
+//! diagnostics.
 //!
 //! **Verification note:** the lock/unlock transition cannot be exercised headless
 //! (`WebDriver` cannot lock a workstation). It is validated by the manual on-device
@@ -39,10 +39,15 @@ use crate::domain::vault::errors::VaultError;
 /// small `LONG`s (`0`/`1`, or `-1` for unknown), so `i64::MIN` can't collide.
 const FLAG_UNLOGGED: i64 = i64::MIN;
 
+/// The `SessionFlags` value meaning "locked" — `WTS_SESSIONSTATE_LOCK`. Confirmed
+/// on-device (2026-07-12) as the non-inverted sense (unlocked reads `1` =
+/// `WTS_SESSIONSTATE_UNLOCK`); see this module's header.
+const SESSION_FLAGS_LOCKED: i32 = 0;
+
 pub struct WindowsScreenLockWatcher {
-    /// Last `SessionFlags` value we logged, so the wired-to-nothing diagnostic
-    /// (the flag-semantics gate) logs each *change* once instead of on every 5 s
-    /// tick. `i64` holds the `i32` flag plus the [`FLAG_UNLOGGED`] sentinel.
+    /// Last `SessionFlags` value we logged, so the diagnostic logs each *change*
+    /// once instead of on every 5 s tick. `i64` holds the `i32` flag plus the
+    /// [`FLAG_UNLOGGED`] sentinel.
     last_logged: AtomicI64,
 }
 
@@ -55,16 +60,14 @@ impl WindowsScreenLockWatcher {
     }
 
     /// Log the raw `SessionFlags` at info level, but only when it changes from the
-    /// last logged value — the on-device smoke reads these lines across a Win+L /
-    /// unlock. Quiet on every unchanged tick.
+    /// last logged value — quiet on every unchanged tick.
     fn log_flag_on_change(&self, flags: i32) {
         let cur = i64::from(flags);
         if self.last_logged.swap(cur, Ordering::Relaxed) != cur {
             tracing::info!(
                 session_flags = flags,
-                "screen-lock probe (slice 4.5b, wired to nothing): raw WTS SessionFlags — \
-                 lock and unlock the screen and read these to confirm the LOCK/UNLOCK sense \
-                 before wiring the vault lock"
+                locked = flags == SESSION_FLAGS_LOCKED,
+                "screen-lock: WTS SessionFlags changed"
             );
         }
     }
@@ -150,10 +153,9 @@ impl ScreenLockWatcher for WindowsScreenLockWatcher {
     fn is_screen_locked(&self) -> Result<bool, VaultError> {
         let flags = query_session_flags()?;
         self.log_flag_on_change(flags);
-        // 🔴 Flag-semantics gate: return fail-safe `false` (never lock) until the
-        // on-device Win+L smoke confirms the sense on the target. Post-smoke this
-        // becomes `Ok(flags == 0)` — `WTS_SESSIONSTATE_LOCK` — or its inverse if the
-        // console session inverts it. `flags` is already surfaced via the log above.
-        Ok(false)
+        // Confirmed on-device (see header): locked ⇔ `SessionFlags == 0`
+        // (`WTS_SESSIONSTATE_LOCK`); unlocked reads `1`. A query failure already
+        // returned `Err` above, which the scheduler fails open on.
+        Ok(flags == SESSION_FLAGS_LOCKED)
     }
 }
