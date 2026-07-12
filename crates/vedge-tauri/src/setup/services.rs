@@ -25,7 +25,7 @@ use vedge_core::application::app::ports::{
 };
 use vedge_core::application::vault::ports::{
     BiometricAuthenticator, BlobStoreFactory, BreachChecker, ClipboardProvider, CryptoProvider,
-    KeyDerivationProvider, KeychainProvider, VaultRepositoryFactory,
+    KeyDerivationProvider, KeychainProvider, ScreenLockWatcher, VaultRepositoryFactory,
 };
 use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
 use vedge_core::infrastructure::biometric::platform_authenticator;
@@ -33,6 +33,7 @@ use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
 use vedge_core::infrastructure::clipboard::ArboardClipboardProvider;
 use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
 use vedge_core::infrastructure::keychain::OsKeychainProvider;
+use vedge_core::infrastructure::screen_lock::platform_screen_lock_watcher;
 use vedge_core::infrastructure::sqlite::app::{
     AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
     SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
@@ -132,6 +133,32 @@ fn resolve_breach() -> Arc<dyn BreachChecker> {
     Arc::new(HibpBreachChecker::new())
 }
 
+/// Select the OS screen-lock watcher (slice 4.5b). **Production always uses the
+/// platform watcher** (`platform_screen_lock_watcher` → a Windows WTS poll, or a
+/// no-op stub off Windows). Under the same two-gate seam as [`resolve_breach`] —
+/// a debug build (`cfg(debug_assertions)`) **and** a non-empty
+/// `VEDGE_E2E_SCREEN_LOCK_MEMORY` (a **sentinel-file path**) — the e2e harness
+/// swaps in an in-memory watcher that reports *locked* exactly while that file
+/// exists. The harness creates it only after setup, driving a **deterministic**
+/// `false → true` edge on a live session (no timing race). Neither gate can hold
+/// in a shipped bundle.
+#[cfg(debug_assertions)]
+fn resolve_screen_lock_watcher() -> Arc<dyn ScreenLockWatcher> {
+    if let Some(path) = std::env::var_os("VEDGE_E2E_SCREEN_LOCK_MEMORY").filter(|v| !v.is_empty()) {
+        return Arc::new(
+            vedge_core::infrastructure::screen_lock::MemoryScreenLockWatcher::watching_file(
+                std::path::PathBuf::from(path),
+            ),
+        );
+    }
+    platform_screen_lock_watcher()
+}
+
+#[cfg(not(debug_assertions))]
+fn resolve_screen_lock_watcher() -> Arc<dyn ScreenLockWatcher> {
+    platform_screen_lock_watcher()
+}
+
 /// Default hard-session ceiling: 8 hours. It's a *ceiling*, not an idle timer —
 /// a normal user hits the 15-minute idle lock long first, so this fires only
 /// when the frontend **failed** to lock (a hung/detached `WebView`), which is
@@ -211,6 +238,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
     let biometric: Arc<dyn BiometricAuthenticator> = resolve_biometric(Arc::clone(&crypto));
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(ArboardClipboardProvider::new()?);
     let breach: Arc<dyn BreachChecker> = resolve_breach();
+    let screen_lock: Arc<dyn ScreenLockWatcher> = resolve_screen_lock_watcher();
 
     // Pre-wire the unlock use case so per-vault repo/blob construction is
     // the use case's job at `execute` time. The factories are cheap Arcs.
@@ -240,6 +268,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         biometric,
         clipboard,
         breach,
+        screen_lock,
         recent_vaults,
         app_settings,
         themes,
@@ -298,6 +327,9 @@ mod tests {
         // No network in tests — the no-op double never reports a breach.
         let breach: Arc<dyn BreachChecker> =
             Arc::new(vedge_core::infrastructure::breach::NoopBreachChecker::new());
+        // No OS session to poll in tests — a memory watcher that never reports locked.
+        let screen_lock: Arc<dyn ScreenLockWatcher> =
+            Arc::new(vedge_core::infrastructure::screen_lock::MemoryScreenLockWatcher::new());
 
         let unlock_vault = UnlockVault {
             repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
@@ -325,6 +357,7 @@ mod tests {
             biometric,
             clipboard,
             breach,
+            screen_lock,
             recent_vaults,
             app_settings,
             themes,

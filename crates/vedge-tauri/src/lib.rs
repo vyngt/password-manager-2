@@ -65,12 +65,14 @@ pub fn run() {
             // hook wants `Box<dyn Error>` — just re-box.
             let state = tauri::async_runtime::block_on(setup::services::compose(app))
                 .map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?;
-            // Grab the session-registry handle before `manage` consumes `state`,
-            // then start the background reaper that enforces the hard session TTL
-            // (slice 4.5a). Both share the same `Arc<Mutex<..>>` map.
+            // Grab the session-registry handle + screen-lock watcher before
+            // `manage` consumes `state`, then start the background scheduler:
+            // the hard-session-TTL reaper (slice 4.5a) plus the OS screen-lock
+            // sweep (slice 4.5b), sharing the same `Arc<Mutex<..>>` map.
             let sessions = state.sessions_handle();
+            let screen_lock = std::sync::Arc::clone(&state.screen_lock);
             app.manage(state);
-            scheduler::spawn(sessions);
+            scheduler::spawn(sessions, screen_lock);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
