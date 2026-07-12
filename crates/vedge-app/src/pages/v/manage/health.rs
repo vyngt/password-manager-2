@@ -223,6 +223,20 @@ pub fn HealthPage() -> impl IntoView {
                 .map_or_else(Vec::new, |r| reuse_groups(&r.findings, &names))
         })
     });
+    // Whether a breach check ran this scan (gates the breached summary stat so a
+    // `0` doesn't read as a false all-clear for the off-by-default case).
+    let breach_checked = Signal::derive(move || {
+        health
+            .report
+            .with(|r| r.as_ref().is_some_and(|r| r.breach_checked))
+    });
+    // The opt-in breach check ran but the network phase failed — the rest of the
+    // report is still valid, so we surface an inline notice rather than an error.
+    let breach_failed = Signal::derive(move || {
+        health
+            .report
+            .with(|r| r.as_ref().is_some_and(|r| r.breach_check_failed))
+    });
 
     view! {
         <div class="h-full overflow-y-auto p-6" data-testid="health-page">
@@ -297,7 +311,18 @@ pub fn HealthPage() -> impl IntoView {
                                         summary=summary
                                         entries_scanned=entries_scanned
                                         affected_entries=affected_entries
+                                        breach_checked=breach_checked
                                     />
+                                    <Show when=move || breach_failed.get()>
+                                        <p
+                                            class="text-xs text-warning-text rounded-md border border-warning/40 bg-warning-muted px-3 py-2"
+                                            data-testid="health-breach-unavailable"
+                                        >
+                                            {move || {
+                                                t_string!(i18n, health.breach_unavailable).to_owned()
+                                            }}
+                                        </p>
+                                    </Show>
                                     <Show
                                         when=move || has_findings.get()
                                         fallback=move || {

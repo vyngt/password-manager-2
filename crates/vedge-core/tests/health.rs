@@ -16,15 +16,18 @@ mod common;
 use common::{Harness, build_unlock};
 use secrecy::SecretString;
 
-use vedge_core::application::vault::ports::{CryptoProvider, VaultRepository};
+use vedge_core::application::vault::ports::{BreachChecker, CryptoProvider, VaultRepository};
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::domain::shared::{EntryId, Timestamp, now};
 use vedge_core::domain::vault::aad::entry_aad;
 use vedge_core::domain::vault::entities::EntryRow;
+use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{
-    ApiKeyPayload, CardPayload, CommonMeta, EntryPayload, EntryType, LoginPayload,
+    ApiKeyPayload, CardPayload, CommonMeta, EntryPayload, EntryType, IdentityPayload, LoginPayload,
+    NotePayload, SshKeyPayload,
 };
 use vedge_core::domain::vault::totp::TotpUpdate;
+use vedge_core::infrastructure::breach::MemoryBreachChecker;
 use vedge_core::{
     AgeConfidence, AuditAction, AuditQuery, CreateEntryInput, FindingKind, GetEntryInput,
     HealthScanInput, TotpParams, UnlockVaultInput, UpdateEntryInput, create_entry, get_entry,
@@ -165,10 +168,10 @@ async fn scan_health_is_audit_silent() {
 
     assert_eq!(count_action(&h, AuditAction::Viewed).await, 0);
 
-    scan_health(&session, HealthScanInput::default())
+    scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
-    scan_health(&session, HealthScanInput::default())
+    scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
 
@@ -187,7 +190,7 @@ async fn scan_health_detects_reuse_across_types() {
     create(&mut session, login("GitHub", "alice", "SharedSecret_9x")).await;
     create(&mut session, api_key("AWS", "SharedSecret_9x")).await;
 
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
 
@@ -221,7 +224,7 @@ async fn reuse_ignores_intra_entry_duplicate() {
     });
     create(&mut session, payload).await;
 
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
     assert_eq!(
@@ -237,7 +240,7 @@ async fn reuse_never_emits_digest() {
     create(&mut session, login("GitHub", "alice", "topsecretpassword")).await;
     create(&mut session, api_key("AWS", "topsecretpassword")).await;
 
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
     let dbg = format!("{report:?}");
@@ -259,7 +262,7 @@ async fn pin_and_cvv_exempt_from_weak_but_in_reuse() {
     .await;
     create(&mut session, login("Weak", "bob", "1234")).await;
 
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
 
@@ -287,7 +290,7 @@ async fn weak_uses_entry_name_as_user_input() {
     let mut session = unlock(&h).await;
     create(&mut session, login("GitHub", "alice", "github2024")).await;
 
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
     assert!(
@@ -302,7 +305,7 @@ async fn scan_health_skips_unknown_payload() {
     let uid = h.seed_unknown("mystery", "FutureType").await;
     let session = unlock(&h).await;
 
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
     assert!(
@@ -322,7 +325,7 @@ async fn scan_health_skips_trashed() {
     let id = create(&mut session, login("Weak", "bob", "1234")).await;
     soft_delete_entry(&mut session, &id).await.unwrap();
 
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
     assert_eq!(report.entries_scanned, 0, "trashed entries are not scanned");
@@ -415,7 +418,7 @@ async fn age_exact_from_stamp_else_estimated_from_created_at() {
     let estimated = seed_login_aged(&h, "OldUnstamped", "pw2", old, None).await;
 
     let session = unlock(&h).await;
-    let report = scan_health(&session, HealthScanInput::default())
+    let report = scan_health(&session, HealthScanInput::default(), None)
         .await
         .unwrap();
 
@@ -431,4 +434,281 @@ async fn age_exact_from_stamp_else_estimated_from_created_at() {
     assert_eq!(conf(&exact), Some(AgeConfidence::Exact));
     assert_eq!(conf(&estimated), Some(AgeConfidence::Estimated));
     assert_eq!(report.summary.old, 2);
+}
+
+// ---- breach detection (slice 4.4) ----------------------------------------
+
+fn note(name: &str, content: &str) -> EntryPayload {
+    EntryPayload::Note(NotePayload {
+        meta: CommonMeta::new(name, EntryType::Note),
+        content: SecretString::from(content),
+    })
+}
+
+/// An SSH key with **no passphrase** — every secret field is non-`Scored`.
+fn ssh_no_passphrase(name: &str, private_key: &str) -> EntryPayload {
+    EntryPayload::SshKey(SshKeyPayload {
+        meta: CommonMeta::new(name, EntryType::SshKey),
+        private_key_pem: SecretString::from(private_key),
+        passphrase: None,
+        public_key: String::new(),
+        fingerprint: String::new(),
+        key_type: "ed25519".to_owned(),
+    })
+}
+
+fn identity(name: &str, national_id: &str) -> EntryPayload {
+    EntryPayload::Identity(IdentityPayload {
+        meta: CommonMeta::new(name, EntryType::Identity),
+        first_name: "A".to_owned(),
+        last_name: "B".to_owned(),
+        email: "a@b.co".to_owned(),
+        phone: None,
+        address: None,
+        date_of_birth: None,
+        national_id: Some(SecretString::from(national_id)),
+    })
+}
+
+/// A checker that always fails — models offline / proxy / rate-limit.
+struct FailingChecker;
+
+#[async_trait::async_trait]
+impl BreachChecker for FailingChecker {
+    async fn range(&self, _prefix: &str) -> Result<Vec<(String, u32)>, VaultError> {
+        Err(VaultError::BreachLookup("network down".into()))
+    }
+}
+
+fn breached_count(report: &vedge_core::HealthReport) -> usize {
+    report
+        .findings
+        .iter()
+        .filter(|f| matches!(f.kind, FindingKind::Breached { .. }))
+        .count()
+}
+
+#[tokio::test]
+async fn breach_never_sends_more_than_the_prefix() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    create(&mut session, login("GitHub", "alice", "hunter2horse")).await;
+    create(&mut session, api_key("AWS", "s3cr3t-key-value")).await;
+
+    let checker = MemoryBreachChecker::empty();
+    scan_health(&session, HealthScanInput::default(), Some(&checker))
+        .await
+        .unwrap();
+
+    let asked = checker.asked_prefixes();
+    assert!(!asked.is_empty(), "the two Scored secrets are looked up");
+    for p in &asked {
+        assert_eq!(p.len(), 5, "only the 5-hex prefix ever crosses: {p:?}");
+        assert!(
+            p.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_lowercase()),
+            "uppercase hex prefix only: {p:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn breach_only_checks_scored_fields() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    // Nothing here is a credential-like (Scored) field.
+    create(
+        &mut session,
+        note("Secret note", "the launch codes are 0000"),
+    )
+    .await;
+    create(
+        &mut session,
+        ssh_no_passphrase("Server", "-----BEGIN OPENSSH PRIVATE KEY-----abc"),
+    )
+    .await;
+    create(
+        &mut session,
+        card("Visa", "4111111111111111", "123", Some("4321")),
+    )
+    .await;
+    create(&mut session, identity("Me", "123-45-6789")).await;
+
+    let checker = MemoryBreachChecker::empty();
+    scan_health(&session, HealthScanInput::default(), Some(&checker))
+        .await
+        .unwrap();
+
+    assert!(
+        checker.asked_prefixes().is_empty(),
+        "no prefix is ever requested for note / ssh key / card / national-id fields"
+    );
+}
+
+#[tokio::test]
+async fn breach_dedupes_by_prefix() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    // Two entries share ONE password → one distinct secret → one lookup.
+    create(&mut session, login("A", "a", "SharedPassword_1")).await;
+    create(&mut session, login("B", "b", "SharedPassword_1")).await;
+
+    let checker = MemoryBreachChecker::empty();
+    scan_health(&session, HealthScanInput::default(), Some(&checker))
+        .await
+        .unwrap();
+    assert_eq!(
+        checker.asked_prefixes().len(),
+        1,
+        "a reused secret is looked up once, not once per entry"
+    );
+
+    // A third entry with a DIFFERENT password → a second distinct lookup.
+    create(&mut session, login("C", "c", "DifferentPassword_2")).await;
+    let checker2 = MemoryBreachChecker::empty();
+    scan_health(&session, HealthScanInput::default(), Some(&checker2))
+        .await
+        .unwrap();
+    assert_eq!(
+        checker2.asked_prefixes().len(),
+        2,
+        "two distinct secrets → two lookups (deduped by prefix, not per entry)"
+    );
+}
+
+#[tokio::test]
+async fn breach_emits_finding_for_every_group_member() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    for name in ["A", "B", "C"] {
+        create(&mut session, login(name, "u", "PwnedShared_42")).await;
+    }
+
+    let checker = MemoryBreachChecker::with_breached(&[("PwnedShared_42", 42)]);
+    let report = scan_health(&session, HealthScanInput::default(), Some(&checker))
+        .await
+        .unwrap();
+
+    assert_eq!(breached_count(&report), 3, "one Breached per group member");
+    assert_eq!(report.summary.breached, 3);
+    for f in report
+        .findings
+        .iter()
+        .filter(|f| matches!(f.kind, FindingKind::Breached { .. }))
+    {
+        assert_eq!(f.severity, vedge_core::Severity::High);
+        assert!(matches!(f.kind, FindingKind::Breached { count: 42 }));
+    }
+    assert!(
+        !report.breach_check_failed,
+        "a successful lookup does not set the failure flag"
+    );
+    assert!(report.breach_checked, "the check ran");
+}
+
+/// A breached value shared between a Scored field (Login password) and a
+/// policy-exempt field (a card PIN): only the Scored member is surfaced as a
+/// Breached finding — the PIN is not labelled a "breached password" (Decision 5).
+#[tokio::test]
+async fn breach_flags_only_scored_member_of_shared_group() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    create(&mut session, login("Bank", "u", "1234")).await;
+    create(
+        &mut session,
+        card("Visa", "4111111111111111", "999", Some("1234")),
+    )
+    .await;
+
+    let checker = MemoryBreachChecker::with_breached(&[("1234", 500)]);
+    let report = scan_health(&session, HealthScanInput::default(), Some(&checker))
+        .await
+        .unwrap();
+
+    let breached: Vec<_> = report
+        .findings
+        .iter()
+        .filter(|f| matches!(f.kind, FindingKind::Breached { .. }))
+        .collect();
+    assert_eq!(breached.len(), 1, "only the Scored member is flagged");
+    assert_eq!(report.summary.breached, 1);
+    assert_eq!(
+        breached[0].field,
+        Some(vedge_core::SecretField::LoginPassword)
+    );
+    assert!(
+        !report.findings.iter().any(|f| {
+            matches!(f.kind, FindingKind::Breached { .. })
+                && f.field == Some(vedge_core::SecretField::CardPin)
+        }),
+        "the exempt card PIN is never labelled a breached password"
+    );
+}
+
+#[tokio::test]
+async fn breach_failure_degrades_not_fails() {
+    let h = Harness::fresh().await;
+    // An old entry (400 days) for the Old dimension.
+    let old = now() - chrono::Duration::days(400);
+    seed_login_aged(&h, "Old", "old_unique_pw", old, None).await;
+    let mut session = unlock(&h).await;
+    // Two entries sharing a WEAK password → weak + reused dimensions.
+    create(&mut session, login("A", "a", "123")).await;
+    create(&mut session, login("B", "b", "123")).await;
+
+    let report = scan_health(&session, HealthScanInput::default(), Some(&FailingChecker))
+        .await
+        .expect("a breach lookup failure must NOT fail the scan");
+
+    assert!(report.breach_check_failed, "the failure is surfaced");
+    assert_eq!(
+        breached_count(&report),
+        0,
+        "zero Breached findings on failure"
+    );
+    assert!(report.summary.weak >= 1, "weak still detected");
+    assert!(report.summary.reused >= 1, "reuse still detected");
+    assert!(report.summary.old >= 1, "old still detected");
+}
+
+#[tokio::test]
+async fn breach_disabled_makes_no_network_call() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    create(&mut session, login("GitHub", "alice", "hunter2horse")).await;
+
+    // `breach: None` short-circuits the whole phase. The report records that no
+    // check ran (`breach_checked == false`) — an observable proof, not the vacuous
+    // "inspect a checker the scan never received" — and no Breached findings appear.
+    let report = scan_health(&session, HealthScanInput::default(), None)
+        .await
+        .unwrap();
+
+    assert!(!report.breach_checked, "None ⇒ no breach check ran");
+    assert_eq!(
+        breached_count(&report),
+        0,
+        "disabled → no Breached findings"
+    );
+    assert!(!report.breach_check_failed);
+}
+
+#[tokio::test]
+async fn breach_discards_padding_rows() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    create(&mut session, login("GitHub", "alice", "padded_pw_x")).await;
+
+    // A corpus row with count == 0 is HIBP padding — it must not count as a hit.
+    let checker = MemoryBreachChecker::with_breached(&[("padded_pw_x", 0)]);
+    let report = scan_health(&session, HealthScanInput::default(), Some(&checker))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        breached_count(&report),
+        0,
+        "count == 0 padding is discarded"
+    );
+    assert_eq!(report.summary.breached, 0);
 }

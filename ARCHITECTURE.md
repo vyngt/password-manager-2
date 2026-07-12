@@ -158,6 +158,14 @@ seed, worthless once expired, produced server-side by the audited `reveal_totp`.
 rule to the other payload secrets (`password`, recovery codes, card `cvv`, SSH key) is a backlogged
 follow-up that would actually clean the renderer.
 
+The egress rule extends to the **network** (slice 4.4 — the app's only outbound call): the opt-in
+HaveIBeenPwned breach check hashes a credential in **core**, sends **only** the uppercase 5-hex SHA-1
+prefix (k-anonymity) to `api.pwnedpasswords.com` from `vedge-tauri` (`reqwest`, never the webview's HTTP
+ACL), and matches the suffix locally — the password and full hash never leave the process. It is
+**off by default and the backend verifies consent** before any egress. The rule, stated once: *only
+non-invertible derivatives leave the process — to WASM or to the network — and network egress only with
+explicit opt-in.*
+
 Every clipboard write — `copy_field`, `copy_history_field`, and the generic `copy_text` used by the
 renderer-side copies (the password generator and the Secret Key display) — funnels through one hardened
 `ClipboardProvider::set`, which marks the payload with the platform **no-history / no-cloud exclusion

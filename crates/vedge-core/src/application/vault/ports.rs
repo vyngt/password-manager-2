@@ -1,5 +1,6 @@
 pub mod biometric;
 pub mod blob_store;
+pub mod breach;
 pub mod clipboard;
 pub mod crypto;
 pub mod factories;
@@ -9,6 +10,7 @@ pub mod repository;
 
 pub use biometric::BiometricAuthenticator;
 pub use blob_store::BlobStore;
+pub use breach::BreachChecker;
 pub use clipboard::ClipboardProvider;
 pub use crypto::{CryptoProvider, Nonce};
 pub use factories::{BlobStoreFactory, VaultRepositoryFactory};

@@ -698,6 +698,91 @@ async fn scan_health_shows_findings() -> Result<()> {
     Ok(())
 }
 
+/// Slice 4.4: with the opt-in breach check enabled, a health scan flags a
+/// known-breached password. The env-gated offline `MemoryBreachChecker` reports
+/// the seeded password as breached, so no network is touched. Enabling the check
+/// is a setup mutation via `invoke` (the TOTP-enrolment precedent) — the **backend**
+/// reads `security.prefs.breach_check_enabled` on every scan, so this drives the
+/// exact consent gate a user's Settings toggle would. The Breached row is asserted
+/// in the DOM (resolved entry name, locale-independent) and the finding shape +
+/// summary via `invoke`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn scan_health_shows_breached() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+    let session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+
+    // Seed a login whose password the offline breach double reports as breached.
+    // ⚠ Keep in sync with `resolve_breach` in vedge-tauri/src/setup/services.rs.
+    add_login(&session, "GitHub", "octocat", "e2e-breached-pass-123").await?;
+    wait_row_count(&session, 1, Duration::from_secs(10)).await?;
+
+    // Opt in. Backend-verified consent: the scan command reads `security.prefs`
+    // fresh, so setting the flag is enough to drive the breach phase.
+    session
+        .invoke(
+            "set_app_setting",
+            json!({ "key": "security.prefs", "value": { "breach_check_enabled": true } }),
+        )
+        .await
+        .context("enable the breach-check opt-in")?;
+
+    // Run the scan from the health page (the slowest op; explicit button).
+    session
+        .click_testid("nav-health")
+        .await
+        .context("open health page")?;
+    session
+        .click_testid("health-run-scan")
+        .await
+        .context("run health scan")?;
+
+    // The findings table renders a row for the seeded entry (zero decrypt).
+    wait_until(Duration::from_secs(20), || async {
+        Ok(health_table_text(&session).await?.contains("GitHub"))
+    })
+    .await
+    .context("health table should show a finding for the seeded entry")?;
+
+    // Backend assertion (locale-independent): the scan returns a Breached finding
+    // and the summary counts exactly one breached secret.
+    let report = session
+        .invoke("scan_health", json!({ "vault_path": vault, "input": {} }))
+        .await?;
+    let has_breached = report
+        .get("findings")
+        .and_then(Value::as_array)
+        .is_some_and(|fs| {
+            fs.iter().any(|f| {
+                f.get("kind")
+                    .and_then(|k| k.get("kind"))
+                    .and_then(Value::as_str)
+                    == Some("Breached")
+            })
+        });
+    assert!(
+        has_breached,
+        "the scan should flag the seeded password as breached"
+    );
+    let breached_count = report
+        .get("summary")
+        .and_then(|s| s.get("breached"))
+        .and_then(Value::as_u64);
+    assert_eq!(
+        breached_count,
+        Some(1),
+        "exactly one breached secret in the summary"
+    );
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // UI flows
 // ---------------------------------------------------------------------------

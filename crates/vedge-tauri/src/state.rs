@@ -19,8 +19,8 @@ use vedge_core::application::app::ports::{
     ThemeRepository,
 };
 use vedge_core::application::vault::ports::{
-    BiometricAuthenticator, ClipboardProvider, CryptoProvider, KeyDerivationProvider,
-    KeychainProvider,
+    BiometricAuthenticator, BreachChecker, ClipboardProvider, CryptoProvider,
+    KeyDerivationProvider, KeychainProvider,
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
@@ -37,6 +37,9 @@ pub struct AppState {
     pub keychain: Arc<dyn KeychainProvider>,
     pub biometric: Arc<dyn BiometricAuthenticator>,
     pub clipboard: Arc<dyn ClipboardProvider>,
+    /// `HaveIBeenPwned` k-anonymity checker (slice 4.4). Always present; the health
+    /// command only hands it to the scan when the user has opted in.
+    pub breach: Arc<dyn BreachChecker>,
 
     // ---- app.db repositories (one per repo, sharing one DB connection) -----
     pub recent_vaults: Arc<dyn RecentVaultRepository>,
@@ -62,6 +65,7 @@ impl AppState {
         keychain: Arc<dyn KeychainProvider>,
         biometric: Arc<dyn BiometricAuthenticator>,
         clipboard: Arc<dyn ClipboardProvider>,
+        breach: Arc<dyn BreachChecker>,
         recent_vaults: Arc<dyn RecentVaultRepository>,
         app_settings: Arc<dyn AppSettingRepository>,
         themes: Arc<dyn ThemeRepository>,
@@ -76,6 +80,7 @@ impl AppState {
             keychain,
             biometric,
             clipboard,
+            breach,
             recent_vaults,
             app_settings,
             themes,

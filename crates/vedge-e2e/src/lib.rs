@@ -179,6 +179,10 @@ impl Session {
         // so the biometric scenario runs without a real Hello/Touch-ID prompt.
         cmd.env("VEDGE_E2E_FAST_KDF", "1");
         cmd.env("VEDGE_E2E_BIOMETRIC_MEMORY", "1");
+        // Offline breach double (slice 4.4): reports one fixed password as
+        // breached so `scan_health_shows_breached` runs without hitting HIBP.
+        // Inert unless a scenario enables the Settings breach toggle.
+        cmd.env("VEDGE_E2E_BREACH_MEMORY", "1");
         if let Some(native) = std::env::var_os("VEDGE_E2E_NATIVE_DRIVER") {
             cmd.arg("--native-driver").arg(native);
         }

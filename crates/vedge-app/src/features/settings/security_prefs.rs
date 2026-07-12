@@ -29,6 +29,10 @@ pub struct SecurityPrefs {
     /// Seconds after which a copied field is wiped from the clipboard.
     #[serde(default = "default_clipboard_clear_seconds")]
     pub clipboard_clear_seconds: u32,
+    /// Opt-in `HaveIBeenPwned` breach check during a health scan (slice 4.4).
+    /// Off by default; the **backend** reads this flag before any egress.
+    #[serde(default)]
+    pub breach_check_enabled: bool,
 }
 
 fn default_auto_lock_minutes() -> u32 {
@@ -44,6 +48,7 @@ impl Default for SecurityPrefs {
             auto_lock_minutes: default_auto_lock_minutes(),
             lock_on_blur: false,
             clipboard_clear_seconds: default_clipboard_clear_seconds(),
+            breach_check_enabled: false,
         }
     }
 }
@@ -103,6 +108,7 @@ mod tests {
             auto_lock_minutes: 5,
             lock_on_blur: true,
             clipboard_clear_seconds: 45,
+            breach_check_enabled: true,
         };
         let value = serde_json::to_value(&prefs).unwrap();
         let back: SecurityPrefs = serde_json::from_value(value).unwrap();
@@ -116,6 +122,7 @@ mod tests {
         assert_eq!(empty.auto_lock_minutes, 15);
         assert_eq!(empty.clipboard_clear_seconds, 30);
         assert!(!empty.lock_on_blur);
+        assert!(!empty.breach_check_enabled);
 
         let partial: SecurityPrefs =
             serde_json::from_value(json!({ "auto_lock_minutes": 5 })).unwrap();
