@@ -67,6 +67,7 @@ pub fn action_label(i18n: I18nContext<Locale>, action: &str) -> String {
         "RecoveryUsed" => t_string!(i18n, audit.action_recovery_used).to_owned(),
         "BiometricUnlocked" => t_string!(i18n, audit.action_biometric_unlocked).to_owned(),
         "TotpRevealed" => t_string!(i18n, audit.action_totp_revealed).to_owned(),
+        "HealthScanned" => t_string!(i18n, audit.action_health_scanned).to_owned(),
         other => other.to_owned(),
     }
 }

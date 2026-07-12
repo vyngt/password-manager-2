@@ -613,6 +613,91 @@ async fn totp_display_shows_and_rotates() -> Result<()> {
     Ok(())
 }
 
+/// Slice 4.3b: run the password-health scan from `/v/health` and assert findings
+/// render + a `HealthScanned` audit row is written. Two logins share a password
+/// (seeding a cross-entry reuse group); the scan is triggered via the UI button,
+/// the findings table is asserted in the DOM (resolved entry names,
+/// locale-independent), and the finding shape + the audit row are asserted via
+/// `invoke` (backend, locale-independent).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn scan_health_shows_findings() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+    let session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+
+    // Two logins share one password → a cross-entry reuse group.
+    add_login(&session, "GitHub", "octocat", "reused-pw-42").await?;
+    add_login(&session, "GitLab", "tanuki", "reused-pw-42").await?;
+    wait_row_count(&session, 2, Duration::from_secs(10)).await?;
+
+    // Run the scan from the health page (the slowest op; explicit button).
+    session
+        .click_testid("nav-health")
+        .await
+        .context("open health page")?;
+    session
+        .click_testid("health-run-scan")
+        .await
+        .context("run health scan")?;
+
+    // The findings table renders with a resolved entry name (zero decrypt).
+    wait_until(Duration::from_secs(20), || async {
+        Ok(health_table_text(&session).await?.contains("GitHub"))
+    })
+    .await
+    .context("health table should show a finding for the GitHub entry")?;
+
+    // Backend assertion 1: the UI run wrote EXACTLY ONE HealthScanned row. Asserted
+    // BEFORE the finding-shape invoke below — that invoke writes a second row and
+    // would confound this count, so it must come first (proves the *UI* path audits).
+    let page = session
+        .invoke(
+            "list_audit",
+            json!({
+                "vault_path": vault,
+                "query": { "actions": ["HealthScanned"], "limit": 200, "offset": 0 }
+            }),
+        )
+        .await?;
+    let scan_rows = page
+        .get("events")
+        .and_then(Value::as_array)
+        .map_or(0, Vec::len);
+    assert_eq!(
+        scan_rows, 1,
+        "the UI scan should write exactly one HealthScanned audit row"
+    );
+
+    // Backend assertion 2 (locale-independent): a scan returns a Reused finding for
+    // the shared password (adjacently-tagged `{{"kind":"Reused",…}}`).
+    let report = session
+        .invoke("scan_health", json!({ "vault_path": vault, "input": {} }))
+        .await?;
+    let has_reuse = report
+        .get("findings")
+        .and_then(Value::as_array)
+        .is_some_and(|fs| {
+            fs.iter().any(|f| {
+                f.get("kind")
+                    .and_then(|k| k.get("kind"))
+                    .and_then(Value::as_str)
+                    == Some("Reused")
+            })
+        });
+    assert!(
+        has_reuse,
+        "the scan should detect the shared password as reuse"
+    );
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // UI flows
 // ---------------------------------------------------------------------------
@@ -821,6 +906,18 @@ async fn audit_table_text(s: &Session) -> Result<String> {
     match s
         .driver()
         .find(By::Css("[data-testid='audit-table']"))
+        .await
+    {
+        Ok(el) => Ok(el.text().await.unwrap_or_default()),
+        Err(_) => Ok(String::new()),
+    }
+}
+
+/// Visible text of the health findings table (empty string if not mounted yet).
+async fn health_table_text(s: &Session) -> Result<String> {
+    match s
+        .driver()
+        .find(By::Css("[data-testid='health-table']"))
         .await
     {
         Ok(el) => Ok(el.text().await.unwrap_or_default()),

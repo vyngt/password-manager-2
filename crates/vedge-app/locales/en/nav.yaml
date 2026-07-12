@@ -1,5 +1,6 @@
 vault: "Vault"
 audit: "Audit log"
+health: "Health"
 generator: "Generator"
 settings: "Settings"
 toggle_sidebar: "Toggle sidebar"

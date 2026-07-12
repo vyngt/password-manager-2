@@ -31,6 +31,10 @@ const SIDEBAR_ITEMS: &[SidebarRouteItem] = &[
         icon: icondata::FaClockRotateLeftSolid,
     },
     SidebarRouteItem {
+        path: "/v/health",
+        icon: icondata::FaShieldHalvedSolid,
+    },
+    SidebarRouteItem {
         path: "/v/generator",
         icon: icondata::FaWandMagicSparklesSolid,
     },
@@ -61,6 +65,7 @@ fn nav_item_class(active: bool, collapsed: bool) -> String {
 fn nav_testid(path: &str) -> &'static str {
     match path {
         "/v/audit" => "nav-audit",
+        "/v/health" => "nav-health",
         "/v/generator" => "nav-generator",
         "/v/settings" => "nav-settings",
         _ => "nav-vault",
@@ -85,6 +90,7 @@ fn SidebarItemRow(item: &'static SidebarRouteItem, collapsed: RwSignal<bool>) ->
     let label = Signal::derive(move || match item.path {
         "/v/settings" => t_string!(i18n, nav.settings).to_owned(),
         "/v/generator" => t_string!(i18n, nav.generator).to_owned(),
+        "/v/health" => t_string!(i18n, nav.health).to_owned(),
         "/v/audit" => t_string!(i18n, nav.audit).to_owned(),
         _ => t_string!(i18n, nav.vault).to_owned(),
     });
