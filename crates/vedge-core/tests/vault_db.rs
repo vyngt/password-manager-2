@@ -37,6 +37,7 @@ fn sample_config() -> VaultConfig {
         audit_retention_days: 90,
         created_at: now(),
         last_unlocked_at: None,
+        vault_uuid: None,
     }
 }
 

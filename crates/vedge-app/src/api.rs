@@ -26,6 +26,7 @@ pub mod document;
 pub mod emergency_kit;
 pub mod entry;
 pub mod health;
+pub mod maintenance;
 pub mod recent;
 pub mod settings;
 pub mod tag;

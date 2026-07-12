@@ -205,6 +205,51 @@ async fn config_fields_are_correct() {
     assert_eq!(config.preferred_cipher_suite, 1);
     assert_eq!(config.kdf_params, fast_kdf_params());
     assert!(config.last_unlocked_at.is_some());
+    // Slice 4.6a: default audit retention now matches the migration + doc 20.2 (was 365).
+    assert_eq!(config.audit_retention_days, 90);
+    // Intrinsic identity minted at create.
+    assert!(config.vault_uuid.is_some(), "create must mint a vault_uuid");
+}
+
+#[tokio::test]
+async fn vault_uuid_minted_and_stable_across_unlocks() {
+    let p = providers();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("new.vdb");
+
+    let create = build_create(&p, Arc::clone(&p.keychain) as Arc<dyn KeychainProvider>);
+    drop(create.execute(make_input(&path)).await.unwrap().session);
+
+    let uuid1 = open_repo(&path)
+        .await
+        .load_config()
+        .await
+        .unwrap()
+        .vault_uuid;
+    assert!(uuid1.is_some(), "create must mint a vault_uuid");
+
+    // Two unlocks must not disturb the already-present identity.
+    let unlock = build_unlock(&p);
+    for _ in 0..2 {
+        drop(
+            unlock
+                .execute(UnlockVaultInput {
+                    vault_path: path.clone(),
+                    master_password: Zeroizing::new("correct horse battery staple".into()),
+                    secret_key: None,
+                })
+                .await
+                .unwrap(),
+        );
+    }
+
+    let uuid2 = open_repo(&path)
+        .await
+        .load_config()
+        .await
+        .unwrap()
+        .vault_uuid;
+    assert_eq!(uuid1, uuid2, "vault_uuid must be stable across unlocks");
 }
 
 #[tokio::test]

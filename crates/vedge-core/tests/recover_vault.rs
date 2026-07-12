@@ -191,3 +191,34 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
         "error message must be surfaced"
     );
 }
+
+/// Slice 4.6a: `recover_vault` delegates to `UnlockVault::execute`, so it inherits
+/// the `vault_uuid` backfill on first open of a pre-4.6 vault.
+#[tokio::test]
+async fn vault_uuid_backfilled_by_recover_vault() {
+    let h = Harness::fresh().await;
+    let display = format_secret_key(&h.secret_key);
+    assert!(
+        h.repo.load_config().await.unwrap().vault_uuid.is_none(),
+        "precondition: a pre-4.6 vault has no uuid"
+    );
+
+    let uv = build_unlock(&h);
+    let outcome = recover_vault(
+        &uv,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        RecoverVaultInput {
+            vault_path: h.vdb_path.clone(),
+            master_password: h.master_password.clone(),
+            recovery_key_display: display,
+        },
+    )
+    .await
+    .unwrap();
+    drop(outcome.session);
+
+    assert!(
+        h.repo.load_config().await.unwrap().vault_uuid.is_some(),
+        "recover_vault must backfill vault_uuid"
+    );
+}

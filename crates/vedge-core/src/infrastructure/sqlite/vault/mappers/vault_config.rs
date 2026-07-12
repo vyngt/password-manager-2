@@ -22,6 +22,7 @@ pub fn model_to_domain(model: Model) -> Result<VaultConfig, VaultError> {
         audit_retention_days: model.audit_retention_days,
         created_at: string_to_ts(&model.created_at)?,
         last_unlocked_at: string_to_ts_opt(model.last_unlocked_at.as_deref())?,
+        vault_uuid: model.vault_uuid,
     })
 }
 
@@ -41,5 +42,6 @@ pub fn domain_to_model(config: &VaultConfig) -> Result<Model, VaultError> {
         audit_retention_days: config.audit_retention_days,
         created_at: ts_to_string(&config.created_at),
         last_unlocked_at: config.last_unlocked_at.as_ref().map(ts_to_string),
+        vault_uuid: config.vault_uuid.clone(),
     })
 }

@@ -195,3 +195,29 @@ async fn disable_removes_key() {
     h.biometric.disable(&h.vault_id).unwrap();
     lock_vault(session).await.unwrap();
 }
+
+/// Slice 4.6a: `unlock_with_kek` (the biometric path) must ALSO backfill a missing
+/// `vault_uuid` — it's the easy-to-miss second unlock path. The harness vault starts
+/// pre-4.6 (uuid `None`).
+#[tokio::test]
+async fn vault_uuid_backfilled_on_biometric_unlock() {
+    let h = Harness::fresh().await;
+    h.seed_login("gh", "alice", "pw").await;
+    assert!(
+        h.repo.load_config().await.unwrap().vault_uuid.is_none(),
+        "precondition: a pre-4.6 vault has no uuid"
+    );
+
+    let uv = build_unlock(&h);
+    let session = uv
+        .unlock_with_kek(h.vdb_path.clone(), Zeroizing::new(h.kek))
+        .await
+        .unwrap();
+    assert_eq!(session.vault_id(), &h.vault_id);
+    lock_vault(session).await.unwrap();
+
+    assert!(
+        h.repo.load_config().await.unwrap().vault_uuid.is_some(),
+        "biometric unlock must backfill vault_uuid"
+    );
+}
