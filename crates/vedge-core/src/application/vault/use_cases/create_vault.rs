@@ -165,9 +165,13 @@ impl CreateVault {
             verify_hash,
             preferred_cipher_suite: 1,
             trash_retention_days: 30,
-            audit_retention_days: 365,
+            // Matches the migration column default + the canonical schema doc (20.2);
+            // was 365 before slice 4.6a (an unreviewed outlier `run_maintenance` reads).
+            audit_retention_days: 90,
             created_at,
             last_unlocked_at: Some(created_at),
+            // Intrinsic identity, minted once at create; never changes on move/rename.
+            vault_uuid: Some(ulid::Ulid::new().to_string()),
         };
 
         // ---- 6. Provision the .vdb + blob store, persist config -------------

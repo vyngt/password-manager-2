@@ -15,6 +15,7 @@
 //! no owner-less warning — and the labels relocalize on a language switch.
 
 use crate::features::settings::biometric_setting::BiometricSetting;
+use crate::features::settings::maintenance_panel::MaintenancePanel;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
 use crate::i18n::{t, t_string, use_i18n};
@@ -264,6 +265,12 @@ pub fn SettingsPage() -> impl IntoView {
             id: "appearance".to_owned(),
             label: Box::new(move || view! { {move || t!(i18n, settings.appearance)} }.into_any()),
             panel: Arc::new(|| view! { <ThemeList /> }.into_any()),
+            disabled: false,
+        },
+        Tab {
+            id: "maintenance".to_owned(),
+            label: Box::new(move || view! { {move || t!(i18n, settings.maintenance)} }.into_any()),
+            panel: Arc::new(|| view! { <MaintenancePanel /> }.into_any()),
             disabled: false,
         },
     ];

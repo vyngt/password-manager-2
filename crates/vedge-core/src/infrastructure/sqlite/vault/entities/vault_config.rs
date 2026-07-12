@@ -15,6 +15,9 @@ pub struct Model {
     pub audit_retention_days: i32,
     pub created_at: String,
     pub last_unlocked_at: Option<String>,
+    /// Intrinsic vault identity (ULID). Nullable: minted on create, backfilled on
+    /// first open of a pre-4.6 vault (slice 4.6a).
+    pub vault_uuid: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

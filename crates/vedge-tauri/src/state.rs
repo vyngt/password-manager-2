@@ -81,6 +81,33 @@ pub(crate) fn drain_all_sessions(sessions: &StdMutex<SessionMap>) -> Vec<Session
     guard.drain().map(|(_, slot)| slot.handle).collect()
 }
 
+/// Snapshot **every** live session as `(id, handle)` **without** removing it — the
+/// non-destructive accessor the maintenance job needs (slice 4.6a). Cloning the
+/// `Arc` handles is cheap; the map lock is released when this returns, before the
+/// caller `.await`s `run_maintenance` on any handle (the house rule). **Do not**
+/// reach the handles via [`drain_all_sessions`]/[`drain_expired_sessions`] (both
+/// `remove`, so cleaning a vault would lock it) or `AppState::get_session` (evicts
+/// expired slots).
+pub(crate) fn snapshot_sessions(sessions: &StdMutex<SessionMap>) -> Vec<(VaultId, SessionHandle)> {
+    let Ok(guard) = sessions.lock() else {
+        return Vec::new();
+    };
+    guard
+        .iter()
+        .map(|(id, slot)| (id.clone(), Arc::clone(&slot.handle)))
+        .collect()
+}
+
+/// Drain the `AppState::pending_locks` queue — handles evicted by a TTL-expired
+/// `get_session` that couldn't audit inline (it's sync). The scheduler audits +
+/// drops them through the same path as the reaper (slice 4.6a, A4).
+pub(crate) fn drain_pending_locks(pending: &StdMutex<Vec<SessionHandle>>) -> Vec<SessionHandle> {
+    let Ok(mut guard) = pending.lock() else {
+        return Vec::new();
+    };
+    std::mem::take(&mut *guard)
+}
+
 /// Remove every session whose hard deadline has passed, returning the handles
 /// so the reaper can audit-then-drop (see [`crate::scheduler`]). The outer map
 /// lock is held only for the drain — never across the audit await.
@@ -131,6 +158,12 @@ pub struct AppState {
 
     // ---- active vault sessions ---------------------------------------------
     sessions: Arc<StdMutex<SessionMap>>,
+
+    /// Handles evicted by a TTL-expired `get_session`, awaiting an audited lock by
+    /// the scheduler. `get_session` is sync and can't `append_audit` (async), so it
+    /// parks the handle here for the next scheduler tick to audit-then-drop, instead
+    /// of dropping it silently (slice 4.6a, A4 — closes 4.5a's audit-silent eviction).
+    pending_locks: Arc<StdMutex<Vec<SessionHandle>>>,
 }
 
 impl AppState {
@@ -167,6 +200,7 @@ impl AppState {
             unlock_vault,
             create_vault,
             sessions: Arc::new(StdMutex::new(HashMap::new())),
+            pending_locks: Arc::new(StdMutex::new(Vec::new())),
         }
     }
 
@@ -174,26 +208,36 @@ impl AppState {
     /// isn't in the registry, or `SessionExpired` when its hard TTL has
     /// elapsed — in which case the slot is **evicted here** (the check is at
     /// entry, not at use: a command that starts valid and runs for seconds
-    /// completes on a now-expired session, which is honest). Eviction here is
-    /// audit-silent; the reaper / `lock_vault` normally land the `Locked` row
-    /// first (slice 4.5a).
+    /// completes on a now-expired session, which is honest). This fn is sync and
+    /// can't `append_audit` (async), so the evicted handle is **parked on
+    /// `pending_locks`** for the scheduler to audit-then-drop next tick — it is
+    /// no longer dropped silently (slice 4.6a, A4, closing 4.5a's gap).
     pub fn get_session(&self, id: &VaultId) -> Result<SessionHandle, CommandError> {
-        let Ok(mut guard) = self.sessions.lock() else {
-            return Err(CommandError::Internal);
-        };
-        // Read the handle + expiry as owned values, ending the borrow before
-        // the possible `remove` below (avoids a get/remove borrow conflict).
-        match guard
-            .get(id)
-            .map(|slot| (Arc::clone(&slot.handle), slot.is_expired(now())))
-        {
-            None => Err(CommandError::VaultNotOpen(id.path().display().to_string())),
-            Some((_, true)) => {
-                guard.remove(id);
-                Err(CommandError::SessionExpired)
+        let evicted = {
+            let Ok(mut guard) = self.sessions.lock() else {
+                return Err(CommandError::Internal);
+            };
+            // Read the handle + expiry as owned values, ending the borrow before
+            // the possible `remove` below (avoids a get/remove borrow conflict).
+            match guard
+                .get(id)
+                .map(|slot| (Arc::clone(&slot.handle), slot.is_expired(now())))
+            {
+                None => {
+                    return Err(CommandError::VaultNotOpen(id.path().display().to_string()));
+                }
+                Some((handle, true)) => {
+                    guard.remove(id);
+                    handle
+                }
+                Some((handle, false)) => return Ok(handle),
             }
-            Some((handle, false)) => Ok(handle),
+            // sessions lock released here, before touching `pending_locks`.
+        };
+        if let Ok(mut pending) = self.pending_locks.lock() {
+            pending.push(evicted);
         }
+        Err(CommandError::SessionExpired)
     }
 
     /// `true` if the vault is currently unlocked **and** its hard TTL has not
@@ -274,6 +318,13 @@ impl AppState {
     /// `AppState`. The map stays private; only the reaper reaches it this way.
     pub(crate) fn sessions_handle(&self) -> Arc<StdMutex<SessionMap>> {
         Arc::clone(&self.sessions)
+    }
+
+    /// A clone of the pending-lock queue for the background scheduler (slice
+    /// 4.6a): the queue a TTL-expired `get_session` parks evicted handles on, so
+    /// the scheduler can land their `Locked` audit row on the next tick.
+    pub(crate) fn pending_locks_handle(&self) -> Arc<StdMutex<Vec<SessionHandle>>> {
+        Arc::clone(&self.pending_locks)
     }
 }
 

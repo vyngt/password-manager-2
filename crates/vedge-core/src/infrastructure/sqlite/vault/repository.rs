@@ -74,6 +74,7 @@ impl VaultRepository for SqliteVaultRepository {
             audit_retention_days: ActiveValue::Set(model.audit_retention_days),
             created_at: ActiveValue::Set(model.created_at),
             last_unlocked_at: ActiveValue::Set(model.last_unlocked_at),
+            vault_uuid: ActiveValue::Set(model.vault_uuid),
         };
 
         config_entity::Entity::insert(active)
@@ -90,6 +91,7 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::AuditRetentionDays,
                         ConfigCol::CreatedAt,
                         ConfigCol::LastUnlockedAt,
+                        ConfigCol::VaultUuid,
                     ])
                     .to_owned(),
             )
@@ -492,6 +494,7 @@ impl VaultRepository for SqliteVaultRepository {
             audit_retention_days: ActiveValue::Set(config_model.audit_retention_days),
             created_at: ActiveValue::Set(config_model.created_at),
             last_unlocked_at: ActiveValue::Set(config_model.last_unlocked_at),
+            vault_uuid: ActiveValue::Set(config_model.vault_uuid),
         };
         config_entity::Entity::insert(config_active)
             .on_conflict(
@@ -507,6 +510,7 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::AuditRetentionDays,
                         ConfigCol::CreatedAt,
                         ConfigCol::LastUnlockedAt,
+                        ConfigCol::VaultUuid,
                     ])
                     .to_owned(),
             )
@@ -516,5 +520,110 @@ impl VaultRepository for SqliteVaultRepository {
 
         txn.commit().await.map_err(db_err)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::indexing_slicing,
+        clippy::arithmetic_side_effects
+    )]
+
+    use sea_orm::{EntityTrait, PaginatorTrait};
+
+    use crate::application::vault::ports::VaultRepository;
+    use crate::domain::shared::now;
+    use crate::domain::vault::entities::VaultConfig;
+    use crate::domain::vault::kdf_params::KdfParams;
+    use crate::infrastructure::sqlite::vault::VaultDbConnection;
+    use crate::infrastructure::sqlite::vault::entities::vault_config::{self as config_entity};
+
+    use super::SqliteVaultRepository;
+
+    /// A pre-4.6 config row: no intrinsic `vault_uuid` yet.
+    fn legacy_config() -> VaultConfig {
+        VaultConfig {
+            id: "default".to_owned(),
+            magic: "VEDG".to_owned(),
+            schema_version: 1,
+            vault_salt: [0u8; 32],
+            kdf_params: KdfParams::argon2id_default(),
+            verify_hash: [0u8; 32],
+            preferred_cipher_suite: 1,
+            trash_retention_days: 30,
+            audit_retention_days: 90,
+            created_at: now(),
+            last_unlocked_at: None,
+            vault_uuid: None,
+        }
+    }
+
+    async fn open_repo() -> (tempfile::TempDir, VaultDbConnection, SqliteVaultRepository) {
+        let dir = tempfile::tempdir().unwrap();
+        let db = VaultDbConnection::open(&dir.path().join("work.vdb"))
+            .await
+            .unwrap();
+        let repo = SqliteVaultRepository::new(db.handle());
+        (dir, db, repo)
+    }
+
+    /// The load-bearing test of the additive `vault_uuid` design (slice 4.6a): a
+    /// backfill that transitions `vault_uuid` NULL → ULID must **UPDATE** the
+    /// singleton row via `save_config`'s upsert-on-`Id`, never INSERT a second one.
+    /// (The rejected "make the PK become the uuid" shape would produce a new
+    /// conflict key ⇒ a duplicate row ⇒ `load_config`'s unfiltered `.one()`
+    /// returning an arbitrary one — silent, unrecoverable config corruption.)
+    #[tokio::test]
+    async fn vault_uuid_backfill_does_not_duplicate_config_row() {
+        let (_dir, db, repo) = open_repo().await;
+
+        let mut config = legacy_config();
+        repo.save_config(&config).await.unwrap();
+
+        config.vault_uuid = Some(ulid::Ulid::new().to_string());
+        repo.save_config(&config).await.unwrap();
+
+        let count = config_entity::Entity::find()
+            .count(db.handle().as_ref())
+            .await
+            .unwrap();
+        assert_eq!(
+            count, 1,
+            "backfill must UPDATE the singleton row, not INSERT"
+        );
+        assert_eq!(
+            repo.load_config().await.unwrap().vault_uuid,
+            config.vault_uuid
+        );
+    }
+
+    /// The same guarantee through `rewrap_all_deks` (the change-password path),
+    /// which carries its OWN upsert + hand-built `ActiveModel`. If `vault_uuid`
+    /// were missing from *that* upsert, change-password would drop the identity;
+    /// if it changed the conflict key it would duplicate the row.
+    #[tokio::test]
+    async fn rewrap_config_upsert_keeps_single_row_and_preserves_uuid() {
+        let (_dir, db, repo) = open_repo().await;
+
+        let mut config = legacy_config();
+        config.vault_uuid = Some(ulid::Ulid::new().to_string());
+        repo.save_config(&config).await.unwrap();
+
+        // No entry rewraps — just re-persist the config through the rewrap path.
+        repo.rewrap_all_deks(&[], &config).await.unwrap();
+
+        let count = config_entity::Entity::find()
+            .count(db.handle().as_ref())
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(
+            repo.load_config().await.unwrap().vault_uuid,
+            config.vault_uuid
+        );
     }
 }

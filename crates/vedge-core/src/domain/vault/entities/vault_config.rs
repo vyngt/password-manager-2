@@ -14,4 +14,10 @@ pub struct VaultConfig {
     pub audit_retention_days: i32,
     pub created_at: Timestamp,
     pub last_unlocked_at: Option<Timestamp>,
+    /// Intrinsic vault identity (ULID) — answers "which *vault* is this?", distinct
+    /// from `VaultId(PathBuf)` ("which *file* is open?"). Minted on create, backfilled
+    /// on first open of a pre-4.6 vault. `None` only for a not-yet-backfilled vault.
+    /// A *copy* of a vault is the same vault (same uuid) — a future "duplicate as a new
+    /// vault" feature must mint a fresh one. Slice 4.6a; see arch note 13 - Vault Identity.
+    pub vault_uuid: Option<String>,
 }
