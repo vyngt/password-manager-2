@@ -97,7 +97,11 @@ pub async fn biometric_unlock(
 
     let kek = state.biometric.retrieve(&vault_id)?;
     let session = state.unlock_vault.unlock_with_kek(path, kek).await?;
-    state.insert_session(vault_id, session)?;
+    state.insert_session(
+        vault_id,
+        session,
+        crate::setup::services::session_ttl(&state).await,
+    )?;
     Ok(())
 }
 

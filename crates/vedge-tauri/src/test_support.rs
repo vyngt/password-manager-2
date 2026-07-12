@@ -115,9 +115,21 @@ pub fn fast_params() -> vedge_core::domain::vault::kdf_params::KdfParams {
     }
 }
 
-/// Create a fresh vault under `dir/<filename>`, register its session, and return
-/// the state + vault id. The vault ends UNLOCKED with a live, queryable session.
+/// Create a fresh vault under `dir/<filename>`, register its session (no hard
+/// TTL), and return the state + vault id. The vault ends UNLOCKED with a live,
+/// queryable session.
 pub async fn unlocked_vault(dir: &tempfile::TempDir, filename: &str) -> (AppState, VaultId) {
+    unlocked_vault_with_ttl(dir, filename, None).await
+}
+
+/// Like [`unlocked_vault`] but registers the session with an explicit hard TTL
+/// (slice 4.5a). `Some(Duration::ZERO)` yields an already-expired session for
+/// eviction/reaper tests; `None` never expires.
+pub async fn unlocked_vault_with_ttl(
+    dir: &tempfile::TempDir,
+    filename: &str,
+    ttl: Option<std::time::Duration>,
+) -> (AppState, VaultId) {
     use vedge_core::CreateVaultInput;
     use zeroize::Zeroizing;
 
@@ -135,6 +147,8 @@ pub async fn unlocked_vault(dir: &tempfile::TempDir, filename: &str) -> (AppStat
         })
         .await
         .unwrap();
-    state.insert_session(vault_id.clone(), out.session).unwrap();
+    state
+        .insert_session(vault_id.clone(), out.session, ttl)
+        .unwrap();
     (state, vault_id)
 }

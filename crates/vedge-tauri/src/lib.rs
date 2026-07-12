@@ -5,6 +5,7 @@ pub mod commands;
 pub mod dto;
 pub mod error;
 pub mod pdf;
+pub mod scheduler;
 pub mod setup;
 pub mod state;
 
@@ -64,7 +65,12 @@ pub fn run() {
             // hook wants `Box<dyn Error>` — just re-box.
             let state = tauri::async_runtime::block_on(setup::services::compose(app))
                 .map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?;
+            // Grab the session-registry handle before `manage` consumes `state`,
+            // then start the background reaper that enforces the hard session TTL
+            // (slice 4.5a). Both share the same `Arc<Mutex<..>>` map.
+            let sessions = state.sessions_handle();
             app.manage(state);
+            scheduler::spawn(sessions);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -64,6 +64,14 @@ pub enum CommandError {
     #[error("document too large")]
     DocumentTooLarge,
 
+    /// The vault's hard session TTL elapsed and the backend locked it (slice
+    /// 4.5a). Distinct from `VaultNotOpen` so the UI can say "your session
+    /// expired" rather than "no vault open". A unit variant — like
+    /// `DocumentTooLarge`, the app owns the copy, and the frontend already knows
+    /// which vault it asked about.
+    #[error("session expired")]
+    SessionExpired,
+
     /// A vault already exists at the target path — creation refuses to
     /// overwrite. Distinct from `Invalid` so the onboarding UI can offer to
     /// open the existing vault instead.
@@ -203,6 +211,17 @@ mod tests {
         assert_eq!(json["kind"], kind::DOCUMENT_TOO_LARGE);
         let env: ErrorEnvelope = serde_json::from_value(json).unwrap();
         assert_eq!(env.kind, kind::DOCUMENT_TOO_LARGE);
+        assert!(env.message.is_none());
+    }
+
+    #[test]
+    fn session_expired_wire_shape() {
+        // Same unit-variant shape as `DocumentTooLarge`: `{"kind":"SessionExpired"}`
+        // with no `message`. The app's `from_envelope` maps the kind back.
+        let json = serde_json::to_value(CommandError::SessionExpired).unwrap();
+        assert_eq!(json["kind"], kind::SESSION_EXPIRED);
+        let env: ErrorEnvelope = serde_json::from_value(json).unwrap();
+        assert_eq!(env.kind, kind::SESSION_EXPIRED);
         assert!(env.message.is_none());
     }
 }

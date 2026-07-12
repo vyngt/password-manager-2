@@ -33,6 +33,14 @@ pub struct SecurityPrefs {
     /// Off by default; the **backend** reads this flag before any egress.
     #[serde(default)]
     pub breach_check_enabled: bool,
+    /// Hard **backend-enforced** session ceiling in minutes (slice 4.5a); `0`
+    /// disables it. Distinct from `auto_lock_minutes` (an *idle* timer): this is
+    /// an absolute wall-clock deadline the backend reaper enforces even if the
+    /// renderer hangs. Defaults to 480 (8 h) — a ceiling, so a normal user hits
+    /// the idle lock first and only ever meets this when the frontend failed to
+    /// lock. The **backend** re-reads this key; the field here drives the setting.
+    #[serde(default = "default_session_max_minutes")]
+    pub session_max_minutes: u32,
 }
 
 fn default_auto_lock_minutes() -> u32 {
@@ -40,6 +48,9 @@ fn default_auto_lock_minutes() -> u32 {
 }
 fn default_clipboard_clear_seconds() -> u32 {
     30
+}
+fn default_session_max_minutes() -> u32 {
+    480
 }
 
 impl Default for SecurityPrefs {
@@ -49,6 +60,7 @@ impl Default for SecurityPrefs {
             lock_on_blur: false,
             clipboard_clear_seconds: default_clipboard_clear_seconds(),
             breach_check_enabled: false,
+            session_max_minutes: default_session_max_minutes(),
         }
     }
 }
@@ -109,6 +121,7 @@ mod tests {
             lock_on_blur: true,
             clipboard_clear_seconds: 45,
             breach_check_enabled: true,
+            session_max_minutes: 240,
         };
         let value = serde_json::to_value(&prefs).unwrap();
         let back: SecurityPrefs = serde_json::from_value(value).unwrap();
@@ -123,6 +136,7 @@ mod tests {
         assert_eq!(empty.clipboard_clear_seconds, 30);
         assert!(!empty.lock_on_blur);
         assert!(!empty.breach_check_enabled);
+        assert_eq!(empty.session_max_minutes, 480);
 
         let partial: SecurityPrefs =
             serde_json::from_value(json!({ "auto_lock_minutes": 5 })).unwrap();

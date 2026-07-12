@@ -45,6 +45,11 @@ pub enum ApiError {
     /// match it structurally and show the localized message (no `contains(..)`).
     #[error("document too large")]
     DocumentTooLarge,
+    /// The backend session TTL elapsed and the vault was locked (slice 4.5a).
+    /// A dedicated kind so callers can show "session expired" rather than the
+    /// generic "vault not open".
+    #[error("session expired")]
+    SessionExpired,
     #[error("a vault already exists at this location")]
     AlreadyExists,
     #[error("internal error")]
@@ -93,6 +98,7 @@ impl ApiError {
             envelope::kind::STORAGE => Self::Storage(msg),
             envelope::kind::INVALID => Self::Invalid(msg),
             envelope::kind::DOCUMENT_TOO_LARGE => Self::DocumentTooLarge,
+            envelope::kind::SESSION_EXPIRED => Self::SessionExpired,
             envelope::kind::ALREADY_EXISTS => Self::AlreadyExists,
             envelope::kind::INTERNAL => Self::Internal,
             other => Self::Transport(format!("unknown error kind `{other}`: {msg}")),
@@ -149,6 +155,14 @@ mod tests {
         assert!(matches!(
             ApiError::from_envelope(env("DocumentTooLarge", None)),
             ApiError::DocumentTooLarge
+        ));
+    }
+
+    #[test]
+    fn maps_session_expired() {
+        assert!(matches!(
+            ApiError::from_envelope(env("SessionExpired", None)),
+            ApiError::SessionExpired
         ));
     }
 

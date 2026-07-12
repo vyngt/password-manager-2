@@ -165,6 +165,18 @@ impl Session {
     /// Launch `tauri-driver` (inheriting `VEDGE_DATA_DIR` from `env`), connect a
     /// WebDriver to the app binary, and wait until the app's IPC is reachable.
     pub async fn launch(env: &TestEnv, app: &Path) -> Result<Self> {
+        Self::launch_with_env(env, app, &[]).await
+    }
+
+    /// Like [`launch`](Self::launch) but sets `extra` env vars on the app
+    /// process. Used for **per-scenario** seams that must NOT be global — e.g.
+    /// `VEDGE_E2E_SESSION_TTL_SECS`, which forces a short hard TTL and would lock
+    /// every other scenario mid-run if set for the whole suite (slice 4.5a).
+    pub async fn launch_with_env(
+        env: &TestEnv,
+        app: &Path,
+        extra: &[(&str, &str)],
+    ) -> Result<Self> {
         let app = app
             .canonicalize()
             .with_context(|| format!("canonicalize app path {}", app.display()))?;
@@ -183,6 +195,9 @@ impl Session {
         // breached so `scan_health_shows_breached` runs without hitting HIBP.
         // Inert unless a scenario enables the Settings breach toggle.
         cmd.env("VEDGE_E2E_BREACH_MEMORY", "1");
+        for (k, v) in extra {
+            cmd.env(k, v);
+        }
         if let Some(native) = std::env::var_os("VEDGE_E2E_NATIVE_DRIVER") {
             cmd.arg("--native-driver").arg(native);
         }
