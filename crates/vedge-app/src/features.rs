@@ -1,4 +1,5 @@
 pub mod audit;
+pub mod date_i18n;
 pub mod generator;
 pub mod health;
 pub mod settings;

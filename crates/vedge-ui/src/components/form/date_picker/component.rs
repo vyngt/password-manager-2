@@ -1,7 +1,8 @@
 use super::date_utils::{clamp_to_range, today};
 use super::locale::format_trigger_date;
-use super::panel::{CalendarPanel, PanelContext};
+use super::panel::{CalendarPanel, PanelContext, PanelLabels};
 use super::types::{DatePickerValue, DatePickerVariant, DateRange, YearMonth};
+use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::{Size, Status};
 use chrono::{Datelike, NaiveDate};
 use icondata as i;
@@ -25,6 +26,13 @@ pub fn DatePicker(
     #[prop(into, default = Signal::stored(Vec::new()))] disabled_dates: Signal<Vec<NaiveDate>>,
     #[prop(into, default = None)] placeholder: Option<Signal<String>>,
     #[prop(into, default = Signal::stored("en-US".to_string()))] locale: Signal<String>,
+    // Panel chrome aria-labels — localized by the consumer, English fallback via
+    // `text_or`. Threaded to `CalendarPanel` as a `PanelLabels` bundle.
+    #[prop(into, default = TextProp::default())] dialog_label: TextProp,
+    #[prop(into, default = TextProp::default())] prev_month_label: TextProp,
+    #[prop(into, default = TextProp::default())] next_month_label: TextProp,
+    #[prop(into, default = TextProp::default())] prev_year_label: TextProp,
+    #[prop(into, default = TextProp::default())] next_year_label: TextProp,
     #[prop(optional)] disabled: bool,
     /// When `true`, renders just the calendar grid with no trigger or floating
     /// panel. Used by DateTimePicker to compose the calendar alongside a
@@ -62,6 +70,14 @@ pub fn DatePicker(
     let show_ver = Arc::new(AtomicU32::new(0));
     let hide_ver = Arc::new(AtomicU32::new(0));
 
+    let panel_labels = PanelLabels {
+        dialog: dialog_label,
+        prev_month: prev_month_label,
+        next_month: next_month_label,
+        prev_year: prev_year_label,
+        next_year: next_year_label,
+    };
+
     let ctx = PanelContext {
         variant,
         view_month,
@@ -71,6 +87,7 @@ pub fn DatePicker(
         panel_style,
         data_state,
         panel_ref,
+        labels: panel_labels,
     };
 
     // Position calculation

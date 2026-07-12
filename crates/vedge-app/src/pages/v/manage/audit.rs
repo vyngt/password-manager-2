@@ -10,16 +10,18 @@ use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::{AuditPageDto, IndexEntryDto};
+use vedge_ui::components::Button;
 use vedge_ui::components::data_display::pagination::{Pagination, PaginationModel};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::form::date_picker::{DatePicker, DatePickerValue};
 use vedge_ui::components::select::{Select, SelectItem};
-use vedge_ui::primitives::tokens::ToastVariant;
+use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 use crate::api;
 use crate::features::audit::audit_table::{AuditTable, action_label};
 use crate::features::audit::filters::{AUDIT_PAGE_SIZE, AuditView};
+use crate::features::date_i18n::{calendar_labels, locale_tag};
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::{t, t_string, use_i18n};
 
@@ -50,6 +52,10 @@ pub fn AuditPage() -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
+    // Locale tag + panel aria-labels for the two date filters, so the calendar
+    // renders Vietnamese under `vi` and its nav is localized (slice 4.9a P1).
+    let cal_locale = locale_tag(i18n);
+    let cal_labels = calendar_labels(i18n);
     // Dismiss label read `untrack`ed so this is safe from `spawn_local` futures.
     let show_error = move |msg: String| {
         let dismiss = untrack(|| t_string!(i18n, audit.dismiss).to_owned());
@@ -142,10 +148,18 @@ pub fn AuditPage() -> impl IntoView {
         let total = page_data.with(|p| p.total);
         (total.div_ceil(u64::from(AUDIT_PAGE_SIZE)) as u32).max(1)
     });
+    // Any facet or offset set → the clear-filters affordance appears. `AuditView`
+    // derives `PartialEq`, so this is a plain struct comparison against default.
+    let is_dirty = Signal::derive(move || view_state.get() != AuditView::default());
 
     view! {
-        <div class="h-full overflow-y-auto p-6" data-testid="audit-page">
-            <div class="max-w-5xl mx-auto space-y-4">
+        // Flex column that fills the `/v` outlet and never scrolls itself: the
+        // header/filter/summary bands and the pagination footer stay fixed, and
+        // the `AuditTable` band (`flex-1 min-h-0`) owns the remaining height so
+        // the table's own `.data-table-wrapper` becomes the scroll container and
+        // its sticky `<thead>` activates — no new CSS (see slice 4.9a P2).
+        <div class="h-full p-6 flex flex-col" data-testid="audit-page">
+            <div class="max-w-5xl w-full mx-auto flex-1 min-h-0 flex flex-col gap-4">
                 <h1 class="text-xl font-semibold text-text-primary">
                     {move || t_string!(i18n, audit.title).to_owned()}
                 </h1>
@@ -234,6 +248,12 @@ pub fn AuditPage() -> impl IntoView {
                         </span>
                         <DatePicker
                             id="audit-since"
+                            locale=cal_locale
+                            dialog_label=cal_labels.dialog
+                            prev_month_label=cal_labels.prev_month
+                            next_month_label=cal_labels.next_month
+                            prev_year_label=cal_labels.prev_year
+                            next_year_label=cal_labels.next_year
                             value=Signal::derive(move || {
                                 DatePickerValue::Single(view_state.with(|v| v.filters.since))
                             })
@@ -252,6 +272,12 @@ pub fn AuditPage() -> impl IntoView {
                         </span>
                         <DatePicker
                             id="audit-until"
+                            locale=cal_locale
+                            dialog_label=cal_labels.dialog
+                            prev_month_label=cal_labels.prev_month
+                            next_month_label=cal_labels.next_month
+                            prev_year_label=cal_labels.prev_year
+                            next_year_label=cal_labels.next_year
                             value=Signal::derive(move || {
                                 DatePickerValue::Single(view_state.with(|v| v.filters.until))
                             })
@@ -263,13 +289,27 @@ pub fn AuditPage() -> impl IntoView {
                             })
                         />
                     </div>
+
+                    // Clear-filters — shown only when a filter is active (`Button`'s
+                    // `disabled` is not reactive, so hide rather than disable). One
+                    // struct assignment resets every facet AND the page offset.
+                    <Show when=move || is_dirty.get()>
+                        <Button
+                            variant=Variant::Secondary
+                            size=Size::Sm
+                            class="whitespace-nowrap"
+                            attr:data-testid="audit-clear-filters"
+                            on:click=move |_| view_state.set(AuditView::default())
+                        >
+                            {move || t!(i18n, audit.clear_filters)}
+                        </Button>
+                    </Show>
                 </div>
 
-                // Localized result-count summary. Kept as the page's own element (above
-                // the table): Pagination's built-in summary is now localizable, but
-                // moving this into it would reposition/restyle it, add an aria-live +
-                // empty nav landmark for single/empty results, and duplicate the paging
-                // numbers. DRIFT vs the spec's "delete this <p>" — see 4.6b changelog.
+                // Localized result-count summary — the page owns it. Pagination's
+                // built-in summary is English-only (its localizable `summary`
+                // override was dead API surface and was removed in slice 4.9a P5),
+                // so the localized count lives here as a fixed band above the table.
                 <p class="text-xs text-text-tertiary" data-testid="audit-summary">
                     {move || {
                         let total = page_data.with(|p| p.total);
