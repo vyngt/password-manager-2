@@ -20,7 +20,6 @@ use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::EntryId;
-use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
@@ -34,16 +33,7 @@ pub async fn reveal_totp(
 ) -> Result<TotpCode, VaultError> {
     // Decrypt the one entry (no `accessed_at` bump — this is not an access).
     let row = session.repo.get_entry(entry_id).await?;
-    let dek = session
-        .crypto
-        .unwrap_dek(&row.dek_wrapped, session.kek.expose())?;
-    let aad = entry_aad(&row.id, row.version)?;
-    let plaintext = session
-        .crypto
-        .decrypt_entry(&dek, &row.nonce, &row.ciphertext, &aad)?;
-    let payload = EntryPayload::from_decrypted_json(&plaintext)?;
-    drop(plaintext);
-    drop(dek);
+    let payload = super::refs::decrypt_row_payload(session, &row)?;
 
     // Generate the code, then drop the payload (and its seed) before auditing.
     let code = {

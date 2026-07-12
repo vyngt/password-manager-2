@@ -136,6 +136,83 @@ fn field_selector_tagged_decodes() {
     }
 }
 
+/// `HealthReportDto` (slice 4.3) — the read-side scan result. Exercises the
+/// adjacently-tagged `FindingKindDto` (with an `f64` `guesses_log10` and nested
+/// struct variants), `SecretFieldDto` (unit + newtype), and the plain enums,
+/// all through the real `serde_wasm_bindgen` decode.
+#[wasm_bindgen_test]
+fn health_report_decodes() {
+    let dto = HealthReportDto {
+        scanned_at: "2026-07-12T09:14:03.000Z".into(),
+        entries_scanned: 3,
+        secrets_scanned: 5,
+        findings: vec![
+            FindingDto {
+                entry_id: "e-weak".into(),
+                field: Some(SecretFieldDto::LoginPassword),
+                kind: FindingKindDto::Weak {
+                    score: 1,
+                    guesses_log10: 4.2,
+                },
+                severity: SeverityDto::High,
+            },
+            FindingDto {
+                entry_id: "e-reuse".into(),
+                field: Some(SecretFieldDto::EnvVar("AWS_SECRET_KEY".into())),
+                kind: FindingKindDto::Reused { group: 2, count: 3 },
+                severity: SeverityDto::Medium,
+            },
+            FindingDto {
+                entry_id: "e-old".into(),
+                field: None,
+                kind: FindingKindDto::Old {
+                    age_days: 812,
+                    confidence: AgeConfidenceDto::Estimated,
+                },
+                severity: SeverityDto::Low,
+            },
+        ],
+        skipped: vec![SkippedDto {
+            entry_id: "e-unknown".into(),
+            reason: SkipReasonDto::UnknownPayload,
+        }],
+        summary: HealthSummaryDto {
+            weak: 1,
+            reused: 1,
+            old: 1,
+            exempt_not_scored: 2,
+        },
+    };
+    let back = shell_to_frontend(&dto);
+    assert_eq!(back.entries_scanned, 3);
+    assert_eq!(back.secrets_scanned, 5);
+    assert_eq!(back.findings.len(), 3);
+    match &back.findings[0].kind {
+        FindingKindDto::Weak {
+            score,
+            guesses_log10,
+        } => {
+            assert_eq!(*score, 1);
+            assert!(
+                (*guesses_log10 - 4.2).abs() < 1e-9,
+                "f64 survived the codec"
+            );
+        }
+        other => panic!("expected Weak, got {other:?}"),
+    }
+    match &back.findings[1].field {
+        Some(SecretFieldDto::EnvVar(k)) => assert_eq!(k, "AWS_SECRET_KEY"),
+        other => panic!("expected EnvVar key, got {other:?}"),
+    }
+    assert!(matches!(
+        back.findings[1].kind,
+        FindingKindDto::Reused { group: 2, count: 3 }
+    ));
+    assert!(back.findings[2].field.is_none());
+    assert_eq!(back.skipped.len(), 1);
+    assert_eq!(back.summary.exempt_not_scored, 2);
+}
+
 /// `PayloadDto` — adjacently tagged (`{ "entry_type": "Login", "data": {..} }`)
 /// with a nested `CommonMetaDto`. The write-side union the add-entry form sends.
 #[wasm_bindgen_test]

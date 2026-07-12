@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::shared::{EntryId, TagId};
+use crate::domain::shared::{EntryId, TagId, Timestamp};
 use crate::domain::vault::payloads::entry_type::EntryType;
 
 pub const CURRENT_PAYLOAD_SCHEMA: u32 = 1;
@@ -47,6 +47,16 @@ pub struct CommonMeta {
     #[serde(default)]
     pub sort_order: u32,
 
+    /// When this entry's *secret material* last changed (slice 4.3 — password
+    /// health). Deliberately **not** `updated_at`, which every metadata mutation
+    /// (`set_favorite`, `set_tags`, `set_sort_order`, `move_entry`,
+    /// `soft_delete_entry`, `restore_entry`) bumps — starring an entry must not
+    /// reset its apparent secret age. Owned **exclusively** by `create_entry` /
+    /// `update_entry`; the frontend never supplies it (`common_meta_from_dto`
+    /// sets `None`). `None` on pre-4.3 payloads — the scan falls back to history.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secret_changed_at: Option<Timestamp>,
+
     #[serde(default = "default_payload_schema")]
     pub payload_schema: u32,
 }
@@ -65,6 +75,7 @@ impl CommonMeta {
             color: None,
             icon: None,
             sort_order: 0,
+            secret_changed_at: None,
             payload_schema: CURRENT_PAYLOAD_SCHEMA,
         }
     }
@@ -96,6 +107,7 @@ mod tests {
             color: Some("#4f46e5".into()),
             icon: Some("star".into()),
             sort_order: 7,
+            secret_changed_at: None,
             payload_schema: 1,
         };
         let json = serde_json::to_string(&m).unwrap();

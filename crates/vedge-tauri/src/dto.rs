@@ -20,6 +20,7 @@ pub mod audit;
 pub mod common;
 pub mod emergency_kit;
 pub mod entry;
+pub mod health;
 pub mod misc;
 pub mod settings;
 pub mod tag;

@@ -25,7 +25,6 @@ use zeroize::{Zeroize, Zeroizing};
 use crate::application::vault::ports::clipboard::ClipboardProvider;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{EntryId, now};
-use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
@@ -76,15 +75,8 @@ pub async fn copy_field(
     // 1. Fetch ciphertext row — the index doesn't hold secrets.
     let row = session.repo.get_entry(&input.entry_id).await?;
 
-    // 2. Decrypt under the session KEK.
-    let dek = session
-        .crypto
-        .unwrap_dek(&row.dek_wrapped, session.kek.expose())?;
-    let aad = entry_aad(&row.id, row.version)?;
-    let plaintext = session
-        .crypto
-        .decrypt_entry(&dek, &row.nonce, &row.ciphertext, &aad)?;
-    let payload = EntryPayload::from_decrypted_json(&plaintext)?;
+    // 2. Decrypt under the session KEK (shared helper).
+    let payload = super::refs::decrypt_row_payload(session, &row)?;
 
     // 3. Extract the requested field, place it on the clipboard (zeroizing our
     //    copy), and schedule the background clear.
@@ -98,8 +90,6 @@ pub async fn copy_field(
 
     // Drop decrypted secrets before auditing.
     drop(payload);
-    drop(plaintext);
-    drop(dek);
 
     // 4. Update accessed_at + audit (side-effects after crypto work is done).
     let when = now();

@@ -32,12 +32,12 @@ use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{VaultId, now};
-use crate::domain::vault::aad::{entry_aad, tag_aad};
+use crate::domain::vault::aad::tag_aad;
 use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
 use crate::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
-use crate::domain::vault::payloads::{EntryPayload, TagPayload};
+use crate::domain::vault::payloads::TagPayload;
 use crate::infrastructure::crypto::secret_mem::SecretMem;
 
 pub struct UnlockVaultInput {
@@ -259,16 +259,11 @@ impl UnlockVault {
         kek: &[u8; KEK_LEN],
     ) -> Result<IndexEntry, VaultError> {
         let dek = self.crypto.unwrap_dek(&row.dek_wrapped, kek)?;
-        let aad = entry_aad(&row.id, row.version)?;
-        let plaintext = self
-            .crypto
-            .decrypt_entry(&dek, &row.nonce, &row.ciphertext, &aad)?;
-        let payload = EntryPayload::from_decrypted_json(&plaintext)?;
+        let payload = super::refs::decrypt_row_with_dek(self.crypto.as_ref(), &dek, row)?;
         let idx = IndexEntry::from_payload(&payload, row);
-        // `dek`, `plaintext`, and `payload` all zeroize their secret bytes
-        // via Drop. `idx` carries only non-secret metadata.
+        // `dek` and `payload` zeroize their secret bytes via Drop; `idx` carries
+        // only non-secret metadata.
         drop(payload);
-        drop(plaintext);
         drop(dek);
         Ok(idx)
     }

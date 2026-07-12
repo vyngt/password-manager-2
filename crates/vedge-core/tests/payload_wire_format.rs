@@ -34,6 +34,7 @@ fn meta(name: &str, ty: EntryType) -> CommonMeta {
         color: None,
         icon: None,
         sort_order: 0,
+        secret_changed_at: None,
         payload_schema: 1,
     }
 }
