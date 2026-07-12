@@ -4,4 +4,5 @@ pub mod breach;
 pub mod clipboard;
 pub mod crypto;
 pub mod keychain;
+pub mod screen_lock;
 pub mod sqlite;

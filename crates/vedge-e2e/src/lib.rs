@@ -171,7 +171,9 @@ impl Session {
     /// Like [`launch`](Self::launch) but sets `extra` env vars on the app
     /// process. Used for **per-scenario** seams that must NOT be global — e.g.
     /// `VEDGE_E2E_SESSION_TTL_SECS`, which forces a short hard TTL and would lock
-    /// every other scenario mid-run if set for the whole suite (slice 4.5a).
+    /// every other scenario mid-run if set for the whole suite (slice 4.5a), or
+    /// `VEDGE_E2E_SCREEN_LOCK_MEMORY` (a sentinel-file path), the screen-lock
+    /// double's deterministic lever (slice 4.5b).
     pub async fn launch_with_env(
         env: &TestEnv,
         app: &Path,

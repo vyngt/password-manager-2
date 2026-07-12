@@ -92,7 +92,12 @@ impl From<VaultError> for CommandError {
             // All authentication-style failures collapse — deliberately
             // indistinguishable to JS. See the CryptoProvider docstring.
             VaultError::DecryptionFailed => Self::Decryption,
-            VaultError::EncryptionFailed | VaultError::MlockFailed => Self::Internal,
+            // Internal failures surfaced without detail: EncryptionFailed / MlockFailed
+            // are crypto internals; ScreenLockUnavailable never actually reaches a
+            // command (the scheduler polls the watcher and fails open — slice 4.5b).
+            VaultError::EncryptionFailed
+            | VaultError::MlockFailed
+            | VaultError::ScreenLockUnavailable => Self::Internal,
 
             VaultError::EntryNotFound(id) => Self::NotFound(format!("entry {id}")),
             VaultError::TagNotFound(id) => Self::NotFound(format!("tag {id}")),
