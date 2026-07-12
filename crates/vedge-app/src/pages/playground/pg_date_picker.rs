@@ -270,10 +270,18 @@ pub fn DatePickerPage() -> impl IntoView {
                             "de-DE"
                         </button>
                     </div>
+                    // The 5 panel nav aria-labels are `TextProp`s too — wired here
+                    // to demonstrate they localize (invisible; a11y only, English
+                    // fallback when unset). The app feeds these via `calendar_labels`.
                     <DatePicker
                         id="locale-demo"
                         locale=loc_sig
                         default_value=DatePickerValue::Single(Some(today()))
+                        dialog_label="Choose date"
+                        prev_month_label="Previous month"
+                        next_month_label="Next month"
+                        prev_year_label="Previous year"
+                        next_year_label="Next year"
                     />
                 </div>
             </Section>

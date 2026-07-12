@@ -25,6 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "generator",
             "audit",
             "health",
+            "calendar",
         ])?
         .parse_options(options);
 
