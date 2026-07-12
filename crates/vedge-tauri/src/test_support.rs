@@ -33,7 +33,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
     };
     use vedge_core::application::vault::ports::BiometricAuthenticator;
     use vedge_core::application::vault::ports::{
-        BlobStoreFactory, BreachChecker, VaultRepositoryFactory,
+        BlobStoreFactory, BreachChecker, ScreenLockWatcher, VaultRepositoryFactory,
     };
     use vedge_core::infrastructure::biometric::MemoryBiometricAuthenticator;
     use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
@@ -41,6 +41,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
     use vedge_core::infrastructure::clipboard::MemoryClipboardProvider;
     use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};
     use vedge_core::infrastructure::keychain::MemoryKeychainProvider;
+    use vedge_core::infrastructure::screen_lock::MemoryScreenLockWatcher;
     use vedge_core::infrastructure::sqlite::app::{
         AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
         SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
@@ -53,6 +54,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
     let biometric: Arc<dyn BiometricAuthenticator> = Arc::new(MemoryBiometricAuthenticator::new());
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(MemoryClipboardProvider::new());
     let breach: Arc<dyn BreachChecker> = Arc::new(NoopBreachChecker::new());
+    let screen_lock: Arc<dyn ScreenLockWatcher> = Arc::new(MemoryScreenLockWatcher::new());
 
     let db = AppDbConnection::open(&dir.path().join("app.db"))
         .await
@@ -93,6 +95,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
         biometric,
         clipboard,
         breach,
+        screen_lock,
         recent_vaults,
         app_settings,
         themes,

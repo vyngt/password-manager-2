@@ -127,6 +127,10 @@ pub enum VaultError {
     #[error("breach lookup failed: {0}")]
     BreachLookup(String),
 
+    // --- screen lock (slice 4.5b) ---
+    #[error("screen-lock state is unavailable on this device")]
+    ScreenLockUnavailable,
+
     #[error("storage failure")]
     Storage(#[source] StorageError),
 }

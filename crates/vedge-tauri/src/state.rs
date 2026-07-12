@@ -22,7 +22,7 @@ use vedge_core::application::app::ports::{
 };
 use vedge_core::application::vault::ports::{
     BiometricAuthenticator, BreachChecker, ClipboardProvider, CryptoProvider,
-    KeyDerivationProvider, KeychainProvider,
+    KeyDerivationProvider, KeychainProvider, ScreenLockWatcher,
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
@@ -70,6 +70,17 @@ fn deadline_from_ttl(ttl: Option<Duration>) -> Option<DateTime<Utc>> {
     now().checked_add_signed(signed)
 }
 
+/// Remove **every** live session, returning the handles so the caller can
+/// audit-then-drop each (slice 4.5b: an OS screen-lock locks all open vaults at
+/// once). Like [`drain_expired_sessions`] the map lock is held only for the
+/// drain, never across the audit await.
+pub(crate) fn drain_all_sessions(sessions: &StdMutex<SessionMap>) -> Vec<SessionHandle> {
+    let Ok(mut guard) = sessions.lock() else {
+        return Vec::new();
+    };
+    guard.drain().map(|(_, slot)| slot.handle).collect()
+}
+
 /// Remove every session whose hard deadline has passed, returning the handles
 /// so the reaper can audit-then-drop (see [`crate::scheduler`]). The outer map
 /// lock is held only for the drain — never across the audit await.
@@ -102,6 +113,9 @@ pub struct AppState {
     /// `HaveIBeenPwned` k-anonymity checker (slice 4.4). Always present; the health
     /// command only hands it to the scan when the user has opted in.
     pub breach: Arc<dyn BreachChecker>,
+    /// OS screen-lock watcher (slice 4.5b). Polled by the background scheduler;
+    /// on a screen-lock edge it drives the same backend lock as the hard TTL.
+    pub screen_lock: Arc<dyn ScreenLockWatcher>,
 
     // ---- app.db repositories (one per repo, sharing one DB connection) -----
     pub recent_vaults: Arc<dyn RecentVaultRepository>,
@@ -128,6 +142,7 @@ impl AppState {
         biometric: Arc<dyn BiometricAuthenticator>,
         clipboard: Arc<dyn ClipboardProvider>,
         breach: Arc<dyn BreachChecker>,
+        screen_lock: Arc<dyn ScreenLockWatcher>,
         recent_vaults: Arc<dyn RecentVaultRepository>,
         app_settings: Arc<dyn AppSettingRepository>,
         themes: Arc<dyn ThemeRepository>,
@@ -143,6 +158,7 @@ impl AppState {
             biometric,
             clipboard,
             breach,
+            screen_lock,
             recent_vaults,
             app_settings,
             themes,

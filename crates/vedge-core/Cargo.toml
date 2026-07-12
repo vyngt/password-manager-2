@@ -71,6 +71,9 @@ windows = { version = "0.61", features = [
     # AllowSetForegroundWindow — let the Hello broker surface its prompt over the app.
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
+    # WTSQuerySessionInformationW / WTSINFOEX / WTS_SESSIONSTATE_* — screen-lock
+    # detection (slice 4.5b). One feature, no new crate.
+    "Win32_System_RemoteDesktop",
 ] }
 
 [dev-dependencies]

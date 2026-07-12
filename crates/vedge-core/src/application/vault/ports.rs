@@ -7,6 +7,7 @@ pub mod factories;
 pub mod kdf;
 pub mod keychain;
 pub mod repository;
+pub mod screen_lock;
 
 pub use biometric::BiometricAuthenticator;
 pub use blob_store::BlobStore;
@@ -17,3 +18,4 @@ pub use factories::{BlobStoreFactory, VaultRepositoryFactory};
 pub use kdf::KeyDerivationProvider;
 pub use keychain::KeychainProvider;
 pub use repository::VaultRepository;
+pub use screen_lock::ScreenLockWatcher;
