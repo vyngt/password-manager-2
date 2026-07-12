@@ -97,7 +97,9 @@ pub enum Severity {
 pub enum AgeConfidence {
     /// From `secret_changed_at` — the secret was written by 4.3-aware code.
     Exact,
-    /// Derived from `entry_history` or `created_at` — a lower bound on age.
+    /// Derived from `created_at` — a lower bound on age. (The `entry_history`
+    /// tier was dropped in 4.3's review; `scan_health::assess_age` never walks
+    /// history, so `created_at` is the only fallback.)
     Estimated,
 }
 
