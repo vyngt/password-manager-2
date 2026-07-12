@@ -121,6 +121,7 @@ impl Harness {
             audit_retention_days: 90,
             created_at: now(),
             last_unlocked_at: None,
+            vault_uuid: None,
         };
 
         // Open DB, run migrations, seed config.

@@ -17,7 +17,7 @@ use zeroize::Zeroizing;
 
 // Traits needed for trait-method lookup + trait-object coercions.
 use vedge_core::application::vault::ports::{
-    BiometricAuthenticator, KeyDerivationProvider, KeychainProvider,
+    BiometricAuthenticator, KeyDerivationProvider, KeychainProvider, VaultRepository,
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
@@ -163,4 +163,36 @@ async fn rotate_preserves_all_existing_entries_decrypted() {
     got.sort_by_key(|id| id.as_str().to_owned());
     assert_eq!(got, expected_ids);
     lock_vault(session_new).await.unwrap();
+}
+
+/// Slice 4.6a: change-password persists a rebuilt config through `rewrap_all_deks`'s
+/// OWN upsert (distinct from `save_config`). The intrinsic `vault_uuid` must survive
+/// that path — a regression that dropped it from the rewrap upsert would fail here.
+#[tokio::test]
+async fn vault_uuid_survives_change_password() {
+    let h = Harness::fresh().await;
+    // First unlock backfills the identity onto this pre-4.6 vault.
+    let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
+    let uuid_before = h.repo.load_config().await.unwrap().vault_uuid;
+    assert!(uuid_before.is_some(), "unlock must backfill vault_uuid");
+
+    change_password(
+        &mut session,
+        Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
+        ChangePasswordInput {
+            new_password: Zeroizing::new("next-pw".into()),
+            new_secret_key: None,
+        },
+    )
+    .await
+    .unwrap();
+    lock_vault(session).await.unwrap();
+
+    assert_eq!(
+        h.repo.load_config().await.unwrap().vault_uuid,
+        uuid_before,
+        "change_password must preserve vault_uuid"
+    );
 }

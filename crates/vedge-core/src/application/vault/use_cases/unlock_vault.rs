@@ -34,7 +34,7 @@ use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{VaultId, now};
 use crate::domain::vault::aad::tag_aad;
 use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
-use crate::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow};
+use crate::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
 use crate::domain::vault::payloads::TagPayload;
@@ -59,6 +59,17 @@ pub struct UnlockVault {
     pub clipboard: Arc<dyn ClipboardProvider>,
     pub kdf: Arc<dyn KeyDerivationProvider>,
     pub keychain: Arc<dyn KeychainProvider>,
+}
+
+/// Backfill an intrinsic `vault_uuid` on first open of a pre-4.6 vault (created
+/// before the column existed). Idempotent: a vault minted on/after 4.6a already
+/// carries one, so this only ever fires once per legacy vault. Both unlock paths
+/// (password + biometric) already persist `updated_config` unconditionally, so the
+/// backfill rides that same `save_config`. Slice 4.6a.
+fn backfill_vault_uuid(config: &mut VaultConfig) {
+    if config.vault_uuid.is_none() {
+        config.vault_uuid = Some(ulid::Ulid::new().to_string());
+    }
 }
 
 impl UnlockVault {
@@ -153,6 +164,7 @@ impl UnlockVault {
 
         let mut updated_config = config;
         updated_config.last_unlocked_at = Some(when);
+        backfill_vault_uuid(&mut updated_config);
         repo.save_config(&updated_config).await?;
 
         // ---- 8. Build session ------------------------------------------------
@@ -235,6 +247,7 @@ impl UnlockVault {
 
         let mut updated_config = config;
         updated_config.last_unlocked_at = Some(when);
+        backfill_vault_uuid(&mut updated_config);
         repo.save_config(&updated_config).await?;
 
         // ---- 8. Build session ------------------------------------------------
