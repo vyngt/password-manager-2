@@ -132,6 +132,51 @@ fn resolve_breach() -> Arc<dyn BreachChecker> {
     Arc::new(HibpBreachChecker::new())
 }
 
+/// Default hard-session ceiling: 8 hours. It's a *ceiling*, not an idle timer —
+/// a normal user hits the 15-minute idle lock long first, so this fires only
+/// when the frontend **failed** to lock (a hung/detached `WebView`), which is
+/// exactly the threat. Kept in sync with `SecurityPrefs` in the app.
+const DEFAULT_SESSION_MAX_MINUTES: u32 = 480;
+
+/// The one field of `security.prefs` the backend reads to enforce the hard
+/// session TTL (slice 4.5a). Serde ignores the rest; a missing key or malformed
+/// blob resolves to the default ceiling (never silently *disables* the ceiling).
+#[derive(serde::Deserialize)]
+struct SessionMaxPref {
+    #[serde(default = "default_session_max_minutes")]
+    session_max_minutes: u32,
+}
+
+const fn default_session_max_minutes() -> u32 {
+    DEFAULT_SESSION_MAX_MINUTES
+}
+
+/// Resolve the hard session TTL to stamp on a newly unlocked / re-authenticated
+/// session. `None` ⇒ the session never expires on a timer (`session_max_minutes`
+/// is `0`, disabled).
+///
+/// Two-gate e2e seam mirroring [`resolve_breach`]: under a debug build **and** a
+/// non-empty numeric `VEDGE_E2E_SESSION_TTL_SECS`, that forced short TTL wins so
+/// `ttl_expiry_wipes_wasm_plaintext` runs in seconds. Neither gate can hold in a
+/// shipped bundle. Otherwise the ceiling comes from the persisted pref.
+pub(crate) async fn session_ttl(state: &AppState) -> Option<std::time::Duration> {
+    #[cfg(debug_assertions)]
+    if let Some(secs) = std::env::var("VEDGE_E2E_SESSION_TTL_SECS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .filter(|s| *s > 0)
+    {
+        return Some(std::time::Duration::from_secs(secs));
+    }
+
+    let minutes = match vedge_core::get_app_setting(&*state.app_settings, "security.prefs").await {
+        Ok(Some(row)) => serde_json::from_value::<SessionMaxPref>(row.value)
+            .map_or(DEFAULT_SESSION_MAX_MINUTES, |p| p.session_max_minutes),
+        _ => DEFAULT_SESSION_MAX_MINUTES,
+    };
+    (minutes > 0).then(|| std::time::Duration::from_secs(u64::from(minutes).saturating_mul(60)))
+}
+
 /// Build an [`AppState`] from the running `tauri::App`.
 ///
 /// Runs once at startup. The `app.db` connection, the migrations, and the

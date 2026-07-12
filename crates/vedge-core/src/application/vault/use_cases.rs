@@ -42,7 +42,7 @@ pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
 pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
 pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
-pub use lock_vault::lock_vault;
+pub use lock_vault::{lock_vault, record_lock};
 pub use move_entry::move_entry;
 pub use queries::{
     entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries, list_tags,

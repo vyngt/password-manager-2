@@ -783,6 +783,80 @@ async fn scan_health_shows_breached() -> Result<()> {
     Ok(())
 }
 
+/// Slice 4.5a: a backend-enforced hard session TTL locks the vault on a timer,
+/// and — the load-bearing part — the frontend teardown wipes decrypted material
+/// from WASM. Launched with a short **per-scenario** `VEDGE_E2E_SESSION_TTL_SECS`
+/// (global would lock every other scenario mid-run). We seed the generator
+/// session history (`Zeroizing` plaintext), wait out the TTL, then assert BOTH
+/// that `is_unlocked` flips AND that the DOM is back at the launch screen — and
+/// that on re-unlock the history is empty. Asserting only `is_unlocked` would
+/// pass while plaintext still sat in the renderer's heap — the exact bug this
+/// slice must not ship.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn ttl_expiry_wipes_wasm_plaintext() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+    // A short hard TTL — generous enough to finish setup before it fires, short
+    // enough to keep the scenario quick.
+    let session =
+        Session::launch_with_env(&env, &app, &[("VEDGE_E2E_SESSION_TTL_SECS", "20")]).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+
+    // Seed the generator session history with a Zeroizing plaintext password.
+    open_generator_panel(&session).await?;
+    session
+        .click_testid("gen-regenerate")
+        .await
+        .context("regenerate (seeds history)")?;
+    session
+        .click_testid("gen-history-toggle")
+        .await
+        .context("expand Recent")?;
+    wait_until(Duration::from_secs(5), || async {
+        Ok(session.count_css("[data-testid='gen-history-row']").await? >= 1)
+    })
+    .await
+    .context("Recent should populate after regenerate")?;
+    session.close_dialog().await?;
+
+    // Wait out the hard TTL. The backend reaper zeroizes the KEK; the frontend
+    // 1 Hz poll notices `is_unlocked == false` and drives the same teardown as a
+    // manual lock (active.path Some→None → wipe generator history + health).
+    assert_unlocked(&session, &vault, false)
+        .await
+        .context("the hard session TTL should lock the vault")?;
+    // DOM assertion (the load-bearing part): teardown navigated back to `/` — the
+    // vault picker (a `[role='option']` per recent vault) is only rendered there.
+    session
+        .wait_for(
+            By::Css("[role='option']".to_string()),
+            Duration::from_secs(10),
+        )
+        .await
+        .context("frontend teardown should return to the launch screen (vault picker)")?;
+
+    // Re-unlock and confirm the seeded history was wiped on the backend lock.
+    unlock_ui(&session, &vault).await?;
+    open_generator_panel(&session).await?;
+    session
+        .click_testid("gen-history-toggle")
+        .await
+        .context("expand Recent (post-unlock)")?;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let n = session.count_css("[data-testid='gen-history-row']").await?;
+    assert_eq!(
+        n, 0,
+        "generator history must be wiped by the backend-initiated lock (found {n})"
+    );
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // UI flows
 // ---------------------------------------------------------------------------

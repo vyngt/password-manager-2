@@ -36,6 +36,20 @@ pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
     call_void("lock_vault", &Args { vault_path }).await
 }
 
+/// Whether the backend still holds an unlocked session for this vault.
+///
+/// `AutoLock` polls this so it notices a **backend-initiated** lock — the hard
+/// session TTL (slice 4.5a), or OS screen-lock (4.5b) — and runs the same
+/// teardown, wiping decrypted material from WASM. TTL-aware on the backend: an
+/// expired-but-not-yet-reaped session already reports `false`.
+pub async fn is_unlocked(vault_path: &str) -> Result<bool, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+    }
+    call("is_unlocked", &Args { vault_path }).await
+}
+
 pub async fn list_entries(vault_path: &str) -> Result<Vec<IndexEntryDto>, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {

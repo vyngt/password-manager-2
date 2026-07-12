@@ -57,6 +57,10 @@ pub async fn unlock_with_recovery_key(
     .await?;
 
     let dto = recovery_outcome_to_dto(&outcome);
-    state.insert_session(vault_id, outcome.session)?;
+    state.insert_session(
+        vault_id,
+        outcome.session,
+        crate::setup::services::session_ttl(&state).await,
+    )?;
     Ok(dto)
 }

@@ -35,6 +35,15 @@ pub async fn change_password(
 ) -> Result<(), CommandError> {
     let vault_id = vault_id_from_string(&vault_path);
     let handle = state.get_session(&vault_id)?;
+
+    // Refresh the hard TTL up front so the ~1-2 s KDF re-run below can't be reaped
+    // mid-change and lock the user out from under a successful change (Decision 6
+    // must hold unconditionally). The user is already authenticated in this
+    // unlocked session, so extending it here is sound. Re-stamped again after
+    // success to reset to a fresh full deadline.
+    let ttl = crate::setup::services::session_ttl(&state).await;
+    state.touch_deadline(&vault_id, ttl);
+
     let mut guard = handle.lock().await;
 
     let new_secret_key = decode_change_password_secret_key(&input)?;
@@ -51,5 +60,8 @@ pub async fn change_password(
         },
     )
     .await?;
+    drop(guard);
+
+    state.touch_deadline(&vault_id, ttl);
     Ok(())
 }

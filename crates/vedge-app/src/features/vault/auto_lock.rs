@@ -21,12 +21,16 @@
 use crate::api;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx};
 use crate::features::vault::context::ActiveVault;
+use crate::i18n::{t_string, use_i18n};
 use chrono::Utc;
 use leptos::ev;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 use std::time::Duration;
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::primitives::tokens::ToastVariant;
 
 /// A boxed one-shot teardown (removes a listener / clears the interval).
 type Teardown = Box<dyn FnOnce()>;
@@ -41,6 +45,8 @@ fn now_ms() -> i64 {
 pub fn AutoLock() -> impl IntoView {
     let sec = expect_context::<SecurityPrefsCtx>();
     let active = expect_context::<ActiveVault>();
+    let i18n = use_i18n();
+    let toast = use_toast();
 
     // Derived so an unrelated pref edit (e.g. the clipboard delay) doesn't churn
     // the timer — only these two facets re-arm it.
@@ -131,8 +137,62 @@ pub fn AutoLock() -> impl IntoView {
         cleanups.set_value(next);
     });
 
+    // Always-on backend-lock poll (slice 4.5a). The hard session TTL — and, in
+    // 4.5b, OS screen-lock — can lock the vault *without us asking*: the backend
+    // zeroizes the KEK on a timer. Poll `is_unlocked` once a second and, when the
+    // backend has locked, bump the SAME ticket the idle timer uses, so the shared
+    // lock Effect below runs the full teardown → `active.path` Some→None, which
+    // wipes the generator history (`Zeroizing` plaintext) + health report from
+    // WASM. Set up directly in the body (fires once at mount) and independent of
+    // the idle timer, so it holds even when idle auto-lock is disabled — that
+    // timer only exists when `auto_lock_minutes > 0`.
+    // Localized "session expired" copy for the backend-lock toast (backstop C's
+    // visible cue). `Memo`s so they relocalize, read `get_untracked` from the
+    // owner-less interval callback — the CLAUDE.md-endorsed pattern (never an
+    // owner-less `t_string!`).
+    let expired_msg = Memo::new(move |_| t_string!(i18n, unlock.session_expired).to_owned());
+    let dismiss_msg = Memo::new(move |_| t_string!(i18n, unlock.dismiss).to_owned());
+    // `checking` gates overlapping probes (one in flight at a time); `locking`
+    // permanently disarms once a backend lock is seen, so the teardown + toast
+    // fire exactly once (mirrors the idle path's synchronous deadline disarm).
+    let checking = StoredValue::new(false);
+    let locking = StoredValue::new(false);
+
+    if let Ok(backend_poll) = set_interval_with_handle(
+        move || {
+            if locking.get_value() || checking.get_value() {
+                return;
+            }
+            let Some(p) = active.path.get_untracked() else {
+                return;
+            };
+            checking.set_value(true);
+            spawn_local(async move {
+                // Lock ONLY on a definitive "backend says locked" (`Ok(false)`). An
+                // `Err` means "couldn't ask" (a transient IPC blip) — skip this
+                // tick rather than eject the user mid-task.
+                let locked = matches!(api::vault::is_unlocked(&p).await, Ok(false));
+                checking.set_value(false);
+                if locked {
+                    locking.set_value(true);
+                    toast.show(
+                        ToastInput::new(expired_msg.get_untracked())
+                            .variant(ToastVariant::Warning)
+                            .dismiss_label(dismiss_msg.get_untracked()),
+                    );
+                    lock_trigger.update(|n| *n = n.wrapping_add(1));
+                }
+            });
+        },
+        Duration::from_secs(1),
+    ) {
+        on_cleanup(move || backend_poll.clear());
+    }
+
     // Perform the lock when the ticket bumps (prev-guard skips the initial mount).
-    // Done in an Effect so `use_navigate` runs in a reactive owner.
+    // Done in an Effect so `use_navigate` runs in a reactive owner. `api::vault::lock`
+    // on an already-backend-locked vault returns `VaultNotOpen` (ignored) — the
+    // teardown still drives `active.path` Some→None.
     Effect::new(move |prev: Option<u32>| {
         let cur = lock_trigger.get();
         if prev.is_some_and(|p| p != cur) {
