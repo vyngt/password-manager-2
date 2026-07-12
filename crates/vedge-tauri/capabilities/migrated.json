@@ -83,7 +83,6 @@
     "process:default",
     "fs:default",
     "clipboard-manager:default",
-    "http:default",
     "os:default"
   ]
 }

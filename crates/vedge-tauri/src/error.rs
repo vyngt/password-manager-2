@@ -125,7 +125,10 @@ impl From<VaultError> for CommandError {
             | VaultError::InvalidRecoveryKey(_)
             | VaultError::InvalidTotpParams(_)
             | VaultError::HotpNotSupported
-            | VaultError::TotpMigrationNotSupported => Self::Invalid(e.to_string()),
+            | VaultError::TotpMigrationNotSupported
+            // A breach lookup failure is normally degraded inside `scan_health`
+            // (surfaced as `breach_check_failed`); this mapping is defensive only.
+            | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),
         }
     }
 }

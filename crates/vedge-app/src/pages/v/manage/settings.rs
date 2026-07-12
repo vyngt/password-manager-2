@@ -64,6 +64,11 @@ pub fn SettingsPage() -> impl IntoView {
         security_prefs::save(&sec.0.get_untracked());
         show_saved();
     });
+    let on_breach = Callback::new(move |v: bool| {
+        sec.0.update(|p| p.breach_check_enabled = v);
+        security_prefs::save(&sec.0.get_untracked());
+        show_saved();
+    });
 
     // Security panel — gated behind `loaded` so the controls don't flash the
     // default prefs before the persisted values arrive.
@@ -172,6 +177,27 @@ pub fn SettingsPage() -> impl IntoView {
                                 />
                             }
                         }}
+                    </div>
+                </div>
+
+                // ---- Breach detection (slice 4.4) -----------------
+                <div class="flex items-start justify-between gap-5 py-3.5 border-b border-border">
+                    <div>
+                        <div class="text-sm font-medium text-text-primary">
+                            {move || t!(i18n, settings.breach_check)}
+                        </div>
+                        <div class="text-xs text-text-secondary mt-0.5">
+                            {move || t!(i18n, settings.breach_check_desc)}
+                        </div>
+                    </div>
+                    <div class="shrink-0 mt-0.5">
+                        <Toggle
+                            checked=Signal::derive(move || sec.0.get().breach_check_enabled)
+                            on_change=on_breach
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, settings.breach_check).to_owned()
+                            })
+                        />
                     </div>
                 </div>
 

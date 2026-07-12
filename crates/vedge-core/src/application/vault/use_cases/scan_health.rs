@@ -29,6 +29,15 @@
 //! digest never leaves this function (findings carry a sequential `group: u32`).
 //! A reuse group is a secret shared across **≥ 2 distinct entries** — two fields
 //! of one entry sharing a value is not cross-entry reuse.
+//!
+//! ## Breach (opt-in, slice 4.4)
+//!
+//! When a [`BreachChecker`] is supplied, credential-like secrets are checked
+//! against `HaveIBeenPwned` by k-anonymity: Rust hashes the secret (SHA-1), sends
+//! **only** the uppercase 5-hex prefix, and matches the returned suffix locally.
+//! The password and full hash never leave the process. The network phase runs
+//! **after** the decrypt loop, so it never widens peak plaintext; a failed lookup
+//! degrades (`breach_check_failed`) instead of failing the scan.
 
 use std::collections::HashMap;
 
@@ -39,22 +48,35 @@ use sha2::Sha256;
 use tracing::instrument;
 use zeroize::Zeroizing;
 
+use crate::application::vault::ports::BreachChecker;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{EntryId, Timestamp, now};
 use crate::domain::vault::entities::{AuditAction, EntryRow};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::health::{
-    AgeConfidence, Finding, FindingKind, HealthReport, HealthScanInput, HealthSummary, SecretField,
-    Severity, SkipReason, Skipped, WeakPolicy, scoring, secret_fields, user_inputs, weak_severity,
+    AgeConfidence, Finding, FindingKind, HIBP_PREFIX_LEN, HealthReport, HealthScanInput,
+    HealthSummary, SecretField, Severity, SkipReason, Skipped, WeakPolicy, scoring, secret_fields,
+    sha1_upper_hex, user_inputs, weak_severity,
 };
 use crate::domain::vault::payloads::EntryPayload;
 
 type HmacSha256 = Hmac<Sha256>;
 
+/// `breach` (slice 4.4): an optional `HaveIBeenPwned` k-anonymity checker.
+///
+/// `None` skips the network phase entirely (off-by-default; the backend gates on
+/// the opt-in flag). When present, only credential-like (`WeakPolicy::Scored`)
+/// fields are hashed, only the 5-hex prefix is ever sent, and a failed lookup
+/// **degrades** (`HealthReport::breach_check_failed`) rather than failing the scan.
+// The decrypt loop + per-dimension dispatch + breach dispatch read as one linear
+// orchestration; splitting further would obscure the tight per-row plaintext
+// lifetime (the SHA-1 must be taken while `exposed` is live).
+#[allow(clippy::too_many_lines)]
 #[instrument(skip_all)]
 pub async fn scan_health(
     session: &VaultSession,
     input: HealthScanInput,
+    breach: Option<&dyn BreachChecker>,
 ) -> Result<HealthReport, VaultError> {
     // `all_entries()` includes trashed rows and is unpaginated — we filter trash
     // in memory below. The full-ciphertext footprint is precedented by unlock.
@@ -71,6 +93,11 @@ pub async fn scan_health(
     let mut entries_scanned: u32 = 0;
     let mut secrets_scanned: u32 = 0;
     let mut groups: HashMap<[u8; 32], Vec<(EntryId, SecretField)>> = HashMap::new();
+    // Parallel to `groups` (same digest key): the uppercase-hex SHA-1 of each
+    // distinct Scored secret, populated only when a breach check will run. Kept
+    // separate because `groups` is moved into `emit_reuse_findings`. `Zeroizing`
+    // — each value is a full password hash. Empty when `breach` is `None`.
+    let mut sha1_by_digest: HashMap<[u8; 32], Zeroizing<String>> = HashMap::new();
 
     for row in &rows {
         if row.is_trashed {
@@ -112,6 +139,17 @@ pub async fn scan_health(
                 .entry(digest)
                 .or_default()
                 .push((row.id.clone(), field.clone()));
+
+            // Breach (slice 4.4): stash the SHA-1 of each distinct *Scored* secret
+            // **while the plaintext is live** — `groups` keys on the per-scan HMAC,
+            // and the SHA-1 cannot be recovered after `payload` is dropped. Gated on
+            // `WeakPolicy::Scored` (Decision 5 — never hash note bodies, SSH keys,
+            // card numbers, national IDs, recovery codes). Only when a check will run.
+            if breach.is_some() && matches!(field.weak_policy(), WeakPolicy::Scored) {
+                sha1_by_digest
+                    .entry(digest)
+                    .or_insert_with(|| sha1_upper_hex(exposed));
+            }
 
             // Weak: only credential-like fields; exemptions are counted, not hidden.
             match field.weak_policy() {
@@ -155,6 +193,25 @@ pub async fn scan_health(
     }
     drop(key);
 
+    // Breach phase (slice 4.4). Runs AFTER the decrypt loop (all plaintext gone —
+    // preserves "peak plaintext = one payload") and BEFORE `emit_reuse_findings`
+    // moves `groups` (the fan-out needs `&groups[digest]` for members).
+    let breach_checked = breach.is_some();
+    let breach_check_failed = match breach {
+        Some(checker) => {
+            apply_breach_findings(
+                checker,
+                &sha1_by_digest,
+                &groups,
+                &mut findings,
+                &mut summary,
+            )
+            .await
+        }
+        None => false,
+    };
+    drop(sha1_by_digest);
+
     emit_reuse_findings(groups, &mut findings, &mut summary);
 
     // Exactly one vault-level row — the full-vault decrypt itself.
@@ -167,7 +224,82 @@ pub async fn scan_health(
         findings,
         skipped,
         summary,
+        breach_checked,
+        breach_check_failed,
     })
+}
+
+/// The breach network phase: k-anonymity prefix lookups + `Breached` findings.
+///
+/// Only the uppercase 5-hex prefix leaves the process; the suffix match is local.
+/// Requests are deduped by prefix (one range answers every secret sharing it).
+/// Returns `breach_check_failed`: `true` on the first lookup failure — in which
+/// case **no** `Breached` findings are emitted and the scan still succeeds.
+/// Otherwise emits a `Breached` finding (severity `High`) for every member of each
+/// matched digest's group.
+async fn apply_breach_findings(
+    checker: &dyn BreachChecker,
+    sha1_by_digest: &HashMap<[u8; 32], Zeroizing<String>>,
+    groups: &HashMap<[u8; 32], Vec<(EntryId, SecretField)>>,
+    findings: &mut Vec<Finding>,
+    summary: &mut HealthSummary,
+) -> bool {
+    // Fold the per-secret SHA-1s into one request per distinct prefix.
+    let mut by_prefix: HashMap<String, Vec<(String, [u8; 32])>> = HashMap::new();
+    for (digest, hex) in sha1_by_digest {
+        let (prefix, suffix) = hex.split_at(HIBP_PREFIX_LEN);
+        by_prefix
+            .entry(prefix.to_owned())
+            .or_default()
+            .push((suffix.to_owned(), *digest));
+    }
+
+    let mut breached: HashMap<[u8; 32], u32> = HashMap::new();
+    for (prefix, wanted) in &by_prefix {
+        let Ok(rows) = checker.range(prefix).await else {
+            // Degrade, never fail the scan (offline / proxy / rate limit).
+            return true;
+        };
+        for (suffix, digest) in wanted {
+            if let Some((_, count)) = rows
+                .iter()
+                .find(|(s, c)| *c > 0 && s.eq_ignore_ascii_case(suffix))
+            {
+                breached.insert(*digest, *count);
+            }
+        }
+    }
+
+    // Emit a Breached finding for the **Scored** members of each matched group.
+    // Fan-out is restricted to Scored fields (a DRIFT from the spec's "every
+    // member"): a group can also hold policy-exempt fields — a PIN / CVV / note
+    // that merely shares a value with a breached password — and those are already
+    // surfaced by the Reuse dimension; labelling a 4-digit PIN a "breached
+    // password" is noise (the same Decision-5 rationale that exempts them from
+    // weak-scoring). Collect, then sort by the stable (entry, field) key for a
+    // deterministic order (the per-scan HMAC digest is random), mirroring
+    // `emit_reuse_findings`.
+    let mut hits: Vec<(EntryId, SecretField, u32)> = Vec::new();
+    for (digest, count) in breached {
+        if let Some(members) = groups.get(&digest) {
+            for (entry_id, field) in members {
+                if matches!(field.weak_policy(), WeakPolicy::Scored) {
+                    hits.push((entry_id.clone(), field.clone(), count));
+                }
+            }
+        }
+    }
+    hits.sort_by(|(a, fa, _), (b, fb, _)| (a.as_str(), fa).cmp(&(b.as_str(), fb)));
+    for (entry_id, field, count) in hits {
+        summary.breached = summary.breached.saturating_add(1);
+        findings.push(Finding {
+            entry_id,
+            field: Some(field),
+            kind: FindingKind::Breached { count },
+            severity: Severity::High,
+        });
+    }
+    false
 }
 
 /// HMAC-SHA256 of `msg` under the per-scan key. `new_from_slice` never fails for

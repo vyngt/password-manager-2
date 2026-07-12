@@ -9,6 +9,8 @@ lock_on_blur_desc: "Khóa khi VEdge mất tiêu điểm (chuyển ứng dụng).
 clipboard_clear: "Xóa bảng nhớ tạm"
 clipboard_clear_desc: "Xóa mật khẩu đã sao chép khỏi bảng nhớ tạm sau một khoảng thời gian."
 seconds: "giây"
+breach_check: "Kiểm tra rò rỉ"
+breach_check_desc: "Khi quét sức khỏe, chỉ gửi 5 ký tự đầu của mã băm SHA-1 của mật khẩu tới HaveIBeenPwned. Mật khẩu không bao giờ rời khỏi thiết bị. Mặc định tắt."
 biometric: "Mở khóa sinh trắc học"
 biometric_desc: "Mở khóa kho này bằng Windows Hello thay vì nhập mật khẩu chính."
 biometric_unavailable: "Thiết bị này không có phần cứng sinh trắc học."

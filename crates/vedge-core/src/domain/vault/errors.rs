@@ -123,6 +123,10 @@ pub enum VaultError {
     #[error("biometric authenticator failure: {0}")]
     BiometricFailed(String),
 
+    // --- breach (slice 4.4) ---
+    #[error("breach lookup failed: {0}")]
+    BreachLookup(String),
+
     #[error("storage failure")]
     Storage(#[source] StorageError),
 }
