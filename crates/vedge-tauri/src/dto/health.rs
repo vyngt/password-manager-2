@@ -74,6 +74,7 @@ const fn finding_kind_to_dto(k: &FindingKind) -> FindingKindDto {
             age_days: *age_days,
             confidence: age_confidence_to_dto(*confidence),
         },
+        FindingKind::Breached { count } => FindingKindDto::Breached { count: *count },
     }
 }
 
@@ -106,6 +107,7 @@ const fn summary_to_dto(s: &HealthSummary) -> HealthSummaryDto {
         reused: s.reused,
         old: s.old,
         exempt_not_scored: s.exempt_not_scored,
+        breached: s.breached,
     }
 }
 
@@ -118,5 +120,7 @@ pub fn health_report_to_dto(r: &HealthReport) -> HealthReportDto {
         findings: r.findings.iter().map(finding_to_dto).collect(),
         skipped: r.skipped.iter().map(skipped_to_dto).collect(),
         summary: summary_to_dto(&r.summary),
+        breach_checked: r.breach_checked,
+        breach_check_failed: r.breach_check_failed,
     }
 }

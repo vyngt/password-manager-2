@@ -57,6 +57,10 @@ pub enum FindingKindDto {
         age_days: u32,
         confidence: AgeConfidenceDto,
     },
+    /// Found in the `HaveIBeenPwned` corpus `count` times (slice 4.4).
+    Breached {
+        count: u32,
+    },
 }
 
 /// One finding on one field (or one entry, for `Old`).
@@ -90,6 +94,9 @@ pub struct HealthSummaryDto {
     pub reused: u32,
     pub old: u32,
     pub exempt_not_scored: u32,
+    /// Fields found in the `HaveIBeenPwned` corpus (slice 4.4).
+    #[serde(default)]
+    pub breached: u32,
 }
 
 /// The full scan result.
@@ -102,6 +109,16 @@ pub struct HealthReportDto {
     pub findings: Vec<FindingDto>,
     pub skipped: Vec<SkippedDto>,
     pub summary: HealthSummaryDto,
+    /// True when a breach check ran this scan. Lets the UI show the breached stat
+    /// only when it means something (avoids a false all-clear for the off-by-default
+    /// case). Slice 4.4.
+    #[serde(default)]
+    pub breach_checked: bool,
+    /// True when the breach check ran but the network phase failed (offline /
+    /// proxy / rate limit). Zero `Breached` findings; the rest of the report is
+    /// valid. The UI shows "breach check unavailable". Slice 4.4.
+    #[serde(default)]
+    pub breach_check_failed: bool,
 }
 
 const fn default_max_age_days() -> u32 {
@@ -163,6 +180,12 @@ mod tests {
                     },
                     severity: SeverityDto::Low,
                 },
+                FindingDto {
+                    entry_id: "01HENTRY0000000000000000E".into(),
+                    field: Some(SecretFieldDto::LoginPassword),
+                    kind: FindingKindDto::Breached { count: 1337 },
+                    severity: SeverityDto::High,
+                },
             ],
             skipped: vec![SkippedDto {
                 entry_id: "01HENTRY0000000000000000D".into(),
@@ -173,7 +196,10 @@ mod tests {
                 reused: 1,
                 old: 1,
                 exempt_not_scored: 2,
+                breached: 1,
             },
+            breach_checked: true,
+            breach_check_failed: false,
         }
     }
 
@@ -192,6 +218,11 @@ mod tests {
             serde_json::to_string(&k).unwrap(),
             r#"{"kind":"Reused","value":{"group":3,"count":2}}"#
         );
+        let b = FindingKindDto::Breached { count: 42 };
+        assert_eq!(
+            serde_json::to_string(&b).unwrap(),
+            r#"{"kind":"Breached","value":{"count":42}}"#
+        );
     }
 
     /// The DTO **cannot** carry a secret by construction: `EnvVar` holds a key,
@@ -208,6 +239,18 @@ mod tests {
         assert!(!json.contains("group\":[") && !json.contains("digest"));
         // Reuse carries an ordinal, not bytes.
         assert!(json.contains(r#""group":1"#));
+        // Breach carries only a corpus count — never a SHA-1 prefix, suffix, or
+        // full hash. Assert no run of 20+ hex digits: catches the 35-hex suffix and
+        // the full 40-hex hash while staying above the longest hex run in real
+        // fields (the fixture's 17-char `0000000000000000A` ULID tail).
+        let has_hash_run = json
+            .as_bytes()
+            .windows(20)
+            .any(|w| w.iter().all(u8::is_ascii_hexdigit));
+        assert!(
+            !has_hash_run,
+            "no long hex run (a SHA-1 fragment) may cross the boundary"
+        );
     }
 
     #[test]

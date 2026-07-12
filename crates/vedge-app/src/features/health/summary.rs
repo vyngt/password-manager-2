@@ -33,6 +33,11 @@ pub fn HealthSummary(
     /// Distinct entries with at least one finding (the health-gauge numerator).
     #[prop(into)]
     affected_entries: Signal<u32>,
+    /// Whether a breach check ran this scan. The breached stat is shown only when
+    /// it did — a `breached: 0` badge for the off-by-default case is a false
+    /// all-clear (slice 4.4).
+    #[prop(into)]
+    breach_checked: Signal<bool>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let pct = Signal::derive(move || health_pct(entries_scanned.get(), affected_entries.get()));
@@ -52,6 +57,15 @@ pub fn HealthSummary(
                         <Badge variant=BadgeVariant::Info>
                             {format!("{}: {}", t_string!(i18n, health.summary_old), s.old)}
                         </Badge>
+                        <Show when=move || breach_checked.get()>
+                            <Badge variant=BadgeVariant::Danger>
+                                {format!(
+                                    "{}: {}",
+                                    t_string!(i18n, health.summary_breached),
+                                    s.breached,
+                                )}
+                            </Badge>
+                        </Show>
                         <Badge variant=BadgeVariant::Default>
                             {format!(
                                 "{}: {}",

@@ -1,5 +1,6 @@
 //! Vedge Tauri shell. Thin adapter over `vedge-core` use cases.
 
+pub mod breach;
 pub mod commands;
 pub mod dto;
 pub mod error;

@@ -171,6 +171,12 @@ fn health_report_decodes() {
                 },
                 severity: SeverityDto::Low,
             },
+            FindingDto {
+                entry_id: "e-breached".into(),
+                field: Some(SecretFieldDto::LoginPassword),
+                kind: FindingKindDto::Breached { count: 1337 },
+                severity: SeverityDto::High,
+            },
         ],
         skipped: vec![SkippedDto {
             entry_id: "e-unknown".into(),
@@ -181,12 +187,15 @@ fn health_report_decodes() {
             reused: 1,
             old: 1,
             exempt_not_scored: 2,
+            breached: 1,
         },
+        breach_checked: true,
+        breach_check_failed: false,
     };
     let back = shell_to_frontend(&dto);
     assert_eq!(back.entries_scanned, 3);
     assert_eq!(back.secrets_scanned, 5);
-    assert_eq!(back.findings.len(), 3);
+    assert_eq!(back.findings.len(), 4);
     match &back.findings[0].kind {
         FindingKindDto::Weak {
             score,
@@ -209,8 +218,15 @@ fn health_report_decodes() {
         FindingKindDto::Reused { group: 2, count: 3 }
     ));
     assert!(back.findings[2].field.is_none());
+    assert!(matches!(
+        back.findings[3].kind,
+        FindingKindDto::Breached { count: 1337 }
+    ));
     assert_eq!(back.skipped.len(), 1);
     assert_eq!(back.summary.exempt_not_scored, 2);
+    assert_eq!(back.summary.breached, 1);
+    assert!(back.breach_checked);
+    assert!(!back.breach_check_failed);
 }
 
 /// `PayloadDto` — adjacently tagged (`{ "entry_type": "Login", "data": {..} }`)

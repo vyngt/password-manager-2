@@ -24,7 +24,7 @@ use vedge_core::application::app::ports::{
     ThemeRepository,
 };
 use vedge_core::application::vault::ports::{
-    BiometricAuthenticator, BlobStoreFactory, ClipboardProvider, CryptoProvider,
+    BiometricAuthenticator, BlobStoreFactory, BreachChecker, ClipboardProvider, CryptoProvider,
     KeyDerivationProvider, KeychainProvider, VaultRepositoryFactory,
 };
 use vedge_core::application::vault::use_cases::{CreateVault, UnlockVault};
@@ -39,6 +39,7 @@ use vedge_core::infrastructure::sqlite::app::{
 };
 use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 
+use crate::breach::HibpBreachChecker;
 use crate::state::AppState;
 
 /// Error type returned by the tauri `.setup(…)` hook.
@@ -104,6 +105,33 @@ fn resolve_biometric(crypto: Arc<dyn CryptoProvider>) -> Arc<dyn BiometricAuthen
     platform_authenticator(crypto)
 }
 
+/// Select the breach checker (slice 4.4). **Production always uses the real
+/// `HibpBreachChecker`** (an HTTPS k-anonymity call). Under the same two-gate seam
+/// as [`resolve_biometric`] — a debug build (`cfg(debug_assertions)`) **and** the
+/// explicit `VEDGE_E2E_BREACH_MEMORY` env var — the e2e harness swaps in an offline
+/// `MemoryBreachChecker` preloaded with one known-breached password, so
+/// `scan_health_shows_breached` runs headlessly with no network. Neither gate can
+/// hold in a shipped bundle.
+#[cfg(debug_assertions)]
+fn resolve_breach() -> Arc<dyn BreachChecker> {
+    if std::env::var_os("VEDGE_E2E_BREACH_MEMORY").is_some_and(|v| !v.is_empty()) {
+        // ⚠ Keep this literal in sync with `crates/vedge-e2e/tests/daily_loop.rs`
+        // (`scan_health_shows_breached` seeds a login with this exact password).
+        return Arc::new(
+            vedge_core::infrastructure::breach::MemoryBreachChecker::with_breached(&[(
+                "e2e-breached-pass-123",
+                5,
+            )]),
+        );
+    }
+    Arc::new(HibpBreachChecker::new())
+}
+
+#[cfg(not(debug_assertions))]
+fn resolve_breach() -> Arc<dyn BreachChecker> {
+    Arc::new(HibpBreachChecker::new())
+}
+
 /// Build an [`AppState`] from the running `tauri::App`.
 ///
 /// Runs once at startup. The `app.db` connection, the migrations, and the
@@ -137,6 +165,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
     let keychain: Arc<dyn KeychainProvider> = Arc::new(OsKeychainProvider::new());
     let biometric: Arc<dyn BiometricAuthenticator> = resolve_biometric(Arc::clone(&crypto));
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(ArboardClipboardProvider::new()?);
+    let breach: Arc<dyn BreachChecker> = resolve_breach();
 
     // Pre-wire the unlock use case so per-vault repo/blob construction is
     // the use case's job at `execute` time. The factories are cheap Arcs.
@@ -165,6 +194,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         keychain,
         biometric,
         clipboard,
+        breach,
         recent_vaults,
         app_settings,
         themes,
@@ -220,6 +250,9 @@ mod tests {
         // Clipboard can fail in CI / headless — use the in-memory variant.
         let clipboard: Arc<dyn ClipboardProvider> =
             Arc::new(vedge_core::infrastructure::clipboard::MemoryClipboardProvider::new());
+        // No network in tests — the no-op double never reports a breach.
+        let breach: Arc<dyn BreachChecker> =
+            Arc::new(vedge_core::infrastructure::breach::NoopBreachChecker::new());
 
         let unlock_vault = UnlockVault {
             repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
@@ -246,6 +279,7 @@ mod tests {
             keychain,
             biometric,
             clipboard,
+            breach,
             recent_vaults,
             app_settings,
             themes,

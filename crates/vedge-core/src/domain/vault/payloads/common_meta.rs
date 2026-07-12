@@ -53,7 +53,7 @@ pub struct CommonMeta {
     /// `soft_delete_entry`, `restore_entry`) bumps — starring an entry must not
     /// reset its apparent secret age. Owned **exclusively** by `create_entry` /
     /// `update_entry`; the frontend never supplies it (`common_meta_from_dto`
-    /// sets `None`). `None` on pre-4.3 payloads — the scan falls back to history.
+    /// sets `None`). `None` on pre-4.3 payloads — the scan falls back to `created_at`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub secret_changed_at: Option<Timestamp>,
 

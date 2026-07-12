@@ -10,12 +10,18 @@
 //! `reuse_never_emits_digest` (core) and `health_dtos_carry_no_secrets` (ipc).
 
 use secrecy::{ExposeSecret, SecretString};
+use sha1::{Digest, Sha1};
+use zeroize::Zeroizing;
 
 use crate::domain::shared::{EntryId, Timestamp};
 use crate::domain::vault::index::registrable_domain;
 use crate::domain::vault::payloads::EntryPayload;
 
 pub mod scoring;
+
+/// Length of the HIBP k-anonymity prefix — the only slice of a password hash
+/// that ever leaves the process (slice 4.4).
+pub const HIBP_PREFIX_LEN: usize = 5;
 
 /// Default staleness horizon: a secret unchanged for a year is "old".
 pub const DEFAULT_MAX_AGE_DAYS: u32 = 365;
@@ -109,6 +115,10 @@ pub enum FindingKind {
         age_days: u32,
         confidence: AgeConfidence,
     },
+    /// The secret appears in the `HaveIBeenPwned` corpus `count` times (slice 4.4).
+    /// Only emitted for `WeakPolicy::Scored` fields, and only when the opt-in
+    /// breach check ran. Severity is always `High`.
+    Breached { count: u32 },
 }
 
 /// One health finding on one field (or one entry, for `Old`).
@@ -145,6 +155,9 @@ pub struct HealthSummary {
     pub old: u32,
     /// Fields exempt from weak-scoring by policy (reported, not hidden).
     pub exempt_not_scored: u32,
+    /// Fields found in the `HaveIBeenPwned` corpus (slice 4.4). Zero when the
+    /// breach check is disabled or unavailable.
+    pub breached: u32,
 }
 
 /// The full scan result — derivatives only, no secrets.
@@ -156,6 +169,15 @@ pub struct HealthReport {
     pub findings: Vec<Finding>,
     pub skipped: Vec<Skipped>,
     pub summary: HealthSummary,
+    /// True when a breach check was run this scan (the opt-in was on). Lets the UI
+    /// distinguish "checked, none breached" from "never checked" — without it a
+    /// `breached: 0` reads as a false all-clear for the off-by-default case. Slice 4.4.
+    pub breach_checked: bool,
+    /// True when the breach check was attempted but the network phase failed
+    /// (offline, proxy, rate limit, parse). Zero `Breached` findings are emitted;
+    /// the rest of the scan is still valid. Run-level, not per-entry (`SkipReason`
+    /// is entry-level, so it is deliberately not reused). Slice 4.4.
+    pub breach_check_failed: bool,
 }
 
 /// Scan tuning. Defaults come from the `DEFAULT_*` constants above.
@@ -181,6 +203,23 @@ pub const fn weak_severity(score: u8) -> Severity {
         0 | 1 => Severity::High,
         _ => Severity::Medium,
     }
+}
+
+/// Uppercase-hex SHA-1 of `input`.
+///
+/// For a live secret this is a full password hash, so it is returned `Zeroizing`.
+/// The HIBP k-anonymity split is the first [`HIBP_PREFIX_LEN`] chars (the prefix,
+/// sent to the API) and the remaining 35 (the suffix, matched locally). Slice 4.4.
+#[must_use]
+pub fn sha1_upper_hex(input: &str) -> Zeroizing<String> {
+    use std::fmt::Write as _;
+    let digest = Sha1::digest(input.as_bytes());
+    let mut hex = String::with_capacity(40);
+    for b in &digest {
+        // Writing to a String is infallible; `.ok()` consumes the `#[must_use]`.
+        write!(hex, "{b:02X}").ok();
+    }
+    Zeroizing::new(hex)
 }
 
 /// Every secret-bearing field of a payload, paired with its live secret.
@@ -342,6 +381,23 @@ mod tests {
         assert!(
             secrets_differ(&a, &value_changed),
             "a value change IS a secret change"
+        );
+    }
+
+    #[test]
+    fn sha1_hex_prefix_suffix_split() {
+        // The canonical FIPS-180 vector: SHA-1("abc") =
+        // A9993E364706816ABA3E25717850C26C9CD0D89D. (A neutral input, not a
+        // password-shaped literal — the string+hash otherwise trips secret scanners.)
+        let hex = sha1_upper_hex("abc");
+        assert_eq!(hex.len(), 40, "SHA-1 hex is 40 chars");
+        assert!(hex.chars().all(|c| c.is_ascii_hexdigit()), "hex only");
+        assert_eq!(*hex, hex.to_uppercase(), "uppercase hex");
+        assert_eq!(&hex[..HIBP_PREFIX_LEN], "A9993", "5-hex prefix");
+        assert_eq!(
+            &hex[HIBP_PREFIX_LEN..],
+            "E364706816ABA3E25717850C26C9CD0D89D",
+            "35-hex suffix"
         );
     }
 }

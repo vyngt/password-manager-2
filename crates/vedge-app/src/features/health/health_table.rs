@@ -103,6 +103,10 @@ fn kind_label_variant(i18n: I18nContext<Locale>, kind: &FindingKindDto) -> (Stri
             t_string!(i18n, health.kind_old).to_owned(),
             BadgeVariant::Info,
         ),
+        FindingKindDto::Breached { .. } => (
+            t_string!(i18n, health.kind_breached).to_owned(),
+            BadgeVariant::Danger,
+        ),
     }
 }
 
@@ -126,6 +130,9 @@ fn detail(i18n: I18nContext<Locale>, kind: &FindingKindDto) -> String {
                 }
             };
             format!("{age_days} {} · {conf}", t_string!(i18n, health.days_unit))
+        }
+        FindingKindDto::Breached { count } => {
+            format!("{count} {}", t_string!(i18n, health.breached_unit))
         }
     }
 }
