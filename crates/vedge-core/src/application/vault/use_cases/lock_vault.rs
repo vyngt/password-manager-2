@@ -4,6 +4,13 @@
 //! drops: once the session is gone the `repo` handle goes with it (held
 //! inside `VaultSession`). We pull the `Arc` out, audit, then let the
 //! session value drop.
+//!
+//! [`record_lock`] is the audit half factored out of [`lock_vault`] so a caller
+//! that only holds a `&VaultSession` — a shared session behind an `Arc<Mutex<…>>`
+//! that it cannot move out (the backend session registry, the TTL reaper, and the
+//! screen-lock watcher, slice 4.5) — can land the `Locked` row and then let the
+//! last `Arc` clone drop to zeroize. This retires the old `Arc::try_unwrap` × 256
+//! spin, which timed out under contention and **silently skipped the audit row**.
 
 use tracing::instrument;
 
@@ -12,9 +19,14 @@ use crate::domain::shared::now;
 use crate::domain::vault::entities::{AuditAction, AuditEvent};
 use crate::domain::vault::errors::VaultError;
 
+/// Append the `AuditAction::Locked` row for a session **without** consuming it.
+///
+/// Clones the `repo` `Arc` (so the write outlives the session guard the caller
+/// holds) and appends. The caller is responsible for dropping the session
+/// afterward — `VaultSession::Drop` zeroizes the KEK and index when the last
+/// `Arc` clone releases.
 #[instrument(skip_all, fields(vault_id = %session.vault_id()))]
-pub async fn lock_vault(session: VaultSession) -> Result<(), VaultError> {
-    // Clone the repo Arc before consuming the session.
+pub async fn record_lock(session: &VaultSession) -> Result<(), VaultError> {
     let repo = std::sync::Arc::clone(&session.repo);
 
     let event = AuditEvent {
@@ -24,7 +36,11 @@ pub async fn lock_vault(session: VaultSession) -> Result<(), VaultError> {
         occurred_at: now(),
         device_id: None,
     };
-    let audit_result = repo.append_audit(&event).await;
+    repo.append_audit(&event).await
+}
+
+pub async fn lock_vault(session: VaultSession) -> Result<(), VaultError> {
+    let audit_result = record_lock(&session).await;
 
     // Drop the session regardless of audit outcome — Drop zeroizes the KEK
     // and the VaultIndex. Propagate any audit error to the caller after.

@@ -31,7 +31,6 @@
 )]
 
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use tracing::instrument;
 use zeroize::Zeroizing;
@@ -39,8 +38,8 @@ use zeroize::Zeroizing;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{
     CreateVaultInput, UnlockVaultInput, entries_by_domain, entries_by_folder, entries_by_tag,
-    list_active_entries, list_tags as list_tags_core, list_trashed_entries,
-    lock_vault as lock_vault_core, search_entries,
+    list_active_entries, list_tags as list_tags_core, list_trashed_entries, record_lock,
+    search_entries,
 };
 
 use crate::dto::entry::{IndexEntryDto, entry_id_from_str, index_entry_to_dto, tag_id_from_str};
@@ -111,7 +110,11 @@ pub async fn unlock_vault(
         })
         .await?;
 
-    state.insert_session(vault_id, session)?;
+    state.insert_session(
+        vault_id,
+        session,
+        crate::setup::services::session_ttl(&state).await,
+    )?;
     Ok(())
 }
 
@@ -145,7 +148,11 @@ pub async fn create_vault(
         secret_key_display: out.secret_key_display,
         keychain_stored: out.keychain_stored,
     };
-    state.insert_session(vault_id, out.session)?; // vault ends UNLOCKED
+    state.insert_session(
+        vault_id,
+        out.session,
+        crate::setup::services::session_ttl(&state).await,
+    )?; // vault ends UNLOCKED
     Ok(dto)
 }
 
@@ -158,35 +165,24 @@ pub async fn lock_vault(
     let vault_id = vault_id_from_string(&vault_path);
 
     // Remove first so any concurrent `get_session` starts returning
-    // `VaultNotOpen`; in-flight clones of the Arc held by other commands
-    // will drop as those commands finish.
-    let Some(arc) = state.remove_session(&vault_id) else {
+    // `VaultNotOpen`; in-flight clones of the handle held by other commands
+    // drop as those commands finish.
+    let Some(handle) = state.remove_session(&vault_id) else {
         return Err(CommandError::VaultNotOpen(vault_path));
     };
 
-    // Spin-retry to gain exclusive ownership. In practice other commands
-    // release their Arc within a few await points.
-    const MAX_RETRIES: usize = 256;
-    let mut arc = arc;
-    for _ in 0..MAX_RETRIES {
-        match Arc::try_unwrap(arc) {
-            Ok(mutex) => {
-                let session = mutex.into_inner();
-                return lock_vault_core(session).await.map_err(Into::into);
-            }
-            Err(still_shared) => {
-                arc = still_shared;
-                tokio::task::yield_now().await;
-            }
-        }
-    }
-
-    // Last resort: drop our reference and let the remaining clones finish.
-    // `VaultSession::Drop` still runs when the last clone drops, so the
-    // KEK + index get zeroized. We lose only the `AuditAction::Locked` row.
-    drop(arc);
-    tracing::warn!("lock_vault: timed out waiting for concurrent commands; audit event skipped");
-    Ok(())
+    // Audit-then-drop (slice 4.5a): take the session lock just long enough to
+    // append the `Locked` row via the shared `repo` Arc, then release. This
+    // waits behind any in-flight command that holds the lock — correct, since
+    // the KEK can't zeroize until that command finishes anyway — and, unlike
+    // the old `Arc::try_unwrap` × 256 spin, the audit row ALWAYS lands. Dropping
+    // the handle releases the last clone → `VaultSession::Drop` zeroizes.
+    let audit = {
+        let guard = handle.lock().await;
+        record_lock(&guard).await
+    };
+    drop(handle);
+    audit.map_err(Into::into)
 }
 
 #[tauri::command(rename_all = "snake_case")]

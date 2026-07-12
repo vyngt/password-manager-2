@@ -53,6 +53,12 @@ pub fn SettingsPage() -> impl IntoView {
         security_prefs::save(&sec.0.get_untracked());
         show_saved();
     });
+    let on_session_max = Callback::new(move |v: String| {
+        let m = v.parse::<u32>().unwrap_or(480);
+        sec.0.update(|p| p.session_max_minutes = m);
+        security_prefs::save(&sec.0.get_untracked());
+        show_saved();
+    });
     let on_blur = Callback::new(move |v: bool| {
         sec.0.update(|p| p.lock_on_blur = v);
         security_prefs::save(&sec.0.get_untracked());
@@ -118,6 +124,45 @@ pub fn SettingsPage() -> impl IntoView {
                                         t_string!(i18n, settings.auto_lock).to_owned()
                                     })
                                     on_change=on_minutes
+                                />
+                            }
+                        }}
+                    </div>
+                </div>
+
+                // ---- Max session (hard TTL, slice 4.5a) -----------
+                <div class="flex items-start justify-between gap-5 py-3.5 border-b border-border">
+                    <div>
+                        <div class="text-sm font-medium text-text-primary">
+                            {move || t!(i18n, settings.session_max)}
+                        </div>
+                        <div class="text-xs text-text-secondary mt-0.5">
+                            {move || t!(i18n, settings.session_max_desc)}
+                        </div>
+                    </div>
+                    <div class="w-44 shrink-0">
+                        {move || {
+                            let unit = t_string!(i18n, settings.hours).to_owned();
+                            let options = vec![
+                                SelectItem::option(
+                                    "0",
+                                    t_string!(i18n, settings.session_max_off).to_owned(),
+                                ),
+                                SelectItem::option("60", format!("1 {unit}")),
+                                SelectItem::option("240", format!("4 {unit}")),
+                                SelectItem::option("480", format!("8 {unit}")),
+                                SelectItem::option("1440", format!("24 {unit}")),
+                            ];
+                            view! {
+                                <Select
+                                    options=options
+                                    value=Signal::derive(move || {
+                                        sec.0.get().session_max_minutes.to_string()
+                                    })
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, settings.session_max).to_owned()
+                                    })
+                                    on_change=on_session_max
                                 />
                             }
                         }}

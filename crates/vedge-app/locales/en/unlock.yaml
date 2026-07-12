@@ -19,6 +19,7 @@ biometric_unlock_cta: "Unlock with Windows Hello"
 biometric_touch_hint: "Touch the fingerprint sensor or look at the camera"
 use_master_password: "Use master password"
 err_biometric: "Biometric unlock failed — use your master password."
+session_expired: "Your session expired — unlock again."
 # --- 2.8.1 vault picker ---
 your_vaults: "Your vaults"
 search_vaults: "Search vaults"
