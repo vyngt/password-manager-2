@@ -14,7 +14,6 @@ use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{EntryId, now};
-use crate::domain::vault::aad::entry_aad;
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
@@ -33,17 +32,8 @@ pub async fn get_entry(
     //    id surfaces as `VaultError::EntryNotFound`.
     let row = session.repo.get_entry(&input.entry_id).await?;
 
-    // 2. Decrypt under the session KEK (same order as copy_field/move_entry).
-    let dek = session
-        .crypto
-        .unwrap_dek(&row.dek_wrapped, session.kek.expose())?;
-    let aad = entry_aad(&row.id, row.version)?;
-    let plaintext = session
-        .crypto
-        .decrypt_entry(&dek, &row.nonce, &row.ciphertext, &aad)?;
-    let payload = EntryPayload::from_decrypted_json(&plaintext)?;
-    drop(plaintext);
-    drop(dek);
+    // 2. Decrypt under the session KEK (shared helper; side-effects below).
+    let payload = super::refs::decrypt_row_payload(session, &row)?;
 
     // An unknown entry has no editable/DTO representation — reject it the same
     // way create_entry/update_entry do.

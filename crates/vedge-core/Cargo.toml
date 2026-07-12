@@ -48,6 +48,7 @@ data-encoding = "2"
 # Async file I/O primitives for BlobStore. `vedge-core` does not create a
 # runtime — callers (shells) supply one.
 tokio = { version = "1", default-features = false, features = ["fs", "io-util", "rt", "sync", "time", "macros"] }
+zxcvbn = { version = "3", default-features = false }
 
 [dependencies.sea-orm]
 version = "1.1.20"

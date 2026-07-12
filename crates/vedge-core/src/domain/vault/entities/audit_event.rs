@@ -30,6 +30,10 @@ pub enum AuditAction {
     /// (session, entry); period-boundary refreshes in the same session are
     /// silent. Only the derived code is exposed — never the seed.
     TotpRevealed,
+    /// A vault-wide password-health scan was run (slice 4.3). The per-entry
+    /// decrypts are audit-silent (like `list_history`); this single vault-level
+    /// row records the full-vault decrypt itself, mirroring `Exported`.
+    HealthScanned,
 }
 
 impl AuditAction {
@@ -52,6 +56,7 @@ impl AuditAction {
             Self::RecoveryUsed => "RecoveryUsed",
             Self::BiometricUnlocked => "BiometricUnlocked",
             Self::TotpRevealed => "TotpRevealed",
+            Self::HealthScanned => "HealthScanned",
         }
     }
 
@@ -74,6 +79,7 @@ impl AuditAction {
             "RecoveryUsed" => Self::RecoveryUsed,
             "BiometricUnlocked" => Self::BiometricUnlocked,
             "TotpRevealed" => Self::TotpRevealed,
+            "HealthScanned" => Self::HealthScanned,
             _ => return None,
         })
     }

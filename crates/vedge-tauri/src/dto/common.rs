@@ -65,9 +65,14 @@ pub fn common_meta_to_dto(m: &CommonMeta) -> CommonMetaDto {
     }
 }
 
-/// Convert a `CommonMetaDto` to a domain `CommonMeta`. `payload_schema` is
-/// always set to the current constant — the frontend does not choose
-/// schema versions.
+/// Convert a `CommonMetaDto` to a domain `CommonMeta`.
+///
+/// `payload_schema` is always set to the current constant — the frontend does
+/// not choose schema versions. **`secret_changed_at` is likewise `None` here:**
+/// the DTO has no such field, and the write-path use cases (`create_entry` /
+/// `update_entry`) own the stamp. Setting it from the DTO would silently destroy
+/// the age on every UI save; letting the use case decide preserves it. Pinned by
+/// `secret_changed_at_survives_ui_round_trip`.
 #[must_use]
 pub fn common_meta_from_dto(dto: CommonMetaDto) -> CommonMeta {
     CommonMeta {
@@ -82,6 +87,7 @@ pub fn common_meta_from_dto(dto: CommonMetaDto) -> CommonMeta {
         color: dto.color,
         icon: dto.icon,
         sort_order: dto.sort_order,
+        secret_changed_at: None,
         payload_schema: vedge_core::domain::vault::payloads::CURRENT_PAYLOAD_SCHEMA,
     }
 }
@@ -156,6 +162,7 @@ mod tests {
             color: Some("#4f46e5".into()),
             icon: Some("briefcase".into()),
             sort_order: 3,
+            secret_changed_at: None,
             payload_schema: 1,
         };
         let dto = common_meta_to_dto(&m);
@@ -176,5 +183,21 @@ mod tests {
     fn b64_fixed_rejects_wrong_length() {
         let err = b64_decode_fixed::<32>(&b64_encode(&[0u8; 16])).unwrap_err();
         assert!(matches!(err, CommandError::Invalid(_)));
+    }
+
+    /// The 4.3 landmine: `secret_changed_at` must NOT survive the DTO round-trip
+    /// (the DTO has no such field; the use case owns the stamp). If it did, every
+    /// UI save would carry a stale/forged age. Combined with the core
+    /// `secret_changed_at_carried_forward_on_metadata_edit`, this proves the
+    /// stamp survives a UI edit *because* `update_entry` re-derives it.
+    #[test]
+    fn common_meta_from_dto_never_carries_secret_changed_at() {
+        let mut m = CommonMeta::new("x", EntryType::Login);
+        m.secret_changed_at = Some(vedge_core::domain::shared::now());
+        let back = common_meta_from_dto(common_meta_to_dto(&m));
+        assert!(
+            back.secret_changed_at.is_none(),
+            "the DTO must not carry the stamp — the use case owns it"
+        );
     }
 }
