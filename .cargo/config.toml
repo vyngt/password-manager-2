@@ -1,0 +1,13 @@
+# Windows `rust-lld` crashes (`0xC0000005`) when linking the wasm binary once its
+# DWARF grows past a threshold — a debuginfo-size cousin of the wasm-wire trap. It
+# has bitten twice: slice 4.6b (via `interpolate_display`) and slice 4.9a (ordinary
+# cumulative growth). `cargo check` / CI-Linux never LINK wasm, so they were blind
+# to it; the local `cargo build`/`trunk`/`mise e2e`/`cargo tauri dev` links crash.
+#
+# Dropping debuginfo for the wasm target dodges it for ALL local wasm links while
+# keeping HOST builds at full debuginfo (this is target-scoped, not a profile). It
+# does NOT touch `debug_assertions` (that is profile-controlled), so the DEBUG wasm
+# the e2e suite builds still compiles in the Leptos reactive-context console-clean
+# warning. `cargo check`/CI are unaffected (a check emits no debuginfo to link).
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "debuginfo=0"]

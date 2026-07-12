@@ -164,14 +164,19 @@ pub fn AuditTable(
         },
     ];
 
+    // `flex-1 min-h-0` all the way down (this wrapper → `.data-table-wrapper`)
+    // so the table gets a viewport-bounded scrollbar and its sticky header
+    // engages. `min-h-0` lets the flex child shrink below its content; without
+    // it the page would scroll as one block instead (slice 4.9a P2).
     view! {
-        <div data-testid="audit-table">
+        <div data-testid="audit-table" class="flex-1 min-h-0 flex flex-col">
             <DataTable
                 columns=columns
                 rows=rows
                 row_key=string_fn(|r: &AuditRow| r.id.clone())
                 loading=loading
                 empty_message=Signal::derive(move || t_string!(i18n, audit.empty).to_owned())
+                class="flex-1 min-h-0"
             />
         </div>
     }

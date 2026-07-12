@@ -212,101 +212,102 @@ pub fn VaultFilters(
         <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
             <VaultSearch search_query=search_query />
 
-            // Type facet. Option list built inside a reactive closure so the
-            // locale read is tracked (no owner-less warning) and relocalizes.
+            // Type facet. `options` is a reactive `Signal` (not a `{move||}`
+            // remount wrapper) so a locale change relocalizes the labels in
+            // place — the Select keeps its open/highlight/type-ahead state
+            // (slice 4.9a P4).
             <div class="w-40 shrink-0">
-                {move || {
-                    let mut options = vec![
-                        SelectItem::option("", t_string!(i18n, vault.filter_all_types).to_owned()),
-                    ];
-                    options
-                        .extend(
-                            filterable_types()
-                                .iter()
-                                .map(|ty| SelectItem::option(
-                                    type_to_key(ty),
-                                    type_label_i18n(i18n, ty),
-                                )),
-                        );
-                    view! {
-                        <Select
-                            options=options
-                            value=Signal::derive(move || {
-                                entry_type.get().as_ref().map_or("", type_to_key).to_owned()
-                            })
-                            placeholder=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_type).to_owned()
-                            })
-                            aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_type_aria).to_owned()
-                            })
-                            on_change=Callback::new(move |key: String| {
-                                entry_type
-                                    .set(
-                                        if key.is_empty() {
-                                            None
-                                        } else {
-                                            Some(type_from_key(&key))
-                                        },
-                                    );
-                            })
-                        />
-                    }
-                }}
+                <Select
+                    options=Signal::derive(move || {
+                        let mut options = vec![
+                            SelectItem::option(
+                                "",
+                                t_string!(i18n, vault.filter_all_types).to_owned(),
+                            ),
+                        ];
+                        options
+                            .extend(
+                                filterable_types()
+                                    .iter()
+                                    .map(|ty| SelectItem::option(
+                                        type_to_key(ty),
+                                        type_label_i18n(i18n, ty),
+                                    )),
+                            );
+                        options
+                    })
+                    value=Signal::derive(move || {
+                        entry_type.get().as_ref().map_or("", type_to_key).to_owned()
+                    })
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, vault.filter_type).to_owned()
+                    })
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, vault.filter_type_aria).to_owned()
+                    })
+                    on_change=Callback::new(move |key: String| {
+                        entry_type
+                            .set(if key.is_empty() { None } else { Some(type_from_key(&key)) });
+                    })
+                />
             </div>
 
-            // Tag facet — rebuilt when the tag list or locale changes.
+            // Tag facet — reactive `options` relocalizes the "all tags" label and
+            // rebuilds when the tag list changes, both without remounting.
             <div class="w-40 shrink-0">
-                {move || {
-                    let mut options = vec![
-                        SelectItem::option("", t_string!(i18n, vault.filter_all_tags).to_owned()),
-                    ];
-                    options
-                        .extend(tags.get().into_iter().map(|t| SelectItem::option(t.id, t.name)));
-                    view! {
-                        <Select
-                            options=options
-                            value=Signal::derive(move || tag_id.get().unwrap_or_default())
-                            placeholder=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_tag).to_owned()
-                            })
-                            aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.filter_tag_aria).to_owned()
-                            })
-                            on_change=Callback::new(move |id: String| {
-                                tag_id.set(if id.is_empty() { None } else { Some(id) });
-                            })
-                        />
-                    }
-                }}
+                <Select
+                    options=Signal::derive(move || {
+                        let mut options = vec![
+                            SelectItem::option(
+                                "",
+                                t_string!(i18n, vault.filter_all_tags).to_owned(),
+                            ),
+                        ];
+                        options
+                            .extend(
+                                tags.get().into_iter().map(|t| SelectItem::option(t.id, t.name)),
+                            );
+                        options
+                    })
+                    value=Signal::derive(move || tag_id.get().unwrap_or_default())
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, vault.filter_tag).to_owned()
+                    })
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, vault.filter_tag_aria).to_owned()
+                    })
+                    on_change=Callback::new(move |id: String| {
+                        tag_id.set(if id.is_empty() { None } else { Some(id) });
+                    })
+                />
             </div>
 
-            // Sort key.
+            // Sort key — reactive `options` relocalizes the sort labels in place.
             <div class="w-40 shrink-0">
-                {move || {
-                    let options = vec![
-                        SelectItem::option("name", t_string!(i18n, vault.sort_name).to_owned()),
-                        SelectItem::option(
-                            "updated",
-                            t_string!(i18n, vault.sort_updated).to_owned(),
-                        ),
-                        SelectItem::option("used", t_string!(i18n, vault.sort_used).to_owned()),
-                        SelectItem::option("manual", t_string!(i18n, vault.sort_manual).to_owned()),
-                    ];
-                    view! {
-                        <Select
-                            options=options
-                            value=Signal::derive(move || sort_to_key(sort.get()).to_owned())
-                            placeholder=Signal::derive(move || {
-                                t_string!(i18n, vault.sort_label).to_owned()
-                            })
-                            aria_label=Signal::derive(move || {
-                                t_string!(i18n, vault.sort_aria).to_owned()
-                            })
-                            on_change=Callback::new(move |v: String| sort.set(sort_from_key(&v)))
-                        />
-                    }
-                }}
+                <Select
+                    options=Signal::derive(move || {
+                        vec![
+                            SelectItem::option("name", t_string!(i18n, vault.sort_name).to_owned()),
+                            SelectItem::option(
+                                "updated",
+                                t_string!(i18n, vault.sort_updated).to_owned(),
+                            ),
+                            SelectItem::option("used", t_string!(i18n, vault.sort_used).to_owned()),
+                            SelectItem::option(
+                                "manual",
+                                t_string!(i18n, vault.sort_manual).to_owned(),
+                            ),
+                        ]
+                    })
+                    value=Signal::derive(move || sort_to_key(sort.get()).to_owned())
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, vault.sort_label).to_owned()
+                    })
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, vault.sort_aria).to_owned()
+                    })
+                    on_change=Callback::new(move |v: String| sort.set(sort_from_key(&v)))
+                />
             </div>
 
             // Favorites-only. Toggle carries the aria-label; the visible text is

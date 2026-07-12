@@ -4,10 +4,26 @@ use super::date_utils::{
 };
 use super::locale::{first_day_of_week, format_month_year, month_long_names, weekday_short_names};
 use super::types::{DatePickerValue, DatePickerVariant, DateRange, YearMonth};
+use crate::primitives::text_prop::TextProp;
+use crate::utils::text::text_or;
 use chrono::{Datelike, NaiveDate};
 use icondata as i;
 use leptos::prelude::*;
 use leptos_icons::Icon;
+
+/// The panel's five chrome `aria-label`s, grouped so `DatePicker` can thread
+/// them through `CalendarPanel` (and its two render helpers) without a
+/// five-argument explosion. Each falls back to English via `text_or`, so a
+/// caller that wires none keeps working — the vedge-ui i18n rule. `Copy`
+/// because `TextProp` is `Copy`.
+#[derive(Clone, Copy, Default)]
+pub struct PanelLabels {
+    pub dialog: TextProp,
+    pub prev_month: TextProp,
+    pub next_month: TextProp,
+    pub prev_year: TextProp,
+    pub next_year: TextProp,
+}
 
 #[derive(Clone, Copy)]
 pub struct PanelContext {
@@ -19,6 +35,9 @@ pub struct PanelContext {
     pub panel_style: RwSignal<String>,
     pub data_state: RwSignal<Option<&'static str>>,
     pub panel_ref: NodeRef<leptos::html::Div>,
+    /// Panel chrome aria-labels — carried on the context so the render helpers
+    /// read them off `ctx` without pushing past clippy's argument-count limit.
+    pub labels: PanelLabels,
 }
 
 #[component]
@@ -64,7 +83,7 @@ pub fn CalendarPanel(
             class=root_cls
             style=move || ctx.panel_style.get()
             role="dialog"
-            aria-label="Choose date"
+            aria-label=move || text_or(ctx.labels.dialog, "Choose date")
             tabindex="-1"
             data-state=move || ctx.data_state.get()
             on:keydown=handle_keydown
@@ -144,7 +163,7 @@ fn render_day_view(
             <button
                 type="button"
                 class="datepicker-nav"
-                aria-label="Previous month"
+                aria-label=move || text_or(ctx.labels.prev_month, "Previous month")
                 disabled=move || prev_disabled()
                 on:click=go_prev
             >
@@ -156,7 +175,7 @@ fn render_day_view(
             <button
                 type="button"
                 class="datepicker-nav"
-                aria-label="Next month"
+                aria-label=move || text_or(ctx.labels.next_month, "Next month")
                 disabled=move || next_disabled()
                 on:click=go_next
             >
@@ -329,7 +348,7 @@ fn render_month_view(
             <button
                 type="button"
                 class="datepicker-nav"
-                aria-label="Previous year"
+                aria-label=move || text_or(ctx.labels.prev_year, "Previous year")
                 disabled=move || prev_disabled()
                 on:click=go_prev
             >
@@ -341,7 +360,7 @@ fn render_month_view(
             <button
                 type="button"
                 class="datepicker-nav"
-                aria-label="Next year"
+                aria-label=move || text_or(ctx.labels.next_year, "Next year")
                 disabled=move || next_disabled()
                 on:click=go_next
             >

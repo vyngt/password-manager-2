@@ -32,6 +32,7 @@ use vedge_ui::components::form::date_picker::{
 use vedge_ui::components::form::textarea::Textarea;
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
+use crate::features::date_i18n::{calendar_labels, locale_tag};
 use crate::features::generator::generator_panel::GeneratorPanel;
 use crate::features::settings::generator_prefs::GeneratorPrefsCtx;
 
@@ -850,6 +851,9 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
 pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
     let i18n = use_i18n();
     let active_type = Memo::new(move |_| data.with(|d| d.entry_type.clone()));
+    // Localized calendar for the card-expiry month picker (slice 4.9a P1).
+    let cal_locale = locale_tag(i18n);
+    let cal_labels = calendar_labels(i18n);
 
     view! {
         <div class="grid grid-cols-2 gap-3">
@@ -874,6 +878,12 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
                             id="ef-expiry"
                             variant=DatePickerVariant::Month
                             month_numeric=true
+                            locale=cal_locale
+                            dialog_label=cal_labels.dialog
+                            prev_month_label=cal_labels.prev_month
+                            next_month_label=cal_labels.next_month
+                            prev_year_label=cal_labels.prev_year
+                            next_year_label=cal_labels.next_year
                             value=Signal::derive(move || expiry_to_picker(
                                 &data.with(|d| d.card_expiry.clone()),
                             ))
