@@ -35,7 +35,7 @@ pub mod tag;
 pub mod totp;
 
 pub use audit::{ACTION_NAMES, AuditEventDto, AuditPageDto, AuditQueryDto};
-pub use backup::BackupReportDto;
+pub use backup::{BackupPreviewDto, BackupReportDto, RestoreReportDto};
 pub use common::{
     CommonMetaDto, EntryTypeDto, Timestamp, b64_decode, b64_decode_fixed, b64_encode,
     ts_from_string, ts_to_string,

@@ -129,6 +129,9 @@ pub fn run() {
             commands::maintenance::run_maintenance,
             // ---- backup (slice 5.2) ----
             commands::backup::backup_vault,
+            // ---- restore (slice 5.2b) ----
+            commands::backup::inspect_backup,
+            commands::backup::restore_vault,
             // ---- emergency kit + recovery ----
             commands::emergency_kit::export_emergency_kit,
             commands::emergency_kit::emergency_kit_pdf,

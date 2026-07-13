@@ -1,6 +1,11 @@
-//! Backup snapshot + archive (slice 5.2a). The restore-side tests (verify-before-
-//! touch, the journal state machine, refusals) land in 5.2b; here we prove the
-//! archive is produced live and is well-formed.
+//! Backup + restore host suite (slices 5.2a / 5.2b).
+//!
+//! 5.2a proves the archive is produced live and well-formed; 5.2b proves the
+//! journaled restore round-trips a vault (entries + a document blob) and refuses a
+//! tampered archive, a uuid mismatch, a newer schema, and an unknown format. The
+//! crash-at-every-state matrix is a unit test in `infrastructure::backup::journal`
+//! (it drives the state machine directly, more precisely than a use-case fault
+//! point could).
 
 #![allow(
     clippy::unwrap_used,
@@ -8,24 +13,36 @@
     clippy::panic,
     clippy::indexing_slicing,
     clippy::arithmetic_side_effects,
+    clippy::integer_division,
     clippy::needless_pass_by_value
 )]
 
 mod common;
+
+use std::path::Path;
+
+use zeroize::Zeroizing;
 
 use common::{Harness, build_unlock};
 
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    BackupVaultInput, CreateEntryInput, UnlockVaultInput, backup_vault, create_entry,
+    BackupVaultInput, CreateEntryInput, ImportDocumentInput, InspectBackupInput, RestoreVaultInput,
+    UnlockVaultInput, backup_vault, create_entry, export_document, import_document, inspect_backup,
+    restore_vault,
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::entities::AuditAction;
+use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
 use vedge_core::infrastructure::backup::archive;
-use vedge_core::infrastructure::backup::manifest::VAULT_MEMBER;
-use vedge_core::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
+use vedge_core::infrastructure::backup::manifest::{
+    BACKUP_FORMAT_VERSION, BackupManifest, ManifestFile, VAULT_MEMBER,
+};
+use vedge_core::infrastructure::sqlite::vault::{
+    SqliteVaultRepository, SqliteVaultRepositoryFactory, VaultDbConnection,
+};
 
 async fn unlock(h: &Harness) -> VaultSession {
     build_unlock(h)
@@ -175,4 +192,349 @@ async fn backup_without_documents_omits_blobs() {
     // Only vault.vdb — no blob members.
     assert_eq!(manifest.files.len(), 1);
     assert_eq!(manifest.files[0].name, VAULT_MEMBER);
+}
+
+// ---- 5.2b: restore round-trip + refusals ----------------------------------
+
+/// Unlock a vault at an arbitrary path with the harness's master password + an
+/// explicit Secret Key (bypassing the keychain — the restored vault lives at a
+/// path the keychain never saw).
+async fn unlock_at(h: &Harness, path: &Path) -> VaultSession {
+    build_unlock(h)
+        .execute(UnlockVaultInput {
+            vault_path: path.to_path_buf(),
+            master_password: h.master_password.clone(),
+            secret_key: Some(Zeroizing::new(h.secret_key)),
+        })
+        .await
+        .unwrap()
+}
+
+/// Stamp a specific `vault_uuid` onto a harness vault (default harness uuid is
+/// `None`, which can't exercise the mismatch path).
+async fn set_uuid(h: &Harness, uuid: &str) {
+    let mut cfg = h.config.clone();
+    cfg.vault_uuid = Some(uuid.to_owned());
+    h.repo.save_config(&cfg).await.unwrap();
+}
+
+/// Build a minimal, internally-consistent `.vbk` with a chosen format/schema — for
+/// the refusal tests, whose gate fires *after* `verify_archive` passes.
+fn write_min_archive(dir: &Path, format_version: u32, schema_version: i32) -> std::path::PathBuf {
+    let vault = dir.join("vault.vdb");
+    std::fs::write(&vault, b"dummy snapshot bytes -- never opened, only hashed").unwrap();
+    let (size, blake3) = archive::hash_file(&vault).unwrap();
+    let manifest = BackupManifest {
+        format_version,
+        vault_uuid: None,
+        schema_version,
+        created_at: "2026-07-13T00:00:00.000Z".to_owned(),
+        entry_count: 0,
+        blob_count: 0,
+        files: vec![ManifestFile {
+            name: VAULT_MEMBER.to_owned(),
+            size,
+            blake3,
+        }],
+    };
+    let manifest_path = dir.join("manifest.json");
+    std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let dest = dir.join("min.vbk");
+    archive::write_archive(
+        &[
+            ("manifest.json".to_owned(), manifest_path),
+            (VAULT_MEMBER.to_owned(), vault),
+        ],
+        &dest,
+    )
+    .unwrap();
+    dest
+}
+
+/// The whole-slice proof: back up a live vault (3 logins + a document), restore it
+/// into a fresh location, unlock it, and decrypt the document.
+#[tokio::test]
+async fn restore_round_trip_recovers_entries_and_a_document() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "a").await;
+    add(&mut session, "b").await;
+    add(&mut session, "c").await;
+    let doc_id = import_document(
+        &mut session,
+        ImportDocumentInput {
+            filename: "notes.txt".into(),
+            mime_type: "text/plain".into(),
+            content: b"the quick brown fox".to_vec(),
+            meta: CommonMeta::new("notes", EntryType::Document),
+        },
+    )
+    .await
+    .unwrap();
+
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("full.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    // Install-from-backup into a fresh, absent target (no open handles).
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("restored.vdb");
+    let factory = SqliteVaultRepositoryFactory::new();
+    let report = restore_vault(
+        &factory,
+        RestoreVaultInput {
+            target_vault: target.clone(),
+            archive_path: dest,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(report.entry_count, 4);
+    assert_eq!(report.blob_count, 1);
+
+    // Unlock the restored vault and decrypt the document — every layer round-trips.
+    let restored = unlock_at(&h, &target).await;
+    let (name, bytes) = export_document(&restored, &doc_id).await.unwrap();
+    assert_eq!(name, "notes.txt");
+    assert_eq!(bytes.to_vec(), b"the quick brown fox".to_vec());
+    drop(restored);
+
+    // Independent DB check: 4 entries + exactly one BackupRestored row.
+    let db = VaultDbConnection::open(&target).await.unwrap();
+    let repo = SqliteVaultRepository::new(db.handle());
+    assert_eq!(repo.all_entries().await.unwrap().len(), 4);
+    let restored_rows = repo
+        .recent_audit(200)
+        .await
+        .unwrap()
+        .iter()
+        .filter(|e| e.action == AuditAction::BackupRestored)
+        .count();
+    assert_eq!(restored_rows, 1, "exactly one BackupRestored row");
+}
+
+/// Restore OVER an existing (locked, matching-uuid) vault — exercises the
+/// move-aside + `.old` cleanup and, on Windows, the close-the-read-handle-before-
+/// rename path that the fresh-install case never touches.
+#[tokio::test]
+async fn restore_over_an_existing_vault_replaces_it() {
+    let h = Harness::fresh().await;
+    set_uuid(&h, "01XXXXXXXXXXXXXXXXXXXXXXXX").await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "keep-me").await;
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("over.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    // An existing target with the same uuid (a copy of the source's `.vdb`).
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("existing.vdb");
+    std::fs::copy(&h.vdb_path, &target).unwrap();
+
+    let factory = SqliteVaultRepositoryFactory::new();
+    restore_vault(
+        &factory,
+        RestoreVaultInput {
+            target_vault: target.clone(),
+            archive_path: dest,
+        },
+    )
+    .await
+    .unwrap();
+
+    // No transient artifacts survive.
+    assert!(!target_dir.path().join("existing.vdb.old").exists());
+    assert!(!target_dir.path().join(".existing.restore-staging").exists());
+    assert!(!target_dir.path().join("existing.restore.intent").exists());
+
+    // The restored vault opens and carries the backed-up entry.
+    let restored = unlock_at(&h, &target).await;
+    drop(restored);
+    let db = VaultDbConnection::open(&target).await.unwrap();
+    let repo = SqliteVaultRepository::new(db.handle());
+    assert_eq!(repo.all_entries().await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn restore_refuses_a_tampered_archive_and_leaves_the_target_untouched() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "x").await;
+    seed_blob(&h, b"some blob bytes to enlarge the archive payload region");
+
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("tam.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    // Flip a 64-byte run through the middle — lands in `vault.vdb`'s content (the
+    // dominant member), so `verify_archive`'s per-file hash check fails.
+    let mut bytes = std::fs::read(&dest).unwrap();
+    let start = bytes.len() / 2;
+    let end = (start + 64).min(bytes.len());
+    for b in &mut bytes[start..end] {
+        *b ^= 0xff;
+    }
+    std::fs::write(&dest, &bytes).unwrap();
+
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("t.vdb");
+    let factory = SqliteVaultRepositoryFactory::new();
+    let err = restore_vault(
+        &factory,
+        RestoreVaultInput {
+            target_vault: target,
+            archive_path: dest,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::Storage(_)),
+        "tamper → a Storage(Io) integrity refusal, got {err:?}"
+    );
+    // Refusal is at verify (before staging): the target dir stays empty.
+    assert_eq!(
+        std::fs::read_dir(target_dir.path()).unwrap().count(),
+        0,
+        "a refused restore must not create or stage anything"
+    );
+}
+
+#[tokio::test]
+async fn restore_refuses_a_uuid_mismatch() {
+    let ha = Harness::fresh().await;
+    set_uuid(&ha, "01AAAAAAAAAAAAAAAAAAAAAAAA").await;
+    let mut sa = unlock(&ha).await;
+    add(&mut sa, "one").await;
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("a.vbk");
+    backup_vault(
+        &sa,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // A readable target vault with a DIFFERENT uuid.
+    let hb = Harness::fresh().await;
+    set_uuid(&hb, "01BBBBBBBBBBBBBBBBBBBBBBBB").await;
+
+    let factory = SqliteVaultRepositoryFactory::new();
+    let err = restore_vault(
+        &factory,
+        RestoreVaultInput {
+            target_vault: hb.vdb_path.clone(),
+            archive_path: dest,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::MalformedPayload(_)),
+        "uuid mismatch → MalformedPayload, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn restore_refuses_a_newer_schema() {
+    let dir = tempfile::tempdir().unwrap();
+    let archive_path = write_min_archive(dir.path(), BACKUP_FORMAT_VERSION, 2);
+    let target_dir = tempfile::tempdir().unwrap();
+    let factory = SqliteVaultRepositoryFactory::new();
+    let err = restore_vault(
+        &factory,
+        RestoreVaultInput {
+            target_vault: target_dir.path().join("s.vdb"),
+            archive_path,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::UnsupportedSchemaVersion(2)),
+        "schema 2 > 1 → refuse, got {err:?}"
+    );
+    assert_eq!(std::fs::read_dir(target_dir.path()).unwrap().count(), 0);
+}
+
+#[tokio::test]
+async fn restore_refuses_an_unknown_format() {
+    let dir = tempfile::tempdir().unwrap();
+    let archive_path = write_min_archive(dir.path(), 2, 1);
+    let target_dir = tempfile::tempdir().unwrap();
+    let factory = SqliteVaultRepositoryFactory::new();
+    let err = restore_vault(
+        &factory,
+        RestoreVaultInput {
+            target_vault: target_dir.path().join("f.vdb"),
+            archive_path,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::MalformedPayload(_)),
+        "format 2 → refuse, got {err:?}"
+    );
+    assert_eq!(std::fs::read_dir(target_dir.path()).unwrap().count(), 0);
+}
+
+#[tokio::test]
+async fn inspect_backup_reports_counts_and_flags() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "a").await;
+    add(&mut session, "b").await;
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("i.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // Preview against a fresh (absent) target → unreadable, no hard-stops.
+    let target_dir = tempfile::tempdir().unwrap();
+    let preview = inspect_backup(InspectBackupInput {
+        target_vault: target_dir.path().join("none.vdb"),
+        archive_path: dest,
+    })
+    .await
+    .unwrap();
+    assert_eq!(preview.backup_entry_count, 2);
+    assert_eq!(preview.format_version, BACKUP_FORMAT_VERSION);
+    assert!(!preview.unknown_format);
+    assert!(!preview.unknown_schema);
+    assert!(!preview.uuid_mismatch);
+    assert!(preview.target_unreadable);
+    assert!(preview.rollback_delta.is_none());
 }

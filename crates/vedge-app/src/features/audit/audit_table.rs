@@ -39,7 +39,7 @@ struct AuditRow {
 pub fn severity(action: &str) -> BadgeVariant {
     match action {
         "PermanentlyDeleted" | "RecoveryUsed" => BadgeVariant::Danger,
-        "Deleted" | "PasswordChanged" | "Exported" => BadgeVariant::Warning,
+        "Deleted" | "PasswordChanged" | "Exported" | "BackupRestored" => BadgeVariant::Warning,
         "Unlocked" | "BiometricUnlocked" | "Locked" => BadgeVariant::Info,
         _ => BadgeVariant::Default,
     }

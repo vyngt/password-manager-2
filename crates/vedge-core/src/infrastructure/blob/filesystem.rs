@@ -58,7 +58,7 @@ impl FilesystemBlobStore {
     }
 }
 
-fn derive_blob_root(vault_path: &Path) -> PathBuf {
+pub(crate) fn derive_blob_root(vault_path: &Path) -> PathBuf {
     // `work.vdb` → `work.vedge_blobs/` (sibling, same stem).
     let stem = vault_path
         .file_stem()

@@ -1,6 +1,14 @@
 use crate::domain::shared::Timestamp;
 use crate::domain::vault::kdf_params::KdfParams;
 
+/// The vault schema version this build understands.
+///
+/// Restore and import refuse a backup whose `schema_version` exceeds this — slice
+/// 5.2b is the first read of a field written but never used since Phase 1. Bump
+/// only when a migration introduces a breaking logical schema change (an additive
+/// nullable column, like `vault_uuid` in 4.6a, does not).
+pub const CURRENT_SCHEMA_VERSION: i32 = 1;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VaultConfig {
     pub id: String,
