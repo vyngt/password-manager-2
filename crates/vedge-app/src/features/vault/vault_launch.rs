@@ -24,7 +24,9 @@ use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 use std::time::Duration;
 use uuid::Uuid;
-use vedge_ipc::{RecentVaultDto, RecentVaultStatusDto, UnlockVaultInputDto};
+use vedge_ipc::{
+    RecentVaultDto, RecentVaultStatusDto, UnlockVaultInputDto, UnlockWithRecoveryKeyInputDto,
+};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{Button, EmptyState, Spinner};
@@ -91,6 +93,12 @@ pub fn VaultLaunch() -> impl IntoView {
     let pw = RwSignal::new(String::new());
     let unlocking = RwSignal::new(false);
 
+    // Recovery (5.1): the "Use Emergency Kit" panel state. `recovery_open` is
+    // toggled by the always-visible CTA and force-opened on a keychain error;
+    // `recovery_key` holds the `A3-…` Secret Key (passed through verbatim).
+    let recovery_open = RwSignal::new(false);
+    let recovery_key = RwSignal::new(String::new());
+
     // Biometric: `bio_available` is device-wide (checked once); `bio_enrolled`
     // is per-selected-vault. When enrolled, the Hello button shows by default;
     // `show_password` reveals the password fallback on demand.
@@ -108,6 +116,26 @@ pub fn VaultLaunch() -> impl IntoView {
         toast.show(
             ToastInput::new(msg)
                 .variant(ToastVariant::Danger)
+                .dismiss_label(dismiss),
+        );
+    };
+
+    // Success/Warning siblings of `show_error`, added for the recovery flow
+    // (5.1): a full keychain restore is a Success, a partial one a Warning.
+    // Same owner-less-async discipline — read the dismiss label via `untrack`.
+    let show_success = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, unlock.dismiss).to_owned());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Success)
+                .dismiss_label(dismiss),
+        );
+    };
+    let show_warning = move |msg: String| {
+        let dismiss = untrack(|| t_string!(i18n, unlock.dismiss).to_owned());
+        toast.show(
+            ToastInput::new(msg)
+                .variant(ToastVariant::Warning)
                 .dismiss_label(dismiss),
         );
     };
@@ -261,7 +289,67 @@ pub fn VaultLaunch() -> impl IntoView {
                     nav("/v/vault", Default::default());
                 }
                 Err(ApiError::WrongCredentials) => show_error(msg_wrong),
-                Err(ApiError::Keychain(_)) => show_error(msg_keychain),
+                Err(ApiError::Keychain(_)) => {
+                    // The keychain entry is gone — this is the recovery dead-end.
+                    // Toast the pointer *and* open the Emergency Kit panel so the
+                    // user lands directly on where to type their Secret Key.
+                    show_error(msg_keychain);
+                    recovery_open.set(true);
+                }
+                Err(e) => show_error(format!("{msg_failed}{e}")),
+            }
+            unlocking.set(false);
+        });
+    };
+
+    // Recover via the Emergency Kit: master password + the `A3-…` Secret Key.
+    // Sibling of `do_unlock`; on success the shell inserts the session itself
+    // (same as a normal unlock) and reports whether the keychain was restored.
+    let do_recover = move || {
+        let Some(sel) = selected.get() else {
+            return;
+        };
+        let password = pw.get();
+        // Trim ONLY — `parse_secret_key` (core) owns normalization (case, 0/O,
+        // 1/I/L) and the checksum. No UI-side re-validation.
+        let key = recovery_key.get().trim().to_owned();
+        if password.is_empty() || key.is_empty() || unlocking.get() {
+            return;
+        }
+        unlocking.set(true);
+        let nav = use_navigate();
+        // Hoist EVERY locale string here (owner present); reading inside
+        // `spawn_local` trips the reactive-context warning (console must stay clean).
+        let msg_invalid = t_string!(i18n, unlock.recovery_invalid_key).to_owned();
+        let msg_wrong = t_string!(i18n, unlock.wrong_password).to_owned();
+        let msg_failed = t_string!(i18n, unlock.unlock_failed).to_owned();
+        let msg_partial = t_string!(i18n, unlock.recovery_partial).to_owned();
+        let msg_restored = t_string!(i18n, unlock.recovery_restored).to_owned();
+        spawn_local(async move {
+            let input = UnlockWithRecoveryKeyInputDto {
+                vault_path: sel.path.clone(),
+                master_password: password,
+                recovery_key_display: key,
+            };
+            match api::recovery::unlock_with_recovery_key(&input).await {
+                Ok(outcome) => {
+                    if outcome.keychain_restored {
+                        show_success(msg_restored);
+                    } else {
+                        show_warning(format!(
+                            "{msg_partial}{}",
+                            outcome.keychain_error.unwrap_or_default()
+                        ));
+                    }
+                    pw.set(String::new());
+                    recovery_key.set(String::new());
+                    record_unlock(&sel).await;
+                    active.path.set(Some(sel.path.clone()));
+                    nav("/v/vault", Default::default());
+                }
+                // Checksum/format failure — the parser never echoes the input.
+                Err(ApiError::Invalid(_)) => show_error(msg_invalid),
+                Err(ApiError::WrongCredentials) => show_error(msg_wrong),
                 Err(e) => show_error(format!("{msg_failed}{e}")),
             }
             unlocking.set(false);
@@ -334,6 +422,7 @@ pub fn VaultLaunch() -> impl IntoView {
     let on_unlock = Callback::new(move |()| do_unlock());
     let on_bio_unlock = Callback::new(move |()| do_bio_unlock());
     let on_use_password = Callback::new(move |()| show_password.set(true));
+    let on_recover = Callback::new(move |()| do_recover());
 
     let empty_state = move || {
         view! {
@@ -400,9 +489,12 @@ pub fn VaultLaunch() -> impl IntoView {
                             unlocking=unlocking
                             bio_enrolled=bio_enrolled
                             show_password=show_password
+                            recovery_open=recovery_open
+                            recovery_key=recovery_key
                             on_unlock=on_unlock
                             on_bio_unlock=on_bio_unlock
                             on_use_password=on_use_password
+                            on_recover=on_recover
                         />
                     </div>
                 </Show>
