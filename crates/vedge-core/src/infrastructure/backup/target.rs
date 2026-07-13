@@ -21,6 +21,11 @@ pub struct TargetIdentity {
     pub schema_version: i32,
     pub last_unlocked_at: Option<String>,
     pub entry_count: u64,
+    /// The target's rollback `commit_counter` (slice 5.2c). `None` when the column
+    /// is absent — a target migrated before 5.2c but not yet reopened. Read as a
+    /// SEPARATE best-effort sub-query so its absence can't fail the whole identity
+    /// read and silently disable the uuid-mismatch refusal.
+    pub commit_counter: Option<i64>,
 }
 
 /// Read a target `.vdb`'s `vault_config` identity + live entry count, read-only.
@@ -51,15 +56,31 @@ async fn read_inner(conn: &DatabaseConnection) -> Option<TargetIdentity> {
     let vault_uuid: Option<String> = cfg.try_get_by_index(0).ok()?;
     let schema_version: i32 = cfg.try_get_by_index(1).ok()?;
     let last_unlocked_at: Option<String> = cfg.try_get_by_index(2).ok()?;
-    // Entry count is best-effort (preview only); uuid/schema are the ones that gate
-    // a refusal, so only they are required.
+    // Entry count + commit counter are best-effort (preview only); uuid/schema are the
+    // ones that gate a refusal, so only they are required. The commit counter is a
+    // SEPARATE query (D1/R9): a target migrated before 5.2c lacks the column, and
+    // folding it into the SELECT above would fail the whole read → the uuid-mismatch
+    // refusal would silently stop firing.
     let entry_count = read_entry_count(conn).await.unwrap_or(0);
+    let commit_counter = read_commit_counter(conn).await;
     Some(TargetIdentity {
         vault_uuid,
         schema_version,
         last_unlocked_at,
         entry_count,
+        commit_counter,
     })
+}
+
+async fn read_commit_counter(conn: &DatabaseConnection) -> Option<i64> {
+    let row = conn
+        .query_one(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "SELECT commit_counter FROM vault_config WHERE id = 'default'",
+        ))
+        .await
+        .ok()??;
+    row.try_get_by_index(0).ok()
 }
 
 async fn read_entry_count(conn: &DatabaseConnection) -> Option<u64> {

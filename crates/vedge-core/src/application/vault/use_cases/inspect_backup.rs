@@ -62,14 +62,28 @@ pub async fn inspect_backup(input: InspectBackupInput) -> Result<BackupPreview, 
 
     let target = read_target_identity(&input.target_vault).await;
     let target_unreadable = target.is_none();
-    let (target_uuid, target_entry_count, target_last_unlocked_at) = target
-        .map_or((None, None, None), |t| {
-            (t.vault_uuid, Some(t.entry_count), t.last_unlocked_at)
+    let (target_uuid, target_entry_count, target_last_unlocked_at, target_commit_counter) = target
+        .map_or((None, None, None, None), |t| {
+            (
+                t.vault_uuid,
+                Some(t.entry_count),
+                t.last_unlocked_at,
+                t.commit_counter,
+            )
         });
 
     let uuid_mismatch = match (manifest.vault_uuid.as_deref(), target_uuid.as_deref()) {
         (Some(a), Some(b)) => a != b,
         _ => false,
+    };
+
+    // Rollback framing (5.2c): restoring this backup takes the vault back to the
+    // backup's `commit_counter`. If the live target is AHEAD, the delta is how much
+    // state the restore would drop. Only computable when the target's counter is
+    // readable AND strictly greater than the backup's.
+    let rollback_delta = match target_commit_counter {
+        Some(t) if t > manifest.commit_counter => Some(t.saturating_sub(manifest.commit_counter)),
+        _ => None,
     };
 
     Ok(BackupPreview {
@@ -82,11 +96,11 @@ pub async fn inspect_backup(input: InspectBackupInput) -> Result<BackupPreview, 
         target_uuid,
         target_entry_count,
         target_last_unlocked_at,
-        target_commit_counter: None,
+        target_commit_counter,
         uuid_mismatch,
         unknown_format,
         unknown_schema,
         target_unreadable,
-        rollback_delta: None,
+        rollback_delta,
     })
 }

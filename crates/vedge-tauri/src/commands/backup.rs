@@ -79,9 +79,10 @@ pub async fn inspect_backup(
 /// Refuses an *unlocked* target — restore overwrites the `.vdb` out from under any
 /// live session, and Windows holds the file open while a connection is live.
 ///
-/// `confirm_rollback` is the user's explicit yes to the preview; it gates the
-/// rollback warning in 5.2c and is accepted-but-inert here (no `commit_counter`
-/// delta to gate on yet).
+/// `confirm_rollback` is the user's explicit yes to the preview's rollback warning
+/// (5.2c): when the live target is AHEAD of the backup, the core refuses unless this
+/// is `true`. On success the keychain rollback baseline is re-based to the restored
+/// counter so the next unlock does not nag.
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn restore_vault(
@@ -96,14 +97,15 @@ pub async fn restore_vault(
             "lock the vault before restoring".into(),
         ));
     }
-    let _ = confirm_rollback;
 
     let factory = SqliteVaultRepositoryFactory::new();
     let report = restore_vault_core(
         &factory,
+        state.keychain.as_ref(),
         RestoreVaultInput {
             target_vault: PathBuf::from(vault_path),
             archive_path: PathBuf::from(archive_path),
+            confirm_rollback,
         },
     )
     .await?;

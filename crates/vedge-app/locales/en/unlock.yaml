@@ -20,6 +20,7 @@ biometric_touch_hint: "Touch the fingerprint sensor or look at the camera"
 use_master_password: "Use master password"
 err_biometric: "Biometric unlock failed — use your master password."
 session_expired: "Your session expired — unlock again."
+rollback_warning: "This vault looks older than the last state this device saw — it may have been rolled back or restored from an older backup."
 # --- 2.8.1 vault picker ---
 your_vaults: "Your vaults"
 search_vaults: "Search vaults"

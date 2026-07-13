@@ -276,6 +276,7 @@ pub fn VaultLaunch() -> impl IntoView {
         let msg_wrong = t_string!(i18n, unlock.wrong_password).to_owned();
         let msg_keychain = t_string!(i18n, unlock.keychain_missing).to_owned();
         let msg_failed = t_string!(i18n, unlock.unlock_failed).to_owned();
+        let msg_rollback = t_string!(i18n, unlock.rollback_warning).to_owned();
         spawn_local(async move {
             let input = UnlockVaultInputDto {
                 vault_path: sel.path.clone(),
@@ -283,7 +284,12 @@ pub fn VaultLaunch() -> impl IntoView {
                 secret_key_b64: None,
             };
             match api::vault::unlock(&input).await {
-                Ok(()) => {
+                Ok(result) => {
+                    // Advisory rollback warning (5.2c): the vault was behind this
+                    // device's last-seen state. Still unlocks; surface a warning.
+                    if result.rollback_detected {
+                        show_warning(msg_rollback);
+                    }
                     record_unlock(&sel).await;
                     active.path.set(Some(sel.path.clone()));
                     nav("/v/vault", Default::default());
@@ -368,8 +374,12 @@ pub fn VaultLaunch() -> impl IntoView {
         unlocking.set(true);
         let nav = use_navigate();
         let msg_failed = t_string!(i18n, unlock.err_biometric).to_owned();
+        let msg_rollback = t_string!(i18n, unlock.rollback_warning).to_owned();
         spawn_local(async move {
-            if matches!(api::biometric::unlock(&sel.path).await, Ok(())) {
+            if let Ok(result) = api::biometric::unlock(&sel.path).await {
+                if result.rollback_detected {
+                    show_warning(msg_rollback);
+                }
                 record_unlock(&sel).await;
                 active.path.set(Some(sel.path.clone()));
                 nav("/v/vault", Default::default());

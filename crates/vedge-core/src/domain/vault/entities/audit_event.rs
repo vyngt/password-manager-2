@@ -42,13 +42,18 @@ pub enum AuditAction {
     /// — that variant means *un-trash an entry* and predates this by four phases;
     /// it is in shipped vaults' audit logs. Do not reuse or rename it.
     BackupRestored,
+    /// The vault's `commit_counter` was BELOW this device's keychain baseline at
+    /// unlock — the `.vdb` appears to have been rolled back to an earlier state (an
+    /// old-backup restore, or an attacker swapping in an old snapshot). Advisory
+    /// only: recorded here and surfaced as a warning; it never blocks unlock. Slice 5.2c.
+    RollbackDetected,
 }
 
 impl AuditAction {
     /// Every variant, in enum order. The single source of truth for exhaustive
     /// coverage checks — the DTO wire-format test and the app's audit-filter
     /// array both derive from this, so a new variant can't silently vanish.
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::Unlocked,
         Self::Locked,
         Self::Created,
@@ -68,6 +73,7 @@ impl AuditAction {
         Self::HealthScanned,
         Self::BackupCreated,
         Self::BackupRestored,
+        Self::RollbackDetected,
     ];
 
     #[must_use]
@@ -92,6 +98,7 @@ impl AuditAction {
             Self::HealthScanned => "HealthScanned",
             Self::BackupCreated => "BackupCreated",
             Self::BackupRestored => "BackupRestored",
+            Self::RollbackDetected => "RollbackDetected",
         }
     }
 
@@ -117,6 +124,7 @@ impl AuditAction {
             "HealthScanned" => Self::HealthScanned,
             "BackupCreated" => Self::BackupCreated,
             "BackupRestored" => Self::BackupRestored,
+            "RollbackDetected" => Self::RollbackDetected,
             _ => return None,
         })
     }

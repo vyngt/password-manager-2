@@ -44,8 +44,8 @@ use vedge_core::{
 
 use crate::dto::entry::{IndexEntryDto, entry_id_from_str, index_entry_to_dto, tag_id_from_str};
 use crate::dto::misc::{
-    CreateVaultInputDto, CreateVaultOutputDto, UnlockVaultInputDto, decode_create_secret_key,
-    decode_unlock_secret_key,
+    CreateVaultInputDto, CreateVaultOutputDto, UnlockResultDto, UnlockVaultInputDto,
+    decode_create_secret_key, decode_unlock_secret_key,
 };
 use crate::dto::tag::{TagMetaDto, tag_meta_to_dto};
 use crate::error::CommandError;
@@ -84,7 +84,7 @@ fn resolve_kdf_seam() -> Option<vedge_core::domain::vault::kdf_params::KdfParams
 pub async fn unlock_vault(
     input: UnlockVaultInputDto,
     state: tauri::State<'_, AppState>,
-) -> Result<(), CommandError> {
+) -> Result<UnlockResultDto, CommandError> {
     let vault_path = PathBuf::from(&input.vault_path);
     let vault_id = VaultId::new(vault_path.clone());
 
@@ -110,12 +110,18 @@ pub async fn unlock_vault(
         })
         .await?;
 
+    // Read the advisory rollback flag BEFORE the session moves into the registry.
+    let rollback_delta = session.rollback_warning();
+
     state.insert_session(
         vault_id,
         session,
         crate::setup::services::session_ttl(&state).await,
     )?;
-    Ok(())
+    Ok(UnlockResultDto {
+        rollback_detected: rollback_delta.is_some(),
+        rollback_delta,
+    })
 }
 
 #[tauri::command(rename_all = "snake_case")]

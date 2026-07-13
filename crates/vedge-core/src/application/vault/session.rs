@@ -59,6 +59,12 @@ pub struct VaultSession {
     /// `TotpRevealed` row, period-boundary refreshes don't. Non-secret (ids only);
     /// dropped with the session on lock, so the next unlock audits again.
     pub(crate) revealed_totp: HashSet<EntryId>,
+
+    /// If the unlock detected a rollback (the vault's `commit_counter` was below
+    /// this device's keychain baseline), the delta (baseline − file); else `None`
+    /// (slice 5.2c). Non-secret, advisory: the shell reads it once right after unlock
+    /// to raise a warning toast. Never blocks unlock.
+    pub(crate) rollback_warning: Option<i64>,
 }
 
 impl VaultSession {
@@ -85,6 +91,7 @@ impl VaultSession {
             blob,
             clipboard,
             revealed_totp: HashSet::new(),
+            rollback_warning: None,
         }
     }
 
@@ -98,6 +105,13 @@ impl VaultSession {
     #[must_use]
     pub const fn vault_id(&self) -> &VaultId {
         &self.vault_id
+    }
+
+    /// The rollback delta (baseline − file) if this unlock detected a rollback, else
+    /// `None` (slice 5.2c). The shell reads this once post-unlock to raise a warning.
+    #[must_use]
+    pub const fn rollback_warning(&self) -> Option<i64> {
+        self.rollback_warning
     }
 
     /// Explicit lock: consume the session and let `Drop` zeroize the KEK

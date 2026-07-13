@@ -4,18 +4,19 @@
 use serde::Serialize;
 
 use vedge_ipc::{
-    CreateVaultInputDto, CreateVaultOutputDto, IndexEntryDto, TagMetaDto, UnlockVaultInputDto,
+    CreateVaultInputDto, CreateVaultOutputDto, IndexEntryDto, TagMetaDto, UnlockResultDto,
+    UnlockVaultInputDto,
 };
 
 use crate::api::call::{call, call_void};
 use crate::api::error::ApiError;
 
-pub async fn unlock(input: &UnlockVaultInputDto) -> Result<(), ApiError> {
+pub async fn unlock(input: &UnlockVaultInputDto) -> Result<UnlockResultDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
         input: &'a UnlockVaultInputDto,
     }
-    call_void("unlock_vault", &Args { input }).await
+    call("unlock_vault", &Args { input }).await
 }
 
 /// Create a new vault. Returns the Emergency-Kit display string + keychain
