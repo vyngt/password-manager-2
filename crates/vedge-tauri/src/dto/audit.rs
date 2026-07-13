@@ -85,41 +85,20 @@ mod tests {
     }
 
     #[test]
-    fn audit_action_mapping_is_total() {
-        use AuditAction::{
-            BiometricUnlocked, Created, Deleted, Exported, HealthScanned, Locked, PasswordChanged,
-            PermanentlyDeleted, RecoveryUsed, Restored, TagCreated, TagDeleted, TagRenamed,
-            TotpRevealed, Unlocked, Updated, Viewed,
-        };
-        let all = [
-            Unlocked,
-            Locked,
-            Created,
-            Viewed,
-            Updated,
-            Deleted,
-            Restored,
-            PermanentlyDeleted,
-            Exported,
-            PasswordChanged,
-            TagCreated,
-            TagRenamed,
-            TagDeleted,
-            RecoveryUsed,
-            BiometricUnlocked,
-            TotpRevealed,
-            HealthScanned,
-        ];
-        assert_eq!(all.len(), 17);
-        for a in &all {
-            // Compile-time tripwire: a new AuditAction variant makes this match
-            // non-exhaustive and fails to build, forcing a wire-format review.
-            match a {
-                Unlocked | Locked | Created | Viewed | Updated | Deleted | Restored
-                | PermanentlyDeleted | Exported | PasswordChanged | TagCreated | TagRenamed
-                | TagDeleted | RecoveryUsed | BiometricUnlocked | TotpRevealed | HealthScanned => {}
-            }
-            // to_dto emits the raw name; from_dto parses it back losslessly.
+    fn audit_action_wire_names_match_core_and_round_trip() {
+        // The shared ipc `ACTION_NAMES` table is pinned one-for-one to the core
+        // enum (order + count), so a new `AuditAction` can't silently drift out of
+        // the wire vocabulary or the app's filter (which derives from it). The
+        // core `as_str`/`parse` matches are the compile gate on the enum itself;
+        // this guards the *derived* list. Each variant also round-trips
+        // name → DTO → parsed action losslessly.
+        assert_eq!(AuditAction::ALL.len(), vedge_ipc::ACTION_NAMES.len());
+        for (a, name) in AuditAction::ALL.into_iter().zip(vedge_ipc::ACTION_NAMES) {
+            assert_eq!(
+                a.as_str(),
+                name,
+                "ACTION_NAMES is out of sync with AuditAction"
+            );
             let event = AuditEvent {
                 id: "x".into(),
                 entry_id: None,
@@ -129,7 +108,7 @@ mod tests {
             };
             let dto = audit_event_to_dto(&event);
             let q = audit_query_from_dto(&query(vec![dto.action.clone()])).unwrap();
-            assert_eq!(q.actions, vec![a.clone()]);
+            assert_eq!(q.actions, vec![a]);
         }
     }
 }

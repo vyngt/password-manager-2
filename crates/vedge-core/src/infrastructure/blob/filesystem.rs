@@ -157,6 +157,10 @@ impl BlobStore for FilesystemBlobStore {
         }
     }
 
+    fn blob_dir(&self) -> &Path {
+        &self.root
+    }
+
     #[instrument(skip_all)]
     async fn list_blobs(&self) -> Result<Vec<EntryId>, VaultError> {
         let mut ids = Vec::new();

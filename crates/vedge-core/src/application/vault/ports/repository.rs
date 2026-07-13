@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use async_trait::async_trait;
 
 use crate::domain::shared::{EntryId, TagId, Timestamp};
@@ -68,4 +70,11 @@ pub trait VaultRepository: Send + Sync {
         updates: &[(EntryId, [u8; 40])],
         new_config: &VaultConfig,
     ) -> Result<(), VaultError>;
+
+    /// Write a live-safe, consistent snapshot of the vault DB to `dest` (slice
+    /// 5.2 backup). Uses `SQLite`'s `VACUUM INTO`: `WAL`-aware, non-blocking, no
+    /// forced lock. **`dest` must not already exist** and this cannot run inside a
+    /// transaction — callers vacuum into a fresh path in a temp dir. The snapshot
+    /// is logically identical but defragmented (not byte-identical) to the source.
+    async fn vacuum_into(&self, dest: &Path) -> Result<(), VaultError>;
 }

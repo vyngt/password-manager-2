@@ -127,6 +127,8 @@ pub fn run() {
             // ---- password + maintenance ----
             commands::password::change_password,
             commands::maintenance::run_maintenance,
+            // ---- backup (slice 5.2) ----
+            commands::backup::backup_vault,
             // ---- emergency kit + recovery ----
             commands::emergency_kit::export_emergency_kit,
             commands::emergency_kit::emergency_kit_pdf,

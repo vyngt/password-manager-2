@@ -49,6 +49,12 @@ data-encoding = "2"
 # runtime — callers (shells) supply one.
 tokio = { version = "1", default-features = false, features = ["fs", "io-util", "rt", "sync", "time", "macros"] }
 zxcvbn = { version = "3", default-features = false }
+# Backup archive (slice 5.2): an uncompressed `tar` container (payload is AEAD
+# ciphertext — incompressible), per-file + whole-archive BLAKE3 integrity, and
+# `tempfile` for same-volume staging (promoted from dev-dependencies).
+tar = "0.4"
+blake3 = "1"
+tempfile = "3"
 
 [dependencies.sea-orm]
 version = "1.1.20"
@@ -78,7 +84,6 @@ windows = { version = "0.61", features = [
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "test-util", "time"] }
-tempfile = "3"
 tracing-subscriber = "0.3"
 
 [lints]

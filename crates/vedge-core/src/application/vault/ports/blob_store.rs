@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use async_trait::async_trait;
 use zeroize::Zeroizing;
 
@@ -41,4 +43,9 @@ pub trait BlobStore: Send + Sync {
     /// for orphan detection; the returned IDs are derived from filenames, not
     /// cryptographically verified.
     async fn list_blobs(&self) -> Result<Vec<EntryId>, VaultError>;
+
+    /// The `.vedge_blobs/` directory this store manages. Backup (slice 5.2) copies
+    /// its `*.blob` files verbatim (the directory is the source of truth, not the
+    /// index — an orphan blob is still the user's bytes).
+    fn blob_dir(&self) -> &Path;
 }
