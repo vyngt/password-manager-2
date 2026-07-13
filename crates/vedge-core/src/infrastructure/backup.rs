@@ -4,7 +4,9 @@
 //! (the payload is AEAD ciphertext, incompressible) with per-file + whole-archive
 //! BLAKE3. The `.vdb` snapshot is produced by a live `VACUUM INTO` (see the
 //! repository); this module only writes/reads/verifies the container. Restore's
-//! intent journal lands here in slice 5.2b.
+//! intent journal (slice 5.2b) lives in [`journal`].
 
 pub mod archive;
+pub mod journal;
 pub mod manifest;
+pub mod target;

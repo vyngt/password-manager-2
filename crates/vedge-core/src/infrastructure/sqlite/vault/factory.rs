@@ -30,6 +30,11 @@ impl Default for SqliteVaultRepositoryFactory {
 #[async_trait]
 impl VaultRepositoryFactory for SqliteVaultRepositoryFactory {
     async fn open(&self, vault_path: &Path) -> Result<Arc<dyn VaultRepository>, VaultError> {
+        // Crash recovery FIRST — reconcile any interrupted restore before SQLite
+        // opens. `VaultDbConnection::open` uses `mode=rwc`, which would otherwise
+        // fabricate an empty vault at a path a mid-restore crash left missing. This
+        // is the single chokepoint every vault open passes through (slice 5.2b).
+        crate::infrastructure::backup::journal::recover_if_pending(vault_path)?;
         let db = VaultDbConnection::open(vault_path)
             .await
             .map_err(VaultError::Storage)?;
