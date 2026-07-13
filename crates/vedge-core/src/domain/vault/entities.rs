@@ -8,4 +8,4 @@ pub use audit_event::{AuditAction, AuditEvent, AuditPage, AuditQuery};
 pub use entry_history_row::EntryHistoryRow;
 pub use entry_row::EntryRow;
 pub use tag_row::TagRow;
-pub use vault_config::VaultConfig;
+pub use vault_config::{CURRENT_SCHEMA_VERSION, VaultConfig};
