@@ -155,7 +155,8 @@ seed is held to a stricter rule (slice 4.2 — the "door"):** it flows WASM → 
 **never** core → WASM — `get_entry` omits it (`LoginPayloadDto` carries a non-invertible `has_totp` flag,
 not the seed). The 6–8-digit **code** is a permitted derivative: short-lived, non-invertible to the
 seed, worthless once expired, produced server-side by the audited `reveal_totp`. Generalizing that seed
-rule to the other payload secrets (`password`, recovery codes, card `cvv`, SSH key) is a backlogged
+rule to the other payload secrets (`password`, recovery codes, card `cvv`, SSH key) is **dispositioned to Phase 5** —
+generalize the 4.2 `TotpUpdate::{Unchanged, Set, Clear}` sentinel (see the Phase-5 backlog); it is the
 follow-up that would actually clean the renderer.
 
 The egress rule extends to the **network** (slice 4.4 — the app's only outbound call): the opt-in
