@@ -54,7 +54,7 @@ pub use health::{
 };
 pub use misc::{
     ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, ExportedDocumentDto,
-    FieldSelectorDto, MaintenanceReportDto, UnlockVaultInputDto,
+    FieldSelectorDto, MaintenanceReportDto, UnlockResultDto, UnlockVaultInputDto,
 };
 pub use settings::{
     AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto, RecentVaultDto,

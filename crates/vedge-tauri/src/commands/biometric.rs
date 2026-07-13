@@ -23,6 +23,7 @@ use zeroize::Zeroizing;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::enroll_biometric as enroll_biometric_core;
 
+use crate::dto::misc::UnlockResultDto;
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -84,7 +85,7 @@ pub async fn biometric_enroll(
 pub async fn biometric_unlock(
     vault_path: String,
     state: tauri::State<'_, AppState>,
-) -> Result<(), CommandError> {
+) -> Result<UnlockResultDto, CommandError> {
     let path = PathBuf::from(&vault_path);
     let vault_id = VaultId::new(path.clone());
 
@@ -97,12 +98,16 @@ pub async fn biometric_unlock(
 
     let kek = state.biometric.retrieve(&vault_id)?;
     let session = state.unlock_vault.unlock_with_kek(path, kek).await?;
+    let rollback_delta = session.rollback_warning();
     state.insert_session(
         vault_id,
         session,
         crate::setup::services::session_ttl(&state).await,
     )?;
-    Ok(())
+    Ok(UnlockResultDto {
+        rollback_detected: rollback_delta.is_some(),
+        rollback_delta,
+    })
 }
 
 /// Remove the stored KEK for this vault. Idempotent — disabling when not enrolled is not

@@ -47,6 +47,20 @@ pub struct UnlockVaultInputDto {
     pub secret_key_b64: Option<String>,
 }
 
+// ---- UnlockResult DTO --------------------------------------------------------
+
+/// The result of a successful unlock (slice 5.2c).
+///
+/// Advisory, non-secret: if the vault's `commit_counter` was below this device's
+/// keychain baseline, `rollback_detected` is `true` and `rollback_delta` carries
+/// `baseline − file`. The shell raises a warning toast; the session unlocks regardless.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnlockResultDto {
+    pub rollback_detected: bool,
+    #[serde(default)]
+    pub rollback_delta: Option<i64>,
+}
+
 // ---- ChangePassword input DTO ------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

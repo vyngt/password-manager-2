@@ -25,7 +25,7 @@ use zeroize::Zeroizing;
 
 use common::{Harness, build_unlock};
 
-use vedge_core::application::vault::ports::VaultRepository;
+use vedge_core::application::vault::ports::{KeychainProvider, VaultRepository};
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     BackupVaultInput, CreateEntryInput, ImportDocumentInput, InspectBackupInput, RestoreVaultInput,
@@ -40,6 +40,7 @@ use vedge_core::infrastructure::backup::archive;
 use vedge_core::infrastructure::backup::manifest::{
     BACKUP_FORMAT_VERSION, BackupManifest, ManifestFile, VAULT_MEMBER,
 };
+use vedge_core::infrastructure::keychain::MemoryKeychainProvider;
 use vedge_core::infrastructure::sqlite::vault::{
     SqliteVaultRepository, SqliteVaultRepositoryFactory, VaultDbConnection,
 };
@@ -231,6 +232,7 @@ fn write_min_archive(dir: &Path, format_version: u32, schema_version: i32) -> st
         created_at: "2026-07-13T00:00:00.000Z".to_owned(),
         entry_count: 0,
         blob_count: 0,
+        commit_counter: 0,
         files: vec![ManifestFile {
             name: VAULT_MEMBER.to_owned(),
             size,
@@ -290,9 +292,11 @@ async fn restore_round_trip_recovers_entries_and_a_document() {
     let factory = SqliteVaultRepositoryFactory::new();
     let report = restore_vault(
         &factory,
+        &MemoryKeychainProvider::new(),
         RestoreVaultInput {
             target_vault: target.clone(),
             archive_path: dest,
+            confirm_rollback: false,
         },
     )
     .await
@@ -350,9 +354,11 @@ async fn restore_over_an_existing_vault_replaces_it() {
     let factory = SqliteVaultRepositoryFactory::new();
     restore_vault(
         &factory,
+        &MemoryKeychainProvider::new(),
         RestoreVaultInput {
             target_vault: target.clone(),
             archive_path: dest,
+            confirm_rollback: false,
         },
     )
     .await
@@ -405,9 +411,11 @@ async fn restore_refuses_a_tampered_archive_and_leaves_the_target_untouched() {
     let factory = SqliteVaultRepositoryFactory::new();
     let err = restore_vault(
         &factory,
+        &MemoryKeychainProvider::new(),
         RestoreVaultInput {
             target_vault: target,
             archive_path: dest,
+            confirm_rollback: false,
         },
     )
     .await
@@ -448,9 +456,11 @@ async fn restore_refuses_a_uuid_mismatch() {
     let factory = SqliteVaultRepositoryFactory::new();
     let err = restore_vault(
         &factory,
+        &MemoryKeychainProvider::new(),
         RestoreVaultInput {
             target_vault: hb.vdb_path.clone(),
             archive_path: dest,
+            confirm_rollback: false,
         },
     )
     .await
@@ -469,9 +479,11 @@ async fn restore_refuses_a_newer_schema() {
     let factory = SqliteVaultRepositoryFactory::new();
     let err = restore_vault(
         &factory,
+        &MemoryKeychainProvider::new(),
         RestoreVaultInput {
             target_vault: target_dir.path().join("s.vdb"),
             archive_path,
+            confirm_rollback: false,
         },
     )
     .await
@@ -491,9 +503,11 @@ async fn restore_refuses_an_unknown_format() {
     let factory = SqliteVaultRepositoryFactory::new();
     let err = restore_vault(
         &factory,
+        &MemoryKeychainProvider::new(),
         RestoreVaultInput {
             target_vault: target_dir.path().join("f.vdb"),
             archive_path,
+            confirm_rollback: false,
         },
     )
     .await
@@ -537,4 +551,146 @@ async fn inspect_backup_reports_counts_and_flags() {
     assert!(!preview.uuid_mismatch);
     assert!(preview.target_unreadable);
     assert!(preview.rollback_delta.is_none());
+}
+
+/// T4 (5.2c): previewing an OLD backup against a live target that has moved on
+/// reports the rollback delta the restore would cost.
+#[tokio::test]
+async fn inspect_reports_rollback_delta_against_a_live_ahead_target() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "a").await;
+    add(&mut session, "b").await;
+
+    // Snapshot the vault (its commit_counter goes into the manifest), then advance it.
+    let backup_counter = h.repo.load_config().await.unwrap().commit_counter;
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("r.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    add(&mut session, "c").await;
+    add(&mut session, "d").await;
+    add(&mut session, "e").await;
+    let target_counter = h.repo.load_config().await.unwrap().commit_counter;
+    assert!(target_counter > backup_counter, "the live vault advanced");
+
+    // Preview against the live (WAL) target — a mode=ro read coexists with the session.
+    let preview = inspect_backup(InspectBackupInput {
+        target_vault: h.vdb_path.clone(),
+        archive_path: dest,
+    })
+    .await
+    .unwrap();
+
+    assert_eq!(preview.target_commit_counter, Some(target_counter));
+    assert_eq!(
+        preview.rollback_delta,
+        Some(target_counter - backup_counter),
+        "restoring the older backup would drop (target − backup) commits"
+    );
+    assert!(!preview.uuid_mismatch, "same vault → no uuid mismatch");
+    assert!(!preview.target_unreadable);
+}
+
+/// T3 (5.2c): restoring an OLDER backup over a newer target is refused without
+/// `confirm_rollback`, allowed with it, and re-bases the keychain mirror to the
+/// restored counter. The target's counter comes from a VACUUM snapshot (an install of
+/// a higher backup), never a bare file copy — a copy would miss uncheckpointed WAL.
+#[tokio::test]
+async fn restore_confirm_gate_refuses_then_rebaselines() {
+    const UUID: &str = "01CCCCCCCCCCCCCCCCCCCCCCCC";
+    let h = Harness::fresh().await;
+    set_uuid(&h, UUID).await;
+    let mut session = unlock(&h).await;
+
+    // A low backup (counter after 2 writes) and a high backup (after 5).
+    add(&mut session, "a").await;
+    add(&mut session, "b").await;
+    let low_counter = h.repo.load_config().await.unwrap().commit_counter;
+    let out = tempfile::tempdir().unwrap();
+    let low = out.path().join("low.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: low.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    add(&mut session, "c").await;
+    add(&mut session, "d").await;
+    add(&mut session, "e").await;
+    let high_counter = h.repo.load_config().await.unwrap().commit_counter;
+    assert!(high_counter > low_counter);
+    let high = out.path().join("high.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: high.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    let factory = SqliteVaultRepositoryFactory::new();
+    let keychain = MemoryKeychainProvider::new();
+
+    // Install the HIGH backup into a fresh target → the target is now at `high_counter`.
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("t.vdb");
+    restore_vault(
+        &factory,
+        &keychain,
+        RestoreVaultInput {
+            target_vault: target.clone(),
+            archive_path: high,
+            confirm_rollback: false,
+        },
+    )
+    .await
+    .unwrap();
+
+    // (a) Restoring the LOW backup over it without confirmation → the rollback gate refuses.
+    let err = restore_vault(
+        &factory,
+        &keychain,
+        RestoreVaultInput {
+            target_vault: target.clone(),
+            archive_path: low.clone(),
+            confirm_rollback: false,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::MalformedPayload(_)),
+        "rollback without confirm → refuse, got {err:?}"
+    );
+
+    // (b) With confirmation it restores and re-bases the keychain to the restored counter.
+    restore_vault(
+        &factory,
+        &keychain,
+        RestoreVaultInput {
+            target_vault: target,
+            archive_path: low,
+            confirm_rollback: true,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        keychain.read_commit_baseline(UUID).unwrap(),
+        Some(low_counter),
+        "a confirmed restore re-bases the keychain to the restored (low) counter"
+    );
 }

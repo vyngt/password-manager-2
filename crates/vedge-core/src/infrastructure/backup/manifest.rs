@@ -34,6 +34,12 @@ pub struct BackupManifest {
     pub created_at: String,
     pub entry_count: u64,
     pub blob_count: u64,
+    /// The vault's monotonic `commit_counter` at snapshot time (slice 5.2c). Lets
+    /// `inspect_backup` frame a restore as a rollback ("restoring to state N; this
+    /// device is at M"). `#[serde(default)]` so pre-5.2c archives (which lack the
+    /// field) deserialize to 0 — additive, so `format_version` stays 1.
+    #[serde(default)]
+    pub commit_counter: i64,
     /// One row per tar member EXCEPT the manifest itself. The mandatory integrity
     /// gate: restore verifies every extracted file against this and refuses on any
     /// mismatch, naming the offending member.

@@ -20,6 +20,7 @@ pub mod tauri;
 // `#[allow(dead_code, reason = "…")]` **per function**; a module whose *every* wrapper is still
 // unused carries a single module-level allow (below).
 pub mod audit;
+pub mod backup;
 pub mod biometric;
 pub mod clipboard;
 pub mod dialog;

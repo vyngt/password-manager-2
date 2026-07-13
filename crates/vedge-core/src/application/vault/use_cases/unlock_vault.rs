@@ -30,8 +30,9 @@ use crate::application::vault::ports::crypto::CryptoProvider;
 use crate::application::vault::ports::factories::{BlobStoreFactory, VaultRepositoryFactory};
 use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::application::vault::ports::keychain::KeychainProvider;
+use crate::application::vault::ports::repository::VaultRepository;
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{VaultId, now};
+use crate::domain::shared::{Timestamp, VaultId, now};
 use crate::domain::vault::aad::tag_aad;
 use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
 use crate::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
@@ -167,8 +168,13 @@ impl UnlockVault {
         backfill_vault_uuid(&mut updated_config);
         repo.save_config(&updated_config).await?;
 
+        // ---- 7b. Rollback compare (non-fatal) — AFTER backfill so the uuid is set.
+        let rollback_warning = self
+            .detect_and_audit_rollback(repo.as_ref(), &updated_config, when)
+            .await;
+
         // ---- 8. Build session ------------------------------------------------
-        Ok(VaultSession::assemble(
+        let mut session = VaultSession::assemble(
             vault_id,
             kek,
             index,
@@ -177,7 +183,9 @@ impl UnlockVault {
             Arc::clone(&self.crypto),
             blob,
             Arc::clone(&self.clipboard),
-        ))
+        );
+        session.rollback_warning = rollback_warning;
+        Ok(session)
     }
 
     /// Reconstitute a [`VaultSession`] from a KEK released by the biometric gate,
@@ -250,8 +258,13 @@ impl UnlockVault {
         backfill_vault_uuid(&mut updated_config);
         repo.save_config(&updated_config).await?;
 
+        // ---- 7b. Rollback compare (non-fatal) — same as the password path.
+        let rollback_warning = self
+            .detect_and_audit_rollback(repo.as_ref(), &updated_config, when)
+            .await;
+
         // ---- 8. Build session ------------------------------------------------
-        Ok(VaultSession::assemble(
+        let mut session = VaultSession::assemble(
             vault_id,
             kek,
             index,
@@ -260,7 +273,9 @@ impl UnlockVault {
             Arc::clone(&self.crypto),
             blob,
             Arc::clone(&self.clipboard),
-        ))
+        );
+        session.rollback_warning = rollback_warning;
+        Ok(session)
     }
 
     /// Decrypt one entry row → `IndexEntry` projection. DEK + plaintext are
@@ -298,6 +313,72 @@ impl UnlockVault {
             color: payload.color,
             sort_order: payload.sort_order,
         })
+    }
+
+    /// Compare the freshly-loaded `commit_counter` against this device's keychain
+    /// baseline and reconcile the mirror (slice 5.2c).
+    ///
+    /// Returns `Some(delta)` — where `delta = baseline − file` — **only** on a genuine
+    /// rollback: the file's counter is strictly below the highest value this device has
+    /// ever mirrored. Every other outcome returns `None` and never warns:
+    ///
+    /// - **fresh device** (`Ok(None)` — no baseline yet) → establish the baseline, no warn;
+    /// - **this device behind** (`file > baseline`, another device advanced the vault, or
+    ///   a legit restore re-based elsewhere) → advance the mirror, no warn;
+    /// - **equal** → normal;
+    /// - **any keychain error** (daemon down / access denied) → no warn.
+    ///
+    /// The asymmetry is the safety property (Decision: warning, never an error): a missing
+    /// or broken mirror must not manufacture a false rollback that alarms the user, and a
+    /// rollback check must never fail an unlock. Requires `config.vault_uuid` to be `Some`
+    /// (guaranteed after `backfill_vault_uuid`); a `None` uuid can't key the mirror → no warn.
+    fn rollback_check(&self, config: &VaultConfig) -> Option<i64> {
+        let uuid = config.vault_uuid.as_deref()?;
+        let file = config.commit_counter;
+        // Keychain unreachable → no baseline to compare, and unlock must not fail.
+        let Ok(baseline) = self.keychain.read_commit_baseline(uuid) else {
+            return None;
+        };
+        match baseline {
+            Some(b) if file < b => Some(b.saturating_sub(file)), // ROLLBACK — warn
+            Some(b) if file == b => None,                        // in sync — normal
+            // file > baseline (this device behind) OR None (first sight): (re)establish
+            // the mirror at the current file value. Best-effort; a store failure is
+            // non-fatal and simply means the mirror catches up on a later unlock.
+            _ => {
+                if let Err(e) = self.keychain.store_commit_baseline(uuid, file) {
+                    tracing::warn!(error = %e, "could not update the rollback baseline mirror");
+                }
+                None
+            }
+        }
+    }
+
+    /// Run [`Self::rollback_check`]; on a detected rollback, write a best-effort
+    /// `RollbackDetected` audit row and return the delta to stamp on the session. Never
+    /// fails the unlock — audit-write failures are logged, not propagated (slice 5.2c).
+    async fn detect_and_audit_rollback(
+        &self,
+        repo: &dyn VaultRepository,
+        config: &VaultConfig,
+        when: Timestamp,
+    ) -> Option<i64> {
+        let delta = self.rollback_check(config)?;
+        let event = AuditEvent {
+            id: ulid::Ulid::new().to_string(),
+            entry_id: None,
+            action: AuditAction::RollbackDetected,
+            occurred_at: when,
+            device_id: None,
+        };
+        if let Err(e) = repo.append_audit(&event).await {
+            tracing::warn!(error = %e, "rollback detected but its audit row could not be written");
+        }
+        tracing::warn!(
+            delta,
+            "vault commit_counter is below the keychain baseline — possible rollback"
+        );
+        Some(delta)
     }
 }
 

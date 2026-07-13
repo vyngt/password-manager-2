@@ -14,6 +14,7 @@
 //! house pattern in `vault_filters`): the `t_string!` reads are then tracked —
 //! no owner-less warning — and the labels relocalize on a language switch.
 
+use crate::features::settings::backup_panel::BackupPanel;
 use crate::features::settings::biometric_setting::BiometricSetting;
 use crate::features::settings::emergency_kit_setting::EmergencyKitSetting;
 use crate::features::settings::maintenance_panel::MaintenancePanel;
@@ -275,6 +276,12 @@ pub fn SettingsPage() -> impl IntoView {
             id: "maintenance".to_owned(),
             label: Box::new(move || view! { {move || t!(i18n, settings.maintenance)} }.into_any()),
             panel: Arc::new(|| view! { <MaintenancePanel /> }.into_any()),
+            disabled: false,
+        },
+        Tab {
+            id: "backup".to_owned(),
+            label: Box::new(move || view! { {move || t!(i18n, settings.backup)} }.into_any()),
+            panel: Arc::new(|| view! { <BackupPanel /> }.into_any()),
             disabled: false,
         },
     ];
