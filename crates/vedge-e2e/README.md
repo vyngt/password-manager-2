@@ -1,16 +1,24 @@
 # vedge-e2e — end-to-end WebDriver harness
 
 Drives the **real** VEdge desktop binary (frontend → Tauri commands → `vedge-core`
-→ SQLite) through [`tauri-driver`] + [`thirtyfour`], automating the Phase-2
-"daily loop" the app previously only smoked by hand. Slice 2.9.2.
+→ SQLite) through [`tauri-driver`] + [`thirtyfour`], automating the human smokes
+each slice previously left behind. Started as the Phase-2 "daily loop" (slice 2.9.2).
 
 - Harness plumbing: [`src/lib.rs`](src/lib.rs) — `TestEnv`, `Session` (spawns
   `tauri-driver`, connects the WebDriver, kills the process tree on drop),
   `invoke()` for read-only IPC assertions, and the console-clean guard.
-- Scenario: [`tests/daily_loop.rs`](tests/daily_loop.rs) — one serial
-  `#[ignore]` test walking create → add → search → edit/history → favorite →
-  folder → lock → **restart** → unlock → theme-persists, with a standing
-  console-clean assertion.
+- Shared scenario helpers: [`tests/common/mod.rs`](tests/common/mod.rs) — the
+  UI flows (`create_and_unlock`, `add_login`, …), read-only invoke assertions,
+  and polling, pulled into each scenario file with `mod common; use common::*;`.
+- Scenarios: one topical `#[ignore]` test file per feature area, each fully
+  self-contained (its own `Session`) so a failure names the feature it broke:
+  [`daily_loop`](tests/daily_loop.rs) (create → add → search → edit/history →
+  favorite → folder → lock → **restart** → unlock → theme-persists),
+  [`generator`](tests/generator.rs), [`trash`](tests/trash.rs),
+  [`audit`](tests/audit.rs), [`totp`](tests/totp.rs), [`health`](tests/health.rs),
+  [`session_lock`](tests/session_lock.rs), [`recovery`](tests/recovery.rs). Each
+  carries a standing console-clean assertion. `mise e2e` runs **all** of them
+  (it is not pinned to a single file); cargo runs the binaries serially.
 
 ## Run it
 
