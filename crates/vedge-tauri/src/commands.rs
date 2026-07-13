@@ -2,6 +2,7 @@
 //! functions that `run()` wires into the `invoke_handler!` in Phase 10.
 
 pub mod audit;
+pub mod backup;
 pub mod biometric;
 pub mod clipboard;
 pub mod device;
