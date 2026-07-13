@@ -15,6 +15,7 @@
 //! no owner-less warning — and the labels relocalize on a language switch.
 
 use crate::features::settings::biometric_setting::BiometricSetting;
+use crate::features::settings::emergency_kit_setting::EmergencyKitSetting;
 use crate::features::settings::maintenance_panel::MaintenancePanel;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
@@ -249,6 +250,9 @@ pub fn SettingsPage() -> impl IntoView {
 
                 // ---- Biometric unlock (slice 2.8) -----------------
                 <BiometricSetting />
+
+                // ---- Emergency Kit re-export (slice 5.1) ----------
+                <EmergencyKitSetting />
             </Show>
         }
         .into_any()
