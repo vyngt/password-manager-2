@@ -4,6 +4,7 @@
 //! is streamed (`tar` + a `blake3::Hasher` never hold a whole 50 MB blob
 //! resident). Errors map to `VaultError::Storage(StorageError::{Io,Serialization})`.
 
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
@@ -112,7 +113,7 @@ pub fn verify_archive(archive: &Path) -> Result<BackupManifest, VaultError> {
     let mut ar = tar::Archive::new(BufReader::new(f));
     let entries = ar.entries().map_err(|e| io_err("tar entries", &e))?;
 
-    let mut seen: usize = 0;
+    let mut seen: HashSet<String> = HashSet::new();
     for entry in entries {
         let mut entry = entry.map_err(|e| io_err("tar entry", &e))?;
         let name = entry
@@ -131,19 +132,28 @@ pub fn verify_archive(archive: &Path) -> Result<BackupManifest, VaultError> {
                     "archive member not in manifest: {name}"
                 )))
             })?;
+        if !seen.insert(name.clone()) {
+            return Err(VaultError::Storage(StorageError::Io(format!(
+                "archive has a duplicate member: {name}"
+            ))));
+        }
         let (_bytes, digest) = hash_reader(&mut entry)?;
         if digest != expected.blake3 {
             return Err(VaultError::Storage(StorageError::Io(format!(
                 "backup integrity check failed for {name}"
             ))));
         }
-        seen = seen.saturating_add(1);
     }
-    if seen != manifest.files.len() {
-        return Err(VaultError::Storage(StorageError::Io(format!(
-            "archive has {seen} verifiable members but manifest lists {}",
-            manifest.files.len()
-        ))));
+    // Every manifest-listed member must have been present and verified. A bare
+    // count would be satisfied by a duplicate member standing in for a missing
+    // one (dup `A.blob` + absent `B.blob` → same count, wrong contents).
+    for m in &manifest.files {
+        if !seen.contains(&m.name) {
+            return Err(VaultError::Storage(StorageError::Io(format!(
+                "archive is missing manifest member: {}",
+                m.name
+            ))));
+        }
     }
     Ok(manifest)
 }
@@ -245,5 +255,51 @@ mod tests {
             format!("{err:?}").contains("vault.vdb") || msg.contains("storage"),
             "expected an integrity failure naming the member, got {err:?}"
         );
+    }
+
+    #[test]
+    fn verify_rejects_a_duplicate_standing_in_for_a_missing_member() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().join("vault.vdb");
+        std::fs::write(&vault, b"vault bytes").unwrap();
+        let blob_a = dir.path().join("A.blob");
+        std::fs::write(&blob_a, b"blob A bytes").unwrap();
+
+        let (vsize, vhash) = hash_file(&vault).unwrap();
+        let (asize, ahash) = hash_file(&blob_a).unwrap();
+
+        // Manifest lists vault + A + B, but the archive carries A twice and no B —
+        // a bare member-count check would be fooled (3 members == 3 files).
+        let manifest = manifest_for(vec![
+            ManifestFile {
+                name: "vault.vdb".to_owned(),
+                size: vsize,
+                blake3: vhash,
+            },
+            ManifestFile {
+                name: "blobs/A.blob".to_owned(),
+                size: asize,
+                blake3: ahash.clone(),
+            },
+            ManifestFile {
+                name: "blobs/B.blob".to_owned(),
+                size: asize,
+                blake3: ahash,
+            },
+        ]);
+        let manifest_path = dir.path().join("manifest.json");
+        std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+
+        let dest = dir.path().join("dup.vbk");
+        let members = vec![
+            ("manifest.json".to_owned(), manifest_path),
+            ("vault.vdb".to_owned(), vault),
+            ("blobs/A.blob".to_owned(), blob_a.clone()),
+            ("blobs/A.blob".to_owned(), blob_a),
+        ];
+        write_archive(&members, &dest).unwrap();
+
+        // Must be rejected — the duplicate can't cover for the missing B.
+        assert!(verify_archive(&dest).is_err());
     }
 }

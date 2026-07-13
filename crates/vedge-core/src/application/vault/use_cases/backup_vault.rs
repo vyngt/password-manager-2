@@ -156,8 +156,12 @@ pub async fn backup_vault(
     let dest_tmp = append_suffix(&dest, ".tmp");
     let archive_blake3 = archive::write_archive(&members, &dest_tmp)?;
 
-    // 6. Atomic move into place (intra-volume).
-    std::fs::rename(&dest_tmp, &dest).map_err(|e| io_ctx("rename archive into place", &e))?;
+    // 6. Atomic move into place (intra-volume). On failure, clean up the temp so
+    //    a reported-failed backup doesn't leave a stray `<dest>.tmp` behind.
+    std::fs::rename(&dest_tmp, &dest).map_err(|e| {
+        std::fs::remove_file(&dest_tmp).ok();
+        io_ctx("rename archive into place", &e)
+    })?;
 
     // 7. Advisory whole-archive hash sidecar (Decision ③).
     let sidecar = append_suffix(&dest, ".blake3");
