@@ -1,3 +1,4 @@
+pub mod backup_vault;
 pub mod biometric;
 pub mod change_password;
 pub mod copy_field;
@@ -26,6 +27,7 @@ pub mod tag_ops;
 pub mod unlock_vault;
 pub mod update_entry;
 
+pub use backup_vault::{BackupReport, BackupVaultInput, backup_vault};
 pub use biometric::enroll_biometric;
 pub use change_password::{ChangePasswordInput, change_password};
 pub use copy_field::{CopyFieldInput, FieldSelector, copy_field, place_text_on_clipboard};

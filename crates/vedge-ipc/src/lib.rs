@@ -22,6 +22,7 @@
 )]
 
 pub mod audit;
+pub mod backup;
 pub mod common;
 pub mod emergency_kit;
 pub mod entry;
@@ -33,7 +34,8 @@ pub mod settings;
 pub mod tag;
 pub mod totp;
 
-pub use audit::{AuditEventDto, AuditPageDto, AuditQueryDto};
+pub use audit::{ACTION_NAMES, AuditEventDto, AuditPageDto, AuditQueryDto};
+pub use backup::BackupReportDto;
 pub use common::{
     CommonMetaDto, EntryTypeDto, Timestamp, b64_decode, b64_decode_fixed, b64_encode,
     ts_from_string, ts_to_string,

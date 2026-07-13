@@ -1,10 +1,11 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DatabaseConnection,
+    EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
 };
 
 use crate::application::vault::ports::VaultRepository;
@@ -519,6 +520,20 @@ impl VaultRepository for SqliteVaultRepository {
             .map_err(db_err)?;
 
         txn.commit().await.map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn vacuum_into(&self, dest: &Path) -> Result<(), VaultError> {
+        // Decision ①: live-safe `VACUUM INTO` through the existing sea-orm
+        // connection. It CANNOT run in a transaction (bare `execute_unprepared`)
+        // and FAILS if `dest` exists (the caller vacuums into a fresh temp path).
+        // No bound params on this statement form; `dest` is an app-controlled temp
+        // path, single-quote-escaped into the SQL string literal.
+        let path = dest.to_string_lossy().replace('\'', "''");
+        self.conn
+            .execute_unprepared(&format!("VACUUM INTO '{path}'"))
+            .await
+            .map_err(db_err)?;
         Ok(())
     }
 }

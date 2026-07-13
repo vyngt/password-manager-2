@@ -25,27 +25,13 @@ use crate::features::date_i18n::{calendar_labels, locale_tag};
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::{t, t_string, use_i18n};
 
-/// The 17 `AuditAction` names in the same order as the core enum. Used to build
-/// the action-filter dropdown; each is localized via [`action_label`].
-const AUDIT_ACTIONS: [&str; 17] = [
-    "Unlocked",
-    "Locked",
-    "Created",
-    "Viewed",
-    "Updated",
-    "Deleted",
-    "Restored",
-    "PermanentlyDeleted",
-    "Exported",
-    "PasswordChanged",
-    "TagCreated",
-    "TagRenamed",
-    "TagDeleted",
-    "RecoveryUsed",
-    "BiometricUnlocked",
-    "TotpRevealed",
-    "HealthScanned",
-];
+/// The `AuditAction` names in core-enum order — **derived** from the shared
+/// wire-format table (`vedge_ipc::ACTION_NAMES`) so this dropdown can never drift
+/// from the backend: a new core variant grows `ACTION_NAMES`, which changes this
+/// array's length and fails to compile here until it's updated. Each name is
+/// localized via [`action_label`]; an unrecognized one falls through to its raw
+/// form there.
+const AUDIT_ACTIONS: [&str; 19] = vedge_ipc::ACTION_NAMES;
 
 #[component]
 pub fn AuditPage() -> impl IntoView {

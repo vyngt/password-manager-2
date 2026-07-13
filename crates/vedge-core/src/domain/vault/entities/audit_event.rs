@@ -34,9 +34,42 @@ pub enum AuditAction {
     /// decrypts are audit-silent (like `list_history`); this single vault-level
     /// row records the full-vault decrypt itself, mirroring `Exported`.
     HealthScanned,
+    /// A backup archive (`.vbk`) was written (slice 5.2). Ciphertext only — no
+    /// secret left the vault. DISTINCT from `Exported`, which means *readable*
+    /// data DID leave the trust boundary.
+    BackupCreated,
+    /// The vault was replaced from a backup archive (slice 5.2). ⚠️ NOT `Restored`
+    /// — that variant means *un-trash an entry* and predates this by four phases;
+    /// it is in shipped vaults' audit logs. Do not reuse or rename it.
+    BackupRestored,
 }
 
 impl AuditAction {
+    /// Every variant, in enum order. The single source of truth for exhaustive
+    /// coverage checks — the DTO wire-format test and the app's audit-filter
+    /// array both derive from this, so a new variant can't silently vanish.
+    pub const ALL: [Self; 19] = [
+        Self::Unlocked,
+        Self::Locked,
+        Self::Created,
+        Self::Viewed,
+        Self::Updated,
+        Self::Deleted,
+        Self::Restored,
+        Self::PermanentlyDeleted,
+        Self::Exported,
+        Self::PasswordChanged,
+        Self::TagCreated,
+        Self::TagRenamed,
+        Self::TagDeleted,
+        Self::RecoveryUsed,
+        Self::BiometricUnlocked,
+        Self::TotpRevealed,
+        Self::HealthScanned,
+        Self::BackupCreated,
+        Self::BackupRestored,
+    ];
+
     #[must_use]
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -57,6 +90,8 @@ impl AuditAction {
             Self::BiometricUnlocked => "BiometricUnlocked",
             Self::TotpRevealed => "TotpRevealed",
             Self::HealthScanned => "HealthScanned",
+            Self::BackupCreated => "BackupCreated",
+            Self::BackupRestored => "BackupRestored",
         }
     }
 
@@ -80,6 +115,8 @@ impl AuditAction {
             "BiometricUnlocked" => Self::BiometricUnlocked,
             "TotpRevealed" => Self::TotpRevealed,
             "HealthScanned" => Self::HealthScanned,
+            "BackupCreated" => Self::BackupCreated,
+            "BackupRestored" => Self::BackupRestored,
             _ => return None,
         })
     }

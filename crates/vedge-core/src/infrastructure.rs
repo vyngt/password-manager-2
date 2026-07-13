@@ -1,3 +1,4 @@
+pub mod backup;
 pub mod biometric;
 pub mod blob;
 pub mod breach;

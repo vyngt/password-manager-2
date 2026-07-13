@@ -17,6 +17,7 @@
 //!   preferred.
 
 pub mod audit;
+pub mod backup;
 pub mod common;
 pub mod emergency_kit;
 pub mod entry;
