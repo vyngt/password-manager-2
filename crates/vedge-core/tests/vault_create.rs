@@ -295,6 +295,16 @@ async fn keychain_failure_returns_valid_vault() {
         fn delete_secret_key(&self, _vault_id: &VaultId) -> Result<(), VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
+        fn read_commit_baseline(&self, _vault_uuid: &str) -> Result<Option<i64>, VaultError> {
+            Err(VaultError::KeychainUnavailable)
+        }
+        fn store_commit_baseline(
+            &self,
+            _vault_uuid: &str,
+            _counter: i64,
+        ) -> Result<(), VaultError> {
+            Err(VaultError::KeychainUnavailable)
+        }
     }
 
     let create = build_create(&p, Arc::new(FailingKeychain));

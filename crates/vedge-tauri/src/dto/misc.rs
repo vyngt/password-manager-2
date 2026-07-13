@@ -2,7 +2,7 @@
 
 pub use vedge_ipc::{
     ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, ExportedDocumentDto,
-    FieldSelectorDto, MaintenanceReportDto, UnlockVaultInputDto,
+    FieldSelectorDto, MaintenanceReportDto, UnlockResultDto, UnlockVaultInputDto,
 };
 
 use vedge_core::MaintenanceReport;

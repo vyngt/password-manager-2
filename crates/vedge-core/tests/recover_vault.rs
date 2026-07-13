@@ -163,6 +163,12 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
         fn delete_secret_key(&self, vault_id: &VaultId) -> Result<(), VaultError> {
             self.inner.delete_secret_key(vault_id)
         }
+        fn read_commit_baseline(&self, vault_uuid: &str) -> Result<Option<i64>, VaultError> {
+            self.inner.read_commit_baseline(vault_uuid)
+        }
+        fn store_commit_baseline(&self, vault_uuid: &str, counter: i64) -> Result<(), VaultError> {
+            self.inner.store_commit_baseline(vault_uuid, counter)
+        }
     }
 
     let failing: Arc<dyn KeychainProvider> = Arc::new(FailingStoreKeychain {

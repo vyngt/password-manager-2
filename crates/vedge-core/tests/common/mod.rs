@@ -122,6 +122,7 @@ impl Harness {
             created_at: now(),
             last_unlocked_at: None,
             vault_uuid: None,
+            commit_counter: 0,
         };
 
         // Open DB, run migrations, seed config.

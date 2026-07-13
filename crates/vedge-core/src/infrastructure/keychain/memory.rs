@@ -12,6 +12,9 @@ use crate::domain::vault::errors::VaultError;
 /// key material beyond zeroizing on `Drop`.
 pub struct MemoryKeychainProvider {
     store: Mutex<HashMap<VaultId, [u8; SECRET_KEY_LEN]>>,
+    /// Rollback commit-counter baselines, keyed on `vault_uuid` (slice 5.2c). Plain
+    /// integers, not secret — no zeroize needed.
+    baselines: Mutex<HashMap<String, i64>>,
 }
 
 impl MemoryKeychainProvider {
@@ -19,6 +22,7 @@ impl MemoryKeychainProvider {
     pub fn new() -> Self {
         Self {
             store: Mutex::new(HashMap::new()),
+            baselines: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -77,5 +81,21 @@ impl KeychainProvider for MemoryKeychainProvider {
                 v.fill(0);
                 Ok(())
             })
+    }
+
+    fn read_commit_baseline(&self, vault_uuid: &str) -> Result<Option<i64>, VaultError> {
+        let guard = self
+            .baselines
+            .lock()
+            .map_err(|_| VaultError::KeychainUnavailable)?;
+        Ok(guard.get(vault_uuid).copied())
+    }
+
+    fn store_commit_baseline(&self, vault_uuid: &str, counter: i64) -> Result<(), VaultError> {
+        let Ok(mut guard) = self.baselines.lock() else {
+            return Err(VaultError::KeychainUnavailable);
+        };
+        guard.insert(vault_uuid.to_owned(), counter);
+        Ok(())
     }
 }

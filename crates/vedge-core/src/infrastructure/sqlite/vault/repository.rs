@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use sea_orm::sea_query::OnConflict;
+use sea_orm::sea_query::{Expr, OnConflict};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DatabaseConnection,
     EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
@@ -48,6 +48,27 @@ fn db_err(e: sea_orm::DbErr) -> VaultError {
     VaultError::Storage(StorageError::Database(e.to_string()))
 }
 
+/// Advance the rollback commit counter by one (slice 5.2c).
+///
+/// Called at the **tail** of every content-mutating write so a crash between the
+/// write and the bump can only *under*-count (a spurious rollback warning at worst),
+/// never over-count (which would mask a real rollback). The `+ 1` is evaluated
+/// SQL-side to sidestep the `arithmetic_side_effects` lint, and is `i64` so it will
+/// not overflow in any realistic vault lifetime. Generic over the connection so it
+/// runs on both the bare `self.conn` and the `rewrap_all_deks` transaction.
+async fn bump_commit_counter<C: ConnectionTrait>(conn: &C) -> Result<(), VaultError> {
+    config_entity::Entity::update_many()
+        .col_expr(
+            ConfigCol::CommitCounter,
+            Expr::col(ConfigCol::CommitCounter).add(1),
+        )
+        .filter(ConfigCol::Id.eq("default"))
+        .exec(conn)
+        .await
+        .map_err(db_err)?;
+    Ok(())
+}
+
 #[async_trait]
 impl VaultRepository for SqliteVaultRepository {
     // ---- vault_config -------------------------------------------------------
@@ -76,6 +97,11 @@ impl VaultRepository for SqliteVaultRepository {
             created_at: ActiveValue::Set(model.created_at),
             last_unlocked_at: ActiveValue::Set(model.last_unlocked_at),
             vault_uuid: ActiveValue::Set(model.vault_uuid),
+            // Set on INSERT (a fresh vault seeds 0); on UPDATE it is preserved by
+            // OMITTING it from `update_columns` below — else an unlock's `save_config`
+            // would clobber the live counter with the stale value read at unlock. The
+            // column is advanced ONLY by `bump_commit_counter` + restore's re-baseline.
+            commit_counter: ActiveValue::Set(model.commit_counter),
         };
 
         config_entity::Entity::insert(active)
@@ -93,6 +119,7 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::CreatedAt,
                         ConfigCol::LastUnlockedAt,
                         ConfigCol::VaultUuid,
+                        // NOT ConfigCol::CommitCounter — see the field comment above.
                     ])
                     .to_owned(),
             )
@@ -111,6 +138,7 @@ impl VaultRepository for SqliteVaultRepository {
             .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -133,6 +161,7 @@ impl VaultRepository for SqliteVaultRepository {
         active.is_trashed = ActiveValue::Set(model.is_trashed);
         active.trashed_at = ActiveValue::Set(model.trashed_at);
         active.update(self.conn.as_ref()).await.map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -164,6 +193,7 @@ impl VaultRepository for SqliteVaultRepository {
         active.trashed_at = ActiveValue::Set(Some(ts_to_string(&when)));
         active.updated_at = ActiveValue::Set(ts_to_string(&when));
         active.update(self.conn.as_ref()).await.map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -178,6 +208,7 @@ impl VaultRepository for SqliteVaultRepository {
         active.trashed_at = ActiveValue::Set(None);
         active.updated_at = ActiveValue::Set(ts_to_string(&when));
         active.update(self.conn.as_ref()).await.map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -189,6 +220,7 @@ impl VaultRepository for SqliteVaultRepository {
         if res.rows_affected == 0 {
             return Err(VaultError::EntryNotFound(id.clone()));
         }
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -219,6 +251,7 @@ impl VaultRepository for SqliteVaultRepository {
             .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(res.rows_affected)
     }
 
@@ -243,6 +276,7 @@ impl VaultRepository for SqliteVaultRepository {
             .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -271,6 +305,7 @@ impl VaultRepository for SqliteVaultRepository {
             .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(res.rows_affected)
     }
 
@@ -294,6 +329,7 @@ impl VaultRepository for SqliteVaultRepository {
             .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(res.rows_affected)
     }
 
@@ -306,6 +342,7 @@ impl VaultRepository for SqliteVaultRepository {
             .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -321,6 +358,7 @@ impl VaultRepository for SqliteVaultRepository {
         active.ciphertext = ActiveValue::Set(model.ciphertext);
         active.updated_at = ActiveValue::Set(model.updated_at);
         active.update(self.conn.as_ref()).await.map_err(db_err)?;
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -349,6 +387,7 @@ impl VaultRepository for SqliteVaultRepository {
         if res.rows_affected == 0 {
             return Err(VaultError::TagNotFound(id.clone()));
         }
+        bump_commit_counter(self.conn.as_ref()).await?;
         Ok(())
     }
 
@@ -496,6 +535,9 @@ impl VaultRepository for SqliteVaultRepository {
             created_at: ActiveValue::Set(config_model.created_at),
             last_unlocked_at: ActiveValue::Set(config_model.last_unlocked_at),
             vault_uuid: ActiveValue::Set(config_model.vault_uuid),
+            // Preserved on UPDATE (omitted from `update_columns`) — the bump below
+            // is what advances it inside this same txn. See `save_config`'s note.
+            commit_counter: ActiveValue::Set(config_model.commit_counter),
         };
         config_entity::Entity::insert(config_active)
             .on_conflict(
@@ -512,12 +554,17 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::CreatedAt,
                         ConfigCol::LastUnlockedAt,
                         ConfigCol::VaultUuid,
+                        // NOT ConfigCol::CommitCounter — bumped in-txn just below.
                     ])
                     .to_owned(),
             )
             .exec(&txn)
             .await
             .map_err(db_err)?;
+
+        // Bump inside the same txn (config upsert deliberately omits CommitCounter
+        // from its update_columns, so the bump is what advances it here).
+        bump_commit_counter(&txn).await?;
 
         txn.commit().await.map_err(db_err)?;
         Ok(())
@@ -574,6 +621,7 @@ mod tests {
             created_at: now(),
             last_unlocked_at: None,
             vault_uuid: None,
+            commit_counter: 0,
         }
     }
 

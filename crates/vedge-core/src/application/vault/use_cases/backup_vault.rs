@@ -132,6 +132,10 @@ pub async fn backup_vault(
     // 4. Build + write the manifest.
     let created_at = format_rfc3339_millis(now());
     let entry_count = u64::try_from(session.index.entries.len()).unwrap_or(u64::MAX);
+    // `commit_counter` changes on every content write, so `session.config`'s
+    // unlock-time snapshot is stale — read the LIVE value. Backup holds the session
+    // (single writer), so this matches the `VACUUM INTO` snapshot's counter (5.2c).
+    let commit_counter = session.repo.load_config().await?.commit_counter;
     let manifest = BackupManifest {
         format_version: BACKUP_FORMAT_VERSION,
         vault_uuid: session.config.vault_uuid.clone(),
@@ -139,6 +143,7 @@ pub async fn backup_vault(
         created_at: created_at.clone(),
         entry_count,
         blob_count,
+        commit_counter,
         files,
     };
     let manifest_path = staging_path.join(MANIFEST_NAME);

@@ -33,6 +33,17 @@ impl OsKeychainProvider {
     fn entry(&self, vault_id: &VaultId) -> Result<Entry, VaultError> {
         Entry::new(&self.service, &Self::account(vault_id)).map_err(map_keyring_err)
     }
+
+    /// A SECOND account namespace under the same `"vedge"` service, keyed on the
+    /// intrinsic `vault_uuid` (not the path) so the rollback baseline survives a vault
+    /// move — which is exactly what 4.6a's `vault_uuid` exists for (slice 5.2c).
+    fn counter_account(vault_uuid: &str) -> String {
+        format!("counter:{vault_uuid}")
+    }
+
+    fn counter_entry(&self, vault_uuid: &str) -> Result<Entry, VaultError> {
+        Entry::new(&self.service, &Self::counter_account(vault_uuid)).map_err(map_keyring_err)
+    }
 }
 
 impl Default for OsKeychainProvider {
@@ -83,5 +94,24 @@ impl KeychainProvider for OsKeychainProvider {
             Err(KeyringError::NoEntry) => Err(VaultError::KeychainEntryNotFound),
             Err(e) => Err(map_keyring_err(e)),
         }
+    }
+
+    fn read_commit_baseline(&self, vault_uuid: &str) -> Result<Option<i64>, VaultError> {
+        // A missing entry is `Ok(None)` (fresh device), NOT an error — see the trait
+        // doc. Only a daemon/access failure escalates. A corrupt (wrong-length) value
+        // reads as "no baseline" rather than a hard error: a bad mirror must never
+        // brick unlock.
+        match self.counter_entry(vault_uuid)?.get_secret() {
+            Ok(bytes) => <[u8; 8]>::try_from(bytes.as_slice())
+                .map_or(Ok(None), |arr| Ok(Some(i64::from_le_bytes(arr)))),
+            Err(KeyringError::NoEntry) => Ok(None),
+            Err(e) => Err(map_keyring_err(e)),
+        }
+    }
+
+    fn store_commit_baseline(&self, vault_uuid: &str, counter: i64) -> Result<(), VaultError> {
+        self.counter_entry(vault_uuid)?
+            .set_secret(&counter.to_le_bytes())
+            .map_err(map_keyring_err)
     }
 }

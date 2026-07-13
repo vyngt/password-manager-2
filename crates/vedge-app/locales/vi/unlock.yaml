@@ -20,6 +20,7 @@ biometric_touch_hint: "Chạm cảm biến vân tay hoặc nhìn vào camera"
 use_master_password: "Dùng mật khẩu chính"
 err_biometric: "Mở khóa sinh trắc học thất bại — hãy dùng mật khẩu chính."
 session_expired: "Phiên của bạn đã hết hạn — hãy mở khóa lại."
+rollback_warning: "Kho này có vẻ cũ hơn trạng thái mà thiết bị này từng thấy — có thể đã bị lùi trạng thái hoặc khôi phục từ bản sao lưu cũ."
 # --- 2.8.1 vault picker ---
 your_vaults: "Kho của bạn"
 search_vaults: "Tìm kho"

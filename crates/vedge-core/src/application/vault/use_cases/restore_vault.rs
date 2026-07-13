@@ -14,6 +14,8 @@ use std::path::PathBuf;
 use tracing::{instrument, warn};
 
 use crate::application::vault::ports::factories::VaultRepositoryFactory;
+use crate::application::vault::ports::keychain::KeychainProvider;
+use crate::application::vault::ports::repository::VaultRepository;
 use crate::domain::shared::{StorageError, format_rfc3339_millis, now};
 use crate::domain::vault::entities::{AuditAction, AuditEvent, CURRENT_SCHEMA_VERSION};
 use crate::domain::vault::errors::VaultError;
@@ -26,6 +28,9 @@ use crate::infrastructure::backup::{archive, journal};
 pub struct RestoreVaultInput {
     pub target_vault: PathBuf,
     pub archive_path: PathBuf,
+    /// The user's explicit yes to the preview's rollback warning (slice 5.2c). When
+    /// the live target is AHEAD of the backup, restore refuses unless this is `true`.
+    pub confirm_rollback: bool,
 }
 
 /// Non-invertible derivatives surfaced to the UI — counts + identity, never any
@@ -47,13 +52,36 @@ fn io_ctx(op: &str, e: &std::io::Error) -> VaultError {
     VaultError::Storage(StorageError::Io(format!("{op}: {e}")))
 }
 
+/// Re-baseline the keychain rollback mirror to the RESTORED vault's own counter,
+/// keyed on its uuid (ground truth over the manifest), so the very next unlock does
+/// not nag about the rollback the user just chose. Best-effort: the swap already
+/// committed durably, so a keychain failure (or a pre-4.6 backup with no uuid) must
+/// NOT fail the restore (slice 5.2c).
+async fn rebaseline_rollback_mirror(repo: &dyn VaultRepository, keychain: &dyn KeychainProvider) {
+    let cfg = match repo.load_config().await {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            warn!(error = %e, "restore committed but re-reading config for re-baseline failed");
+            return;
+        }
+    };
+    let Some(uuid) = cfg.vault_uuid.as_deref() else {
+        return;
+    };
+    if let Err(e) = keychain.store_commit_baseline(uuid, cfg.commit_counter) {
+        warn!(error = %e, "restore committed but the rollback baseline could not be re-based");
+    }
+}
+
 #[instrument(skip_all, fields(target = %input.target_vault.display()))]
 pub async fn restore_vault(
     repo_factory: &dyn VaultRepositoryFactory,
+    keychain: &dyn KeychainProvider,
     input: RestoreVaultInput,
 ) -> Result<RestoreReport, VaultError> {
     let target = input.target_vault;
     let archive_path = input.archive_path;
+    let confirm_rollback = input.confirm_rollback;
 
     // ---- 0. Reconcile any PRIOR interrupted restore of this vault -----------
     // A leftover journal + `.old` artifacts from an earlier crashed restore must be
@@ -90,6 +118,17 @@ pub async fn restore_vault(
             if backup_uuid != target_uuid {
                 return Err(VaultError::MalformedPayload(format!(
                     "this backup belongs to a different vault ({backup_uuid} ≠ {target_uuid})"
+                )));
+            }
+        }
+        // 4. Rollback gate (5.2c): a backup OLDER than the live target drops the
+        //    intervening commits. Refuse unless the user confirmed the preview. An
+        //    unknown target counter (pre-5.2c column) → can't compute → allow.
+        if let Some(target_ctr) = target_id.commit_counter {
+            if target_ctr > manifest.commit_counter && !confirm_rollback {
+                return Err(VaultError::MalformedPayload(format!(
+                    "this backup is older than the target vault (backup state {}, vault state {target_ctr}); confirm the rollback to proceed",
+                    manifest.commit_counter
                 )));
             }
         }
@@ -165,6 +204,8 @@ pub async fn restore_vault(
     if let Err(e) = repo.append_audit(&event).await {
         warn!(error = %e, "restore committed but the audit row could not be written");
     }
+
+    rebaseline_rollback_mirror(repo.as_ref(), keychain).await;
 
     Ok(RestoreReport {
         vault_uuid: manifest.vault_uuid.clone(),

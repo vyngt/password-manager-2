@@ -7,6 +7,8 @@
 
 use serde::Serialize;
 
+use vedge_ipc::UnlockResultDto;
+
 use crate::api::call::{call, call_noargs, call_void};
 use crate::api::error::ApiError;
 
@@ -43,12 +45,12 @@ pub async fn enroll(vault_path: &str, master_password: &str) -> Result<(), ApiEr
 }
 
 /// Unlock the vault via the biometric gate (shows the OS prompt). No master password.
-pub async fn unlock(vault_path: &str) -> Result<(), ApiError> {
+pub async fn unlock(vault_path: &str) -> Result<UnlockResultDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
         vault_path: &'a str,
     }
-    call_void("biometric_unlock", &Args { vault_path }).await
+    call("biometric_unlock", &Args { vault_path }).await
 }
 
 /// Remove the stored KEK for this vault. Idempotent.

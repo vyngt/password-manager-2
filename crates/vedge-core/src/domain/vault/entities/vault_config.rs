@@ -28,4 +28,9 @@ pub struct VaultConfig {
     /// A *copy* of a vault is the same vault (same uuid) — a future "duplicate as a new
     /// vault" feature must mint a fresh one. Slice 4.6a; see arch note 13 - Vault Identity.
     pub vault_uuid: Option<String>,
+    /// Monotonic write counter, bumped by the repository on every content mutation.
+    /// Mirrored into the OS keychain (keyed on `vault_uuid`) and compared at unlock:
+    /// a file counter *below* the keychain baseline signals a rollback. Advisory only
+    /// — a mismatch warns, never blocks unlock. Slice 5.2c; see 06 - Rollback Detection.
+    pub commit_counter: i64,
 }

@@ -18,6 +18,9 @@ pub struct Model {
     /// Intrinsic vault identity (ULID). Nullable: minted on create, backfilled on
     /// first open of a pre-4.6 vault (slice 4.6a).
     pub vault_uuid: Option<String>,
+    /// Monotonic write counter for rollback detection (slice 5.2c). `NOT NULL
+    /// DEFAULT 0`; bumped by the repo layer on every content write.
+    pub commit_counter: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -11,7 +11,9 @@ use tempfile::tempdir;
 
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::domain::shared::{DeviceId, EntryId, TagId, now};
-use vedge_core::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
+use vedge_core::domain::vault::entities::{
+    AuditAction, AuditEvent, EntryHistoryRow, EntryRow, TagRow, VaultConfig,
+};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::kdf_params::KdfParams;
 use vedge_core::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
@@ -38,6 +40,7 @@ fn sample_config() -> VaultConfig {
         created_at: now(),
         last_unlocked_at: None,
         vault_uuid: None,
+        commit_counter: 0,
     }
 }
 
@@ -64,6 +67,18 @@ fn sample_tag(id: &TagId) -> TagRow {
         ciphertext: vec![0xCD; 48],
         created_at: now(),
         updated_at: now(),
+    }
+}
+
+fn sample_history(entry_id: &EntryId, version: i64) -> EntryHistoryRow {
+    EntryHistoryRow {
+        id: ulid::Ulid::new().to_string(),
+        entry_id: entry_id.clone(),
+        version,
+        cipher_suite: 1,
+        nonce: [3u8; 24],
+        ciphertext: vec![0x11; 32],
+        changed_at: now(),
     }
 }
 
@@ -244,4 +259,123 @@ async fn audit_log_append_and_filter() {
     let deleted = repo.delete_audit_before(cutoff).await.unwrap();
     assert_eq!(deleted, 3);
     assert!(repo.recent_audit(10).await.unwrap().is_empty());
+}
+
+async fn commit_counter(repo: &SqliteVaultRepository) -> i64 {
+    repo.load_config().await.unwrap().commit_counter
+}
+
+/// Slice 5.2c (T1): every content-mutating write advances `commit_counter` by
+/// exactly one; the metadata/bookkeeping writes (`save_config`, `update_accessed_at`,
+/// `append_audit`) leave it untouched. Delta-based so a write that forgot its bump
+/// (or an excluded one that wrongly gained a bump) names itself.
+#[tokio::test]
+async fn commit_counter_bumps_on_content_writes_only() {
+    let (_dir, repo) = open_repo().await;
+    // Seed via a save_config INSERT: the counter starts at 0 and save_config,
+    // being metadata, never bumps.
+    repo.save_config(&sample_config()).await.unwrap();
+    assert_eq!(commit_counter(&repo).await, 0, "seed starts at 0");
+
+    let e = EntryId::new();
+    let mut n = 0i64;
+
+    // ---- entries (4 of the 13; hard-delete + trashed-purge are exercised below) ----
+    repo.insert_entry(&sample_entry(&e)).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "insert_entry");
+
+    let mut upd = sample_entry(&e);
+    upd.version = 2;
+    repo.update_entry(&upd).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "update_entry");
+
+    repo.soft_delete_entry(&e, now()).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "soft_delete_entry");
+
+    repo.restore_entry(&e, now()).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "restore_entry");
+
+    // ---- history (3 of the 13) ----
+    repo.insert_history(&sample_history(&e, 1)).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "insert_history");
+    repo.insert_history(&sample_history(&e, 2)).await.unwrap();
+    n += 1; // same method, second call — still one bump
+    let pruned = repo.prune_history_keep(&e, 1).await.unwrap();
+    assert_eq!(pruned, 1);
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "prune_history_keep");
+    let removed = repo.delete_history_for_entry(&e).await.unwrap();
+    assert_eq!(removed, 1);
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "delete_history_for_entry");
+
+    // ---- tags (3 of the 13) ----
+    let t = TagId::new();
+    repo.insert_tag(&sample_tag(&t)).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "insert_tag");
+    let mut tu = sample_tag(&t);
+    tu.ciphertext = vec![0x22; 8];
+    repo.update_tag(&tu).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "update_tag");
+    repo.delete_tag(&t).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "delete_tag");
+
+    // ---- rewrap_all_deks (the ONE transactional write; bump rides its txn) ----
+    let cfg = repo.load_config().await.unwrap();
+    repo.rewrap_all_deks(&[], &cfg).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "rewrap_all_deks");
+
+    // ---- hard_delete_entry (1) ----
+    repo.hard_delete_entry(&e).await.unwrap();
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "hard_delete_entry");
+
+    // ---- hard_delete_trashed_before (1) ----
+    let e2 = EntryId::new();
+    repo.insert_entry(&sample_entry(&e2)).await.unwrap();
+    n += 1;
+    let old = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00+00:00")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    repo.soft_delete_entry(&e2, old).await.unwrap();
+    n += 1;
+    let cutoff = chrono::DateTime::parse_from_rfc3339("2026-02-01T00:00:00+00:00")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let purged = repo.hard_delete_trashed_before(cutoff).await.unwrap();
+    assert_eq!(purged, 1);
+    n += 1;
+    assert_eq!(commit_counter(&repo).await, n, "hard_delete_trashed_before");
+
+    // ---- exclusions: only the insert bumps; accessed_at / audit / save_config do not ----
+    let before = commit_counter(&repo).await;
+    let e3 = EntryId::new();
+    repo.insert_entry(&sample_entry(&e3)).await.unwrap();
+    repo.update_accessed_at(&e3, now()).await.unwrap();
+    repo.append_audit(&AuditEvent {
+        id: ulid::Ulid::new().to_string(),
+        entry_id: None,
+        action: AuditAction::Unlocked,
+        occurred_at: now(),
+        device_id: None,
+    })
+    .await
+    .unwrap();
+    let mut cfg2 = repo.load_config().await.unwrap();
+    cfg2.last_unlocked_at = Some(now());
+    repo.save_config(&cfg2).await.unwrap();
+    assert_eq!(
+        commit_counter(&repo).await,
+        before + 1,
+        "only insert_entry bumped; update_accessed_at / append_audit / save_config did not"
+    );
 }

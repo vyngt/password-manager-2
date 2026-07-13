@@ -172,6 +172,8 @@ impl CreateVault {
             last_unlocked_at: Some(created_at),
             // Intrinsic identity, minted once at create; never changes on move/rename.
             vault_uuid: Some(ulid::Ulid::new().to_string()),
+            // A fresh vault starts at commit 0; the first content write bumps to 1.
+            commit_counter: 0,
         };
 
         // ---- 6. Provision the .vdb + blob store, persist config -------------
