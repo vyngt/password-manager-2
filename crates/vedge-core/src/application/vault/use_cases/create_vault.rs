@@ -177,6 +177,10 @@ impl CreateVault {
             vault_uuid: Some(vault_uuid.clone()),
             // A fresh vault starts at commit 0; the first content write bumps to 1.
             commit_counter: 0,
+            backup_dir: None,
+            backup_keep_count: None,
+            last_snapshot_at: None,
+            last_backup_at: None,
         };
 
         // ---- 6. Provision the home + blob store, persist config -------------

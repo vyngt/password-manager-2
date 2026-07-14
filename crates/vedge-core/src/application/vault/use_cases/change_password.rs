@@ -84,21 +84,18 @@ pub async fn change_password(
     .map_err(|e| VaultError::KeyDerivationFailed(format!("spawn_blocking join: {e}")))??;
 
     // ---- 3. Re-wrap every entry's DEK under the new KEK --------------------
-    let old_kek_bytes: [u8; KEK_LEN] = *session.kek.expose();
+    // Kept as `Zeroizing` (not zeroized inline) because the snapshot rewrap (⑬, step 4b)
+    // needs BOTH KEKs AFTER the commit; it drops — and zeroizes — at the end of this fn.
+    let old_kek_z: Zeroizing<[u8; KEK_LEN]> = Zeroizing::new(*session.kek.expose());
     let rows = session.repo.all_entries().await?;
     let mut updates: Vec<(crate::domain::shared::EntryId, [u8; 40])> =
         Vec::with_capacity(rows.len());
     for row in rows {
-        let dek = session
-            .crypto
-            .unwrap_dek(&row.dek_wrapped, &old_kek_bytes)?;
+        let dek = session.crypto.unwrap_dek(&row.dek_wrapped, &old_kek_z)?;
         let new_wrapped = session.crypto.wrap_dek(&dek, &new_kek_z)?;
         // `dek` drops here, zeroizing.
         updates.push((row.id, new_wrapped));
     }
-    // Best-effort zero of our stack copy of the old KEK.
-    let mut old_kek_bytes = old_kek_bytes;
-    zeroize::Zeroize::zeroize(&mut old_kek_bytes);
 
     // ---- 4. Atomic commit: all entries + config in one transaction ----------
     let when = now();
@@ -106,6 +103,28 @@ pub async fn change_password(
     new_config.verify_hash = new_verify_hash;
     new_config.last_unlocked_at = Some(when);
     session.repo.rewrap_all_deks(&updates, &new_config).await?;
+
+    // ---- 4b. Rewrap the local snapshot store (⑬) — AFTER the live vault commits ----------
+    // A crash here leaves snapshots on the OLD password (which the user just typed), never a
+    // password that does not yet exist. A failed rewrap NEVER fails the change (L1) — the
+    // snapshot keeps its old credentials and is badged stale.
+    let snapshots_dir = session.vault_id().snapshots_dir();
+    let rewrap = super::rewrap_snapshots::rewrap_snapshots(
+        session.crypto.as_ref(),
+        &snapshots_dir,
+        &old_kek_z,
+        &new_kek_z,
+        &new_verify_hash,
+    )
+    .await;
+    if !rewrap.failed.is_empty() {
+        tracing::warn!(
+            failed = ?rewrap.failed,
+            rewrapped = rewrap.rewrapped,
+            "some snapshots kept the previous password — retire or re-take them"
+        );
+    }
+    drop(old_kek_z);
 
     // ---- 5. Keychain update --------------------------------------------------
     if let Some(sk) = input.new_secret_key {

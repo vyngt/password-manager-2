@@ -138,6 +138,10 @@ impl Harness {
             last_unlocked_at: None,
             vault_uuid: Some(vault_uuid.clone()),
             commit_counter: 0,
+            backup_dir: None,
+            backup_keep_count: None,
+            last_snapshot_at: None,
+            last_backup_at: None,
         };
 
         // Open DB, run migrations, seed config.

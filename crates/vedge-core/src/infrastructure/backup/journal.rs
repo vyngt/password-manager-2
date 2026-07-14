@@ -57,6 +57,14 @@ pub struct RestoreJournal {
     pub vault_blake3: String,
     /// RFC-3339 millis, fixed-width (matches the house timestamp rule).
     pub started_at: String,
+    /// Subdirectories of the home that live INSIDE it but must SURVIVE the swap — moved
+    /// from the `.old` original back into the new home after the swap-in, and reclaimed on
+    /// rollback (slice 5.2.1, Decision ⑮: a `revert_to_snapshot` must never delete the
+    /// `snapshots/` store it lives beside). Empty for a `.vbk` restore (whole-home replace).
+    /// `#[serde(default)]` so a pre-5.2.1 in-flight journal (crash + upgrade) reads as empty
+    /// ⇒ the original whole-home behaviour ⇒ safe.
+    #[serde(default)]
+    pub preserve_subdirs: Vec<String>,
 }
 
 /// Fine-grained checkpoints inside [`commit_swap`], between which a crash may fall.
@@ -70,6 +78,7 @@ pub(crate) enum Checkpoint {
     HomeMoved,
     SwappedJournal,
     HomeSwapped,
+    SubdirsPreserved,
     OldCleaned,
 }
 
@@ -224,7 +233,7 @@ fn remove_dir_if_exists(path: &Path) -> Result<(), VaultError> {
 fn move_if_needed(src: &Path, dst: &Path) -> Result<(), VaultError> {
     match (src.exists(), dst.exists()) {
         (false, true) => Ok(()),
-        (true, false) => std::fs::rename(src, dst).map_err(|e| io_ctx("rename", &e)),
+        (true, false) => rename_retrying(src, dst),
         (false, false) => Err(io_msg(format!(
             "restore: neither {} nor {} exists",
             src.display(),
@@ -235,6 +244,46 @@ fn move_if_needed(src: &Path, dst: &Path) -> Result<(), VaultError> {
             src.display(),
             dst.display()
         ))),
+    }
+}
+
+/// True for a Windows `ERROR_SHARING_VIOLATION` (32) — the OS refusing to rename a file that
+/// still has a live handle. `PermissionDenied` is its `ErrorKind` mapping.
+fn is_sharing_violation(e: &std::io::Error) -> bool {
+    e.raw_os_error() == Some(32) || e.kind() == std::io::ErrorKind::PermissionDenied
+}
+
+/// Rename with a blocking retry on a Windows sharing/access violation (M1).
+///
+/// `sqlx`'s connection-pool close is NOT synchronous on `Drop`: after a vault is LOCKED, its
+/// just-dropped session pool keeps the `.vdb` (+ `-wal`/`-shm`) handle open for a short while
+/// before Windows releases it — longer for a vault carrying large attachments. Windows then
+/// refuses to rename the home directory (`ERROR_SHARING_VIOLATION` 32 or `ERROR_ACCESS_DENIED`
+/// 5). An in-place `revert_to_snapshot` runs right after a lock, so it hits this window; the
+/// handle DOES release, it just needs time. Retry for up to ~10s. Callers run the swap on a
+/// blocking thread (`spawn_blocking`) so the async runtime stays free to finish the pool close
+/// while we wait. Non-contention errors return immediately (no point retrying a real failure).
+fn rename_retrying(src: &Path, dst: &Path) -> Result<(), VaultError> {
+    const ATTEMPTS: u32 = 100;
+    const DELAY: std::time::Duration = std::time::Duration::from_millis(100);
+    let mut attempt: u32 = 0;
+    loop {
+        match std::fs::rename(src, dst) {
+            Ok(()) => {
+                if attempt > 0 {
+                    warn!(
+                        attempts = attempt,
+                        "rename succeeded after retrying a locked handle"
+                    );
+                }
+                return Ok(());
+            }
+            Err(e) if is_sharing_violation(&e) && attempt < ATTEMPTS.saturating_sub(1) => {
+                attempt = attempt.saturating_add(1);
+                std::thread::sleep(DELAY);
+            }
+            Err(e) => return Err(io_ctx("rename", &e)),
+        }
     }
 }
 
@@ -275,21 +324,61 @@ fn op_swap_in(paths: &SwapPaths) -> Result<(), VaultError> {
     move_if_needed(&paths.staging, &paths.home)
 }
 
+/// Move each preserved subdir from the `.old` original back into the new home (slice 5.2.1,
+/// Decision ⑮). A `revert_to_snapshot` replaces the home from a snapshot but the `snapshots/`
+/// store lives INSIDE the home — without this it would be swept away with `.old` at cleanup,
+/// destroying the very safety net (incl. the just-taken `pre-restore` auto-snapshot).
+///
+/// Idempotent, keyed on `.old/<sub>` still existing: not-yet-run moves it; half-run
+/// (`home/<sub>` absent) completes the move; fully-run (`.old/<sub>` gone) is a no-op. The
+/// staged home's own copy of the subdir is dropped first so the live one can swing in.
+fn op_preserve_subdirs(paths: &SwapPaths, subs: &[String]) -> Result<(), VaultError> {
+    for sub in subs {
+        let from = paths.old.join(sub);
+        let to = paths.home.join(sub);
+        if from.exists() {
+            remove_dir_if_exists(&to)?;
+            move_if_needed(&from, &to)?;
+        }
+    }
+    Ok(())
+}
+
 /// Delete the `.old` original + the staging dir (the last thing before the journal).
 fn op_cleanup(paths: &SwapPaths, staging_dir: &Path) -> Result<(), VaultError> {
     remove_dir_if_exists(&paths.old)?;
     remove_dir_if_exists(staging_dir)
 }
 
-/// Production entry point: run the write-ahead swap with a no-op checkpoint hook.
+/// Production entry point: a whole-home swap (`.vbk` restore) with a no-op checkpoint hook.
 pub(crate) fn commit(
     home: &Path,
     staging_dir: &Path,
     vault_blake3: &str,
     started_at: &str,
 ) -> Result<(), VaultError> {
+    commit_preserving(home, staging_dir, vault_blake3, started_at, &[])
+}
+
+/// Like [`commit`] but PRESERVES the named subdirs of the home across the swap (slice 5.2.1):
+/// they are moved from the `.old` original into the new home rather than replaced. Used by
+/// `revert_to_snapshot` with `&[SNAPSHOTS_DIR]` so a revert never destroys the snapshot store.
+pub(crate) fn commit_preserving(
+    home: &Path,
+    staging_dir: &Path,
+    vault_blake3: &str,
+    started_at: &str,
+    preserve_subdirs: &[&str],
+) -> Result<(), VaultError> {
     let mut noop = |_cp: Checkpoint| -> Result<(), VaultError> { Ok(()) };
-    commit_swap(home, staging_dir, vault_blake3, started_at, &mut noop)
+    commit_swap(
+        home,
+        staging_dir,
+        vault_blake3,
+        started_at,
+        preserve_subdirs,
+        &mut noop,
+    )
 }
 
 /// The write-ahead swap. Persists each state *before* the op it authorizes; the original
@@ -300,15 +389,18 @@ pub(crate) fn commit_swap(
     staging_dir: &Path,
     vault_blake3: &str,
     started_at: &str,
+    preserve_subdirs: &[&str],
     hook: &mut dyn FnMut(Checkpoint) -> Result<(), VaultError>,
 ) -> Result<(), VaultError> {
     let paths = SwapPaths::for_home(home, staging_dir);
+    let subs_owned: Vec<String> = preserve_subdirs.iter().map(|s| (*s).to_owned()).collect();
     let make = |state| RestoreJournal {
         state,
         home_path: home.to_owned(),
         staging_dir: staging_dir.to_owned(),
         vault_blake3: vault_blake3.to_owned(),
         started_at: started_at.to_owned(),
+        preserve_subdirs: subs_owned.clone(),
     };
 
     persist(&paths.journal, &make(RestoreState::Staged))?;
@@ -323,6 +415,9 @@ pub(crate) fn commit_swap(
     hook(Checkpoint::SwappedJournal)?;
     op_swap_in(&paths)?;
     hook(Checkpoint::HomeSwapped)?;
+
+    op_preserve_subdirs(&paths, &subs_owned)?;
+    hook(Checkpoint::SubdirsPreserved)?;
 
     op_cleanup(&paths, staging_dir)?;
     hook(Checkpoint::OldCleaned)?;
@@ -394,7 +489,12 @@ fn forward_or_rollback(
             ?state,
             "restore snapshot failed re-verification — rolling back"
         );
-        return roll_back_to_old(&paths, &journal.staging_dir, state);
+        return roll_back_to_old(
+            &paths,
+            &journal.staging_dir,
+            &journal.preserve_subdirs,
+            state,
+        );
     }
 
     // Roll forward from the recorded state, re-driving only the remaining ops.
@@ -413,6 +513,9 @@ fn forward_or_rollback(
         }
     }
 
+    // Preserve subdirs (slice 5.2.1) BEFORE cleanup deletes `.old`. Idempotent, so re-driving
+    // a partially-preserved swap is safe.
+    op_preserve_subdirs(&paths, &journal.preserve_subdirs)?;
     op_cleanup(&paths, &journal.staging_dir)?;
     remove_if_exists(&paths.journal)?;
     Ok(Some(state))
@@ -424,6 +527,7 @@ fn forward_or_rollback(
 fn roll_back_to_old(
     paths: &SwapPaths,
     staging_dir: &Path,
+    preserve_subdirs: &[String],
     state: RestoreState,
 ) -> Result<Option<RestoreState>, VaultError> {
     if !paths.old.exists() {
@@ -440,6 +544,18 @@ fn roll_back_to_old(
         return Err(io_msg(
             "restore interrupted and unrecoverable: neither a verified snapshot nor a backup of the original vault is present",
         ));
+    }
+
+    // 🔴 Symmetric reclaim (slice 5.2.1): if a preserved subdir was already moved OUT of
+    // `.old` into the NEW home (a crash after `op_preserve_subdirs` began), swing it back
+    // into `.old` before discarding the new home — otherwise a rollback would delete the
+    // `snapshots/` store the revert was meant to keep. Keyed on `.old/<sub>` being absent.
+    for sub in preserve_subdirs {
+        let in_home = paths.home.join(sub);
+        let in_old = paths.old.join(sub);
+        if !in_old.exists() && in_home.exists() {
+            move_if_needed(&in_home, &in_old)?;
+        }
     }
 
     // Discard any half-installed NEW home (blobs and all — they moved in as one unit), then
@@ -509,6 +625,14 @@ mod tests {
         }
 
         fn commit_until(&self, stop: Option<Checkpoint>) -> Result<(), VaultError> {
+            self.commit_until_preserving(stop, &[])
+        }
+
+        fn commit_until_preserving(
+            &self,
+            stop: Option<Checkpoint>,
+            preserve: &[&str],
+        ) -> Result<(), VaultError> {
             let mut hook = |cp: Checkpoint| -> Result<(), VaultError> {
                 if stop == Some(cp) {
                     Err(io_msg("injected crash"))
@@ -516,11 +640,35 @@ mod tests {
                     Ok(())
                 }
             };
-            commit_swap(&self.home, &self.staging, &self.new_hash, "t", &mut hook)
+            commit_swap(
+                &self.home,
+                &self.staging,
+                &self.new_hash,
+                "t",
+                preserve,
+                &mut hook,
+            )
         }
 
         fn live_vault_bytes(&self) -> Vec<u8> {
             std::fs::read(home_vault(&self.home)).unwrap()
+        }
+
+        /// Seed a distinct marker inside the LIVE home's `snapshots/` (the store a revert must
+        /// preserve). The staged home's `snapshots/` is left empty, so a correct preserve
+        /// leaves the marker present in the reverted home.
+        fn seed_live_snapshot(&self) {
+            let dir = self.home.join("snapshots").join("pre-restore");
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("marker"), b"the undo point").unwrap();
+        }
+
+        fn snapshot_marker_present(&self) -> bool {
+            self.home
+                .join("snapshots")
+                .join("pre-restore")
+                .join("marker")
+                .is_file()
         }
 
         fn blob(&self, name: &str) -> PathBuf {
@@ -560,7 +708,8 @@ mod tests {
     #[test]
     fn crash_at_every_checkpoint_recovers_consistently() {
         use Checkpoint::{
-            HomeAsideJournal, HomeMoved, HomeSwapped, OldCleaned, Staged, SwappedJournal,
+            HomeAsideJournal, HomeMoved, HomeSwapped, OldCleaned, Staged, SubdirsPreserved,
+            SwappedJournal,
         };
         let checkpoints = [
             Staged,
@@ -568,6 +717,7 @@ mod tests {
             HomeMoved,
             SwappedJournal,
             HomeSwapped,
+            SubdirsPreserved,
             OldCleaned,
         ];
         for cp in checkpoints {
@@ -715,6 +865,92 @@ mod tests {
         assert!(
             !fx.blob("NEWENTRY.blob").exists(),
             "new blob dropped on rollback"
+        );
+        fx.assert_clean(false);
+    }
+
+    // ---- slice 5.2.1: `snapshots/` preservation across a revert swap (§A / Decision ⑮) ----
+
+    /// A `commit_preserving(&["snapshots"])` reverts the vault to NEW **and** carries the live
+    /// `snapshots/` store across the swap — the revert never deletes its own safety net.
+    #[test]
+    fn revert_preserves_snapshots_across_full_commit() {
+        let fx = Fixture::new(true, true);
+        fx.seed_live_snapshot();
+        fx.commit_until_preserving(None, &["snapshots"]).unwrap();
+        assert_eq!(fx.live_vault_bytes(), fx.new_bytes, "vault reverted to NEW");
+        assert!(
+            fx.snapshot_marker_present(),
+            "the snapshot store survived the swap"
+        );
+        fx.assert_clean(true);
+    }
+
+    /// 🔴 The snapshots-survival crash matrix: crash at EVERY checkpoint of a preserving swap,
+    /// recover, and assert the snapshot store survives in BOTH the roll-forward and roll-back
+    /// directions (the vault itself lands NEW for ≥`HomeAside`, OLD for `Staged`).
+    #[test]
+    fn revert_preserves_snapshots_at_every_checkpoint() {
+        use Checkpoint::{
+            HomeAsideJournal, HomeMoved, HomeSwapped, OldCleaned, Staged, SubdirsPreserved,
+            SwappedJournal,
+        };
+        let checkpoints = [
+            Staged,
+            HomeAsideJournal,
+            HomeMoved,
+            SwappedJournal,
+            HomeSwapped,
+            SubdirsPreserved,
+            OldCleaned,
+        ];
+        for cp in checkpoints {
+            let fx = Fixture::new(true, true);
+            fx.seed_live_snapshot();
+            let _ = fx.commit_until_preserving(Some(cp), &["snapshots"]);
+            recover_if_pending(&fx.home).unwrap();
+
+            let expect_new = cp != Staged;
+            if expect_new {
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.new_bytes,
+                    "checkpoint {cp:?}: NEW"
+                );
+            } else {
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.old_bytes,
+                    "checkpoint {cp:?}: OLD"
+                );
+            }
+            assert!(
+                fx.snapshot_marker_present(),
+                "checkpoint {cp:?}: the snapshot store must survive"
+            );
+            fx.assert_clean(expect_new);
+            assert!(recover_if_pending(&fx.home).unwrap().is_none());
+        }
+    }
+
+    /// 🔴 The symmetric-reclaim path: crash AFTER `snapshots/` was moved into the new home but
+    /// before cleanup, then corrupt the new vault so recovery re-verification fails and rolls
+    /// back. The rollback must swing `snapshots/` back with the original — never delete it.
+    #[test]
+    fn revert_rollback_keeps_snapshots() {
+        let fx = Fixture::new(false, true);
+        fx.seed_live_snapshot();
+        // Stop right after `op_preserve_subdirs` (snapshots now in the new home, `.old` still
+        // present) — the exact window the symmetric reclaim guards.
+        let _ = fx.commit_until_preserving(Some(Checkpoint::SubdirsPreserved), &["snapshots"]);
+        // Corrupt the now-live NEW vault so re-verification fails → forced rollback.
+        std::fs::write(home_vault(&fx.home), b"corrupted new vault bytes").unwrap();
+
+        recover_if_pending(&fx.home).unwrap();
+        assert_eq!(fx.live_vault_bytes(), fx.old_bytes, "rolled back to OLD");
+        assert!(
+            fx.snapshot_marker_present(),
+            "🔴 a rollback must keep the snapshot store, not delete it"
         );
         fx.assert_clean(false);
     }

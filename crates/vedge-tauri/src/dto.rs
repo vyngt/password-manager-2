@@ -24,5 +24,6 @@ pub mod entry;
 pub mod health;
 pub mod misc;
 pub mod settings;
+pub mod snapshot;
 pub mod tag;
 pub mod totp;

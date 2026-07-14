@@ -105,6 +105,7 @@ impl From<VaultError> for CommandError {
             VaultError::BlobNotFound(id) => Self::NotFound(format!("blob {id}")),
             VaultError::AuditNotFound(id) => Self::NotFound(format!("audit {id}")),
             VaultError::HistoryNotFound(id) => Self::NotFound(format!("history {id}")),
+            VaultError::SnapshotNotFound(id) => Self::NotFound(format!("snapshot {id}")),
 
             VaultError::KeychainUnavailable
             | VaultError::KeychainAccessDenied
@@ -139,6 +140,13 @@ impl From<VaultError> for CommandError {
             | VaultError::InvalidTotpParams(_)
             | VaultError::HotpNotSupported
             | VaultError::TotpMigrationNotSupported
+            // Snapshot refusals (slice 5.2.1) — a corrupt/unknown snapshot or an
+            // unconfirmed rollback. The GUI confirms rollbacks up front, so
+            // `RollbackNotConfirmed` is chiefly a programmatic/e2e guard.
+            | VaultError::SnapshotManifestUnreadable(_)
+            | VaultError::SnapshotUnsupportedFormat(_)
+            | VaultError::SnapshotCorrupt(_)
+            | VaultError::RollbackNotConfirmed
             // A breach lookup failure is normally degraded inside `scan_health`
             // (surfaced as `breach_check_failed`); this mapping is defensive only.
             | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),

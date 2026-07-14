@@ -24,6 +24,10 @@ pub fn model_to_domain(model: Model) -> Result<VaultConfig, VaultError> {
         last_unlocked_at: string_to_ts_opt(model.last_unlocked_at.as_deref())?,
         vault_uuid: model.vault_uuid,
         commit_counter: model.commit_counter,
+        backup_dir: model.backup_dir,
+        backup_keep_count: model.backup_keep_count,
+        last_snapshot_at: string_to_ts_opt(model.last_snapshot_at.as_deref())?,
+        last_backup_at: string_to_ts_opt(model.last_backup_at.as_deref())?,
     })
 }
 
@@ -45,5 +49,9 @@ pub fn domain_to_model(config: &VaultConfig) -> Result<Model, VaultError> {
         last_unlocked_at: config.last_unlocked_at.as_ref().map(ts_to_string),
         vault_uuid: config.vault_uuid.clone(),
         commit_counter: config.commit_counter,
+        backup_dir: config.backup_dir.clone(),
+        backup_keep_count: config.backup_keep_count,
+        last_snapshot_at: config.last_snapshot_at.as_ref().map(ts_to_string),
+        last_backup_at: config.last_backup_at.as_ref().map(ts_to_string),
     })
 }

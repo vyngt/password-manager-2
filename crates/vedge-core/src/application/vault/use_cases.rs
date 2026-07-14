@@ -3,6 +3,7 @@ pub mod biometric;
 pub mod change_password;
 pub mod copy_field;
 pub mod create_entry;
+pub mod create_snapshot;
 pub mod create_vault;
 pub mod document_ops;
 pub mod entry_history;
@@ -20,6 +21,8 @@ pub mod refs;
 pub mod restore_entry;
 pub mod restore_vault;
 pub mod reveal_totp;
+pub mod revert_to_snapshot;
+pub mod rewrap_snapshots;
 pub mod run_maintenance;
 pub mod scan_health;
 pub mod set_favorite;
@@ -35,6 +38,7 @@ pub use biometric::enroll_biometric;
 pub use change_password::{ChangePasswordInput, change_password};
 pub use copy_field::{CopyFieldInput, FieldSelector, copy_field, place_text_on_clipboard};
 pub use create_entry::{CreateEntryInput, CreateEntryOutput, create_entry};
+pub use create_snapshot::{SnapshotReport, create_snapshot};
 pub use create_vault::{CreateVault, CreateVaultInput, CreateVaultOutput};
 pub use document_ops::{
     DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, export_document, import_document,
@@ -48,7 +52,7 @@ pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
 pub use inspect_backup::{BackupPreview, InspectBackupInput, inspect_backup};
 pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
-pub use lock_vault::{lock_vault, record_lock};
+pub use lock_vault::{close_session_db, lock_vault, record_lock};
 pub use migrate_vault_layout::{
     MigrateVaultLayoutInput, MigrateVaultLayoutOutput, migrate_vault_layout,
 };
@@ -61,6 +65,7 @@ pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use restore_entry::restore_entry;
 pub use restore_vault::{RestoreReport, RestoreVaultInput, restore_vault};
 pub use reveal_totp::reveal_totp;
+pub use revert_to_snapshot::{RevertReport, RevertToSnapshotInput, revert_to_snapshot};
 pub use run_maintenance::{MaintenanceReport, run_maintenance};
 pub use scan_health::scan_health;
 pub use set_favorite::set_favorite;

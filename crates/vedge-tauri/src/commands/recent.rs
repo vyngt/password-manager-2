@@ -42,7 +42,18 @@ pub async fn list_recent_vaults_with_status(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<RecentVaultStatusDto>, CommandError> {
     let rows = list_recent_vaults_with_status_core(&*state.recent_vaults).await?;
-    Ok(rows.iter().map(recent_vault_status_to_dto).collect())
+    let mut out = Vec::with_capacity(rows.len());
+    for r in &rows {
+        // H0: a present-but-unopenable vault (its `vault.vdb` won't read as a DB) is CORRUPT.
+        // A read-only identity probe returns `None` for it, so `openable` is false and the
+        // launch screen offers Restore. Eager per-row; fine for a handful of recents.
+        let openable = r.exists
+            && vedge_core::infrastructure::backup::target::read_target_identity(&r.vault.path)
+                .await
+                .is_some();
+        out.push(recent_vault_status_to_dto(r, openable));
+    }
+    Ok(out)
 }
 
 /// Strict add: validates the file exists and has a `SQLite` header

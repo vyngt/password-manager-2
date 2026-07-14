@@ -17,16 +17,21 @@ use zeroize::Zeroizing;
 
 // Traits needed for trait-method lookup + trait-object coercions.
 use vedge_core::application::vault::ports::{
-    BiometricAuthenticator, KeyDerivationProvider, KeychainProvider, VaultRepository,
+    BiometricAuthenticator, CryptoProvider, KeyDerivationProvider, KeychainProvider,
+    VaultRepository,
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password, create_entry,
-    lock_vault,
+    create_snapshot, lock_vault,
 };
-use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
+use vedge_core::domain::shared::SNAPSHOTS_DIR;
+use vedge_core::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
+use vedge_core::infrastructure::snapshot::manifest::{SnapshotReason, verify_hash_prefix};
+use vedge_core::infrastructure::snapshot::store;
+use vedge_core::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
 
 async fn unlock(h: &Harness, pw: &str) -> Result<VaultSession, VaultError> {
     let uv = build_unlock(h);
@@ -196,4 +201,162 @@ async fn vault_uuid_survives_change_password() {
         uuid_before,
         "change_password must preserve vault_uuid"
     );
+}
+
+// ---- slice 5.2.1: snapshot rewrap on credential change (Decision ⑬ / §B) ----
+
+/// Derive the `(kek, verify_hash)` a given password + the harness Secret Key would produce —
+/// so tests can check a snapshot's `vault.vdb` opens under the NEW credentials.
+fn derive_kek_and_verify(h: &Harness, pw: &str) -> (Zeroizing<[u8; KEK_LEN]>, [u8; 32]) {
+    let input = h.kdf.preprocess_2skd(pw.as_bytes(), &h.secret_key).unwrap();
+    let mk = h
+        .kdf
+        .derive_master_key(&input, &h.config.vault_salt, &h.config.kdf_params)
+        .unwrap();
+    let verify = h.kdf.derive_verify_hash(&mk).unwrap();
+    let kek = h.kdf.derive_kek(&mk).unwrap();
+    (kek, verify)
+}
+
+async fn change_pw(session: &mut VaultSession, h: &Harness, new_pw: &str) {
+    change_password(
+        session,
+        Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
+        ChangePasswordInput {
+            new_password: Zeroizing::new(new_pw.to_owned()),
+            new_secret_key: None,
+        },
+    )
+    .await
+    .unwrap();
+}
+
+/// The single pooled object's bytes (there is exactly one blob in these tests).
+fn only_object_bytes(h: &Harness) -> Vec<u8> {
+    let objects = h.home.join(SNAPSHOTS_DIR).join("objects");
+    let mut files: Vec<_> = std::fs::read_dir(&objects)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.is_file())
+        .collect();
+    files.sort();
+    std::fs::read(&files[0]).unwrap()
+}
+
+/// Test 9 (⑬): after a password change a snapshot opens with the NEW password — its
+/// `verify_hash` matches, a snapshot DEK unwraps under the new KEK, the object pool is
+/// byte-identical (blobs never touched), and the manifest's `verify_hash_prefix` is updated.
+#[tokio::test]
+async fn snapshot_rewraps_to_the_new_credentials() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
+    create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("e1", "p1"),
+        },
+    )
+    .await
+    .unwrap();
+    // Seed a blob so the pool has an object to prove untouched.
+    std::fs::write(
+        h.blob.root().join(format!(
+            "{}.blob",
+            vedge_core::domain::shared::EntryId::new()
+        )),
+        b"blob nonce+ciphertext",
+    )
+    .unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+
+    let objects_before = only_object_bytes(&h);
+    let store_dir = h.home.join(SNAPSHOTS_DIR);
+    let snap_dir = store::list_snapshots(&store_dir).unwrap()[0].dir.clone();
+
+    change_pw(&mut session, &h, "brand-new-password").await;
+    lock_vault(session).await.unwrap();
+
+    let (new_kek, new_verify) = derive_kek_and_verify(&h, "brand-new-password");
+
+    // (a) The snapshot's own config now carries the NEW verify_hash, and a snapshot DEK
+    //     unwraps under the NEW KEK.
+    let db = VaultDbConnection::open(&snap_dir.join("vault.vdb"))
+        .await
+        .unwrap();
+    let repo = SqliteVaultRepository::new(db.handle());
+    assert_eq!(
+        repo.load_config().await.unwrap().verify_hash,
+        new_verify,
+        "snapshot verify_hash rewrapped to the new credentials"
+    );
+    let rows = repo.all_entries().await.unwrap();
+    assert!(!rows.is_empty());
+    h.crypto
+        .unwrap_dek(&rows[0].dek_wrapped, &new_kek)
+        .expect("snapshot DEK must unwrap under the NEW KEK");
+    drop(repo);
+    db.close().await.unwrap();
+
+    // (b) The object pool is byte-identical — a rewrap never touches blobs.
+    assert_eq!(
+        only_object_bytes(&h),
+        objects_before,
+        "objects untouched by rewrap"
+    );
+
+    // (c) The manifest's verify_hash_prefix reflects the new credentials.
+    let manifest = store::read_manifest(&snap_dir).unwrap();
+    assert_eq!(manifest.verify_hash_prefix, verify_hash_prefix(&new_verify));
+}
+
+/// Test 10 (⑬): a snapshot that CANNOT be rewrapped (its `vault.vdb` is corrupt) does NOT
+/// fail the credential change — the live vault commits, unlocks with the new password, and
+/// the good snapshot is still rewrapped.
+#[tokio::test]
+async fn a_failed_snapshot_rewrap_never_fails_the_change() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
+    create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("e1", "p1"),
+        },
+    )
+    .await
+    .unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+
+    let store_dir = h.home.join(SNAPSHOTS_DIR);
+    let snaps = store::list_snapshots(&store_dir).unwrap();
+    assert_eq!(snaps.len(), 2);
+    // Corrupt the NEWEST snapshot's vault.vdb so its rewrap fails.
+    std::fs::write(snaps[0].dir.join("vault.vdb"), b"not a database").unwrap();
+    let good_dir = snaps[1].dir.clone();
+
+    // The change must still succeed despite the corrupt snapshot.
+    change_pw(&mut session, &h, "new-password-2").await;
+    lock_vault(session).await.unwrap();
+
+    // Live vault opens with the new password.
+    let s = unlock(&h, "new-password-2").await.unwrap();
+    lock_vault(s).await.unwrap();
+
+    // The GOOD snapshot was still rewrapped to the new credentials.
+    let (_kek, new_verify) = derive_kek_and_verify(&h, "new-password-2");
+    let db = VaultDbConnection::open(&good_dir.join("vault.vdb"))
+        .await
+        .unwrap();
+    let repo = SqliteVaultRepository::new(db.handle());
+    assert_eq!(repo.load_config().await.unwrap().verify_hash, new_verify);
+    drop(repo);
+    db.close().await.unwrap();
 }

@@ -1,0 +1,323 @@
+//! Snapshots page (`/v/snapshots`) — the TIME half of Decision ⑦ (slice 5.2.1).
+//!
+//! Take a local, point-in-time snapshot of this vault, browse the list, delete one, or revert
+//! the vault to one. Reverting refuses an *unlocked* target (Windows holds the `.vdb` open), so
+//! the page locks the vault first, then reverts, then returns to the launch screen to unlock —
+//! and because a revert auto-snapshots first, it is undoable.
+//!
+//! 🔴 Decision ⑧: a snapshot is NOT a backup. The copy lives next to the vault; the subtitle
+//! says so, and the word "backed up" appears nowhere here.
+//!
+//! Data loading follows the house `RwSignal` + `spawn_local` + `Effect` idiom (see
+//! `manage/health.rs`), not `Resource`/`Action`.
+
+use leptos::either::Either;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
+use leptos_router::hooks::use_navigate;
+use vedge_ipc::SnapshotDto;
+use vedge_ui::components::feedback::toast::provider::use_toast;
+use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::components::foundation::button::Button;
+use vedge_ui::components::foundation::empty_state::EmptyState;
+use vedge_ui::primitives::tokens::{ToastVariant, Variant};
+
+use crate::api;
+use crate::features::vault::context::ActiveVault;
+use crate::features::vault::entry_view::{clock_time, long_date};
+use crate::i18n::{t_string, use_i18n};
+
+fn fmt_when(ts: &str) -> String {
+    format!("{} {}", long_date(ts), clock_time(ts))
+}
+
+#[component]
+pub fn SnapshotsPage() -> impl IntoView {
+    let i18n = use_i18n();
+    let active = expect_context::<ActiveVault>();
+    let toast = use_toast();
+
+    let snaps = RwSignal::new(Vec::<SnapshotDto>::new());
+    let busy = RwSignal::new(false);
+    let reload = RwSignal::new(0_u32);
+    // The id of the snapshot whose Revert is awaiting an inline confirm (None = no prompt).
+    let pending_revert = RwSignal::new(Option::<String>::None);
+
+    // Dismiss label read `untrack`ed so it is safe to use from `spawn_local` futures.
+    let notify = move |msg: String, variant: ToastVariant| {
+        let dismiss = untrack(|| t_string!(i18n, snapshots.dismiss).to_owned());
+        toast.show(ToastInput::new(msg).variant(variant).dismiss_label(dismiss));
+    };
+
+    // Load the snapshot list on mount and after each mutation (bump `reload`).
+    Effect::new(move |_| {
+        reload.track();
+        let path = active.path.get().unwrap_or_default();
+        if path.is_empty() {
+            snaps.set(Vec::new());
+            return;
+        }
+        let err_prefix = untrack(|| t_string!(i18n, snapshots.err_list).to_owned());
+        spawn_local(async move {
+            match api::snapshot::list(&path).await {
+                Ok(list) => snaps.set(list),
+                Err(e) => notify(format!("{err_prefix}{e}"), ToastVariant::Danger),
+            }
+        });
+    });
+
+    let take = move || {
+        let path = untrack(|| active.path.get()).unwrap_or_default();
+        if path.is_empty() || busy.get_untracked() {
+            return;
+        }
+        let err_prefix = untrack(|| t_string!(i18n, snapshots.err_take).to_owned());
+        let done = untrack(|| t_string!(i18n, snapshots.taken).to_owned());
+        busy.set(true);
+        spawn_local(async move {
+            match api::snapshot::create(&path).await {
+                Ok(_) => {
+                    notify(done, ToastVariant::Success);
+                    reload.update(|n| *n = n.wrapping_add(1));
+                }
+                Err(e) => notify(format!("{err_prefix}{e}"), ToastVariant::Danger),
+            }
+            busy.set(false);
+        });
+    };
+
+    let delete = move |id: String| {
+        let path = untrack(|| active.path.get()).unwrap_or_default();
+        if path.is_empty() {
+            return;
+        }
+        let err_prefix = untrack(|| t_string!(i18n, snapshots.err_delete).to_owned());
+        let done = untrack(|| t_string!(i18n, snapshots.delete_done).to_owned());
+        spawn_local(async move {
+            match api::snapshot::delete(&path, &id).await {
+                Ok(()) => {
+                    notify(done, ToastVariant::Success);
+                    reload.update(|n| *n = n.wrapping_add(1));
+                }
+                Err(e) => notify(format!("{err_prefix}{e}"), ToastVariant::Danger),
+            }
+        });
+    };
+
+    // Revert: lock this vault (the swap refuses an unlocked target), revert, then return to
+    // the launch screen to unlock. The revert auto-snapshots first, so it is undoable.
+    let do_revert = move |id: String| {
+        let path = untrack(|| active.path.get()).unwrap_or_default();
+        if path.is_empty() {
+            return;
+        }
+        let err_prefix = untrack(|| t_string!(i18n, snapshots.err_revert).to_owned());
+        let done = untrack(|| t_string!(i18n, snapshots.revert_done).to_owned());
+        let nav = use_navigate();
+        pending_revert.set(None);
+        spawn_local(async move {
+            api::vault::lock(&path).await.ok();
+            match api::snapshot::revert(&path, &id, true).await {
+                Ok(_) => {
+                    notify(done, ToastVariant::Warning);
+                    nav("/", Default::default());
+                }
+                Err(e) => notify(format!("{err_prefix}{e}"), ToastVariant::Danger),
+            }
+        });
+    };
+
+    view! {
+        <div class="h-full overflow-y-auto p-6" data-testid="snapshots-page">
+            <div class="max-w-4xl mx-auto space-y-4">
+                // ---- Header: title + honesty copy + Take snapshot ----
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h1 class="text-xl font-semibold text-text-primary">
+                            {move || t_string!(i18n, snapshots.title).to_owned()}
+                        </h1>
+                        <p class="text-sm text-text-secondary mt-1 max-w-2xl">
+                            {move || t_string!(i18n, snapshots.subtitle).to_owned()}
+                        </p>
+                    </div>
+                    {move || {
+                        let is_busy = busy.get();
+                        view! {
+                            <Button
+                                variant=Variant::Primary
+                                loading=is_busy
+                                attr:data-testid="snapshot-take"
+                                on:click=move |_: web_sys::MouseEvent| take()
+                            >
+                                {move || t_string!(i18n, snapshots.take).to_owned()}
+                            </Button>
+                        }
+                    }}
+                </div>
+
+                // ---- List, or an empty state ----
+                {move || {
+                    let rows = snaps.get();
+                    if rows.is_empty() {
+                        Either::Left(
+                            view! {
+                                <EmptyState
+                                    title=Signal::derive(move || {
+                                        t_string!(i18n, snapshots.empty_title).to_owned()
+                                    })
+                                    description=Signal::derive(move || {
+                                        t_string!(i18n, snapshots.empty_desc).to_owned()
+                                    })
+                                />
+                            },
+                        )
+                    } else {
+                        Either::Right(
+                            view! {
+                                <ul class="space-y-2" role="list">
+                                    <For
+                                        each=move || snaps.get()
+                                        key=|s| s.id.clone()
+                                        children=move |s| {
+                                            view! {
+                                                <SnapshotRow
+                                                    snap=s
+                                                    pending_revert=pending_revert
+                                                    on_delete=Callback::new(delete)
+                                                    on_revert=Callback::new(do_revert)
+                                                />
+                                            }
+                                        }
+                                    />
+                                </ul>
+                            },
+                        )
+                    }
+                }}
+            </div>
+        </div>
+    }
+}
+
+#[component]
+fn SnapshotRow(
+    snap: SnapshotDto,
+    pending_revert: RwSignal<Option<String>>,
+    on_delete: Callback<String>,
+    on_revert: Callback<String>,
+) -> impl IntoView {
+    let i18n = use_i18n();
+    let id = snap.id.clone();
+    let is_pre_restore = snap.reason == "pre-restore";
+    let stale = snap.stale_credential;
+    let when = fmt_when(&snap.created_at);
+    let entry_count = snap.entry_count;
+    let blob_count = snap.blob_count;
+
+    let id_revert = id.clone();
+    let id_confirm = id.clone();
+    let id_delete = id.clone();
+    let id_pending = id;
+    let awaiting = move || pending_revert.get().as_deref() == Some(id_pending.as_str());
+
+    view! {
+        <li
+            class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border-subtle bg-surface-1 px-4 py-3"
+            data-testid="snapshot-row"
+        >
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-sm font-medium text-text-primary">{when}</span>
+                    <span class="text-xs text-text-tertiary">
+                        {move || {
+                            if is_pre_restore {
+                                t_string!(i18n, snapshots.reason_pre_restore).to_owned()
+                            } else {
+                                t_string!(i18n, snapshots.reason_manual).to_owned()
+                            }
+                        }}
+                    </span>
+                    {stale
+                        .then(|| {
+                            view! {
+                                <span
+                                    class="text-xs text-warning-text"
+                                    title=move || t_string!(i18n, snapshots.stale_hint).to_owned()
+                                >
+                                    {move || {
+                                        format!("⚠ {}", t_string!(i18n, snapshots.stale_badge))
+                                    }}
+                                </span>
+                            }
+                        })}
+                </div>
+                <div class="text-xs text-text-secondary mt-0.5">
+                    {move || {
+                        format!(
+                            "{entry_count} {} · {blob_count} {}",
+                            t_string!(i18n, snapshots.entries),
+                            t_string!(i18n, snapshots.blobs),
+                        )
+                    }}
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                {move || {
+                    if awaiting() {
+                        let id_c = id_confirm.clone();
+                        Either::Left(
+                            view! {
+                                <span class="text-xs text-text-secondary">
+                                    {move || {
+                                        t_string!(i18n, snapshots.revert_confirm_title).to_owned()
+                                    }}
+                                </span>
+                                <Button
+                                    variant=Variant::Ghost
+                                    on:click=move |_: web_sys::MouseEvent| pending_revert.set(None)
+                                >
+                                    {move || t_string!(i18n, snapshots.revert_cancel).to_owned()}
+                                </Button>
+                                <Button
+                                    variant=Variant::Warning
+                                    attr:data-testid="snapshot-revert-confirm"
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        on_revert.run(id_c.clone());
+                                    }
+                                >
+                                    {move || t_string!(i18n, snapshots.revert).to_owned()}
+                                </Button>
+                            },
+                        )
+                    } else {
+                        let id_r = id_revert.clone();
+                        let id_d = id_delete.clone();
+                        Either::Right(
+                            view! {
+                                <Button
+                                    variant=Variant::Secondary
+                                    attr:data-testid="snapshot-revert"
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        pending_revert.set(Some(id_r.clone()));
+                                    }
+                                >
+                                    {move || t_string!(i18n, snapshots.revert).to_owned()}
+                                </Button>
+                                <Button
+                                    variant=Variant::Danger
+                                    attr:data-testid="snapshot-delete"
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        on_delete.run(id_d.clone());
+                                    }
+                                >
+                                    {move || t_string!(i18n, snapshots.delete).to_owned()}
+                                </Button>
+                            },
+                        )
+                    }
+                }}
+            </div>
+        </li>
+    }
+}
