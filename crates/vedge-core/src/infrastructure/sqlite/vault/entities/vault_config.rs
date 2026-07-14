@@ -21,6 +21,14 @@ pub struct Model {
     /// Monotonic write counter for rollback detection (slice 5.2c). `NOT NULL
     /// DEFAULT 0`; bumped by the repo layer on every content write.
     pub commit_counter: i64,
+    /// Optional override of the default `<home>/snapshots` store location (slice 5.2.1).
+    pub backup_dir: Option<String>,
+    /// Opt-in snapshot retention (Decision ⑯). `None` ⇒ keep everything (the default).
+    pub backup_keep_count: Option<i32>,
+    /// When a snapshot was last taken (RFC-3339 millis). Written by a targeted update.
+    pub last_snapshot_at: Option<String>,
+    /// When a `.vbk` was last written. 🔴 SEPARATE from `last_snapshot_at` (Decision ⑧).
+    pub last_backup_at: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

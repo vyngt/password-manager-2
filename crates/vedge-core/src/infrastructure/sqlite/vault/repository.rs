@@ -102,6 +102,13 @@ impl VaultRepository for SqliteVaultRepository {
             // would clobber the live counter with the stale value read at unlock. The
             // column is advanced ONLY by `bump_commit_counter` + restore's re-baseline.
             commit_counter: ActiveValue::Set(model.commit_counter),
+            backup_dir: ActiveValue::Set(model.backup_dir),
+            backup_keep_count: ActiveValue::Set(model.backup_keep_count),
+            // Written by `touch_last_snapshot_at` / `touch_last_backup_at` (slice 5.2.1) and,
+            // like `commit_counter`, OMITTED from `update_columns` so a stale `save_config`
+            // cannot clobber a timestamp written after this config was read.
+            last_snapshot_at: ActiveValue::Set(model.last_snapshot_at),
+            last_backup_at: ActiveValue::Set(model.last_backup_at),
         };
 
         config_entity::Entity::insert(active)
@@ -119,7 +126,10 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::CreatedAt,
                         ConfigCol::LastUnlockedAt,
                         ConfigCol::VaultUuid,
-                        // NOT ConfigCol::CommitCounter — see the field comment above.
+                        ConfigCol::BackupDir,
+                        ConfigCol::BackupKeepCount,
+                        // NOT ConfigCol::CommitCounter / LastSnapshotAt / LastBackupAt —
+                        // see the field comments above.
                     ])
                     .to_owned(),
             )
@@ -538,6 +548,10 @@ impl VaultRepository for SqliteVaultRepository {
             // Preserved on UPDATE (omitted from `update_columns`) — the bump below
             // is what advances it inside this same txn. See `save_config`'s note.
             commit_counter: ActiveValue::Set(config_model.commit_counter),
+            backup_dir: ActiveValue::Set(config_model.backup_dir),
+            backup_keep_count: ActiveValue::Set(config_model.backup_keep_count),
+            last_snapshot_at: ActiveValue::Set(config_model.last_snapshot_at),
+            last_backup_at: ActiveValue::Set(config_model.last_backup_at),
         };
         config_entity::Entity::insert(config_active)
             .on_conflict(
@@ -554,7 +568,10 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::CreatedAt,
                         ConfigCol::LastUnlockedAt,
                         ConfigCol::VaultUuid,
-                        // NOT ConfigCol::CommitCounter — bumped in-txn just below.
+                        ConfigCol::BackupDir,
+                        ConfigCol::BackupKeepCount,
+                        // NOT ConfigCol::CommitCounter (bumped in-txn just below) /
+                        // LastSnapshotAt / LastBackupAt (targeted-update columns).
                     ])
                     .to_owned(),
             )
@@ -579,6 +596,26 @@ impl VaultRepository for SqliteVaultRepository {
         let path = dest.to_string_lossy().replace('\'', "''");
         self.conn
             .execute_unprepared(&format!("VACUUM INTO '{path}'"))
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn touch_last_snapshot_at(&self, at: Timestamp) -> Result<(), VaultError> {
+        config_entity::Entity::update_many()
+            .col_expr(ConfigCol::LastSnapshotAt, Expr::value(ts_to_string(&at)))
+            .filter(ConfigCol::Id.eq("default"))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn touch_last_backup_at(&self, at: Timestamp) -> Result<(), VaultError> {
+        config_entity::Entity::update_many()
+            .col_expr(ConfigCol::LastBackupAt, Expr::value(ts_to_string(&at)))
+            .filter(ConfigCol::Id.eq("default"))
+            .exec(self.conn.as_ref())
             .await
             .map_err(db_err)?;
         Ok(())
@@ -622,6 +659,10 @@ mod tests {
             last_unlocked_at: None,
             vault_uuid: None,
             commit_counter: 0,
+            backup_dir: None,
+            backup_keep_count: None,
+            last_snapshot_at: None,
+            last_backup_at: None,
         }
     }
 

@@ -77,4 +77,13 @@ pub trait VaultRepository: Send + Sync {
     /// transaction — callers vacuum into a fresh path in a temp dir. The snapshot
     /// is logically identical but defragmented (not byte-identical) to the source.
     async fn vacuum_into(&self, dest: &Path) -> Result<(), VaultError>;
+
+    /// Set `vault_config.last_snapshot_at` in a targeted update (slice 5.2.1). Kept out
+    /// of the config-upsert `update_columns`, so this is the only writer — a stale
+    /// `save_config` can never clobber it. 🔴 Never `last_backup_at` (Decision ⑧).
+    async fn touch_last_snapshot_at(&self, at: Timestamp) -> Result<(), VaultError>;
+
+    /// Set `vault_config.last_backup_at` in a targeted update (slice 5.2.1) — written only
+    /// by `backup_vault` when a `.vbk` is produced. Separate from `last_snapshot_at`.
+    async fn touch_last_backup_at(&self, at: Timestamp) -> Result<(), VaultError>;
 }

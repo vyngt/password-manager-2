@@ -33,4 +33,21 @@ pub struct VaultConfig {
     /// a file counter *below* the keychain baseline signals a rollback. Advisory only
     /// — a mismatch warns, never blocks unlock. Slice 5.2c; see 06 - Rollback Detection.
     pub commit_counter: i64,
+    /// Optional override of the default `<home>/snapshots` store location (slice 5.2.1).
+    /// `None` ⇒ the default. Read at unlock; never key material.
+    pub backup_dir: Option<String>,
+    /// Opt-in snapshot retention (Decision ⑯). `None` ⇒ keep everything (the default —
+    /// a password manager must never silently delete a user's history). When set, the
+    /// maintenance prune keeps this many, floored at 3, never the newest, never a
+    /// `pre-restore` or stale-credential snapshot.
+    pub backup_keep_count: Option<i32>,
+    /// When a snapshot was last taken. Written by a targeted repo update on
+    /// `create_snapshot`, deliberately kept out of the config-upsert `update_columns`
+    /// (the `commit_counter` precedent) so a stale `save_config` cannot clobber it.
+    pub last_snapshot_at: Option<Timestamp>,
+    /// When a `.vbk` was last written (by `backup_vault`). 🔴 SEPARATE from
+    /// `last_snapshot_at` (Decision ⑧): a snapshot is NOT a backup. The credential-health
+    /// card reads ONLY this — a directory full of snapshots must never silence
+    /// "you have never backed up this vault".
+    pub last_backup_at: Option<Timestamp>,
 }
