@@ -22,7 +22,9 @@ use tracing::{instrument, warn};
 use crate::application::vault::ports::factories::VaultRepositoryFactory;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::ports::repository::VaultRepository;
-use crate::domain::shared::{BLOBS_DIR, SNAPSHOTS_DIR, StorageError, VAULT_FILE, format_rfc3339_millis, now};
+use crate::domain::shared::{
+    BLOBS_DIR, SNAPSHOTS_DIR, StorageError, VAULT_FILE, format_rfc3339_millis, now,
+};
 use crate::domain::vault::entities::{AuditAction, AuditEvent};
 use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::backup::target::read_target_identity;
@@ -88,7 +90,11 @@ async fn rebaseline_rollback_mirror(repo: &dyn VaultRepository, keychain: &dyn K
 /// the home, and Windows will not rename a directory holding an open `.vdb` handle. sqlx's
 /// `Drop` close is async, so an explicit close is the only guarantee (M1's retry is the
 /// backstop, not the mechanism).
-async fn auto_snapshot_pre_restore(home: &std::path::Path, snapshots_dir: &std::path::Path, entry_count: u64) {
+async fn auto_snapshot_pre_restore(
+    home: &std::path::Path,
+    snapshots_dir: &std::path::Path,
+    entry_count: u64,
+) {
     let db = match VaultDbConnection::open(&home.join(VAULT_FILE)).await {
         Ok(db) => db,
         Err(e) => {
@@ -98,8 +104,14 @@ async fn auto_snapshot_pre_restore(home: &std::path::Path, snapshots_dir: &std::
     };
     let repo = SqliteVaultRepository::new(db.handle());
     let blobs_dir = home.join(BLOBS_DIR);
-    if let Err(e) =
-        write_snapshot(snapshots_dir, &blobs_dir, &repo, SnapshotReason::PreRestore, entry_count).await
+    if let Err(e) = write_snapshot(
+        snapshots_dir,
+        &blobs_dir,
+        &repo,
+        SnapshotReason::PreRestore,
+        entry_count,
+    )
+    .await
     {
         warn!(error = %e, "pre-restore auto-snapshot failed — proceeding with the revert (⑭)");
     }
@@ -129,7 +141,9 @@ pub async fn revert_to_snapshot(
     let manifest = store::read_manifest(&snap_dir)
         .map_err(|e| VaultError::SnapshotManifestUnreadable(e.to_string()))?;
     if manifest.format_version != SNAPSHOT_FORMAT_VERSION {
-        return Err(VaultError::SnapshotUnsupportedFormat(manifest.format_version));
+        return Err(VaultError::SnapshotUnsupportedFormat(
+            manifest.format_version,
+        ));
     }
     let snap_vault = snap_dir.join(VAULT_FILE);
     let (_vsize, snap_vault_hash) = archive::hash_file(&snap_vault)
@@ -141,8 +155,9 @@ pub async fn revert_to_snapshot(
     }
     for obj in &manifest.objects {
         let obj_path = store::object_path(&snapshots_dir, &obj.blake3);
-        let (_s, hash) = archive::hash_file(&obj_path)
-            .map_err(|_| VaultError::SnapshotCorrupt(format!("missing object b3-{}", obj.blake3)))?;
+        let (_s, hash) = archive::hash_file(&obj_path).map_err(|_| {
+            VaultError::SnapshotCorrupt(format!("missing object b3-{}", obj.blake3))
+        })?;
         if hash != obj.blake3 {
             return Err(VaultError::SnapshotCorrupt(format!(
                 "object b3-{} failed verification",

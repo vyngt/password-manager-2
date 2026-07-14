@@ -211,7 +211,8 @@ pub async fn backup_vault(
     if let Err(e) = session.repo.touch_last_backup_at(now()).await {
         tracing::warn!(error = %e, "backup committed but last_backup_at could not be recorded");
     }
-    if let Err(e) = super::create_entry::append_audit(session, AuditAction::BackupCreated, None).await
+    if let Err(e) =
+        super::create_entry::append_audit(session, AuditAction::BackupCreated, None).await
     {
         tracing::warn!(error = %e, "backup committed but the audit row could not be written");
     }

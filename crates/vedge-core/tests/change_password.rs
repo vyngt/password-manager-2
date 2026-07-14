@@ -208,10 +208,7 @@ async fn vault_uuid_survives_change_password() {
 /// Derive the `(kek, verify_hash)` a given password + the harness Secret Key would produce —
 /// so tests can check a snapshot's `vault.vdb` opens under the NEW credentials.
 fn derive_kek_and_verify(h: &Harness, pw: &str) -> (Zeroizing<[u8; KEK_LEN]>, [u8; 32]) {
-    let input = h
-        .kdf
-        .preprocess_2skd(pw.as_bytes(), &h.secret_key)
-        .unwrap();
+    let input = h.kdf.preprocess_2skd(pw.as_bytes(), &h.secret_key).unwrap();
     let mk = h
         .kdf
         .derive_master_key(&input, &h.config.vault_salt, &h.config.kdf_params)
@@ -255,16 +252,26 @@ fn only_object_bytes(h: &Harness) -> Vec<u8> {
 async fn snapshot_rewraps_to_the_new_credentials() {
     let h = Harness::fresh().await;
     let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
-    create_entry(&mut session, CreateEntryInput { payload: login("e1", "p1") })
-        .await
-        .unwrap();
+    create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("e1", "p1"),
+        },
+    )
+    .await
+    .unwrap();
     // Seed a blob so the pool has an object to prove untouched.
     std::fs::write(
-        h.blob.root().join(format!("{}.blob", vedge_core::domain::shared::EntryId::new())),
+        h.blob.root().join(format!(
+            "{}.blob",
+            vedge_core::domain::shared::EntryId::new()
+        )),
         b"blob nonce+ciphertext",
     )
     .unwrap();
-    create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
 
     let objects_before = only_object_bytes(&h);
     let store_dir = h.home.join(SNAPSHOTS_DIR);
@@ -277,7 +284,9 @@ async fn snapshot_rewraps_to_the_new_credentials() {
 
     // (a) The snapshot's own config now carries the NEW verify_hash, and a snapshot DEK
     //     unwraps under the NEW KEK.
-    let db = VaultDbConnection::open(&snap_dir.join("vault.vdb")).await.unwrap();
+    let db = VaultDbConnection::open(&snap_dir.join("vault.vdb"))
+        .await
+        .unwrap();
     let repo = SqliteVaultRepository::new(db.handle());
     assert_eq!(
         repo.load_config().await.unwrap().verify_hash,
@@ -293,7 +302,11 @@ async fn snapshot_rewraps_to_the_new_credentials() {
     db.close().await.unwrap();
 
     // (b) The object pool is byte-identical — a rewrap never touches blobs.
-    assert_eq!(only_object_bytes(&h), objects_before, "objects untouched by rewrap");
+    assert_eq!(
+        only_object_bytes(&h),
+        objects_before,
+        "objects untouched by rewrap"
+    );
 
     // (c) The manifest's verify_hash_prefix reflects the new credentials.
     let manifest = store::read_manifest(&snap_dir).unwrap();
@@ -307,11 +320,20 @@ async fn snapshot_rewraps_to_the_new_credentials() {
 async fn a_failed_snapshot_rewrap_never_fails_the_change() {
     let h = Harness::fresh().await;
     let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
-    create_entry(&mut session, CreateEntryInput { payload: login("e1", "p1") })
+    create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("e1", "p1"),
+        },
+    )
+    .await
+    .unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
         .await
         .unwrap();
-    create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
-    create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
 
     let store_dir = h.home.join(SNAPSHOTS_DIR);
     let snaps = store::list_snapshots(&store_dir).unwrap();
@@ -330,7 +352,9 @@ async fn a_failed_snapshot_rewrap_never_fails_the_change() {
 
     // The GOOD snapshot was still rewrapped to the new credentials.
     let (_kek, new_verify) = derive_kek_and_verify(&h, "new-password-2");
-    let db = VaultDbConnection::open(&good_dir.join("vault.vdb")).await.unwrap();
+    let db = VaultDbConnection::open(&good_dir.join("vault.vdb"))
+        .await
+        .unwrap();
     let repo = SqliteVaultRepository::new(db.handle());
     assert_eq!(repo.load_config().await.unwrap().verify_hash, new_verify);
     drop(repo);

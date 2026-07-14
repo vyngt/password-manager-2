@@ -478,7 +478,12 @@ fn forward_or_rollback(
             ?state,
             "restore snapshot failed re-verification — rolling back"
         );
-        return roll_back_to_old(&paths, &journal.staging_dir, &journal.preserve_subdirs, state);
+        return roll_back_to_old(
+            &paths,
+            &journal.staging_dir,
+            &journal.preserve_subdirs,
+            state,
+        );
     }
 
     // Roll forward from the recorded state, re-driving only the remaining ops.
@@ -896,9 +901,17 @@ mod tests {
 
             let expect_new = cp != Staged;
             if expect_new {
-                assert_eq!(fx.live_vault_bytes(), fx.new_bytes, "checkpoint {cp:?}: NEW");
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.new_bytes,
+                    "checkpoint {cp:?}: NEW"
+                );
             } else {
-                assert_eq!(fx.live_vault_bytes(), fx.old_bytes, "checkpoint {cp:?}: OLD");
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.old_bytes,
+                    "checkpoint {cp:?}: OLD"
+                );
             }
             assert!(
                 fx.snapshot_marker_present(),

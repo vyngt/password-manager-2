@@ -52,9 +52,14 @@ fn login(name: &str) -> EntryPayload {
 }
 
 async fn add(session: &mut VaultSession, name: &str) {
-    create_entry(session, CreateEntryInput { payload: login(name) })
-        .await
-        .unwrap();
+    create_entry(
+        session,
+        CreateEntryInput {
+            payload: login(name),
+        },
+    )
+    .await
+    .unwrap();
 }
 
 /// A re-unlockable context surviving the harness's destructuring: the tempdir keeps the vault
@@ -72,7 +77,8 @@ struct Reunlock {
 impl Reunlock {
     fn unlocker(&self) -> UnlockVault {
         UnlockVault {
-            repo_factory: Arc::new(SqliteVaultRepositoryFactory::new()) as Arc<dyn VaultRepositoryFactory>,
+            repo_factory: Arc::new(SqliteVaultRepositoryFactory::new())
+                as Arc<dyn VaultRepositoryFactory>,
             blob_factory: Arc::new(FilesystemBlobStoreFactory::new()) as Arc<dyn BlobStoreFactory>,
             crypto: Arc::clone(&self.crypto),
             clipboard: Arc::clone(&self.clipboard),
@@ -154,7 +160,11 @@ async fn revert_is_undoable_and_keeps_every_snapshot() {
     let store_dir = ctx.home.join(SNAPSHOTS_DIR);
     let keychain = Arc::clone(&ctx.keychain);
 
-    assert_eq!(ctx.active_entry_count().await, 2, "vault starts at 2 entries");
+    assert_eq!(
+        ctx.active_entry_count().await,
+        2,
+        "vault starts at 2 entries"
+    );
     let before = store::list_snapshots(&store_dir).unwrap();
     assert_eq!(before.len(), 2);
     let s1 = before.last().unwrap().id(); // oldest = the 1-entry snapshot
@@ -175,12 +185,19 @@ async fn revert_is_undoable_and_keeps_every_snapshot() {
 
     // ⑮-B: both originals still on disk + a NEW pre-restore snapshot (⑭).
     let after = store::list_snapshots(&store_dir).unwrap();
-    assert!(after.len() >= 3, "S1 + S2 kept, a pre-restore added; got {}", after.len());
+    assert!(
+        after.len() >= 3,
+        "S1 + S2 kept, a pre-restore added; got {}",
+        after.len()
+    );
     let pre = after
         .into_iter()
         .find(|s| s.manifest.reason == SnapshotReason::PreRestore)
         .expect("⑭ a pre-restore snapshot must exist");
-    assert_eq!(pre.manifest.entry_count, 2, "the undo point captured the pre-revert state");
+    assert_eq!(
+        pre.manifest.entry_count, 2,
+        "the undo point captured the pre-revert state"
+    );
 
     // ⑭: reverting to the pre-restore snapshot UNDOES the revert.
     revert_to_snapshot(
@@ -194,7 +211,11 @@ async fn revert_is_undoable_and_keeps_every_snapshot() {
     )
     .await
     .unwrap();
-    assert_eq!(ctx.active_entry_count().await, 2, "⑭ the revert was undoable");
+    assert_eq!(
+        ctx.active_entry_count().await,
+        2,
+        "⑭ the revert was undoable"
+    );
 }
 
 /// A revert to a NON-existent snapshot id fails with a dedicated variant (L3), not a
@@ -214,7 +235,10 @@ async fn revert_refuses_unknown_snapshot() {
     .await
     .unwrap_err();
     assert!(
-        matches!(err, vedge_core::domain::vault::errors::VaultError::SnapshotNotFound(_)),
+        matches!(
+            err,
+            vedge_core::domain::vault::errors::VaultError::SnapshotNotFound(_)
+        ),
         "expected SnapshotNotFound, got {err:?}"
     );
     assert_eq!(ctx.active_entry_count().await, 2, "the vault is untouched");

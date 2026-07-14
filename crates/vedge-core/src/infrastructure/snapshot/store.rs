@@ -28,7 +28,7 @@ use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::backup::archive::hash_file;
 
 use super::manifest::{
-    OBJECTS_DIR, OBJECT_EXT, OBJECT_PREFIX, SNAPSHOT_MANIFEST_NAME, SnapshotManifest,
+    OBJECT_EXT, OBJECT_PREFIX, OBJECTS_DIR, SNAPSHOT_MANIFEST_NAME, SnapshotManifest,
 };
 
 fn io_ctx(op: &str, e: &std::io::Error) -> VaultError {
@@ -124,7 +124,9 @@ pub fn read_manifest(dir: &Path) -> Result<SnapshotManifest, VaultError> {
     let path = dir.join(SNAPSHOT_MANIFEST_NAME);
     let bytes = std::fs::read(&path).map_err(|e| io_ctx("read snapshot manifest", &e))?;
     serde_json::from_slice(&bytes).map_err(|e| {
-        VaultError::Storage(StorageError::Serialization(format!("snapshot manifest: {e}")))
+        VaultError::Storage(StorageError::Serialization(format!(
+            "snapshot manifest: {e}"
+        )))
     })
 }
 
@@ -132,7 +134,9 @@ pub fn read_manifest(dir: &Path) -> Result<SnapshotManifest, VaultError> {
 /// marker — it is written last, so a dir carrying it is a complete snapshot.
 pub fn write_manifest(dir: &Path, manifest: &SnapshotManifest) -> Result<(), VaultError> {
     let bytes = serde_json::to_vec_pretty(manifest).map_err(|e| {
-        VaultError::Storage(StorageError::Serialization(format!("snapshot manifest: {e}")))
+        VaultError::Storage(StorageError::Serialization(format!(
+            "snapshot manifest: {e}"
+        )))
     })?;
     let path = dir.join(SNAPSHOT_MANIFEST_NAME);
     let tmp = dir.join(format!("{SNAPSHOT_MANIFEST_NAME}.tmp"));
@@ -357,7 +361,10 @@ mod tests {
         }
         let mut sorted = names.clone();
         sorted.sort();
-        assert_eq!(names, sorted, "lexicographic order must equal chronological");
+        assert_eq!(
+            names, sorted,
+            "lexicographic order must equal chronological"
+        );
     }
 
     // Test 2 — CAS dedup: putting the same bytes twice adds ONE object, same hash.
@@ -415,7 +422,10 @@ mod tests {
 
         let deleted = sweep_objects(store.path()).unwrap();
         assert!(deleted >= 1, "the unshared orphan is swept");
-        assert!(object_path(store.path(), &shared).exists(), "shared survives");
+        assert!(
+            object_path(store.path(), &shared).exists(),
+            "shared survives"
+        );
         assert!(!object_path(store.path(), &only_a).exists(), "orphan gone");
         assert!(
             !store.path().join(".20260714T120000000Z.tmp").exists(),

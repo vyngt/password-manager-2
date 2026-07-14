@@ -169,9 +169,14 @@ pub async fn create_snapshot(
     // M2: ACTIVE entries only (`index.entries` includes trashed).
     let entry_count = u64::try_from(session.index.all_active().len()).unwrap_or(u64::MAX);
 
-    let report =
-        write_snapshot(&snapshots_dir, &blobs_dir, session.repo.as_ref(), reason, entry_count)
-            .await?;
+    let report = write_snapshot(
+        &snapshots_dir,
+        &blobs_dir,
+        session.repo.as_ref(),
+        reason,
+        entry_count,
+    )
+    .await?;
 
     // ---- POST-COMMIT (L1): the snapshot is on disk. These side effects must not fail the
     //      operation — a best-effort failure is logged, never propagated. ----
@@ -181,7 +186,8 @@ pub async fn create_snapshot(
         tracing::warn!(error = %e, "snapshot created but last_snapshot_at could not be recorded");
     }
     // One vault-level audit row, REUSING `BackupCreated` (no new AuditAction variant).
-    if let Err(e) = super::create_entry::append_audit(session, AuditAction::BackupCreated, None).await
+    if let Err(e) =
+        super::create_entry::append_audit(session, AuditAction::BackupCreated, None).await
     {
         tracing::warn!(error = %e, "snapshot created but the audit row could not be written");
     }

@@ -40,7 +40,9 @@ impl MigrationTrait for Migration {
                 Table::alter()
                     .table(VaultConfig::Table)
                     .add_column_if_not_exists(
-                        ColumnDef::new(VaultConfig::BackupKeepCount).integer().null(),
+                        ColumnDef::new(VaultConfig::BackupKeepCount)
+                            .integer()
+                            .null(),
                     )
                     .to_owned(),
             )

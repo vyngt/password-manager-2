@@ -1,6 +1,7 @@
 vault: "Vault"
 audit: "Audit log"
 health: "Health"
+snapshots: "Snapshots"
 generator: "Generator"
 settings: "Settings"
 toggle_sidebar: "Toggle sidebar"

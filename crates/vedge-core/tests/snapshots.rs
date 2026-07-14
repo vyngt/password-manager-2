@@ -75,8 +75,9 @@ fn seed_blob(h: &Harness, bytes: &[u8]) {
 
 fn object_count(h: &Harness) -> usize {
     let objects = h.home.join(SNAPSHOTS_DIR).join("objects");
-    std::fs::read_dir(&objects)
-        .map_or(0, |rd| rd.filter(|e| e.as_ref().unwrap().path().is_file()).count())
+    std::fs::read_dir(&objects).map_or(0, |rd| {
+        rd.filter(|e| e.as_ref().unwrap().path().is_file()).count()
+    })
 }
 
 /// A snapshot captures the vault + blobs; a second snapshot of an unchanged vault dedups
@@ -89,7 +90,9 @@ async fn snapshot_captures_and_dedups() {
     seed_blob(&h, b"blob one -- nonce and ciphertext");
     seed_blob(&h, b"blob two -- nonce and ciphertext");
 
-    let report = create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
+    let report = create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
     assert_eq!(report.entry_count, 1);
     assert_eq!(report.blob_count, 2);
     assert_eq!(report.reason, SnapshotReason::Manual);
@@ -103,8 +106,14 @@ async fn snapshot_captures_and_dedups() {
     assert_eq!(object_count(&h), 2, "two objects pooled");
 
     // Snapshot again with nothing changed → the pool gains ZERO objects (dedup).
-    create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
-    assert_eq!(object_count(&h), 2, "dedup: no new objects for an unchanged vault");
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+    assert_eq!(
+        object_count(&h),
+        2,
+        "dedup: no new objects for an unchanged vault"
+    );
     assert_eq!(store::list_snapshots(&store_dir).unwrap().len(), 2);
 }
 
@@ -119,7 +128,9 @@ async fn snapshot_entry_count_excludes_trashed() {
     let trashed = add(&mut session, "c").await;
     soft_delete_entry(&mut session, &trashed).await.unwrap();
 
-    let report = create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
+    let report = create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
     assert_eq!(report.entry_count, 2, "3 active + 1 trashed → 2 active");
 }
 
@@ -134,9 +145,14 @@ async fn snapshot_and_backup_touch_separate_timestamps() {
     assert!(before.last_snapshot_at.is_none());
     assert!(before.last_backup_at.is_none());
 
-    create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
     let after_snap = h.repo.load_config().await.unwrap();
-    assert!(after_snap.last_snapshot_at.is_some(), "snapshot set last_snapshot_at");
+    assert!(
+        after_snap.last_snapshot_at.is_some(),
+        "snapshot set last_snapshot_at"
+    );
     assert!(
         after_snap.last_backup_at.is_none(),
         "🔴 a snapshot is NOT a backup (⑧): last_backup_at untouched"
@@ -152,7 +168,10 @@ async fn snapshot_and_backup_touch_separate_timestamps() {
     .await
     .unwrap();
     let after_backup = h.repo.load_config().await.unwrap();
-    assert!(after_backup.last_backup_at.is_some(), "backup set last_backup_at");
+    assert!(
+        after_backup.last_backup_at.is_some(),
+        "backup set last_backup_at"
+    );
     assert_eq!(
         after_backup.last_snapshot_at, after_snap.last_snapshot_at,
         "backup left last_snapshot_at unchanged"
@@ -169,9 +188,17 @@ async fn snapshot_never_enters_a_vbk() {
     seed_blob(&h, b"one blob");
 
     // Populate the snapshot store.
-    create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
-    create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
-    assert!(!store::list_snapshots(&h.home.join(SNAPSHOTS_DIR)).unwrap().is_empty());
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+    assert!(
+        !store::list_snapshots(&h.home.join(SNAPSHOTS_DIR))
+            .unwrap()
+            .is_empty()
+    );
 
     let out = tempfile::tempdir().unwrap();
     let dest = out.path().join("v.vbk");
@@ -186,7 +213,10 @@ async fn snapshot_never_enters_a_vbk() {
 
     let manifest = archive::verify_archive(&dest).unwrap();
     assert!(
-        manifest.files.iter().all(|m| !m.name.contains(SNAPSHOTS_DIR)),
+        manifest
+            .files
+            .iter()
+            .all(|m| !m.name.contains(SNAPSHOTS_DIR)),
         "🔴 ⑮-A: a .vbk must never contain the snapshot store"
     );
     // Only the vault member + the one blob.
@@ -202,12 +232,17 @@ async fn retention_is_opt_in_and_keeps_the_newest() {
     let h = Harness::fresh().await;
     let session = unlock(&h).await;
     for _ in 0..5 {
-        create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
+        create_snapshot(&session, SnapshotReason::Manual)
+            .await
+            .unwrap();
     }
     let store_dir = h.home.join(SNAPSHOTS_DIR);
     assert_eq!(store::list_snapshots(&store_dir).unwrap().len(), 5);
     let report = run_maintenance(&session).await.unwrap();
-    assert_eq!(report.snapshots_pruned, 0, "unset backup_keep_count prunes nothing");
+    assert_eq!(
+        report.snapshots_pruned, 0,
+        "unset backup_keep_count prunes nothing"
+    );
     assert_eq!(store::list_snapshots(&store_dir).unwrap().len(), 5);
     drop(session);
 
@@ -221,7 +256,12 @@ async fn retention_is_opt_in_and_keeps_the_newest() {
     let session = unlock(&h).await;
     let mut ids_in_order = Vec::new();
     for _ in 0..5 {
-        ids_in_order.push(create_snapshot(&session, SnapshotReason::Manual).await.unwrap().id);
+        ids_in_order.push(
+            create_snapshot(&session, SnapshotReason::Manual)
+                .await
+                .unwrap()
+                .id,
+        );
     }
     let store_dir = h.home.join(SNAPSHOTS_DIR);
     let report = run_maintenance(&session).await.unwrap();
@@ -234,7 +274,10 @@ async fn retention_is_opt_in_and_keeps_the_newest() {
     assert_eq!(remaining.len(), 3, "keep count honored");
     // The newest three survived; the two oldest were pruned.
     for newest in &ids_in_order[2..] {
-        assert!(remaining.contains(newest), "the newest snapshots must survive");
+        assert!(
+            remaining.contains(newest),
+            "the newest snapshots must survive"
+        );
     }
     for oldest in &ids_in_order[..2] {
         assert!(!remaining.contains(oldest), "the oldest surplus was pruned");

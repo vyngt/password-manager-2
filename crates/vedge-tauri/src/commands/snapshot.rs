@@ -78,7 +78,8 @@ pub async fn list_snapshots(vault_path: String) -> Result<Vec<SnapshotDto>, Comm
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn delete_snapshot(vault_path: String, snapshot_id: String) -> Result<(), CommandError> {
     let snapshots_dir = VaultId::new(PathBuf::from(vault_path)).snapshots_dir();
-    let dir = store::resolve_snapshot_dir(&snapshots_dir, &snapshot_id).map_err(CommandError::from)?;
+    let dir =
+        store::resolve_snapshot_dir(&snapshots_dir, &snapshot_id).map_err(CommandError::from)?;
     std::fs::remove_dir_all(&dir)
         .map_err(|e| CommandError::Storage(format!("delete snapshot: {e}")))?;
     // Reclaim objects the deleted snapshot no longer shares (mark-and-sweep, best-effort).
