@@ -75,10 +75,8 @@ fn seed_blob(h: &Harness, bytes: &[u8]) {
 
 fn object_count(h: &Harness) -> usize {
     let objects = h.home.join(SNAPSHOTS_DIR).join("objects");
-    match std::fs::read_dir(&objects) {
-        Ok(rd) => rd.filter(|e| e.as_ref().unwrap().path().is_file()).count(),
-        Err(_) => 0,
-    }
+    std::fs::read_dir(&objects)
+        .map_or(0, |rd| rd.filter(|e| e.as_ref().unwrap().path().is_file()).count())
 }
 
 /// A snapshot captures the vault + blobs; a second snapshot of an unchanged vault dedups

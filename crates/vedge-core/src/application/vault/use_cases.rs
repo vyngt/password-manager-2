@@ -20,6 +20,7 @@ pub mod recover_vault;
 pub mod refs;
 pub mod restore_entry;
 pub mod restore_vault;
+pub mod revert_to_snapshot;
 pub mod reveal_totp;
 pub mod run_maintenance;
 pub mod scan_health;
@@ -62,6 +63,7 @@ pub use queries::{
 pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use restore_entry::restore_entry;
 pub use restore_vault::{RestoreReport, RestoreVaultInput, restore_vault};
+pub use revert_to_snapshot::{RevertReport, RevertToSnapshotInput, revert_to_snapshot};
 pub use reveal_totp::reveal_totp;
 pub use run_maintenance::{MaintenanceReport, run_maintenance};
 pub use scan_health::scan_health;

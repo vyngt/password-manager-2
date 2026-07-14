@@ -127,6 +127,22 @@ pub enum VaultError {
     #[error("breach lookup failed: {0}")]
     BreachLookup(String),
 
+    // --- snapshots (slice 5.2.1) — dedicated variants, not a stringly `MalformedPayload` ---
+    #[error("snapshot not found: {0}")]
+    SnapshotNotFound(String),
+
+    #[error("snapshot manifest is unreadable: {0}")]
+    SnapshotManifestUnreadable(String),
+
+    #[error("unsupported snapshot format version: {0}")]
+    SnapshotUnsupportedFormat(u32),
+
+    #[error("snapshot is corrupt: {0}")]
+    SnapshotCorrupt(String),
+
+    #[error("reverting to this snapshot rolls the vault back; confirm to proceed")]
+    RollbackNotConfirmed,
+
     // --- screen lock (slice 4.5b) ---
     #[error("screen-lock state is unavailable on this device")]
     ScreenLockUnavailable,
