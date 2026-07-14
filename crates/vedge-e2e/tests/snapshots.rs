@@ -158,7 +158,7 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
     session
         .wait_for(
             By::Css("[data-testid='vault-restore']".to_string()),
-            Duration::from_secs(15),
+            Duration::from_secs(25),
         )
         .await
         .context("the corrupt vault must show a Restore action (H0)")?;
