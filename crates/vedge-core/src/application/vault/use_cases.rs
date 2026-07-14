@@ -21,6 +21,7 @@ pub mod refs;
 pub mod restore_entry;
 pub mod restore_vault;
 pub mod revert_to_snapshot;
+pub mod rewrap_snapshots;
 pub mod reveal_totp;
 pub mod run_maintenance;
 pub mod scan_health;

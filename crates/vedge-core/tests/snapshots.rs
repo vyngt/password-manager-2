@@ -23,7 +23,7 @@ use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     BackupVaultInput, CreateEntryInput, UnlockVaultInput, backup_vault, create_entry,
-    create_snapshot, soft_delete_entry,
+    create_snapshot, run_maintenance, soft_delete_entry,
 };
 use vedge_core::domain::shared::{EntryId, SNAPSHOTS_DIR};
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
@@ -192,4 +192,51 @@ async fn snapshot_never_enters_a_vbk() {
     // Only the vault member + the one blob.
     assert_eq!(manifest.blob_count, 1);
     assert!(manifest.files.iter().any(|m| m.name == "vault.vdb"));
+}
+
+/// Test 13 (⑯): opt-in retention prunes down to `backup_keep_count` (floored at 3), keeping
+/// the NEWEST — and prunes NOTHING when unset (the default).
+#[tokio::test]
+async fn retention_is_opt_in_and_keeps_the_newest() {
+    // --- unset ⇒ keep everything ---
+    let h = Harness::fresh().await;
+    let session = unlock(&h).await;
+    for _ in 0..5 {
+        create_snapshot(&session, SnapshotReason::Manual).await.unwrap();
+    }
+    let store_dir = h.home.join(SNAPSHOTS_DIR);
+    assert_eq!(store::list_snapshots(&store_dir).unwrap().len(), 5);
+    let report = run_maintenance(&session).await.unwrap();
+    assert_eq!(report.snapshots_pruned, 0, "unset backup_keep_count prunes nothing");
+    assert_eq!(store::list_snapshots(&store_dir).unwrap().len(), 5);
+    drop(session);
+
+    // --- set to 3 ⇒ prune the 2 oldest, keep the newest 3 ---
+    let h = Harness::fresh().await;
+    {
+        let mut cfg = h.repo.load_config().await.unwrap();
+        cfg.backup_keep_count = Some(3);
+        h.repo.save_config(&cfg).await.unwrap();
+    }
+    let session = unlock(&h).await;
+    let mut ids_in_order = Vec::new();
+    for _ in 0..5 {
+        ids_in_order.push(create_snapshot(&session, SnapshotReason::Manual).await.unwrap().id);
+    }
+    let store_dir = h.home.join(SNAPSHOTS_DIR);
+    let report = run_maintenance(&session).await.unwrap();
+    assert_eq!(report.snapshots_pruned, 2, "5 - keep(3) = 2 pruned");
+    let remaining: Vec<String> = store::list_snapshots(&store_dir)
+        .unwrap()
+        .into_iter()
+        .map(|s| s.id())
+        .collect();
+    assert_eq!(remaining.len(), 3, "keep count honored");
+    // The newest three survived; the two oldest were pruned.
+    for newest in &ids_in_order[2..] {
+        assert!(remaining.contains(newest), "the newest snapshots must survive");
+    }
+    for oldest in &ids_in_order[..2] {
+        assert!(!remaining.contains(oldest), "the oldest surplus was pruned");
+    }
 }
