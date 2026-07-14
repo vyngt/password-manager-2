@@ -8,7 +8,7 @@
 use crate::features::vault::vault_launch::Selected;
 use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
-use leptos::either::Either;
+use leptos::either::{Either, EitherOf3};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use std::time::Duration;
@@ -49,6 +49,9 @@ pub fn VaultList(
     on_locate: Callback<String>,
     /// Convert a legacy `.vdb` row to a `.vedge/` home (slice 5.2.0).
     on_convert: Callback<String>,
+    /// Restore a present-but-corrupt vault (`exists && !openable`) from its newest snapshot
+    /// (slice 5.2.1 — the H0 disaster path). Passes the vault id.
+    on_restore: Callback<String>,
     on_new: Callback<()>,
     on_open_file: Callback<()>,
 ) -> impl IntoView {
@@ -65,6 +68,7 @@ pub fn VaultList(
         let rows = filtered.get();
         if let Some(rec) = rows.get(idx)
             && rec.exists
+            && rec.openable
         {
             on_select.run(Selected {
                 path: rec.vault.path.clone(),
@@ -160,6 +164,7 @@ pub fn VaultList(
                         .enumerate()
                         .map(|(idx, rec)| {
                             let exists = rec.exists;
+                            let openable = rec.openable;
                             let id = rec.vault.id.clone();
                             let path = rec.vault.path.clone();
                             let is_old_layout = std::path::Path::new(path.as_str())
@@ -190,7 +195,10 @@ pub fn VaultList(
                             let commit_id_blur = id.clone();
                             let loc_id = id.clone();
                             let conv_id = id.clone();
+                            let restore_id = id.clone();
                             let rem_id = id;
+                            // A present-but-unopenable vault is CORRUPT (slice 5.2.1) → offer
+                            // Restore from a snapshot (H0), not unlock.
                             // A legacy `.vdb` row (slice 5.2.0) offers Convert instead of
                             // just Locate — the old file can't be picked by a folder dialog.
 
@@ -206,10 +214,10 @@ pub fn VaultList(
                                     class="group relative mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2"
                                     class=("bg-primary-muted", is_hl)
                                     class=("opacity-55", move || !exists)
-                                    class=("cursor-pointer", move || exists)
+                                    class=("cursor-pointer", move || exists && openable)
                                     on:mouseenter=move |_: web_sys::MouseEvent| highlighted.set(idx)
                                     on:click=move |_: web_sys::MouseEvent| {
-                                        if exists && editing_id.get().is_none() {
+                                        if exists && openable && editing_id.get().is_none() {
                                             on_select
                                                 .run(Selected {
                                                     path: click_path.clone(),
@@ -315,7 +323,7 @@ pub fn VaultList(
                                             }
                                         }}
                                     </div>
-                                    {if exists {
+                                    {if exists && openable {
                                         let recency_view = recency
                                             .map(|d| {
 
@@ -323,7 +331,7 @@ pub fn VaultList(
                                                     <span class="text-[11px] text-foreground/40">{d}</span>
                                                 }
                                             });
-                                        Either::Left(
+                                        EitherOf3::A(
                                             view! {
                                                 <div class="flex shrink-0 items-center gap-1.5">
                                                     {recency_view}
@@ -359,8 +367,34 @@ pub fn VaultList(
                                                 </div>
                                             },
                                         )
+                                    } else if exists {
+                                        EitherOf3::B(
+                                            // Present-but-corrupt: the disaster path (H0). Offer
+                                            // Restore from the vault's newest snapshot.
+                                            view! {
+                                                <div class="flex shrink-0 items-center gap-1.5">
+                                                    <span
+                                                        class="rounded px-1.5 py-0.5 text-[10px]"
+                                                        style="color:var(--color-danger-text);background:var(--color-danger-muted)"
+                                                    >
+                                                        {move || t!(i18n, unlock.vault_corrupt)}
+                                                    </span>
+                                                    <Button
+                                                        variant=Variant::Primary
+                                                        size=Size::Sm
+                                                        attr:data-testid="vault-restore"
+                                                        on:click=move |ev: web_sys::MouseEvent| {
+                                                            ev.stop_propagation();
+                                                            on_restore.run(restore_id.clone());
+                                                        }
+                                                    >
+                                                        {move || t!(i18n, unlock.vault_restore)}
+                                                    </Button>
+                                                </div>
+                                            },
+                                        )
                                     } else {
-                                        Either::Right(
+                                        EitherOf3::C(
                                             view! {
                                                 <div class="flex shrink-0 items-center gap-1.5">
                                                     <span

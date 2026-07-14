@@ -299,6 +299,43 @@ pub fn VaultLaunch() -> impl IntoView {
         });
     });
 
+    // H0 disaster path: a present-but-corrupt vault (`exists && !openable`) can't be unlocked,
+    // so restore it from its NEWEST snapshot. The vault is locked here (launch screen), so the
+    // revert runs directly; on success the row becomes openable and the user unlocks normally.
+    let on_restore = Callback::new(move |id: String| {
+        let Some(row) = recents
+            .get_untracked()
+            .into_iter()
+            .find(|r| r.vault.id == id)
+        else {
+            return;
+        };
+        let path = row.vault.path;
+        let err_prefix = untrack(|| t_string!(i18n, unlock.err_restore).to_owned());
+        let none_msg = untrack(|| t_string!(i18n, unlock.restore_none).to_owned());
+        let done = untrack(|| t_string!(i18n, unlock.restore_done).to_owned());
+        spawn_local(async move {
+            let snaps = match api::snapshot::list(&path).await {
+                Ok(s) => s,
+                Err(e) => {
+                    show_error(format!("{err_prefix}{e}"));
+                    return;
+                }
+            };
+            let Some(newest) = snaps.first() else {
+                show_error(none_msg);
+                return;
+            };
+            match api::snapshot::revert(&path, &newest.id, true).await {
+                Ok(_) => {
+                    show_success(done);
+                    refresh_recents();
+                }
+                Err(e) => show_error(format!("{err_prefix}{e}")),
+            }
+        });
+    });
+
     let do_unlock = move || {
         let Some(sel) = selected.get() else {
             return;
@@ -528,6 +565,7 @@ pub fn VaultLaunch() -> impl IntoView {
                             on_remove=on_remove
                             on_locate=on_locate
                             on_convert=on_convert
+                            on_restore=on_restore
                             on_new=on_new
                             on_open_file=on_open_file
                         />
