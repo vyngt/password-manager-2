@@ -14,7 +14,7 @@ use tracing::instrument;
 use crate::application::app::ports::RecentVaultRepository;
 use crate::domain::app::entities::RecentVault;
 use crate::domain::app::errors::AppDbError;
-use crate::domain::shared::{StorageError, now};
+use crate::domain::shared::{StorageError, VAULT_FILE, now};
 
 /// First 16 bytes of every `SQLite` 3 database. Used as a cheap
 /// pre-flight check when adding a vault to the recents list — full
@@ -46,7 +46,9 @@ pub async fn list_recent_vaults_with_status(
     Ok(rows
         .into_iter()
         .map(|v| {
-            let exists = v.path.is_file();
+            // `path` is the vault HOME (slice 5.2.0); it "exists" when its `vault.vdb`
+            // is a readable file inside the home.
+            let exists = v.path.join(VAULT_FILE).is_file();
             RecentVaultStatus { vault: v, exists }
         })
         .collect())
@@ -108,15 +110,17 @@ pub async fn add_recent_vault(
     repo: &dyn RecentVaultRepository,
     input: AddRecentVaultInput,
 ) -> Result<(), AppDbError> {
-    if !input.path.is_file() {
+    // `input.path` is the vault HOME (slice 5.2.0); the DB lives at `home/vault.vdb`.
+    let vault_file = input.path.join(VAULT_FILE);
+    if !vault_file.is_file() {
         return Err(AppDbError::InvalidSettingValue {
             key: "recent_vault.path".into(),
-            reason: "not a regular file".into(),
+            reason: "not a vault home (missing vault.vdb)".into(),
         });
     }
 
     let mut header = [0u8; 16];
-    let mut file = tokio::fs::File::open(&input.path)
+    let mut file = tokio::fs::File::open(&vault_file)
         .await
         .map_err(|e| AppDbError::Storage(StorageError::Io(e.to_string())))?;
     match file.read_exact(&mut header).await {
@@ -164,6 +168,9 @@ pub async fn add_recent_vault(
         display_name,
         last_opened: Some(now()),
         sort_order: input.sort_order,
+        // Population from the vault's config uuid is deferred to slice 5.2.2 (dedup); the
+        // column + plumbing are in place now.
+        vault_uuid: None,
     };
     repo.upsert(&vault).await
 }
@@ -263,6 +270,7 @@ mod tests {
             display_name: id.into(),
             last_opened,
             sort_order: 0,
+            vault_uuid: None,
         })
         .await
         .unwrap();
@@ -278,15 +286,18 @@ mod tests {
     #[tokio::test]
     async fn existing_path_flagged_true() {
         let (dir, repo) = fixture().await;
-        let vdb = dir.path().join("work.vdb");
-        std::fs::write(&vdb, b"placeholder").unwrap();
+        // A vault home with its `vault.vdb` inside (slice 5.2.0).
+        let home = dir.path().join("work.vedge");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::write(home.join("vault.vdb"), b"placeholder").unwrap();
 
         repo.upsert(&RecentVault {
             id: "v1".into(),
-            path: vdb.clone(),
+            path: home.clone(),
             display_name: "Work".into(),
             last_opened: Some(now()),
             sort_order: 0,
+            vault_uuid: None,
         })
         .await
         .unwrap();
@@ -294,7 +305,7 @@ mod tests {
         let list = list_recent_vaults_with_status(&*repo).await.unwrap();
         assert_eq!(list.len(), 1);
         assert!(list[0].exists);
-        assert_eq!(list[0].vault.path, vdb);
+        assert_eq!(list[0].vault.path, home);
     }
 
     #[tokio::test]
@@ -306,6 +317,7 @@ mod tests {
             display_name: "Ghost".into(),
             last_opened: None,
             sort_order: 0,
+            vault_uuid: None,
         })
         .await
         .unwrap();
@@ -327,17 +339,24 @@ mod tests {
         std::fs::write(path, bytes).unwrap();
     }
 
+    /// Create a vault home with a valid-`SQLite`-header `vault.vdb` inside (slice 5.2.0),
+    /// so the header check in `add_recent_vault` passes.
+    fn write_vault_home(home: &std::path::Path) {
+        std::fs::create_dir_all(home).unwrap();
+        write_sqlite_stub(&home.join("vault.vdb"));
+    }
+
     #[tokio::test]
     async fn add_persists_when_header_matches() {
         let (dir, repo) = fixture().await;
-        let vdb = dir.path().join("work.vdb");
-        write_sqlite_stub(&vdb);
+        let home = dir.path().join("work.vedge");
+        write_vault_home(&home);
 
         add_recent_vault(
             &*repo,
             AddRecentVaultInput {
                 id: "v1".into(),
-                path: vdb.clone(),
+                path: home.clone(),
                 display_name: "Work".into(),
                 sort_order: 0,
             },
@@ -348,7 +367,7 @@ mod tests {
         let rows = repo.list().await.unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].display_name, "Work");
-        assert_eq!(rows[0].path, vdb);
+        assert_eq!(rows[0].path, home);
         // Adding stamps `last_opened = now()` so the vault sorts to the top.
         assert!(rows[0].last_opened.is_some());
     }
@@ -424,13 +443,14 @@ mod tests {
     #[tokio::test]
     async fn add_rejects_bad_header() {
         let (dir, repo) = fixture().await;
-        let p = dir.path().join("fake.vdb");
-        std::fs::write(&p, b"NOT A SQLITE DB!").unwrap(); // exactly 16 wrong bytes
+        let home = dir.path().join("fake.vedge");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::write(home.join("vault.vdb"), b"NOT A SQLITE DB!").unwrap(); // 16 wrong bytes
         let err = add_recent_vault(
             &*repo,
             AddRecentVaultInput {
                 id: "v1".into(),
-                path: p,
+                path: home,
                 display_name: "x".into(),
                 sort_order: 0,
             },
@@ -443,13 +463,14 @@ mod tests {
     #[tokio::test]
     async fn add_rejects_short_file() {
         let (dir, repo) = fixture().await;
-        let p = dir.path().join("tiny.vdb");
-        std::fs::write(&p, b"short").unwrap(); // 5 bytes < 16
+        let home = dir.path().join("tiny.vedge");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::write(home.join("vault.vdb"), b"short").unwrap(); // 5 bytes < 16
         let err = add_recent_vault(
             &*repo,
             AddRecentVaultInput {
                 id: "v1".into(),
-                path: p,
+                path: home,
                 display_name: "x".into(),
                 sort_order: 0,
             },
@@ -473,6 +494,7 @@ mod tests {
             display_name: id.into(),
             last_opened: None,
             sort_order,
+            vault_uuid: None,
         })
         .await
         .unwrap();
@@ -582,8 +604,8 @@ mod tests {
         .await;
 
         // Adding a brand-new vault stamps last_opened = now().
-        let fresh = dir.path().join("fresh.vdb");
-        write_sqlite_stub(&fresh);
+        let fresh = dir.path().join("fresh.vedge");
+        write_vault_home(&fresh);
         add_recent_vault(
             &*repo,
             AddRecentVaultInput {
@@ -637,14 +659,14 @@ mod tests {
     #[tokio::test]
     async fn add_falls_back_to_file_stem_when_name_empty() {
         let (dir, repo) = fixture().await;
-        let p = dir.path().join("my-vault.vdb");
-        write_sqlite_stub(&p);
+        let home = dir.path().join("my-vault.vedge");
+        write_vault_home(&home);
 
         add_recent_vault(
             &*repo,
             AddRecentVaultInput {
                 id: "v1".into(),
-                path: p,
+                path: home,
                 display_name: "   ".into(),
                 sort_order: 0,
             },
@@ -659,8 +681,10 @@ mod tests {
     #[tokio::test]
     async fn mixed_statuses_report_independently() {
         let (dir, repo) = fixture().await;
-        let real = dir.path().join("real.vdb");
-        std::fs::write(&real, b"x").unwrap();
+        // A real vault home with its `vault.vdb` (slice 5.2.0).
+        let real = dir.path().join("real.vedge");
+        std::fs::create_dir_all(&real).unwrap();
+        std::fs::write(real.join("vault.vdb"), b"x").unwrap();
 
         repo.upsert(&RecentVault {
             id: "ok".into(),
@@ -668,6 +692,7 @@ mod tests {
             display_name: "Real".into(),
             last_opened: None,
             sort_order: 0,
+            vault_uuid: None,
         })
         .await
         .unwrap();
@@ -677,6 +702,7 @@ mod tests {
             display_name: "Gone".into(),
             last_opened: None,
             sort_order: 1,
+            vault_uuid: None,
         })
         .await
         .unwrap();

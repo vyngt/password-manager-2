@@ -104,6 +104,7 @@ pub fn BackupPanel() -> impl IntoView {
                     name: "VEdge Backup".to_owned(),
                     extensions: vec!["vbk".to_owned()],
                 }],
+                directory: false,
             };
             match api::dialog::open(&opts).await {
                 Ok(Some(archive)) => match api::backup::inspect(&path, &archive).await {

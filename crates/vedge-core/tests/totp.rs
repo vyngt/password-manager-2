@@ -31,7 +31,7 @@ const SECRET: &str = "JBSWY3DPEHPK3PXP";
 async fn unlock(h: &Harness) -> VaultSession {
     build_unlock(h)
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })

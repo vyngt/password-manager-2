@@ -35,7 +35,7 @@ use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 
 fn pw_input(h: &Harness) -> UnlockVaultInput {
     UnlockVaultInput {
-        vault_path: h.vdb_path.clone(),
+        vault_path: h.home.clone(),
         master_password: h.master_password.clone(),
         secret_key: None,
     }
@@ -113,7 +113,7 @@ async fn rollback_warning_fires_only_when_file_is_behind_the_baseline() {
 
     // (4) The biometric path runs the SAME compare: still file(3) < baseline(10).
     let s4 = unlock
-        .unlock_with_kek(h.vdb_path.clone(), Zeroizing::new(h.kek))
+        .unlock_with_kek(h.home.clone(), Zeroizing::new(h.kek))
         .await
         .unwrap();
     assert_eq!(
@@ -136,25 +136,32 @@ async fn rollback_check_never_fails_unlock_when_keychain_read_errors() {
     impl KeychainProvider for BaselineReadFails {
         fn read_secret_key(
             &self,
-            vault_id: &VaultId,
+            vault_uuid: &str,
         ) -> Result<Zeroizing<[u8; SECRET_KEY_LEN]>, VaultError> {
-            self.inner.read_secret_key(vault_id)
+            self.inner.read_secret_key(vault_uuid)
         }
         fn store_secret_key(
             &self,
-            vault_id: &VaultId,
+            vault_uuid: &str,
             key: &[u8; SECRET_KEY_LEN],
         ) -> Result<(), VaultError> {
-            self.inner.store_secret_key(vault_id, key)
+            self.inner.store_secret_key(vault_uuid, key)
         }
-        fn delete_secret_key(&self, vault_id: &VaultId) -> Result<(), VaultError> {
-            self.inner.delete_secret_key(vault_id)
+        fn delete_secret_key(&self, vault_uuid: &str) -> Result<(), VaultError> {
+            self.inner.delete_secret_key(vault_uuid)
         }
         fn read_commit_baseline(&self, _vault_uuid: &str) -> Result<Option<i64>, VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
         fn store_commit_baseline(&self, vault_uuid: &str, counter: i64) -> Result<(), VaultError> {
             self.inner.store_commit_baseline(vault_uuid, counter)
+        }
+        fn migrate_secret_key(
+            &self,
+            legacy_vault_id: &VaultId,
+            vault_uuid: &str,
+        ) -> Result<bool, VaultError> {
+            self.inner.migrate_secret_key(legacy_vault_id, vault_uuid)
         }
     }
 

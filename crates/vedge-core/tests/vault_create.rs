@@ -104,7 +104,7 @@ fn make_input(path: &Path) -> CreateVaultInput {
 async fn create_then_unlock_roundtrip() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     let create = build_create(&p, Arc::clone(&p.keychain) as Arc<dyn KeychainProvider>);
     let out = create.execute(make_input(&path)).await.unwrap();
@@ -135,7 +135,7 @@ async fn create_then_unlock_roundtrip() {
 async fn create_refuses_existing_path() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     let create = build_create(&p, Arc::clone(&p.keychain) as Arc<dyn KeychainProvider>);
     drop(create.execute(make_input(&path)).await.unwrap().session);
@@ -148,7 +148,7 @@ async fn create_refuses_existing_path() {
 async fn unlock_with_wrong_password_fails() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     let create = build_create(&p, Arc::clone(&p.keychain) as Arc<dyn KeychainProvider>);
     drop(create.execute(make_input(&path)).await.unwrap().session);
@@ -169,7 +169,7 @@ async fn unlock_with_wrong_password_fails() {
 async fn secret_key_display_roundtrips() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     // Pin an explicit Secret Key so we know the expected bytes.
     let raw = [0xABu8; SECRET_KEY_LEN];
@@ -192,7 +192,7 @@ async fn secret_key_display_roundtrips() {
 async fn config_fields_are_correct() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     let create = build_create(&p, Arc::clone(&p.keychain) as Arc<dyn KeychainProvider>);
     drop(create.execute(make_input(&path)).await.unwrap().session);
@@ -215,7 +215,7 @@ async fn config_fields_are_correct() {
 async fn vault_uuid_minted_and_stable_across_unlocks() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     let create = build_create(&p, Arc::clone(&p.keychain) as Arc<dyn KeychainProvider>);
     drop(create.execute(make_input(&path)).await.unwrap().session);
@@ -256,7 +256,7 @@ async fn vault_uuid_minted_and_stable_across_unlocks() {
 async fn created_audit_event_appended() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     let create = build_create(&p, Arc::clone(&p.keychain) as Arc<dyn KeychainProvider>);
     drop(create.execute(make_input(&path)).await.unwrap().session);
@@ -274,25 +274,25 @@ async fn created_audit_event_appended() {
 async fn keychain_failure_returns_valid_vault() {
     let p = providers();
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new.vdb");
+    let path = dir.path().join("new.vedge");
 
     // A keychain whose store always fails — the vault must still be valid.
     struct FailingKeychain;
     impl KeychainProvider for FailingKeychain {
         fn read_secret_key(
             &self,
-            _vault_id: &VaultId,
+            _vault_uuid: &str,
         ) -> Result<Zeroizing<[u8; SECRET_KEY_LEN]>, VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
         fn store_secret_key(
             &self,
-            _vault_id: &VaultId,
+            _vault_uuid: &str,
             _key: &[u8; SECRET_KEY_LEN],
         ) -> Result<(), VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
-        fn delete_secret_key(&self, _vault_id: &VaultId) -> Result<(), VaultError> {
+        fn delete_secret_key(&self, _vault_uuid: &str) -> Result<(), VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
         fn read_commit_baseline(&self, _vault_uuid: &str) -> Result<Option<i64>, VaultError> {
@@ -303,6 +303,13 @@ async fn keychain_failure_returns_valid_vault() {
             _vault_uuid: &str,
             _counter: i64,
         ) -> Result<(), VaultError> {
+            Err(VaultError::KeychainUnavailable)
+        }
+        fn migrate_secret_key(
+            &self,
+            _legacy_vault_id: &VaultId,
+            _vault_uuid: &str,
+        ) -> Result<bool, VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
     }

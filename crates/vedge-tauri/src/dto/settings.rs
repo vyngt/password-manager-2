@@ -35,6 +35,9 @@ pub fn recent_vault_from_dto(dto: RecentVaultDto) -> Result<RecentVault, Command
         display_name: dto.display_name,
         last_opened: dto.last_opened.as_deref().map(ts_from_string).transpose()?,
         sort_order: dto.sort_order,
+        // The recents DTO does not carry the uuid yet (populated in 5.2.2); the column
+        // exists so a future record can fill it.
+        vault_uuid: None,
     })
 }
 

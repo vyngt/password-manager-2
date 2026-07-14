@@ -15,7 +15,7 @@ use uuid::Uuid;
 use vedge_ipc::{CreateVaultInputDto, RecentVaultDto};
 
 use crate::api;
-use crate::api::dialog::{DialogFilter, SaveDialogOptions};
+use crate::api::dialog::{DialogFilter, OpenDialogOptions, SaveDialogOptions};
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::password_strength::score as password_score;
@@ -27,6 +27,22 @@ use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{Button, Checkbox, Input, PasswordStrengthMeter, Step, StepIndicator};
 use vedge_ui::primitives::tokens::{ToastVariant, Variant};
+
+/// Ensure the create location is a `.vedge` home directory (slice 5.2.0). A user may type
+/// a bare name or a legacy `.vdb` in the location field; both become a `.vedge` home. An
+/// already-`.vedge` path passes through unchanged.
+fn ensure_vedge_home(input: &str) -> String {
+    let trimmed = input.trim();
+    match std::path::Path::new(trimmed)
+        .extension()
+        .and_then(|s| s.to_str())
+    {
+        Some("vedge") => trimmed.to_owned(),
+        // A legacy `.vdb` typed in the field → swap the extension for `.vedge`.
+        Some("vdb") => format!("{}.vedge", trimmed.strip_suffix(".vdb").unwrap_or(trimmed)),
+        _ => format!("{trimmed}.vedge"),
+    }
+}
 
 /// Minimum strength (0–4) required to leave the password step.
 const MIN_STRENGTH: u8 = 2;
@@ -118,18 +134,16 @@ pub fn VaultSetup() -> impl IntoView {
                                                 )
                                                     .to_owned();
                                                 spawn_local(async move {
-                                                    let opts = SaveDialogOptions {
+                                                    let opts = OpenDialogOptions {
                                                         title: Some(dialog_title),
-                                                        default_path: Some("my-vault.vdb".to_owned()),
-                                                        filters: vec![
-                                                            DialogFilter {
-                                                                name: "VEdge Vault".to_owned(),
-                                                                extensions: vec!["vdb".to_owned()],
-                                                            },
-                                                        ],
+                                                        filters: vec![],
+                                                        directory: true,
                                                     };
-                                                    match api::dialog::save(&opts).await {
-                                                        Ok(Some(p)) => path.set(p),
+                                                    match api::dialog::open(&opts).await {
+                                                        Ok(Some(parent)) => {
+                                                            let sep = parent.trim_end_matches(['/', '\\']);
+                                                            path.set(format!("{sep}/my-vault.vedge"));
+                                                        }
                                                         Ok(None) => {}
                                                         Err(e) => {
                                                             web_sys::console::error_1(
@@ -234,7 +248,7 @@ pub fn VaultSetup() -> impl IntoView {
                                                         return;
                                                     }
                                                     creating.set(true);
-                                                    let vault_path = path.get();
+                                                    let vault_path = ensure_vedge_home(&path.get());
                                                     let master_password = pw.get();
                                                     let msg_exists = t_string!(i18n, onboarding.err_exists)
                                                         .to_owned();

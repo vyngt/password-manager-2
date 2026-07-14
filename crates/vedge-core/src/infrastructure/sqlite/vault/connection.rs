@@ -44,6 +44,20 @@ impl VaultDbConnection {
     pub fn handle(&self) -> Arc<DatabaseConnection> {
         Arc::clone(&self.conn)
     }
+
+    /// Cleanly close the pool, releasing the OS file handle (Windows will not let another
+    /// process rename/delete the `.vdb` while a handle is open) and checkpointing the WAL
+    /// into the main file. Consumes `self`; a no-op if other [`handle`](Self::handle)
+    /// clones still outlive this one.
+    pub async fn close(self) -> Result<(), StorageError> {
+        match Arc::try_unwrap(self.conn) {
+            Ok(conn) => conn
+                .close()
+                .await
+                .map_err(|e| StorageError::Database(e.to_string())),
+            Err(_) => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]

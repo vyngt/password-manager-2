@@ -82,6 +82,7 @@ pub fn DocumentAttach(show: RwSignal<bool>, on_attached: Callback<()>) -> impl I
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
                 filters: vec![],
+                directory: false,
             };
             match api::dialog::open(&opts).await {
                 Ok(Some(path)) => {

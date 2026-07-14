@@ -76,7 +76,7 @@ fn driver_url() -> String {
 pub struct TestEnv {
     /// `VEDGE_DATA_DIR` → isolates `app.db` (recents, settings, themes).
     pub data_dir: TempDir,
-    /// Holds the `.vdb` file and its sibling blob dir.
+    /// Holds the `<name>.vedge/` vault home (slice 5.2.0).
     pub vault_dir: TempDir,
 }
 
@@ -94,9 +94,11 @@ impl TestEnv {
         })
     }
 
-    /// Absolute path to the vault file the create wizard will write.
+    /// Absolute path to the vault **home** the create wizard will write (slice 5.2.0).
+    /// A `.vedge` home so the wizard's `ensure_vedge_home` normalization is a no-op and
+    /// every `invoke(vault_path=…)` targets the same home the UI created.
     pub fn vault_path(&self) -> PathBuf {
-        self.vault_dir.path().join("e2e.vdb")
+        self.vault_dir.path().join("e2e.vedge")
     }
 
     /// The vault path as a string (typed into `#vault-path` / passed to invoke).

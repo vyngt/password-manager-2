@@ -47,6 +47,8 @@ pub fn VaultList(
     on_rename_commit: Callback<(String, String)>,
     on_remove: Callback<String>,
     on_locate: Callback<String>,
+    /// Convert a legacy `.vdb` row to a `.vedge/` home (slice 5.2.0).
+    on_convert: Callback<String>,
     on_new: Callback<()>,
     on_open_file: Callback<()>,
 ) -> impl IntoView {
@@ -160,6 +162,9 @@ pub fn VaultList(
                             let exists = rec.exists;
                             let id = rec.vault.id.clone();
                             let path = rec.vault.path.clone();
+                            let is_old_layout = std::path::Path::new(path.as_str())
+                                .extension()
+                                .is_some_and(|e| e.eq_ignore_ascii_case("vdb"));
                             let name = rec.vault.display_name.clone();
                             let recency = rec.vault.last_opened.as_deref().map(short_date);
                             let row_icon = if exists {
@@ -184,7 +189,10 @@ pub fn VaultList(
                             let commit_id_kd = id.clone();
                             let commit_id_blur = id.clone();
                             let loc_id = id.clone();
+                            let conv_id = id.clone();
                             let rem_id = id;
+                            // A legacy `.vdb` row (slice 5.2.0) offers Convert instead of
+                            // just Locate — the old file can't be picked by a folder dialog.
 
                             // `Copy` Memo so the flag can be read in several
                             // view positions without moving a captured String.
@@ -361,6 +369,22 @@ pub fn VaultList(
                                                     >
                                                         {move || t!(i18n, unlock.vault_missing)}
                                                     </span>
+                                                    {is_old_layout
+                                                        .then(|| {
+                                                            view! {
+                                                                <Button
+                                                                    variant=Variant::Ghost
+                                                                    size=Size::Sm
+                                                                    attr:data-testid="vault-convert"
+                                                                    on:click=move |ev: web_sys::MouseEvent| {
+                                                                        ev.stop_propagation();
+                                                                        on_convert.run(conv_id.clone());
+                                                                    }
+                                                                >
+                                                                    {move || t!(i18n, unlock.vault_convert)}
+                                                                </Button>
+                                                            }
+                                                        })}
                                                     <Button
                                                         variant=Variant::Ghost
                                                         size=Size::Sm

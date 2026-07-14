@@ -19,8 +19,9 @@ use tracing::instrument;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 use vedge_core::{
-    BackupVaultInput, InspectBackupInput, RestoreVaultInput, backup_vault as backup_vault_core,
-    inspect_backup as inspect_backup_core, restore_vault as restore_vault_core,
+    BackupVaultInput, InspectBackupInput, MigrateVaultLayoutInput, RestoreVaultInput,
+    backup_vault as backup_vault_core, inspect_backup as inspect_backup_core,
+    migrate_vault_layout as migrate_vault_layout_core, restore_vault as restore_vault_core,
 };
 
 use crate::dto::backup::{
@@ -110,4 +111,33 @@ pub async fn restore_vault(
     )
     .await?;
     Ok(restore_report_to_dto(report))
+}
+
+/// Convert a legacy `.vdb` + sibling-blobs vault to a `<name>.vedge/` home (slice 5.2.0).
+///
+/// A **file** operation — refuses an unlocked legacy vault (the migration copies then
+/// reaps its files; Windows holds the `.vdb` open while a session is live). Crash-safe:
+/// the original layout survives until the home is atomically committed. Returns the new
+/// home path so the shell can re-point the recents row.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path))]
+pub async fn convert_vault(
+    vault_path: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<String, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    if state.is_unlocked(&vault_id) {
+        return Err(CommandError::Invalid(
+            "lock the vault before converting it".into(),
+        ));
+    }
+
+    let out = migrate_vault_layout_core(
+        state.keychain.as_ref(),
+        MigrateVaultLayoutInput {
+            legacy_vdb_path: PathBuf::from(vault_path),
+        },
+    )
+    .await?;
+    Ok(out.home.to_string_lossy().into_owned())
 }

@@ -54,10 +54,11 @@ async fn recent_vaults_crud_round_trip() {
 
     let vault = RecentVault {
         id: "01HV0123456789".to_owned(),
-        path: PathBuf::from("/tmp/work.vdb"),
+        path: PathBuf::from("/tmp/work.vedge"),
         display_name: "Work".into(),
         last_opened: Some(now()),
         sort_order: 1,
+        vault_uuid: Some("01HVUUID0000000000000000".to_owned()),
     };
     repo.upsert(&vault).await.unwrap();
 

@@ -9,6 +9,7 @@ pub struct Model {
     pub display_name: String,
     pub last_opened: Option<String>,
     pub sort_order: i32,
+    pub vault_uuid: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

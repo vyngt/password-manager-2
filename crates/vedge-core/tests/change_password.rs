@@ -31,7 +31,7 @@ use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, L
 async fn unlock(h: &Harness, pw: &str) -> Result<VaultSession, VaultError> {
     let uv = build_unlock(h);
     uv.execute(UnlockVaultInput {
-        vault_path: h.vdb_path.clone(),
+        vault_path: h.home.clone(),
         master_password: Zeroizing::new(pw.to_owned()),
         secret_key: None,
     })
@@ -118,7 +118,7 @@ async fn rotate_secret_key_only() {
     lock_vault(session_new).await.unwrap();
 
     // Confirm the keychain actually got rewritten.
-    let read_sk = h.keychain.read_secret_key(&h.vault_id).unwrap();
+    let read_sk = h.keychain.read_secret_key(&h.vault_uuid).unwrap();
     assert_eq!(*read_sk, new_sk);
 }
 
@@ -171,10 +171,11 @@ async fn rotate_preserves_all_existing_entries_decrypted() {
 #[tokio::test]
 async fn vault_uuid_survives_change_password() {
     let h = Harness::fresh().await;
-    // First unlock backfills the identity onto this pre-4.6 vault.
+    // The harness vault carries an intrinsic uuid (slice 5.2.0); the point here is that
+    // change_password preserves it through the `rewrap_all_deks` upsert.
     let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
     let uuid_before = h.repo.load_config().await.unwrap().vault_uuid;
-    assert!(uuid_before.is_some(), "unlock must backfill vault_uuid");
+    assert!(uuid_before.is_some(), "vault must carry a uuid");
 
     change_password(
         &mut session,

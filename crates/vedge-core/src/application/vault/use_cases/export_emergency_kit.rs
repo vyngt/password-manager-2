@@ -44,7 +44,10 @@ pub async fn export_emergency_kit(
     // 1. Pull the Secret Key back from the keychain. `Zeroizing` on drop
     //    clears the raw bytes after `format_secret_key` has stringified
     //    them.
-    let secret_key = keychain.read_secret_key(session.vault_id())?;
+    let uuid = session
+        .vault_uuid()
+        .ok_or(VaultError::KeychainEntryNotFound)?;
+    let secret_key = keychain.read_secret_key(uuid)?;
 
     // 2. Format once. The display string is the user's explicit output —
     //    not a `SecretString`, because the whole point is that it reaches

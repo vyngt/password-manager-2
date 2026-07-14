@@ -37,6 +37,16 @@ pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
     call_void("lock_vault", &Args { vault_path }).await
 }
 
+/// Convert a legacy `.vdb` vault to a `<name>.vedge/` home (slice 5.2.0). Returns the new
+/// home path so the caller can re-point the recents row.
+pub async fn convert(vault_path: &str) -> Result<String, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+    }
+    call("convert_vault", &Args { vault_path }).await
+}
+
 /// Whether the backend still holds an unlocked session for this vault.
 ///
 /// `AutoLock` polls this so it notices a **backend-initiated** lock — the hard
