@@ -40,7 +40,7 @@ use crate::application::vault::ports::factories::{BlobStoreFactory, VaultReposit
 use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::session::VaultSession;
-use crate::domain::shared::{VaultId, now};
+use crate::domain::shared::{BLOBS_DIR, SNAPSHOTS_DIR, StorageError, VaultId, now};
 use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
 use crate::domain::vault::entities::{AuditAction, AuditEvent, VaultConfig};
 use crate::domain::vault::errors::VaultError;
@@ -156,6 +156,9 @@ impl CreateVault {
 
         // ---- 5. Build the initial config ------------------------------------
         let created_at = now();
+        // Mint the intrinsic identity up front — the keychain (slice 5.2.0) keys the
+        // Secret Key on it, so it must be in hand before the store below.
+        let vault_uuid = ulid::Ulid::new().to_string();
         let config = VaultConfig {
             id: "default".to_owned(),
             magic: "VEDG".to_owned(),
@@ -171,12 +174,22 @@ impl CreateVault {
             created_at,
             last_unlocked_at: Some(created_at),
             // Intrinsic identity, minted once at create; never changes on move/rename.
-            vault_uuid: Some(ulid::Ulid::new().to_string()),
+            vault_uuid: Some(vault_uuid.clone()),
             // A fresh vault starts at commit 0; the first content write bumps to 1.
             commit_counter: 0,
         };
 
-        // ---- 6. Provision the .vdb + blob store, persist config -------------
+        // ---- 6. Provision the home + blob store, persist config -------------
+        // The vault is a `<name>.vedge/` home (slice 5.2.0): create its fixed members up
+        // front. `create_dir_all(home/blobs)` also creates the home itself; SQLite's
+        // mode=rwc then creates `vault.vdb` inside it, and the fail-closed blob store
+        // requires `blobs/` to already exist.
+        std::fs::create_dir_all(input.vault_path.join(BLOBS_DIR)).map_err(|e| {
+            VaultError::Storage(StorageError::Io(format!("create home blobs: {e}")))
+        })?;
+        std::fs::create_dir_all(input.vault_path.join(SNAPSHOTS_DIR)).map_err(|e| {
+            VaultError::Storage(StorageError::Io(format!("create home snapshots: {e}")))
+        })?;
         let repo = self.repo_factory.open(&input.vault_path).await?;
         let blob = self
             .blob_factory
@@ -188,7 +201,7 @@ impl CreateVault {
         // the file is valid and the user still holds the Emergency Kit.
         let vault_id = VaultId::new(input.vault_path.clone());
         let (keychain_stored, keychain_error) =
-            match self.keychain.store_secret_key(&vault_id, &secret_key) {
+            match self.keychain.store_secret_key(&vault_uuid, &secret_key) {
                 Ok(()) => (true, None),
                 Err(e) => (false, Some(e.to_string())),
             };

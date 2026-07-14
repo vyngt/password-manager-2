@@ -1,14 +1,20 @@
-//! `.vedge_blobs/` filesystem-backed implementation of [`BlobStore`].
+//! Filesystem-backed implementation of [`BlobStore`], rooted inside the vault home.
 //!
-//! Layout: the directory lives adjacent to the `.vdb`, sharing the same stem.
-//!   `work.vdb`           → `work.vedge_blobs/`
-//!   `work.vdb`'s entries → `work.vedge_blobs/{entry_ulid}.blob`
+//! Layout (slice 5.2.0): blobs live at `<home>/blobs/` — a fixed member of the
+//! `<name>.vedge/` home, no stem derivation.
+//!   `<home>/blobs/{entry_ulid}.blob`
 //!
 //! File format, per the vault storage spec:
 //!   `[24 bytes nonce][XChaCha20-Poly1305 ciphertext + 16-byte Poly1305 tag]`
 //!
 //! AAD is `blob_aad(entry_id) = entry_ulid_bytes || b"blob"` — distinct from
 //! the entry-payload AAD to prevent cross-context ciphertext substitution.
+//!
+//! **Fail-closed:** [`FilesystemBlobStore::new`] requires the `blobs/` directory to
+//! already exist and never synthesizes an empty one. A home whose `vault.vdb` is
+//! present but whose `blobs/` is missing is a half-copied vault — opening it must fail
+//! loudly, never open with phantom-empty documents. `create_vault` / migration / restore
+//! provision `blobs/` up front.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -21,12 +27,11 @@ use zeroize::Zeroizing;
 
 use crate::application::vault::ports::blob_store::BlobStore;
 use crate::application::vault::ports::crypto::CryptoProvider;
-use crate::domain::shared::{EntryId, StorageError};
+use crate::domain::shared::{BLOBS_DIR, EntryId, StorageError};
 use crate::domain::vault::aad::blob_aad;
 use crate::domain::vault::crypto_constants::{DEK_LEN, NONCE_LEN};
 use crate::domain::vault::errors::VaultError;
 
-const BLOB_DIR_SUFFIX: &str = ".vedge_blobs";
 const BLOB_FILE_EXT: &str = "blob";
 
 pub struct FilesystemBlobStore {
@@ -35,11 +40,17 @@ pub struct FilesystemBlobStore {
 }
 
 impl FilesystemBlobStore {
-    /// Resolve the `.vedge_blobs/` directory for a given `.vdb` path and
-    /// create it if missing.
-    pub fn new(vault_path: &Path, crypto: Arc<dyn CryptoProvider>) -> Result<Self, VaultError> {
-        let root = derive_blob_root(vault_path);
-        std::fs::create_dir_all(&root).map_err(|e| storage_io("create_dir_all", &e))?;
+    /// Open the `<home>/blobs/` store. **Requires** the directory to exist (fail-closed:
+    /// a missing `blobs/` beside a live `vault.vdb` is a broken vault, not an empty one).
+    /// Provisioning is the caller's job (`create_vault`, migration, restore).
+    pub fn new(home: &Path, crypto: Arc<dyn CryptoProvider>) -> Result<Self, VaultError> {
+        let root = home.join(BLOBS_DIR);
+        if !root.is_dir() {
+            return Err(VaultError::Storage(StorageError::Io(format!(
+                "vault home is missing its blobs/ directory: {}",
+                root.display()
+            ))));
+        }
         Ok(Self { root, crypto })
     }
 
@@ -50,25 +61,12 @@ impl FilesystemBlobStore {
         p
     }
 
-    /// Root directory for the store. Shells and tests compose against this;
-    /// no cryptographic invariant depends on the path staying private.
+    /// Root directory for the store (`<home>/blobs`). Shells and tests compose against
+    /// this; no cryptographic invariant depends on the path staying private.
     #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
-}
-
-pub(crate) fn derive_blob_root(vault_path: &Path) -> PathBuf {
-    // `work.vdb` → `work.vedge_blobs/` (sibling, same stem).
-    let stem = vault_path
-        .file_stem()
-        .map_or_else(|| "vault".to_owned(), |s| s.to_string_lossy().into_owned());
-    let mut dir_name = stem;
-    dir_name.push_str(BLOB_DIR_SUFFIX);
-    vault_path
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .join(dir_name)
 }
 
 fn storage_io(op: &str, e: &std::io::Error) -> VaultError {

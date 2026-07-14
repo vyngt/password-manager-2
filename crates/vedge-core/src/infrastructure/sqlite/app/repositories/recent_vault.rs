@@ -61,6 +61,7 @@ impl RecentVaultRepository for SqliteRecentVaultRepository {
             display_name: ActiveValue::Set(model.display_name),
             last_opened: ActiveValue::Set(model.last_opened),
             sort_order: ActiveValue::Set(model.sort_order),
+            vault_uuid: ActiveValue::Set(model.vault_uuid),
         };
         Entity::insert(active)
             .on_conflict(
@@ -70,6 +71,7 @@ impl RecentVaultRepository for SqliteRecentVaultRepository {
                         Column::DisplayName,
                         Column::LastOpened,
                         Column::SortOrder,
+                        Column::VaultUuid,
                     ])
                     .to_owned(),
             )

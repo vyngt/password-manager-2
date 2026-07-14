@@ -16,7 +16,7 @@ use tracing::{instrument, warn};
 use crate::application::vault::ports::factories::VaultRepositoryFactory;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::ports::repository::VaultRepository;
-use crate::domain::shared::{StorageError, format_rfc3339_millis, now};
+use crate::domain::shared::{SNAPSHOTS_DIR, StorageError, format_rfc3339_millis, now};
 use crate::domain::vault::entities::{AuditAction, AuditEvent, CURRENT_SCHEMA_VERSION};
 use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::backup::manifest::{BACKUP_FORMAT_VERSION, BLOBS_PREFIX, VAULT_MEMBER};
@@ -149,7 +149,13 @@ pub async fn restore_vault(
     archive::extract_member(&archive_path, VAULT_MEMBER, &staged_vault)?;
     journal::fsync_file(&staged_vault)?;
 
+    // The staging dir IS the new vault home (slice 5.2.0): guarantee its fixed members
+    // (`blobs/`, `snapshots/`) exist even for a no-blob backup, so the restored home is
+    // complete — the fail-closed blob store refuses a home with a missing `blobs/`.
     let staged_blobs = journal::staged_blobs(&staging_dir);
+    std::fs::create_dir_all(&staged_blobs).map_err(|e| io_ctx("create staged blobs", &e))?;
+    std::fs::create_dir_all(staging_dir.join(SNAPSHOTS_DIR))
+        .map_err(|e| io_ctx("create staged snapshots", &e))?;
     for file in &manifest.files {
         let Some(rel) = file.name.strip_prefix(BLOBS_PREFIX) else {
             continue; // the vault member; handled above
@@ -164,7 +170,6 @@ pub async fn restore_vault(
                 file.name
             )));
         }
-        std::fs::create_dir_all(&staged_blobs).map_err(|e| io_ctx("create staged blobs", &e))?;
         let dest = staged_blobs.join(rel);
         archive::extract_member(&archive_path, &file.name, &dest)?;
         journal::fsync_file(&dest)?;

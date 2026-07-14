@@ -26,7 +26,7 @@ async fn unlock_returns_session_with_seeded_index() {
     let uv = build_unlock(&h);
     let session = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None, // read from keychain
         })
@@ -50,7 +50,7 @@ async fn wrong_password_fast_rejects_before_index_build() {
     let uv = build_unlock(&h);
     let err = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: Zeroizing::new("WRONG password".into()),
             secret_key: None,
         })
@@ -63,12 +63,12 @@ async fn wrong_password_fast_rejects_before_index_build() {
 async fn missing_secret_key_errors() {
     let h = Harness::fresh().await;
     // Deliberately remove the key from the memory keychain.
-    h.keychain.delete_secret_key(&h.vault_id).unwrap();
+    h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
     let err = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })
@@ -89,7 +89,7 @@ async fn tampered_verify_hash_becomes_wrong_credentials() {
     let uv = build_unlock(&h);
     let err = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })
@@ -102,12 +102,12 @@ async fn tampered_verify_hash_becomes_wrong_credentials() {
 async fn explicit_secret_key_bypasses_keychain() {
     let h = Harness::fresh().await;
     // Even with the key missing from the keychain, caller-supplied input works.
-    h.keychain.delete_secret_key(&h.vault_id).unwrap();
+    h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
     let session = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: Some(Zeroizing::new(h.secret_key)),
         })
@@ -124,7 +124,7 @@ async fn last_unlocked_at_is_updated() {
     let uv = build_unlock(&h);
     let session = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })

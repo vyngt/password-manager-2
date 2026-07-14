@@ -6,6 +6,7 @@ mod m20260418_090003_create_themes;
 mod m20260418_090004_create_known_devices;
 mod m20260418_090005_create_extension_sessions;
 mod m20260418_090006_create_indexes;
+mod m20260714_090007_add_recent_vault_uuid;
 
 pub struct Migrator;
 
@@ -18,6 +19,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260418_090004_create_known_devices::Migration),
             Box::new(m20260418_090005_create_extension_sessions::Migration),
             Box::new(m20260418_090006_create_indexes::Migration),
+            Box::new(m20260714_090007_add_recent_vault_uuid::Migration),
         ]
     }
 }

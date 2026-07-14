@@ -1,5 +1,5 @@
-//! `FilesystemBlobStoreFactory` — constructs a `FilesystemBlobStore` for
-//! a given vault path. Implementation of the `BlobStoreFactory` port.
+//! `FilesystemBlobStoreFactory` — constructs a `FilesystemBlobStore` rooted at a vault
+//! home's `blobs/` directory. Implementation of the `BlobStoreFactory` port.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -28,10 +28,10 @@ impl Default for FilesystemBlobStoreFactory {
 impl BlobStoreFactory for FilesystemBlobStoreFactory {
     fn create(
         &self,
-        vault_path: &Path,
+        home: &Path,
         crypto: Arc<dyn CryptoProvider>,
     ) -> Result<Arc<dyn BlobStore>, VaultError> {
-        Ok(Arc::new(FilesystemBlobStore::new(vault_path, crypto)?))
+        Ok(Arc::new(FilesystemBlobStore::new(home, crypto)?))
     }
 }
 
@@ -43,16 +43,27 @@ mod tests {
     use crate::infrastructure::crypto::XChaCha20CryptoProvider;
 
     #[tokio::test]
-    async fn factory_creates_sidecar_dir() {
-        // Blob root derives from the vault's file stem — e.g.
-        // `my.vdb` → `my.vedge_blobs/` as a sibling.
+    async fn factory_opens_the_home_blobs_dir() {
+        // Blobs live at `<home>/blobs/` — a fixed member of the home, no stem.
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("my.vdb");
-        std::fs::write(&path, b"stub").unwrap();
+        let home = dir.path().join("my.vedge");
+        std::fs::create_dir_all(home.join("blobs")).unwrap();
 
         let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
         let factory = FilesystemBlobStoreFactory::new();
-        let _store = factory.create(&path, crypto).unwrap();
-        assert!(dir.path().join("my.vedge_blobs").is_dir());
+        let store = factory.create(&home, crypto).unwrap();
+        assert_eq!(store.blob_dir(), home.join("blobs"));
+    }
+
+    #[tokio::test]
+    async fn factory_fails_loudly_on_a_missing_blobs_dir() {
+        // A home with no `blobs/` is a half-copied vault: fail, never synthesize empty.
+        let dir = tempfile::tempdir().unwrap();
+        let home = dir.path().join("my.vedge");
+        std::fs::create_dir_all(&home).unwrap();
+
+        let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
+        let factory = FilesystemBlobStoreFactory::new();
+        assert!(factory.create(&home, crypto).is_err());
     }
 }

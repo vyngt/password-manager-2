@@ -315,7 +315,7 @@ mod tests {
     #[tokio::test]
     async fn import_from_path_roundtrips_bytes_to_disk() {
         let dir = tempfile::tempdir().unwrap();
-        let (state, vault_id) = unlocked_vault(&dir, "docs.vdb").await;
+        let (state, vault_id) = unlocked_vault(&dir, "docs.vedge").await;
 
         let original: &[u8] = b"hello, this is an encrypted document body\x00\x01\x02";
         let src = dir.path().join("hello.txt");
@@ -331,11 +331,12 @@ mod tests {
         };
         assert!(!id.is_empty());
 
-        // On disk, the sidecar blob exists in the vault's `{stem}.vedge_blobs/`
-        // sibling dir and is NOT the plaintext (it's ciphertext).
+        // On disk, the blob lives inside the vault home's `blobs/` dir (slice 5.2.0)
+        // and is NOT the plaintext (it's ciphertext).
         let blob = dir
             .path()
-            .join("docs.vedge_blobs")
+            .join("docs.vedge")
+            .join("blobs")
             .join(format!("{id}.blob"));
         assert!(blob.exists(), "expected sidecar blob at {blob:?}");
         assert_ne!(std::fs::read(&blob).unwrap(), original);

@@ -59,6 +59,14 @@ ulid_newtype!(ThemeId);
 ulid_newtype!(DeviceId);
 ulid_newtype!(SessionId);
 
+/// The vault **home** layout (slice 5.2.0). A vault is a `<name>.vedge/` directory
+/// holding these three fixed, derivation-free members — no stems, nothing to get wrong.
+pub const VAULT_FILE: &str = "vault.vdb";
+pub const BLOBS_DIR: &str = "blobs";
+pub const SNAPSHOTS_DIR: &str = "snapshots";
+
+/// Identifies a vault by its **home directory** (`…/<name>.vedge`), slice 5.2.0. The
+/// `.vdb` is an implementation detail of the home, reached via [`Self::vault_file`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct VaultId(PathBuf);
 
@@ -67,6 +75,7 @@ impl VaultId {
         Self(path.into())
     }
 
+    /// The home directory itself.
     #[must_use]
     pub fn path(&self) -> &std::path::Path {
         &self.0
@@ -75,6 +84,25 @@ impl VaultId {
     #[must_use]
     pub fn into_path(self) -> PathBuf {
         self.0
+    }
+
+    /// The `SQLite` database file inside the home (`<home>/vault.vdb`). Fed to the repo
+    /// factory / the read-only target reader — the only two direct openers of the `.vdb`.
+    #[must_use]
+    pub fn vault_file(&self) -> PathBuf {
+        self.0.join(VAULT_FILE)
+    }
+
+    /// The blob directory inside the home (`<home>/blobs`).
+    #[must_use]
+    pub fn blobs_dir(&self) -> PathBuf {
+        self.0.join(BLOBS_DIR)
+    }
+
+    /// The snapshots directory inside the home (`<home>/snapshots`; 5.2.1 fills it).
+    #[must_use]
+    pub fn snapshots_dir(&self) -> PathBuf {
+        self.0.join(SNAPSHOTS_DIR)
     }
 }
 

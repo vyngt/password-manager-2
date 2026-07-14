@@ -11,7 +11,7 @@
 //! surface as `Danger` toasts.
 
 use crate::api;
-use crate::api::dialog::{DialogFilter, OpenDialogOptions};
+use crate::api::dialog::OpenDialogOptions;
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::recents_filter::filter_sort_recents;
@@ -42,11 +42,14 @@ pub struct Selected {
     pub display_name: String,
 }
 
-/// Derive a human display name from a vault path: the file stem without its
-/// directory or `.vdb` extension.
+/// Derive a human display name from a vault path: the last path segment without its
+/// `.vedge` (or legacy `.vdb`) extension.
 pub fn display_name_from_path(path: &str) -> String {
     let name = path.rsplit(['/', '\\']).next().unwrap_or(path);
-    name.strip_suffix(".vdb").unwrap_or(name).to_owned()
+    name.strip_suffix(".vedge")
+        .or_else(|| name.strip_suffix(".vdb"))
+        .unwrap_or(name)
+        .to_owned()
 }
 
 /// Focus the master-password field after a vault is selected. A no-op if the
@@ -219,10 +222,9 @@ pub fn VaultLaunch() -> impl IntoView {
         spawn_local(async move {
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
-                filters: vec![DialogFilter {
-                    name: "VEdge Vault".to_owned(),
-                    extensions: vec!["vdb".to_owned()],
-                }],
+                filters: vec![],
+                // A vault is a `.vedge/` folder (slice 5.2.0) → pick a directory.
+                directory: true,
             };
             match api::dialog::open(&opts).await {
                 Ok(Some(path)) => {
@@ -246,6 +248,42 @@ pub fn VaultLaunch() -> impl IntoView {
                     }
                 }
                 Ok(None) => {}
+                Err(e) => show_error(format!("{err_prefix}{e}")),
+            }
+        });
+    });
+
+    // Convert a legacy `.vdb` recents row to a `.vedge/` home (slice 5.2.0), then re-point
+    // the row to the new home.
+    let on_convert = Callback::new(move |id: String| {
+        let row = recents
+            .get_untracked()
+            .into_iter()
+            .find(|r| r.vault.id == id);
+        let Some(row) = row else {
+            return;
+        };
+        let legacy_path = row.vault.path;
+        let display_name = row.vault.display_name;
+        let err_prefix = t_string!(i18n, unlock.err_open).to_owned();
+        spawn_local(async move {
+            match api::vault::convert(&legacy_path).await {
+                Ok(home) => {
+                    let dto = RecentVaultDto {
+                        id: Uuid::new_v4().to_string(),
+                        path: home,
+                        display_name,
+                        last_opened: None,
+                        sort_order: 0,
+                    };
+                    match api::recent::add_recent_vault(&dto).await {
+                        Ok(()) => {
+                            let _ = api::recent::remove_recent_vault(&id).await;
+                            refresh_recents();
+                        }
+                        Err(e) => show_error(format!("{err_prefix}{e}")),
+                    }
+                }
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
@@ -398,10 +436,9 @@ pub fn VaultLaunch() -> impl IntoView {
         spawn_local(async move {
             let opts = OpenDialogOptions {
                 title: Some(dialog_title),
-                filters: vec![DialogFilter {
-                    name: "VEdge Vault".to_owned(),
-                    extensions: vec!["vdb".to_owned()],
-                }],
+                filters: vec![],
+                // A vault is a `.vedge/` folder (slice 5.2.0) → pick a directory.
+                directory: true,
             };
             match api::dialog::open(&opts).await {
                 Ok(Some(path)) => {
@@ -490,6 +527,7 @@ pub fn VaultLaunch() -> impl IntoView {
                             on_rename_commit=on_rename_commit
                             on_remove=on_remove
                             on_locate=on_locate
+                            on_convert=on_convert
                             on_new=on_new
                             on_open_file=on_open_file
                         />
@@ -518,12 +556,17 @@ mod tests {
     use super::display_name_from_path;
 
     #[test]
-    fn strips_dir_and_vdb_extension() {
+    fn strips_dir_and_vedge_or_vdb_extension() {
+        // A `.vedge` home (slice 5.2.0) and a legacy `.vdb` both reduce to the stem.
         assert_eq!(
-            display_name_from_path("C:/Users/me/my-vault.vdb"),
+            display_name_from_path("C:/Users/me/my-vault.vedge"),
             "my-vault"
         );
-        assert_eq!(display_name_from_path("/home/me/vaults/work.vdb"), "work");
+        assert_eq!(display_name_from_path("/home/me/vaults/work.vedge"), "work");
+        assert_eq!(
+            display_name_from_path("/home/me/vaults/legacy.vdb"),
+            "legacy"
+        );
     }
 
     #[test]

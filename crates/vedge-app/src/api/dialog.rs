@@ -97,6 +97,11 @@ pub async fn save(options: &SaveDialogOptions) -> Result<Option<String>, ApiErro
     serde_wasm_bindgen::from_value::<Option<String>>(raw).map_err(ApiError::deserialize)
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde `skip_serializing_if` requires `&T`
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenDialogOptions {
@@ -104,6 +109,10 @@ pub struct OpenDialogOptions {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub filters: Vec<DialogFilter>,
+    /// When `true`, pick a **directory** instead of a file (slice 5.2.0 — a vault is a
+    /// `<name>.vedge/` folder). `tauri-plugin-dialog` returns the chosen folder path.
+    #[serde(skip_serializing_if = "is_false")]
+    pub directory: bool,
 }
 
 /// Show a native open-file dialog (single-select). Returns the chosen path, or
@@ -145,18 +154,17 @@ mod tests {
     fn open_options_serialize_camel_case_and_omit_empty() {
         let opts = OpenDialogOptions {
             title: Some("Open vault".to_owned()),
-            filters: vec![DialogFilter {
-                name: "VEdge Vault".to_owned(),
-                extensions: vec!["vdb".to_owned()],
-            }],
+            filters: vec![],
+            directory: true,
         };
         let v = serde_json::to_value(&opts).unwrap();
         assert_eq!(v["title"], "Open vault");
-        assert_eq!(v["filters"][0]["extensions"][0], "vdb");
+        assert_eq!(v["directory"], true);
 
         let empty = serde_json::to_value(OpenDialogOptions::default()).unwrap();
         assert!(empty.get("title").is_none());
         assert!(empty.get("filters").is_none());
+        assert!(empty.get("directory").is_none());
     }
 
     #[test]

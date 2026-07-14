@@ -41,7 +41,10 @@ pub async fn enroll_biometric(
     }
 
     // 1. Resolve the Secret Key from the keychain (same source as unlock).
-    let secret_key = keychain.read_secret_key(session.vault_id())?;
+    let uuid = session
+        .vault_uuid()
+        .ok_or(VaultError::KeychainEntryNotFound)?;
+    let secret_key = keychain.read_secret_key(uuid)?;
 
     // 2. One Argon2 pass → (KEK, verify_hash): authorizes the re-prompt AND yields the
     //    KEK to store. Runs on `spawn_blocking` so it never starves the async executor.

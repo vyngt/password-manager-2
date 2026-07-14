@@ -107,6 +107,14 @@ impl VaultSession {
         &self.vault_id
     }
 
+    /// The intrinsic `vault_uuid` this session was unlocked under, if set (slice 5.2.0).
+    /// Always `Some` for a session produced by `UnlockVault` (unlock backfills it); the
+    /// keychain call sites key the Secret Key on this, not the path.
+    #[must_use]
+    pub fn vault_uuid(&self) -> Option<&str> {
+        self.config.vault_uuid.as_deref()
+    }
+
     /// The rollback delta (baseline − file) if this unlock detected a rollback, else
     /// `None` (slice 5.2c). The shell reads this once post-unlock to raise a warning.
     #[must_use]

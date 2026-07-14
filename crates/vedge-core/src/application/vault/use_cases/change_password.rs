@@ -56,9 +56,13 @@ pub async fn change_password(
     input: ChangePasswordInput,
 ) -> Result<(), VaultError> {
     // ---- 1. Resolve Secret Key ----------------------------------------------
-    let secret_key = match input.new_secret_key.clone() {
-        Some(sk) => sk,
-        None => keychain.read_secret_key(session.vault_id())?,
+    let secret_key = if let Some(sk) = input.new_secret_key.clone() {
+        sk
+    } else {
+        let uuid = session
+            .vault_uuid()
+            .ok_or(VaultError::KeychainEntryNotFound)?;
+        keychain.read_secret_key(uuid)?
     };
 
     // ---- 2. Derive a new KEK + verify_hash ----------------------------------
@@ -105,7 +109,10 @@ pub async fn change_password(
 
     // ---- 5. Keychain update --------------------------------------------------
     if let Some(sk) = input.new_secret_key {
-        keychain.store_secret_key(session.vault_id(), &sk)?;
+        let uuid = session
+            .vault_uuid()
+            .ok_or(VaultError::KeychainEntryNotFound)?;
+        keychain.store_secret_key(uuid, &sk)?;
     }
 
     // ---- 6. Swap the session's KEK ------------------------------------------

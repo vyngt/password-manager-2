@@ -32,11 +32,13 @@ pub struct TargetIdentity {
 ///
 /// Returns `None` when the target is missing or unreadable (the corrupt-vault
 /// case) — callers treat that as "identity unknown", never a hard error.
-pub async fn read_target_identity(vault_path: &Path) -> Option<TargetIdentity> {
-    if !vault_path.exists() {
+pub async fn read_target_identity(home: &Path) -> Option<TargetIdentity> {
+    // The arg is the vault home (slice 5.2.0); the `.vdb` lives inside it.
+    let vault_file = home.join(crate::domain::shared::VAULT_FILE);
+    if !vault_file.exists() {
         return None;
     }
-    let url = format!("sqlite://{}?mode=ro", vault_path.to_string_lossy());
+    let url = format!("sqlite://{}?mode=ro", vault_file.to_string_lossy());
     let conn = Database::connect(ConnectOptions::new(url)).await.ok()?;
     let identity = read_inner(&conn).await;
     // Close explicitly so the OS file handle is released before a restore renames

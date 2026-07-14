@@ -31,9 +31,11 @@ fn blob_file(store: &FilesystemBlobStore, id: &EntryId) -> std::path::PathBuf {
 
 fn make_store() -> (tempfile::TempDir, FilesystemBlobStore) {
     let dir = tempdir().unwrap();
-    let vdb = dir.path().join("work.vdb");
+    // A vault home with its `blobs/` provisioned (slice 5.2.0 — the store is fail-closed).
+    let home = dir.path().join("work.vedge");
+    std::fs::create_dir_all(home.join("blobs")).unwrap();
     let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
-    let store = FilesystemBlobStore::new(&vdb, crypto).unwrap();
+    let store = FilesystemBlobStore::new(&home, crypto).unwrap();
     (dir, store)
 }
 

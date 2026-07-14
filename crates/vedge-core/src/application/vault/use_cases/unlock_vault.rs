@@ -93,9 +93,18 @@ impl UnlockVault {
         let vault_id = VaultId::new(input.vault_path.clone());
 
         // ---- 2. Resolve Secret Key ------------------------------------------
-        let secret_key = match input.secret_key {
-            Some(sk) => sk,
-            None => self.keychain.read_secret_key(&vault_id)?,
+        // The keychain is keyed on the intrinsic `vault_uuid` (slice 5.2.0), read from
+        // the plaintext config loaded above. A migrated/created vault always carries one;
+        // a legacy vault with `vault_uuid == None` has no locatable keychain entry, so the
+        // user must supply the Secret Key (Emergency Kit) — surfaced as "not found".
+        let secret_key = if let Some(sk) = input.secret_key {
+            sk
+        } else {
+            let uuid = config
+                .vault_uuid
+                .as_deref()
+                .ok_or(VaultError::KeychainEntryNotFound)?;
+            self.keychain.read_secret_key(uuid)?
         };
 
         // ---- 3. spawn_blocking KDF ------------------------------------------

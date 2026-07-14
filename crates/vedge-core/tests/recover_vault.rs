@@ -29,14 +29,14 @@ async fn recover_vault_happy_path_restores_keychain() {
     let display = format_secret_key(&h.secret_key);
 
     // Simulate the machine where DPAPI lost the key.
-    h.keychain.delete_secret_key(&h.vault_id).unwrap();
+    h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
     let outcome = recover_vault(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
         RecoverVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             recovery_key_display: display,
         },
@@ -48,7 +48,7 @@ async fn recover_vault_happy_path_restores_keychain() {
     assert!(outcome.keychain_error.is_none());
 
     // Key was re-written so subsequent unlocks should find it.
-    let restored = h.keychain.read_secret_key(&h.vault_id).unwrap();
+    let restored = h.keychain.read_secret_key(&h.vault_uuid).unwrap();
     assert_eq!(*restored, h.secret_key);
 
     // Session is live.
@@ -67,7 +67,7 @@ async fn recover_vault_rejects_invalid_checksum_fast() {
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
         RecoverVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             recovery_key_display: display,
         },
@@ -85,14 +85,14 @@ async fn recover_vault_wrong_password_does_not_touch_keychain() {
 
     // Pre-state: delete the keychain entry. If recovery mistakenly restores
     // it on a failed unlock, the assertion at the end will notice.
-    h.keychain.delete_secret_key(&h.vault_id).unwrap();
+    h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
     let err = recover_vault(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
         RecoverVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: Zeroizing::new("WRONG password".into()),
             recovery_key_display: display,
         },
@@ -102,7 +102,7 @@ async fn recover_vault_wrong_password_does_not_touch_keychain() {
 
     assert!(matches!(err, VaultError::WrongCredentials));
     // Keychain must still be empty — we do not eagerly restore before unlock succeeds.
-    let probe = h.keychain.read_secret_key(&h.vault_id);
+    let probe = h.keychain.read_secret_key(&h.vault_uuid);
     assert!(matches!(probe, Err(VaultError::KeychainEntryNotFound)));
 }
 
@@ -110,14 +110,14 @@ async fn recover_vault_wrong_password_does_not_touch_keychain() {
 async fn recover_vault_emits_recovery_used_audit_event() {
     let h = Harness::fresh().await;
     let display = format_secret_key(&h.secret_key);
-    h.keychain.delete_secret_key(&h.vault_id).unwrap();
+    h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
     let _outcome = recover_vault(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
         RecoverVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             recovery_key_display: display,
         },
@@ -149,25 +149,32 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
     impl KeychainProvider for FailingStoreKeychain {
         fn read_secret_key(
             &self,
-            vault_id: &VaultId,
+            vault_uuid: &str,
         ) -> Result<Zeroizing<[u8; SECRET_KEY_LEN]>, VaultError> {
-            self.inner.read_secret_key(vault_id)
+            self.inner.read_secret_key(vault_uuid)
         }
         fn store_secret_key(
             &self,
-            _vault_id: &VaultId,
+            _vault_uuid: &str,
             _key: &[u8; SECRET_KEY_LEN],
         ) -> Result<(), VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
-        fn delete_secret_key(&self, vault_id: &VaultId) -> Result<(), VaultError> {
-            self.inner.delete_secret_key(vault_id)
+        fn delete_secret_key(&self, vault_uuid: &str) -> Result<(), VaultError> {
+            self.inner.delete_secret_key(vault_uuid)
         }
         fn read_commit_baseline(&self, vault_uuid: &str) -> Result<Option<i64>, VaultError> {
             self.inner.read_commit_baseline(vault_uuid)
         }
         fn store_commit_baseline(&self, vault_uuid: &str, counter: i64) -> Result<(), VaultError> {
             self.inner.store_commit_baseline(vault_uuid, counter)
+        }
+        fn migrate_secret_key(
+            &self,
+            legacy_vault_id: &VaultId,
+            vault_uuid: &str,
+        ) -> Result<bool, VaultError> {
+            self.inner.migrate_secret_key(legacy_vault_id, vault_uuid)
         }
     }
 
@@ -180,7 +187,7 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
         &uv,
         Arc::clone(&failing),
         RecoverVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             recovery_key_display: display,
         },
@@ -204,6 +211,11 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
 async fn vault_uuid_backfilled_by_recover_vault() {
     let h = Harness::fresh().await;
     let display = format_secret_key(&h.secret_key);
+    // The harness now seeds a uuid-bearing vault (slice 5.2.0); recreate the pre-4.6
+    // precondition (uuid `None`) this backfill test exercises.
+    let mut cfg = h.repo.load_config().await.unwrap();
+    cfg.vault_uuid = None;
+    h.repo.save_config(&cfg).await.unwrap();
     assert!(
         h.repo.load_config().await.unwrap().vault_uuid.is_none(),
         "precondition: a pre-4.6 vault has no uuid"
@@ -214,7 +226,7 @@ async fn vault_uuid_backfilled_by_recover_vault() {
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
         RecoverVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             recovery_key_display: display,
         },

@@ -40,7 +40,7 @@ const PW: &str = "correct horse battery staple";
 async fn unlock_pw(h: &Harness, pw: &str) -> VaultSession {
     build_unlock(h)
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: Zeroizing::new(pw.to_owned()),
             secret_key: None,
         })
@@ -96,7 +96,7 @@ async fn enroll_then_unlock_with_kek_roundtrip() {
     // with no password.
     let kek = h.biometric.retrieve(&h.vault_id).unwrap();
     let session2 = build_unlock(&h)
-        .unlock_with_kek(h.vdb_path.clone(), kek)
+        .unlock_with_kek(h.home.clone(), kek)
         .await
         .unwrap();
     assert_eq!(session2.index().all_active().len(), 1);
@@ -123,7 +123,7 @@ async fn unlock_with_kek_rejects_wrong_kek() {
     // UI falls back to the password screen.
     let wrong = Zeroizing::new([0u8; KEK_LEN]);
     let err = build_unlock(&h)
-        .unlock_with_kek(h.vdb_path.clone(), wrong)
+        .unlock_with_kek(h.home.clone(), wrong)
         .await
         .unwrap_err();
     assert!(matches!(err, VaultError::WrongCredentials), "got {err:?}");
@@ -170,7 +170,7 @@ async fn change_password_restores_stored_kek() {
     // (which was re-wrapped under the new KEK).
     let kek = h.biometric.retrieve(&h.vault_id).unwrap();
     let session2 = build_unlock(&h)
-        .unlock_with_kek(h.vdb_path.clone(), kek)
+        .unlock_with_kek(h.home.clone(), kek)
         .await
         .unwrap();
     assert_eq!(session2.index().all_active().len(), 1);
@@ -203,6 +203,11 @@ async fn disable_removes_key() {
 async fn vault_uuid_backfilled_on_biometric_unlock() {
     let h = Harness::fresh().await;
     h.seed_login("gh", "alice", "pw").await;
+    // The harness now seeds a uuid-bearing vault (slice 5.2.0); recreate the pre-4.6
+    // precondition (uuid `None`) this backfill test exercises.
+    let mut cfg = h.repo.load_config().await.unwrap();
+    cfg.vault_uuid = None;
+    h.repo.save_config(&cfg).await.unwrap();
     assert!(
         h.repo.load_config().await.unwrap().vault_uuid.is_none(),
         "precondition: a pre-4.6 vault has no uuid"
@@ -210,7 +215,7 @@ async fn vault_uuid_backfilled_on_biometric_unlock() {
 
     let uv = build_unlock(&h);
     let session = uv
-        .unlock_with_kek(h.vdb_path.clone(), Zeroizing::new(h.kek))
+        .unlock_with_kek(h.home.clone(), Zeroizing::new(h.kek))
         .await
         .unwrap();
     assert_eq!(session.vault_id(), &h.vault_id);
