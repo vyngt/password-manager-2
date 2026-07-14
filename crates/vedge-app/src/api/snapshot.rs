@@ -1,0 +1,68 @@
+//! Snapshot commands (slice 5.2.1). Mirrors `vedge-tauri/src/commands/snapshot.rs`.
+//!
+//! `create` needs an unlocked session; `list` / `delete` are no-session file ops (so the
+//! launch screen can list a locked or corrupt vault's snapshots — H0); `revert` refuses an
+//! unlocked target (the caller locks first).
+
+use serde::Serialize;
+
+use vedge_ipc::{RevertReportDto, SnapshotDto, SnapshotReportDto};
+
+use crate::api::call::call;
+use crate::api::error::ApiError;
+
+#[derive(Serialize)]
+struct VaultArg<'a> {
+    vault_path: &'a str,
+}
+
+/// "Snapshot now" on the unlocked vault.
+pub async fn create(vault_path: &str) -> Result<SnapshotReportDto, ApiError> {
+    call("create_snapshot", &VaultArg { vault_path }).await
+}
+
+/// List the vault's snapshots, newest first (no session — works on a corrupt/locked vault).
+pub async fn list(vault_path: &str) -> Result<Vec<SnapshotDto>, ApiError> {
+    call("list_snapshots", &VaultArg { vault_path }).await
+}
+
+/// Delete one snapshot by id.
+pub async fn delete(vault_path: &str, snapshot_id: &str) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        snapshot_id: &'a str,
+    }
+    call(
+        "delete_snapshot",
+        &Args {
+            vault_path,
+            snapshot_id,
+        },
+    )
+    .await
+}
+
+/// Revert the vault to a snapshot IN PLACE. The target must be **locked**; `confirm_rollback`
+/// is the user's explicit yes (reverting is a rollback by design — it auto-snapshots first).
+pub async fn revert(
+    vault_path: &str,
+    snapshot_id: &str,
+    confirm_rollback: bool,
+) -> Result<RevertReportDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        snapshot_id: &'a str,
+        confirm_rollback: bool,
+    }
+    call(
+        "revert_to_snapshot",
+        &Args {
+            vault_path,
+            snapshot_id,
+            confirm_rollback,
+        },
+    )
+    .await
+}

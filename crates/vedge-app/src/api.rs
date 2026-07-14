@@ -32,6 +32,7 @@ pub mod maintenance;
 pub mod recent;
 pub mod recovery;
 pub mod settings;
+pub mod snapshot;
 pub mod tag;
 pub mod totp;
 pub mod vault;
