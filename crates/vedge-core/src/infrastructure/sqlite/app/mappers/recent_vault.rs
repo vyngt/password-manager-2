@@ -13,6 +13,7 @@ pub fn model_to_domain(model: Model) -> Result<RecentVault, StorageError> {
         display_name: model.display_name,
         last_opened: string_to_ts_opt(model.last_opened.as_deref())?,
         sort_order: model.sort_order,
+        vault_uuid: model.vault_uuid,
     })
 }
 
@@ -23,5 +24,6 @@ pub fn domain_to_model(vault: &RecentVault) -> Model {
         display_name: vault.display_name.clone(),
         last_opened: vault.last_opened.as_ref().map(ts_to_string),
         sort_order: vault.sort_order,
+        vault_uuid: vault.vault_uuid.clone(),
     }
 }

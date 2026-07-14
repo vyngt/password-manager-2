@@ -12,6 +12,7 @@ pub mod hard_delete_entry;
 pub mod inspect_backup;
 pub mod list_audit;
 pub mod lock_vault;
+pub mod migrate_vault_layout;
 pub mod move_entry;
 pub mod queries;
 pub mod recover_vault;
@@ -48,6 +49,9 @@ pub use hard_delete_entry::hard_delete_entry;
 pub use inspect_backup::{BackupPreview, InspectBackupInput, inspect_backup};
 pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
 pub use lock_vault::{lock_vault, record_lock};
+pub use migrate_vault_layout::{
+    MigrateVaultLayoutInput, MigrateVaultLayoutOutput, migrate_vault_layout,
+};
 pub use move_entry::move_entry;
 pub use queries::{
     entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries, list_tags,

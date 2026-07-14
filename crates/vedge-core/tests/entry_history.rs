@@ -32,7 +32,7 @@ use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, L
 async fn unlock(h: &Harness, pw: &str) -> VaultSession {
     build_unlock(h)
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: Zeroizing::new(pw.to_owned()),
             secret_key: None,
         })

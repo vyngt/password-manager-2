@@ -27,7 +27,9 @@ use vedge_core::application::vault::ports::{
     VaultRepository, VaultRepositoryFactory,
 };
 use vedge_core::application::vault::use_cases::UnlockVault;
-use vedge_core::domain::shared::{EntryId, TagId, VaultId, now};
+use vedge_core::domain::shared::{
+    BLOBS_DIR, EntryId, SNAPSHOTS_DIR, TagId, VAULT_FILE, VaultId, now,
+};
 use vedge_core::domain::vault::aad::{entry_aad, tag_aad};
 use vedge_core::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN};
 use vedge_core::domain::vault::entities::{EntryRow, TagRow, VaultConfig};
@@ -57,8 +59,13 @@ pub fn fast_kdf_params() -> KdfParams {
 
 pub struct Harness {
     pub tempdir: TempDir,
-    pub vdb_path: PathBuf,
+    /// The vault **home** directory (`…/work.vedge`) — the value tests pass as
+    /// `vault_path` (slice 5.2.0). The `.vdb` lives at `home.join(VAULT_FILE)`.
+    pub home: PathBuf,
     pub vault_id: VaultId,
+    /// The intrinsic `vault_uuid` this vault carries; the keychain Secret Key is
+    /// seeded under it (slice 5.2.0 — the keychain is uuid-keyed, not path-keyed).
+    pub vault_uuid: String,
     pub master_password: Zeroizing<String>,
     pub secret_key: [u8; SECRET_KEY_LEN],
     pub crypto: Arc<XChaCha20CryptoProvider>,
@@ -80,8 +87,12 @@ impl Harness {
     /// one tag pre-seeded. Registers the Secret Key in the memory keychain.
     pub async fn fresh() -> Self {
         let tempdir = tempfile::tempdir().unwrap();
-        let vdb_path = tempdir.path().join("work.vdb");
-        let vault_id = VaultId::new(&vdb_path);
+        // The vault is a `<name>.vedge/` home (slice 5.2.0): provision its fixed members
+        // before opening the DB / blob store.
+        let home = tempdir.path().join("work.vedge");
+        std::fs::create_dir_all(home.join(BLOBS_DIR)).unwrap();
+        std::fs::create_dir_all(home.join(SNAPSHOTS_DIR)).unwrap();
+        let vault_id = VaultId::new(&home);
 
         let crypto = Arc::new(XChaCha20CryptoProvider::new());
         let kdf = Arc::new(Argon2idKdfProvider::new());
@@ -92,7 +103,11 @@ impl Harness {
         let master_password: Zeroizing<String> =
             Zeroizing::new("correct horse battery staple".into());
         let secret_key = [0x55u8; SECRET_KEY_LEN];
-        keychain.store_secret_key(&vault_id, &secret_key).unwrap();
+        // A normal, migrated/created vault carries an intrinsic uuid, and its keychain
+        // Secret Key is stored under `secret:{uuid}` (slice 5.2.0). Backfill-precondition
+        // tests that need a pre-4.6 (uuid `None`) vault clear it themselves.
+        let vault_uuid = ulid::Ulid::new().to_string();
+        keychain.store_secret_key(&vault_uuid, &secret_key).unwrap();
 
         let kdf_params = fast_kdf_params();
         let vault_salt = [0x22u8; VAULT_SALT_LEN];
@@ -121,24 +136,27 @@ impl Harness {
             audit_retention_days: 90,
             created_at: now(),
             last_unlocked_at: None,
-            vault_uuid: None,
+            vault_uuid: Some(vault_uuid.clone()),
             commit_counter: 0,
         };
 
         // Open DB, run migrations, seed config.
-        let db = VaultDbConnection::open(&vdb_path).await.unwrap();
+        let db = VaultDbConnection::open(&home.join(VAULT_FILE))
+            .await
+            .unwrap();
         let repo = Arc::new(SqliteVaultRepository::new(db.handle()));
         repo.save_config(&config).await.unwrap();
 
         let blob = Arc::new(
-            FilesystemBlobStore::new(&vdb_path, Arc::clone(&crypto) as Arc<dyn CryptoProvider>)
+            FilesystemBlobStore::new(&home, Arc::clone(&crypto) as Arc<dyn CryptoProvider>)
                 .unwrap(),
         );
 
         Self {
             tempdir,
-            vdb_path,
+            home,
             vault_id,
+            vault_uuid,
             master_password,
             secret_key,
             crypto,
@@ -262,7 +280,7 @@ pub fn tempdir_path() -> (TempDir, PathBuf) {
 }
 
 pub fn as_path(h: &Harness) -> &Path {
-    &h.vdb_path
+    &h.home
 }
 
 /// Construct an `UnlockVault` use case wired to the harness's ports +

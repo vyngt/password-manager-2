@@ -28,7 +28,7 @@ async fn export_round_trips_through_recovery_format() {
     let uv = build_unlock(&h);
     let session = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })
@@ -47,7 +47,7 @@ async fn export_round_trips_through_recovery_format() {
 
     assert_eq!(content.vault_name, "work vault");
     assert!(
-        content.vault_path.ends_with("work.vdb"),
+        content.vault_path.ends_with("work.vedge"),
         "got {}",
         content.vault_path
     );
@@ -65,7 +65,7 @@ async fn export_propagates_keychain_entry_not_found() {
     let uv = build_unlock(&h);
     let session = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })
@@ -74,7 +74,7 @@ async fn export_propagates_keychain_entry_not_found() {
 
     // Delete the secret key after unlock; export must not silently fabricate
     // one from session state.
-    h.keychain.delete_secret_key(&h.vault_id).unwrap();
+    h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let err = export_emergency_kit(
         &session,
@@ -96,7 +96,7 @@ async fn export_appends_audit_event() {
     let uv = build_unlock(&h);
     let session = uv
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })

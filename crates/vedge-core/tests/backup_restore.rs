@@ -32,7 +32,7 @@ use vedge_core::application::vault::use_cases::{
     UnlockVaultInput, backup_vault, create_entry, export_document, import_document, inspect_backup,
     restore_vault,
 };
-use vedge_core::domain::shared::EntryId;
+use vedge_core::domain::shared::{EntryId, VAULT_FILE};
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
@@ -48,7 +48,7 @@ use vedge_core::infrastructure::sqlite::vault::{
 async fn unlock(h: &Harness) -> VaultSession {
     build_unlock(h)
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })
@@ -211,12 +211,15 @@ async fn unlock_at(h: &Harness, path: &Path) -> VaultSession {
         .unwrap()
 }
 
-/// Stamp a specific `vault_uuid` onto a harness vault (default harness uuid is
-/// `None`, which can't exercise the mismatch path).
+/// Stamp a specific `vault_uuid` onto a harness vault (the default harness uuid is a
+/// random ULID, which can't exercise the mismatch path). Re-seeds the keychain under
+/// the new uuid so a subsequent keychain-path unlock still resolves the Secret Key
+/// (the keychain is uuid-keyed as of slice 5.2.0).
 async fn set_uuid(h: &Harness, uuid: &str) {
     let mut cfg = h.config.clone();
     cfg.vault_uuid = Some(uuid.to_owned());
     h.repo.save_config(&cfg).await.unwrap();
+    h.keychain.store_secret_key(uuid, &h.secret_key).unwrap();
 }
 
 /// Build a minimal, internally-consistent `.vbk` with a chosen format/schema — for
@@ -286,9 +289,9 @@ async fn restore_round_trip_recovers_entries_and_a_document() {
     .unwrap();
     drop(session);
 
-    // Install-from-backup into a fresh, absent target (no open handles).
+    // Install-from-backup into a fresh, absent target home (no open handles).
     let target_dir = tempfile::tempdir().unwrap();
-    let target = target_dir.path().join("restored.vdb");
+    let target = target_dir.path().join("restored.vedge");
     let factory = SqliteVaultRepositoryFactory::new();
     let report = restore_vault(
         &factory,
@@ -312,7 +315,9 @@ async fn restore_round_trip_recovers_entries_and_a_document() {
     drop(restored);
 
     // Independent DB check: 4 entries + exactly one BackupRestored row.
-    let db = VaultDbConnection::open(&target).await.unwrap();
+    let db = VaultDbConnection::open(&target.join(VAULT_FILE))
+        .await
+        .unwrap();
     let repo = SqliteVaultRepository::new(db.handle());
     assert_eq!(repo.all_entries().await.unwrap().len(), 4);
     let restored_rows = repo
@@ -346,10 +351,13 @@ async fn restore_over_an_existing_vault_replaces_it() {
     .unwrap();
     drop(session);
 
-    // An existing target with the same uuid (a copy of the source's `.vdb`).
+    // An existing, locked target HOME with the same uuid — a copy of the source's
+    // vault.vdb into a fresh home (the copy has no open handles).
     let target_dir = tempfile::tempdir().unwrap();
-    let target = target_dir.path().join("existing.vdb");
-    std::fs::copy(&h.vdb_path, &target).unwrap();
+    let target = target_dir.path().join("existing.vedge");
+    std::fs::create_dir_all(target.join("blobs")).unwrap();
+    std::fs::create_dir_all(target.join("snapshots")).unwrap();
+    std::fs::copy(h.home.join(VAULT_FILE), target.join(VAULT_FILE)).unwrap();
 
     let factory = SqliteVaultRepositoryFactory::new();
     restore_vault(
@@ -365,14 +373,26 @@ async fn restore_over_an_existing_vault_replaces_it() {
     .unwrap();
 
     // No transient artifacts survive.
-    assert!(!target_dir.path().join("existing.vdb.old").exists());
-    assert!(!target_dir.path().join(".existing.restore-staging").exists());
-    assert!(!target_dir.path().join("existing.restore.intent").exists());
+    assert!(!target_dir.path().join("existing.vedge.old").exists());
+    assert!(
+        !target_dir
+            .path()
+            .join(".existing.vedge.restore-staging")
+            .exists()
+    );
+    assert!(
+        !target_dir
+            .path()
+            .join(".existing.vedge.restore.intent")
+            .exists()
+    );
 
     // The restored vault opens and carries the backed-up entry.
     let restored = unlock_at(&h, &target).await;
     drop(restored);
-    let db = VaultDbConnection::open(&target).await.unwrap();
+    let db = VaultDbConnection::open(&target.join(VAULT_FILE))
+        .await
+        .unwrap();
     let repo = SqliteVaultRepository::new(db.handle());
     assert_eq!(repo.all_entries().await.unwrap().len(), 1);
 }
@@ -407,7 +427,7 @@ async fn restore_refuses_a_tampered_archive_and_leaves_the_target_untouched() {
     std::fs::write(&dest, &bytes).unwrap();
 
     let target_dir = tempfile::tempdir().unwrap();
-    let target = target_dir.path().join("t.vdb");
+    let target = target_dir.path().join("t.vedge");
     let factory = SqliteVaultRepositoryFactory::new();
     let err = restore_vault(
         &factory,
@@ -458,7 +478,7 @@ async fn restore_refuses_a_uuid_mismatch() {
         &factory,
         &MemoryKeychainProvider::new(),
         RestoreVaultInput {
-            target_vault: hb.vdb_path.clone(),
+            target_vault: hb.home.clone(),
             archive_path: dest,
             confirm_rollback: false,
         },
@@ -481,7 +501,7 @@ async fn restore_refuses_a_newer_schema() {
         &factory,
         &MemoryKeychainProvider::new(),
         RestoreVaultInput {
-            target_vault: target_dir.path().join("s.vdb"),
+            target_vault: target_dir.path().join("s.vedge"),
             archive_path,
             confirm_rollback: false,
         },
@@ -505,7 +525,7 @@ async fn restore_refuses_an_unknown_format() {
         &factory,
         &MemoryKeychainProvider::new(),
         RestoreVaultInput {
-            target_vault: target_dir.path().join("f.vdb"),
+            target_vault: target_dir.path().join("f.vedge"),
             archive_path,
             confirm_rollback: false,
         },
@@ -539,7 +559,7 @@ async fn inspect_backup_reports_counts_and_flags() {
     // Preview against a fresh (absent) target → unreadable, no hard-stops.
     let target_dir = tempfile::tempdir().unwrap();
     let preview = inspect_backup(InspectBackupInput {
-        target_vault: target_dir.path().join("none.vdb"),
+        target_vault: target_dir.path().join("none.vedge"),
         archive_path: dest,
     })
     .await
@@ -583,7 +603,7 @@ async fn inspect_reports_rollback_delta_against_a_live_ahead_target() {
 
     // Preview against the live (WAL) target — a mode=ro read coexists with the session.
     let preview = inspect_backup(InspectBackupInput {
-        target_vault: h.vdb_path.clone(),
+        target_vault: h.home.clone(),
         archive_path: dest,
     })
     .await
@@ -646,7 +666,7 @@ async fn restore_confirm_gate_refuses_then_rebaselines() {
 
     // Install the HIGH backup into a fresh target → the target is now at `high_counter`.
     let target_dir = tempfile::tempdir().unwrap();
-    let target = target_dir.path().join("t.vdb");
+    let target = target_dir.path().join("t.vedge");
     restore_vault(
         &factory,
         &keychain,

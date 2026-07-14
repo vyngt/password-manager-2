@@ -52,7 +52,7 @@ async fn append_all(h: &Harness, events: &[AuditEvent]) {
 async fn unlock(h: &Harness) -> VaultSession {
     build_unlock(h)
         .execute(UnlockVaultInput {
-            vault_path: h.vdb_path.clone(),
+            vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
             secret_key: None,
         })
@@ -312,7 +312,9 @@ async fn query_audit_skips_unparseable_action() {
 
     // Hand-insert a row whose action this build can't parse (simulates a
     // variant added by a later slice). A second connection to the same .vdb.
-    let db2 = VaultDbConnection::open(&h.vdb_path).await.unwrap();
+    let db2 = VaultDbConnection::open(&h.home.join(vedge_core::domain::shared::VAULT_FILE))
+        .await
+        .unwrap();
     db2.handle()
         .as_ref()
         .execute(Statement::from_string(
