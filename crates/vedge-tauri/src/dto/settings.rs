@@ -42,10 +42,14 @@ pub fn recent_vault_from_dto(dto: RecentVaultDto) -> Result<RecentVault, Command
 }
 
 #[must_use]
-pub fn recent_vault_status_to_dto(s: &vedge_core::RecentVaultStatus) -> RecentVaultStatusDto {
+pub fn recent_vault_status_to_dto(
+    s: &vedge_core::RecentVaultStatus,
+    openable: bool,
+) -> RecentVaultStatusDto {
     RecentVaultStatusDto {
         vault: recent_vault_to_dto(&s.vault),
         exists: s.exists,
+        openable,
     }
 }
 

@@ -9,6 +9,7 @@ mod m20260418_100006_create_entry_history;
 mod m20260711_100007_create_audit_occurred_index;
 mod m20260711_100008_add_vault_uuid;
 mod m20260713_100009_add_commit_counter;
+mod m20260714_100010_add_snapshot_backup_fields;
 
 pub struct Migrator;
 
@@ -24,6 +25,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260711_100007_create_audit_occurred_index::Migration),
             Box::new(m20260711_100008_add_vault_uuid::Migration),
             Box::new(m20260713_100009_add_commit_counter::Migration),
+            Box::new(m20260714_100010_add_snapshot_backup_fields::Migration),
         ]
     }
 }

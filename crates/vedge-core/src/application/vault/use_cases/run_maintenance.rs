@@ -9,13 +9,18 @@ use tracing::instrument;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{EntryId, now};
 use crate::domain::vault::errors::VaultError;
+use crate::infrastructure::snapshot::manifest::{SnapshotReason, verify_hash_prefix};
+use crate::infrastructure::snapshot::store;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(clippy::struct_field_names)] // "_deleted" suffix carries meaning
 pub struct MaintenanceReport {
     pub trashed_entries_deleted: u64,
     pub audit_events_deleted: u64,
     pub orphaned_blobs_deleted: u64,
+    /// Whole snapshot dirs pruned by the opt-in retention policy (Decision ⑯).
+    pub snapshots_pruned: u64,
+    /// Content-addressed objects reclaimed by the mark-and-sweep GC (Decision ⑪).
+    pub snapshot_objects_swept: u64,
 }
 
 #[instrument(skip_all, fields(vault_id = %session.vault_id()))]
@@ -54,9 +59,53 @@ pub async fn run_maintenance(session: &VaultSession) -> Result<MaintenanceReport
         }
     }
 
+    // ---- 4. Snapshot retention (Decision ⑯) + object GC (Decision ⑪) --------
+    // Retention is OPT-IN: `backup_keep_count` unset ⇒ prune nothing (a password manager
+    // must never silently delete a user's history). The object sweep runs UNCONDITIONALLY —
+    // it reclaims objects orphaned by a user `delete_snapshot`, a crashed create, or a prune.
+    let snapshots_dir = session.vault_id().snapshots_dir();
+    let snapshots_pruned = prune_snapshots(session, &snapshots_dir);
+    let snapshot_objects_swept = store::sweep_objects(&snapshots_dir).unwrap_or(0);
+
     Ok(MaintenanceReport {
         trashed_entries_deleted,
         audit_events_deleted,
         orphaned_blobs_deleted,
+        snapshots_pruned,
+        snapshot_objects_swept,
     })
+}
+
+/// Opt-in snapshot retention (Decision ⑯). Prunes whole snapshot dirs down toward
+/// `backup_keep_count`, but with a HARD floor of 3 and four protections, ALL of which must
+/// hold together or a user could lose their only good snapshot:
+/// - never the newest `keep` (any reason);
+/// - never a `pre-restore` snapshot (⑭ — that is somebody's undo button);
+/// - never a stale-credential snapshot (⑬ — the only artifact the old kit can still open).
+///
+/// Best-effort per dir. `None` `backup_keep_count` ⇒ keep everything (returns 0).
+fn prune_snapshots(session: &VaultSession, snapshots_dir: &std::path::Path) -> u64 {
+    let Some(configured) = session.config.backup_keep_count else {
+        return 0;
+    };
+    let keep = usize::try_from(configured.max(3)).unwrap_or(3);
+    let live_prefix = verify_hash_prefix(&session.config.verify_hash);
+    let all = store::list_snapshots(snapshots_dir).unwrap_or_default(); // newest-first
+
+    let mut pruned: u64 = 0;
+    for (i, snap) in all.iter().enumerate() {
+        if i < keep {
+            continue; // within the newest-`keep` window — always kept
+        }
+        if snap.manifest.reason == SnapshotReason::PreRestore {
+            continue; // ⑯ never an undo point
+        }
+        if snap.manifest.verify_hash_prefix != live_prefix {
+            continue; // ⑯ never a stale-credential snapshot (the old kit's only key to it)
+        }
+        if std::fs::remove_dir_all(&snap.dir).is_ok() {
+            pruned = pruned.saturating_add(1);
+        }
+    }
+    pruned
 }

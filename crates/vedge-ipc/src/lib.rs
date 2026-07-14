@@ -31,6 +31,7 @@ pub mod error;
 pub mod health;
 pub mod misc;
 pub mod settings;
+pub mod snapshot;
 pub mod tag;
 pub mod totp;
 
@@ -60,5 +61,6 @@ pub use settings::{
     AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto, RecentVaultDto,
     RecentVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
 };
+pub use snapshot::{RevertReportDto, SnapshotDto, SnapshotReportDto};
 pub use tag::{CreateTagDto, RenameTagDto, TagMetaDto};
 pub use totp::{TotpAlgorithmDto, TotpCodeDto, TotpEnrolmentDto, TotpUpdateDto};

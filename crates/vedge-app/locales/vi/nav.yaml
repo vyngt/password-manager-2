@@ -1,6 +1,7 @@
 vault: "Kho"
 audit: "Nhật ký kiểm toán"
 health: "Sức khỏe"
+snapshots: "Ảnh chụp"
 generator: "Trình tạo"
 settings: "Cài đặt"
 toggle_sidebar: "Bật/tắt thanh bên"

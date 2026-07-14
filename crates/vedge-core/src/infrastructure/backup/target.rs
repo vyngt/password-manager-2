@@ -20,6 +20,9 @@ pub struct TargetIdentity {
     pub vault_uuid: Option<String>,
     pub schema_version: i32,
     pub last_unlocked_at: Option<String>,
+    /// The live vault's `verify_hash` prefix (16 hex chars) — lets a no-session snapshot
+    /// listing flag a snapshot whose credentials differ (a failed rewrap; slice 5.2.1).
+    pub verify_hash_prefix: Option<String>,
     pub entry_count: u64,
     /// The target's rollback `commit_counter` (slice 5.2c). `None` when the column
     /// is absent — a target migrated before 5.2c but not yet reopened. Read as a
@@ -48,16 +51,21 @@ pub async fn read_target_identity(home: &Path) -> Option<TargetIdentity> {
 }
 
 async fn read_inner(conn: &DatabaseConnection) -> Option<TargetIdentity> {
+    // `verify_hash` is a Phase-1 column (always present on any migrated vault), so folding
+    // it into the identity SELECT is safe — unlike the later `commit_counter` (read below).
     let cfg = conn
         .query_one(Statement::from_string(
             DatabaseBackend::Sqlite,
-            "SELECT vault_uuid, schema_version, last_unlocked_at FROM vault_config WHERE id = 'default'",
+            "SELECT vault_uuid, schema_version, last_unlocked_at, verify_hash FROM vault_config WHERE id = 'default'",
         ))
         .await
         .ok()??;
     let vault_uuid: Option<String> = cfg.try_get_by_index(0).ok()?;
     let schema_version: i32 = cfg.try_get_by_index(1).ok()?;
     let last_unlocked_at: Option<String> = cfg.try_get_by_index(2).ok()?;
+    let verify_hash: Option<Vec<u8>> = cfg.try_get_by_index(3).ok();
+    let verify_hash_prefix = verify_hash
+        .map(|bytes| crate::infrastructure::snapshot::manifest::verify_hash_prefix(&bytes));
     // Entry count + commit counter are best-effort (preview only); uuid/schema are the
     // ones that gate a refusal, so only they are required. The commit counter is a
     // SEPARATE query (D1/R9): a target migrated before 5.2c lacks the column, and
@@ -69,6 +77,7 @@ async fn read_inner(conn: &DatabaseConnection) -> Option<TargetIdentity> {
         vault_uuid,
         schema_version,
         last_unlocked_at,
+        verify_hash_prefix,
         entry_count,
         commit_counter,
     })

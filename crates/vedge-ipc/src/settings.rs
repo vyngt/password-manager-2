@@ -22,6 +22,13 @@ pub struct RecentVaultStatusDto {
     #[serde(flatten)]
     pub vault: RecentVaultDto,
     pub exists: bool,
+    /// `true` when the vault's `vault.vdb` is present AND opens as a valid database (slice
+    /// 5.2.1). A present-but-`!openable` vault is CORRUPT — the launch screen badges it
+    /// "can't be opened" and offers Restore from a snapshot (the H0 disaster path).
+    /// `#[serde(default)]` so an older frontend/back-compat payload without the field reads
+    /// as `false` (treated as "not openable" — conservative).
+    #[serde(default)]
+    pub openable: bool,
 }
 
 // ---- AppSetting --------------------------------------------------------------

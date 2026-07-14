@@ -31,6 +31,11 @@ pub async fn backup(vault_path: &str, dest_path: &str) -> Result<BackupReportDto
 
 /// Preview what restoring `archive_path` over `vault_path` would do (read-only; safe
 /// on a corrupt or missing target).
+///
+/// Backend-complete but frontend-pending: 5.2.1 moved snapshot restore to the launch screen
+/// (`api::snapshot::revert`) and deleted the Settings restore UI. `.vbk` "Open backup" is
+/// 5.2.2 — this wrapper is its consumer, so it is retained (not a dead wrapper to delete).
+#[allow(dead_code)]
 pub async fn inspect(vault_path: &str, archive_path: &str) -> Result<BackupPreviewDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -50,6 +55,10 @@ pub async fn inspect(vault_path: &str, archive_path: &str) -> Result<BackupPrevi
 /// Restore `vault_path` from `archive_path`. The target must be **locked**;
 /// `confirm_rollback` is the user's explicit yes to a rollback (restoring an older
 /// backup over a newer vault).
+///
+/// Backend-complete but frontend-pending — see [`inspect`]. Consumed by 5.2.2's "Open
+/// backup" UI; retained rather than deleted (the 2.10.1 lesson).
+#[allow(dead_code)]
 pub async fn restore(
     vault_path: &str,
     archive_path: &str,
