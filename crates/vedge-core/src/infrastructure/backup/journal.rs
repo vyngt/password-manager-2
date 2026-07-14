@@ -271,7 +271,10 @@ fn rename_retrying(src: &Path, dst: &Path) -> Result<(), VaultError> {
         match std::fs::rename(src, dst) {
             Ok(()) => {
                 if attempt > 0 {
-                    warn!(attempts = attempt, "rename succeeded after retrying a locked handle");
+                    warn!(
+                        attempts = attempt,
+                        "rename succeeded after retrying a locked handle"
+                    );
                 }
                 return Ok(());
             }

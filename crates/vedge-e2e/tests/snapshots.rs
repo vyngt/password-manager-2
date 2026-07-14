@@ -27,7 +27,10 @@ fn corrupt_vault_db(home: &str) -> Result<()> {
     let vdb = Path::new(home).join("vault.vdb");
     let mut last = None;
     for _ in 0..20 {
-        match std::fs::write(&vdb, b"NOT A SQLITE DATABASE -- corrupted by the e2e harness") {
+        match std::fs::write(
+            &vdb,
+            b"NOT A SQLITE DATABASE -- corrupted by the e2e harness",
+        ) {
             Ok(()) => return Ok(()),
             Err(e) => {
                 last = Some(e);
@@ -56,7 +59,10 @@ async fn snapshot_and_revert_via_ui() -> Result<()> {
     add_login(&session, "keeper", "u", "p").await?;
 
     // Take a snapshot on /v/snapshots.
-    session.click_testid("nav-snapshots").await.context("nav snapshots")?;
+    session
+        .click_testid("nav-snapshots")
+        .await
+        .context("nav snapshots")?;
     session
         .wait_for(
             By::Css("[data-testid='snapshots-page']".to_string()),
@@ -64,7 +70,10 @@ async fn snapshot_and_revert_via_ui() -> Result<()> {
         )
         .await
         .context("snapshots page")?;
-    session.click_testid("snapshot-take").await.context("take snapshot")?;
+    session
+        .click_testid("snapshot-take")
+        .await
+        .context("take snapshot")?;
     session
         .wait_for(
             By::Css("[data-testid='snapshot-row']".to_string()),
@@ -74,11 +83,17 @@ async fn snapshot_and_revert_via_ui() -> Result<()> {
         .context("snapshot row appears")?;
 
     // Move the vault FORWARD of the snapshot.
-    session.click_testid("nav-vault").await.context("nav vault")?;
+    session
+        .click_testid("nav-vault")
+        .await
+        .context("nav vault")?;
     add_login(&session, "extra", "u", "p").await?;
 
     // Revert to the snapshot (inline confirm).
-    session.click_testid("nav-snapshots").await.context("nav snapshots again")?;
+    session
+        .click_testid("nav-snapshots")
+        .await
+        .context("nav snapshots again")?;
     session
         .wait_for(
             By::Css("[data-testid='snapshot-revert']".to_string()),
@@ -86,7 +101,10 @@ async fn snapshot_and_revert_via_ui() -> Result<()> {
         )
         .await
         .context("revert button")?;
-    session.click_testid("snapshot-revert").await.context("arm revert confirm")?;
+    session
+        .click_testid("snapshot-revert")
+        .await
+        .context("arm revert confirm")?;
     session
         .wait_for(
             By::Css("[data-testid='snapshot-revert-confirm']".to_string()),
@@ -94,7 +112,10 @@ async fn snapshot_and_revert_via_ui() -> Result<()> {
         )
         .await
         .context("revert confirm button")?;
-    session.click_testid("snapshot-revert-confirm").await.context("confirm revert")?;
+    session
+        .click_testid("snapshot-revert-confirm")
+        .await
+        .context("confirm revert")?;
 
     // The revert locks the vault + returns to the launch screen. Re-unlock and assert the
     // snapshot's state: "keeper" is back, "extra" (added after the snapshot) is gone.
@@ -130,7 +151,10 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
     add_login(&session, "keeper", "u", "p").await?;
 
     // Snapshot, then lock.
-    session.click_testid("nav-snapshots").await.context("nav snapshots")?;
+    session
+        .click_testid("nav-snapshots")
+        .await
+        .context("nav snapshots")?;
     session
         .wait_for(
             By::Css("[data-testid='snapshots-page']".to_string()),
@@ -138,7 +162,10 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
         )
         .await
         .context("snapshots page")?;
-    session.click_testid("snapshot-take").await.context("take snapshot")?;
+    session
+        .click_testid("snapshot-take")
+        .await
+        .context("take snapshot")?;
     session
         .wait_for(
             By::Css("[data-testid='snapshot-row']".to_string()),
@@ -146,7 +173,10 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
         )
         .await
         .context("snapshot row appears")?;
-    session.click_testid("vault-lock").await.context("lock the vault")?;
+    session
+        .click_testid("vault-lock")
+        .await
+        .context("lock the vault")?;
     assert_unlocked(&session, &vault, false).await?;
 
     // 🔴 Corrupt the vault's DB from the harness (NO invoke), then reload so the picker
@@ -162,7 +192,10 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
         )
         .await
         .context("the corrupt vault must show a Restore action (H0)")?;
-    session.click_testid("vault-restore").await.context("click Restore on the picker")?;
+    session
+        .click_testid("vault-restore")
+        .await
+        .context("click Restore on the picker")?;
 
     // Restore reverts to the newest snapshot; the vault becomes openable again (the Restore
     // action disappears). Then unlock and confirm the entry is recovered.

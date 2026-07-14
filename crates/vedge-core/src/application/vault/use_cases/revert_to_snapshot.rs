@@ -224,8 +224,12 @@ pub async fn revert_to_snapshot(
     // keeps the async runtime free to actually FINISH that pool close while the rename retries
     // — the difference between the handle releasing and the retries starving and failing.
     let started_at = format_rfc3339_millis(now());
-    let (home_c, staging_c, hash_c, started_c) =
-        (home.clone(), staging.clone(), staged_hash.clone(), started_at.clone());
+    let (home_c, staging_c, hash_c, started_c) = (
+        home.clone(),
+        staging.clone(),
+        staged_hash.clone(),
+        started_at.clone(),
+    );
     tokio::task::spawn_blocking(move || {
         journal::commit_preserving(&home_c, &staging_c, &hash_c, &started_c, &[SNAPSHOTS_DIR])
     })
