@@ -37,9 +37,9 @@ use zeroize::Zeroizing;
 
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{
-    CreateVaultInput, UnlockVaultInput, entries_by_domain, entries_by_folder, entries_by_tag,
-    list_active_entries, list_tags as list_tags_core, list_trashed_entries, record_lock,
-    search_entries,
+    CreateVaultInput, UnlockVaultInput, close_session_db, entries_by_domain, entries_by_folder,
+    entries_by_tag, list_active_entries, list_tags as list_tags_core, list_trashed_entries,
+    record_lock, search_entries,
 };
 
 use crate::dto::entry::{IndexEntryDto, entry_id_from_str, index_entry_to_dto, tag_id_from_str};
@@ -185,7 +185,12 @@ pub async fn lock_vault(
     // the handle releases the last clone → `VaultSession::Drop` zeroizes.
     let audit = {
         let guard = handle.lock().await;
-        record_lock(&guard).await
+        let audit = record_lock(&guard).await;
+        // Release the DB file handle SYNCHRONOUSLY (slice 5.2.1): this is the INTERACTIVE lock,
+        // which a `/v/snapshots` revert (lock → revert) follows. Without it the just-closed
+        // pool's handle lingers into the swap's rename and fails on Windows (`os error 5`).
+        close_session_db(&guard).await;
+        audit
     };
     drop(handle);
     audit.map_err(Into::into)

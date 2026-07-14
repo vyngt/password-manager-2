@@ -36,17 +36,22 @@ pub async fn record_lock(session: &VaultSession) -> Result<(), VaultError> {
         occurred_at: now(),
         device_id: None,
     };
-    let audit = repo.append_audit(&event).await;
+    repo.append_audit(&event).await
+}
 
-    // 🔴 Release the DB file handle SYNCHRONOUSLY before the session drops (slice 5.2.1).
-    // sqlx's pool close is async on `Drop`, so without this the `.vdb` handle lingers past
-    // the lock and a following file op (an in-place revert, a restore) races it on Windows.
-    // Closing here — the single hook every lock path (command, TTL reaper, screen-lock) runs
-    // through — makes the handle gone deterministically. Done even if the audit failed: the
-    // session is being torn down regardless.
-    repo.close().await;
-
-    audit
+/// Close the session's DB pool, releasing the OS file handle SYNCHRONOUSLY (slice 5.2.1).
+///
+/// 🔴 Call this on an **interactive** lock — the one the user triggers before a file op
+/// (an in-place `revert_to_snapshot`, a `.vbk` restore) might follow. sqlx's pool close is
+/// async on `Drop`, so without this the `.vdb` handle lingers past the lock and the following
+/// swap races it on Windows (`os error 5`). Closing here makes the handle GONE by the time the
+/// lock returns — deterministic, not a retry.
+///
+/// Deliberately NOT part of [`record_lock`]: the TTL reaper and the screen-lock watcher lock a
+/// session and then READ its audit trail, and nothing reverts right after those, so they must
+/// keep the connection alive.
+pub async fn close_session_db(session: &VaultSession) {
+    session.repo.close().await;
 }
 
 pub async fn lock_vault(session: VaultSession) -> Result<(), VaultError> {

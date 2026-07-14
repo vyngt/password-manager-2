@@ -77,6 +77,7 @@ mod tests {
                 sort_order: 0,
             },
             exists,
+            openable: exists,
         }
     }
 

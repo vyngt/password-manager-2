@@ -121,6 +121,32 @@ async fn auto_snapshot_pre_restore(
     }
 }
 
+/// Run the preserving swap on a blocking thread.
+///
+/// The swap is sync, and right after an in-place revert follows a lock its rename may block for
+/// a while as the just-locked session's sqlx pool finishes releasing the `.vdb` handle on
+/// Windows (M1). Running it on a blocking thread keeps the async runtime free to FINISH that
+/// pool close while the rename retries — the difference between the handle releasing and the
+/// retries starving and failing.
+async fn commit_swap_blocking(
+    home: &std::path::Path,
+    staging: &std::path::Path,
+    vault_hash: &str,
+    started_at: &str,
+) -> Result<(), VaultError> {
+    let (home, staging, vault_hash, started_at) = (
+        home.to_owned(),
+        staging.to_owned(),
+        vault_hash.to_owned(),
+        started_at.to_owned(),
+    );
+    tokio::task::spawn_blocking(move || {
+        journal::commit_preserving(&home, &staging, &vault_hash, &started_at, &[SNAPSHOTS_DIR])
+    })
+    .await
+    .map_err(|e| VaultError::Storage(StorageError::Io(format!("swap task join: {e}"))))?
+}
+
 #[instrument(skip_all, fields(vault = %input.vault.display(), snapshot = %input.snapshot_id))]
 pub async fn revert_to_snapshot(
     repo_factory: &dyn VaultRepositoryFactory,
@@ -216,25 +242,10 @@ pub async fn revert_to_snapshot(
     // Re-hash the staged vault — anchors the journal (what recovery re-verifies).
     let (_s, staged_hash) = archive::hash_file(&staged_vault)?;
 
-    // 4. COMMIT: the write-ahead swap, PRESERVING `snapshots/` (§A / Decision ⑮).
-    //
-    // On `spawn_blocking`: the swap is sync and, right after an in-place revert follows a
-    // lock, its rename may block for several seconds while the just-locked session's sqlx pool
-    // finishes releasing the `.vdb` handle on Windows (M1). Running it on a blocking thread
-    // keeps the async runtime free to actually FINISH that pool close while the rename retries
-    // — the difference between the handle releasing and the retries starving and failing.
+    // 4. COMMIT: the write-ahead swap, PRESERVING `snapshots/` (§A / Decision ⑮), on a
+    //    blocking thread so a lingering just-locked handle can release while it retries (M1).
     let started_at = format_rfc3339_millis(now());
-    let (home_c, staging_c, hash_c, started_c) = (
-        home.clone(),
-        staging.clone(),
-        staged_hash.clone(),
-        started_at.clone(),
-    );
-    tokio::task::spawn_blocking(move || {
-        journal::commit_preserving(&home_c, &staging_c, &hash_c, &started_c, &[SNAPSHOTS_DIR])
-    })
-    .await
-    .map_err(|e| VaultError::Storage(StorageError::Io(format!("swap task join: {e}"))))??;
+    commit_swap_blocking(&home, &staging, &staged_hash, &started_at).await?;
 
     // 5. POST (L1): reopen (fatal — signals a bad revert) + one best-effort audit row + the
     //    best-effort rollback-mirror re-baseline. Nothing here may fail the revert.

@@ -52,7 +52,7 @@ pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
 pub use inspect_backup::{BackupPreview, InspectBackupInput, inspect_backup};
 pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
-pub use lock_vault::{lock_vault, record_lock};
+pub use lock_vault::{close_session_db, lock_vault, record_lock};
 pub use migrate_vault_layout::{
     MigrateVaultLayoutInput, MigrateVaultLayoutOutput, migrate_vault_layout,
 };
