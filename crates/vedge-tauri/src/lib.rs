@@ -133,6 +133,11 @@ pub fn run() {
             commands::backup::inspect_backup,
             commands::backup::restore_vault,
             commands::backup::convert_vault,
+            // ---- snapshots (slice 5.2.1) ----
+            commands::snapshot::create_snapshot,
+            commands::snapshot::list_snapshots,
+            commands::snapshot::delete_snapshot,
+            commands::snapshot::revert_to_snapshot,
             // ---- emergency kit + recovery ----
             commands::emergency_kit::export_emergency_kit,
             commands::emergency_kit::emergency_kit_pdf,
