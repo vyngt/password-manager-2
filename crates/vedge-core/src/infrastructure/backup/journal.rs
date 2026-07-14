@@ -253,20 +253,28 @@ fn is_sharing_violation(e: &std::io::Error) -> bool {
     e.raw_os_error() == Some(32) || e.kind() == std::io::ErrorKind::PermissionDenied
 }
 
-/// Rename with a short blocking retry on a Windows sharing violation (M1).
+/// Rename with a blocking retry on a Windows sharing/access violation (M1).
 ///
-/// `sqlx`'s connection-pool close is NOT synchronous on `Drop`, so a just-closed `.vdb` handle
-/// can briefly outlive the code that dropped it; Windows then refuses to rename the file
-/// (`ERROR_SHARING_VIOLATION`, 32) and the swap fails intermittently on the only platform
-/// this ships on. The module is sync and already does blocking I/O, so a blocking sleep is
-/// correct. Non-sharing errors return immediately (no point retrying a real failure).
+/// `sqlx`'s connection-pool close is NOT synchronous on `Drop`: after a vault is LOCKED, its
+/// just-dropped session pool keeps the `.vdb` (+ `-wal`/`-shm`) handle open for a short while
+/// before Windows releases it — longer for a vault carrying large attachments. Windows then
+/// refuses to rename the home directory (`ERROR_SHARING_VIOLATION` 32 or `ERROR_ACCESS_DENIED`
+/// 5). An in-place `revert_to_snapshot` runs right after a lock, so it hits this window; the
+/// handle DOES release, it just needs time. Retry for up to ~10s. Callers run the swap on a
+/// blocking thread (`spawn_blocking`) so the async runtime stays free to finish the pool close
+/// while we wait. Non-contention errors return immediately (no point retrying a real failure).
 fn rename_retrying(src: &Path, dst: &Path) -> Result<(), VaultError> {
-    const ATTEMPTS: u32 = 10;
+    const ATTEMPTS: u32 = 100;
     const DELAY: std::time::Duration = std::time::Duration::from_millis(100);
     let mut attempt: u32 = 0;
     loop {
         match std::fs::rename(src, dst) {
-            Ok(()) => return Ok(()),
+            Ok(()) => {
+                if attempt > 0 {
+                    warn!(attempts = attempt, "rename succeeded after retrying a locked handle");
+                }
+                return Ok(());
+            }
             Err(e) if is_sharing_violation(&e) && attempt < ATTEMPTS.saturating_sub(1) => {
                 attempt = attempt.saturating_add(1);
                 std::thread::sleep(DELAY);

@@ -217,8 +217,20 @@ pub async fn revert_to_snapshot(
     let (_s, staged_hash) = archive::hash_file(&staged_vault)?;
 
     // 4. COMMIT: the write-ahead swap, PRESERVING `snapshots/` (§A / Decision ⑮).
+    //
+    // On `spawn_blocking`: the swap is sync and, right after an in-place revert follows a
+    // lock, its rename may block for several seconds while the just-locked session's sqlx pool
+    // finishes releasing the `.vdb` handle on Windows (M1). Running it on a blocking thread
+    // keeps the async runtime free to actually FINISH that pool close while the rename retries
+    // — the difference between the handle releasing and the retries starving and failing.
     let started_at = format_rfc3339_millis(now());
-    journal::commit_preserving(&home, &staging, &staged_hash, &started_at, &[SNAPSHOTS_DIR])?;
+    let (home_c, staging_c, hash_c, started_c) =
+        (home.clone(), staging.clone(), staged_hash.clone(), started_at.clone());
+    tokio::task::spawn_blocking(move || {
+        journal::commit_preserving(&home_c, &staging_c, &hash_c, &started_c, &[SNAPSHOTS_DIR])
+    })
+    .await
+    .map_err(|e| VaultError::Storage(StorageError::Io(format!("swap task join: {e}"))))??;
 
     // 5. POST (L1): reopen (fatal — signals a bad revert) + one best-effort audit row + the
     //    best-effort rollback-mirror re-baseline. Nothing here may fail the revert.
