@@ -143,6 +143,33 @@ rather than selecting by text.
   (cheap Argon2) and `VEDGE_E2E_BIOMETRIC_MEMORY=1` (in-memory biometric stub).
   Both are **debug-only + env-gated**, so they cannot exist in a release bundle.
 
+## 🔑 The keychain is REAL — and the entries it leaves behind
+
+Every other external dependency here is faked. The **OS keychain is not**, because using the real
+credential store is the only way to actually test it. So each run writes real entries: a Secret
+Key (`secret:{uuid}`) and a rollback baseline (`counter:{uuid}`) **per vault** — plus another
+pair for every duplicate that slice 5.2.2's ② opens. They become orphans the moment the run's
+temp dirs are cleaned up.
+
+Under the production service (`vedge`) those orphans would be **indistinguishable from your own
+vault keys**: they pile up forever, and deleting the wrong one destroys a real vault's Secret
+Key. So the harness sets `VEDGE_E2E_KEYCHAIN_TEST=1`, and the app files every test entry under a
+separate service:
+
+```
+vedge-e2e-test.secret:{uuid}     ← test entries, safe to delete
+vedge-e2e-test.counter:{uuid}
+vedge.secret:{uuid}              ← YOUR vaults. never written by a test.
+```
+
+**To purge them:** `mise e2e-clean` — it matches only `vedge-e2e-test*`, so it cannot touch a
+real vault even if it misfires.
+
+Like the other seams, the redirect is **debug-only + env-gated** (`resolve_keychain` in
+`vedge-tauri/src/setup/services.rs`): a release bundle compiles the branch out entirely and can
+only ever reach the real `vedge` service, so no environment variable can talk a shipped app into
+storing secrets somewhere else.
+
 ## References
 
 **Testing (this repo)**

@@ -101,12 +101,61 @@ pub fn read_manifest(archive: &Path) -> Result<BackupManifest, VaultError> {
     )))
 }
 
-/// Verify every non-manifest member against the manifest's per-file BLAKE3.
+/// The advisory whole-archive hash sidecar written beside a `.vbk`: `<archive>.blake3`.
+///
+/// ONE source of truth for the path — `backup_vault` writes it and [`verify_archive`]
+/// reads it, and a drift between the two would silently disable the check.
+#[must_use]
+pub fn sidecar_path(archive: &Path) -> PathBuf {
+    let mut s = archive.as_os_str().to_owned();
+    s.push(".blake3");
+    PathBuf::from(s)
+}
+
+/// Verify the advisory `.blake3` sidecar **when it is present** (finding L2).
+///
+/// Why it exists: the manifest lives INSIDE the tar and nothing else authenticates it.
+/// `verify_archive` hashes each member against `manifest.files` — which is
+/// self-referential, so an archive whose manifest *and* members were both rewritten
+/// passes that gate. The sidecar is the only check that spans the whole file.
+///
+/// 5.2's Decision ③ promised "advisory: verified when present", and 5.2 then shipped a
+/// writer with no reader. This is the reader. **Advisory** means exactly this:
+/// - absent (or unreadable, or empty) → **pass**. A backup made before this shipped, or
+///   copied without its sidecar, must still restore.
+/// - present and non-empty → it **must** match, or the archive is refused.
+///
+/// Cost: one extra full-file read, and ONLY when a sidecar exists.
+fn verify_sidecar(archive: &Path) -> Result<(), VaultError> {
+    let Ok(recorded) = std::fs::read_to_string(sidecar_path(archive)) else {
+        return Ok(()); // no sidecar → advisory → nothing to check
+    };
+    let recorded = recorded.trim();
+    if recorded.is_empty() {
+        // A torn write (`backup_vault` warns and carries on). Nothing to compare against.
+        return Ok(());
+    }
+    let (_bytes, actual) = hash_file(archive)?;
+    if !recorded.eq_ignore_ascii_case(&actual) {
+        return Err(VaultError::Storage(StorageError::Io(
+            "backup integrity check failed: the archive does not match its .blake3 sidecar"
+                .to_owned(),
+        )));
+    }
+    Ok(())
+}
+
+/// Verify every non-manifest member against the manifest's per-file BLAKE3, and the
+/// whole archive against its `.blake3` sidecar when one is present.
 ///
 /// Streams each member through the hasher. Returns the manifest on success; on
 /// the first mismatch / missing member, returns an error **naming it**. The
 /// mandatory integrity gate — restore calls this BEFORE touching any live file.
 pub fn verify_archive(archive: &Path) -> Result<BackupManifest, VaultError> {
+    // The outermost gate first: the sidecar is the only thing that authenticates the
+    // manifest itself, so a mismatch here means nothing below can be trusted (L2).
+    verify_sidecar(archive)?;
+
     let manifest = read_manifest(archive)?;
 
     let f = File::open(archive).map_err(|e| io_err("open archive", &e))?;
@@ -195,6 +244,7 @@ mod tests {
             entry_count: 0,
             blob_count: 0,
             commit_counter: 0,
+            verify_hash_prefix: None,
             files,
         }
     }
@@ -224,6 +274,80 @@ mod tests {
 
         assert_eq!(read_manifest(&dest).unwrap(), manifest);
         assert_eq!(verify_archive(&dest).unwrap(), manifest);
+    }
+
+    /// Build a small, internally-consistent archive holding `body` as `vault.vdb`,
+    /// returning its path and its whole-archive digest.
+    fn archive_holding(dir: &Path, body: &[u8]) -> (PathBuf, String) {
+        let vault = dir.join("vault.vdb");
+        std::fs::write(&vault, body).unwrap();
+        let (size, digest) = hash_file(&vault).unwrap();
+        let manifest = manifest_for(vec![ManifestFile {
+            name: "vault.vdb".to_owned(),
+            size,
+            blake3: digest,
+        }]);
+        let manifest_path = dir.join("manifest.json");
+        std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+        let dest = dir.join("out.vbk");
+        let hash = write_archive(
+            &[
+                ("manifest.json".to_owned(), manifest_path),
+                ("vault.vdb".to_owned(), vault),
+            ],
+            &dest,
+        )
+        .unwrap();
+        (dest, hash)
+    }
+
+    /// L2: a MISSING sidecar is advisory — the archive still verifies. Backups taken
+    /// before 5.2.2, or copied without their sidecar, must keep working forever.
+    #[test]
+    fn verify_passes_without_a_sidecar() {
+        let dir = tempfile::tempdir().unwrap();
+        let (archive, _) = archive_holding(dir.path(), b"contents");
+        assert!(!sidecar_path(&archive).exists());
+        assert!(verify_archive(&archive).is_ok());
+    }
+
+    /// L2: a MATCHING sidecar verifies.
+    #[test]
+    fn verify_accepts_a_matching_sidecar() {
+        let dir = tempfile::tempdir().unwrap();
+        let (archive, hash) = archive_holding(dir.path(), b"contents");
+        // Written exactly as `backup_vault` writes it — with the trailing newline.
+        std::fs::write(sidecar_path(&archive), format!("{hash}\n")).unwrap();
+        assert!(verify_archive(&archive).is_ok());
+    }
+
+    /// 🔴 L2, the case that justifies the whole check: an attacker rewrites the manifest
+    /// AND the members together, so the per-member gate (which hashes against the very
+    /// manifest that was rewritten) passes happily. The sidecar is the ONLY thing that
+    /// spans the whole file, and it catches this.
+    #[test]
+    fn verify_rejects_an_archive_that_no_longer_matches_its_sidecar() {
+        let dir = tempfile::tempdir().unwrap();
+        let (_original, original_hash) = archive_holding(dir.path(), b"authentic contents");
+
+        // A wholly re-packed archive: different body, and a manifest re-hashed to match it.
+        // Self-consistent — the per-member check cannot tell the difference.
+        let evil_dir = tempfile::tempdir().unwrap();
+        let (evil, evil_hash) = archive_holding(evil_dir.path(), b"substituted contents!");
+        assert_ne!(original_hash, evil_hash);
+        assert!(
+            verify_archive(&evil).is_ok(),
+            "the per-member gate is self-referential and passes — this is the hole"
+        );
+
+        // Now put the ORIGINAL's sidecar beside it, as if the file had been swapped
+        // underneath a sidecar the user still trusts.
+        std::fs::write(sidecar_path(&evil), format!("{original_hash}\n")).unwrap();
+        let err = verify_archive(&evil).unwrap_err();
+        assert!(
+            format!("{err}").contains("storage"),
+            "expected a storage refusal, got {err:?}"
+        );
     }
 
     #[test]

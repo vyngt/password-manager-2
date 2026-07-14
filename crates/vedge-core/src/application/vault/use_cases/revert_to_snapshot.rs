@@ -81,30 +81,34 @@ async fn rebaseline_rollback_mirror(repo: &dyn VaultRepository, keychain: &dyn K
     }
 }
 
-/// Decision ⑭: capture a `pre-restore` snapshot of the CURRENT vault before the swap so the
-/// revert is undoable. Best-effort — a failure (a corrupt/unreadable target) is logged and
-/// skipped, never fatal.
+/// Decision ⑭: capture a `pre-restore` snapshot of the CURRENT vault before a destructive
+/// swap, so the operation is undoable. Returns the new snapshot's id, or `None` if it was
+/// skipped. Best-effort — a failure (a corrupt/unreadable target) is logged and skipped,
+/// never fatal.
+///
+/// Shared by `revert_to_snapshot` (5.2.1) and `replace_vault_from_backup` (5.2.2): both
+/// overwrite a live vault, and ⑭ says both must be undoable.
 ///
 /// 🔴 Opens a `VaultDbConnection` DIRECTLY and `close()`s it before returning, rather than a
 /// port `Arc<dyn VaultRepository>` — the connection MUST be released before the swap renames
 /// the home, and Windows will not rename a directory holding an open `.vdb` handle. sqlx's
 /// `Drop` close is async, so an explicit close is the only guarantee (M1's retry is the
 /// backstop, not the mechanism).
-async fn auto_snapshot_pre_restore(
+pub(super) async fn auto_snapshot_pre_restore(
     home: &std::path::Path,
     snapshots_dir: &std::path::Path,
     entry_count: u64,
-) {
+) -> Option<String> {
     let db = match VaultDbConnection::open(&home.join(VAULT_FILE)).await {
         Ok(db) => db,
         Err(e) => {
             warn!(error = %e, "target unreadable — skipping the pre-restore auto-snapshot (⑭)");
-            return;
+            return None;
         }
     };
     let repo = SqliteVaultRepository::new(db.handle());
     let blobs_dir = home.join(BLOBS_DIR);
-    if let Err(e) = write_snapshot(
+    let id = match write_snapshot(
         snapshots_dir,
         &blobs_dir,
         &repo,
@@ -113,22 +117,32 @@ async fn auto_snapshot_pre_restore(
     )
     .await
     {
-        warn!(error = %e, "pre-restore auto-snapshot failed — proceeding with the revert (⑭)");
-    }
+        Ok(report) => Some(report.id),
+        Err(e) => {
+            warn!(error = %e, "pre-restore auto-snapshot failed — proceeding anyway (⑭)");
+            None
+        }
+    };
     drop(repo); // release the repo's handle clone so `close()` can actually close the pool
     if let Err(e) = db.close().await {
         warn!(error = %e, "closing the pre-restore connection failed before the swap");
     }
+    id
 }
 
-/// Run the preserving swap on a blocking thread.
+/// Run the snapshot-preserving swap on a blocking thread.
+///
+/// 🔴 `commit_preserving(&[SNAPSHOTS_DIR])`, never `journal::commit` — the `snapshots/` store
+/// lives INSIDE the home being swapped, so a plain whole-home swap deletes it, including the
+/// ⑭ undo point taken moments earlier. Both destructive verbs (revert, replace) go through
+/// here precisely so neither can forget.
 ///
 /// The swap is sync, and right after an in-place revert follows a lock its rename may block for
 /// a while as the just-locked session's sqlx pool finishes releasing the `.vdb` handle on
 /// Windows (M1). Running it on a blocking thread keeps the async runtime free to FINISH that
 /// pool close while the rename retries — the difference between the handle releasing and the
 /// retries starving and failing.
-async fn commit_swap_blocking(
+pub(super) async fn commit_swap_blocking(
     home: &std::path::Path,
     staging: &std::path::Path,
     vault_hash: &str,
@@ -166,7 +180,11 @@ pub async fn revert_to_snapshot(
         .map_err(|_| VaultError::SnapshotNotFound(input.snapshot_id.clone()))?;
     let manifest = store::read_manifest(&snap_dir)
         .map_err(|e| VaultError::SnapshotManifestUnreadable(e.to_string()))?;
-    if manifest.format_version != SNAPSHOT_FORMAT_VERSION {
+    // 🔴 H1 applies here too — refuse NEWER, accept OLDER. This shipped as `!=` in 5.2.1,
+    // which would orphan every existing snapshot the day `SNAPSHOT_FORMAT_VERSION` becomes
+    // 2. Same rule as the `.vbk` (`restore_vault`): once a store exists on a user's disk,
+    // every future version must read it — forever. Pinned by a test; don't restore `!=`.
+    if manifest.format_version > SNAPSHOT_FORMAT_VERSION {
         return Err(VaultError::SnapshotUnsupportedFormat(
             manifest.format_version,
         ));

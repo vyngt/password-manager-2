@@ -40,6 +40,27 @@ pub struct BackupManifest {
     /// field) deserialize to 0 — additive, so `format_version` stays 1.
     #[serde(default)]
     pub commit_counter: i64,
+    /// The first 8 bytes of the vault's `verify_hash`, hex (finding **M3**, slice 5.2.2).
+    ///
+    /// A `.vbk` is sealed with the master password **and** the Secret Key in force when it was
+    /// taken. If either has since been rotated, the archive opens only with the OLD ones — and
+    /// the user deserves to know that BEFORE they spend ten minutes on it. This prefix lets a
+    /// preview compare the backup's credentials against a live vault's without unlocking
+    /// either.
+    ///
+    /// 🔴 **`Option`, and `None` means UNKNOWN — never "same".** A pre-5.2.2 archive carries
+    /// no prefix, and a bare `String` with `#[serde(default)]` would deserialize to `""`,
+    /// silently reading as *"different"* against every real vault. Never assert a match you
+    /// did not verify; never assert a mismatch you did not observe.
+    ///
+    /// *Egress:* `verify_hash` is a domain-separated HKDF output already stored **in
+    /// plaintext** in `vault_config`, and all 32 bytes of it sit inside the `vault.vdb` in this
+    /// very archive. An 8-byte prefix in the manifest reveals strictly LESS than the archive
+    /// already does, and it is non-invertible to the Master Key (design note 10.3).
+    ///
+    /// Additive → `format_version` stays **1** (the `commit_counter` precedent).
+    #[serde(default)]
+    pub verify_hash_prefix: Option<String>,
     /// One row per tar member EXCEPT the manifest itself. The mandatory integrity
     /// gate: restore verifies every extracted file against this and refuses on any
     /// mismatch, naming the offending member.

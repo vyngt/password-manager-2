@@ -201,6 +201,18 @@ impl Session {
         // breached so `scan_health_shows_breached` runs without hitting HIBP.
         // Inert unless a scenario enables the Settings breach toggle.
         cmd.env("VEDGE_E2E_BREACH_MEMORY", "1");
+        // 🔴 Keep the tests OUT of the real credential store's namespace.
+        //
+        // Unlike every other seam here, the keychain is NOT faked — the OS one is used for real,
+        // because that is the only way to test it. So each run leaves real entries behind: a
+        // Secret Key (`secret:{uuid}`) and a rollback baseline (`counter:{uuid}`) per vault, plus
+        // another pair for every duplicate that slice 5.2.2's ② opens. Under the production
+        // `vedge` service they would be indistinguishable from the developer's OWN vault keys —
+        // orphans nobody dares delete, because deleting the wrong one destroys a real vault.
+        //
+        // This puts them all under `vedge-e2e-test`, so they are obvious in Credential Manager
+        // and safe to purge: `mise e2e-clean`.
+        cmd.env("VEDGE_E2E_KEYCHAIN_TEST", "1");
         for (k, v) in extra {
             cmd.env(k, v);
         }

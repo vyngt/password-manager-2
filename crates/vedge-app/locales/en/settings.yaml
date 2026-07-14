@@ -85,17 +85,13 @@ backup_report_title: "Last backup"
 backup_report_entries: "entries"
 backup_report_blobs: "documents"
 backup_report_size: "bytes"
-restore_title: "Restore from a backup"
-restore_desc: "Replace this vault with the contents of a .vbk archive. This locks the vault and overwrites it — you'll unlock again afterwards."
-restore_button: "Restore from backup…"
-restore_dialog_title: "Restore this vault?"
-restore_preview_backup: "This backup holds {{ entries }} entries from {{ date }}."
-restore_preview_target: "Your current vault has {{ entries }} entries."
-restore_rollback_warning: "This backup is OLDER than your current vault — {{ delta }} change(s) would be dropped."
-restore_blocked_uuid: "This backup belongs to a different vault and cannot be restored here."
-restore_blocked_format: "This backup was written by a newer version of VEdge."
-restore_blocked_schema: "This backup uses a newer vault format this version can't read."
-restore_confirm: "Lock & restore"
-restore_cancel: "Cancel"
-restore_done: "Vault restored — unlock to continue."
-restore_failed: "Could not restore: "
+# --- 5.2.2 backup health (Decision ⑧) ---
+# 🔴 "Never backed up" must never be silenced by a snapshot: a snapshot lives on the same disk
+# as the vault and dies with it. The two lines are separate on purpose.
+backup_health_title: "Backup health"
+backup_health_never: "This vault has never been backed up. A snapshot won't help if the disk fails."
+backup_health_last: "Last backed up"
+backup_health_snapshot: "Last local snapshot (not a backup):"
+# NOTE: the 5.2c `restore_*` keys were removed in 5.2.2. Restore/Replace no longer lives in
+# Settings at all — it lives on the launch screen (`unlock.ob_*`), because a vault you need to
+# replace is a vault you cannot unlock, and Settings requires an unlocked vault. That was H0.
