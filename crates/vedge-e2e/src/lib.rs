@@ -12,8 +12,9 @@
 //!   dir; the harness passes it to the `tauri-driver` child, which the launched
 //!   app inherits (`resolve_app_dir` honors it first). This also disables the
 //!   single-instance lock (so the restart test can relaunch the app).
-//! - **vault dir** — a second temp dir holds the `.vdb`; the create wizard is
-//!   pointed at it via the `#vault-path` input.
+//! - **vault dir** — a second temp dir holds the `<name>.vedge/` home; the create
+//!   wizard's fields are pointed at it (slice 5.2.0 split the old single
+//!   `#vault-path` field into `#vault-name` + `#vault-location`).
 //! - **fast KDF** — [`Session::launch`] sets `VEDGE_E2E_FAST_KDF=1` so
 //!   `create_vault` uses a cheap Argon2 profile (m 8 / t 1 / p 1) instead of the
 //!   256 MiB production KDF that otherwise dominates the run. **Test-only,
@@ -38,7 +39,7 @@
 //! Interactive controls are located by **stable `data-testid`** attributes
 //! (`by_testid` / `click_testid` / `js_click_testid`), so a copy edit or a locale
 //! switch never breaks the suite. Form **inputs** keep their existing DOM `id`s
-//! (`vault-path`, `master-password`, `ef-*`, `vault-search`, `folder-new`,
+//! (`vault-name`, `vault-location`, `master-password`, `ef-*`, `vault-search`, `folder-new`,
 //! `gen-bulk-count`) used via `fill_id`. A few structural hooks are reused
 //! directly: `tr[data-entry-row]` / `tr[data-entry-id]` (rows), `[role='option']`
 //! (vault picker + Select options, plus `[data-value=…]` for a specific option),
@@ -101,7 +102,8 @@ impl TestEnv {
         self.vault_dir.path().join("e2e.vedge")
     }
 
-    /// The vault path as a string (typed into `#vault-path` / passed to invoke).
+    /// The vault path as a string (split into `#vault-name` + `#vault-location`
+    /// by the create helper / passed to invoke).
     pub fn vault_path_str(&self) -> String {
         self.vault_path().to_string_lossy().into_owned()
     }

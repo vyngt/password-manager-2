@@ -62,14 +62,50 @@ pub async fn open_generator_panel(s: &Session) -> Result<()> {
     Ok(())
 }
 
+/// Split a vault **home** path (`…/<name>.vedge`) into its parent location and
+/// its `.vedge`-stripped name, so the redesigned Step-1 name+location fields
+/// recompose the identical home (slice 5.2.0).
+fn split_home(home: &str) -> (String, String) {
+    let home = home.trim_end_matches(['/', '\\']);
+    let (parent, last) = match home.rfind(['/', '\\']) {
+        Some(i) => (&home[..i], &home[i + 1..]),
+        None => ("", home),
+    };
+    let name = last.strip_suffix(".vedge").unwrap_or(last);
+    (parent.to_owned(), name.to_owned())
+}
+
 /// Drive the create-vault wizard from the launch screen to a freshly unlocked
 /// vault (create → Secret-Key ack → Finish). Shared by the daily loop and the
 /// per-feature scenarios.
 pub async fn create_and_unlock(s: &Session, vault: &str) -> Result<()> {
+    create_and_unlock_named(s, vault, None).await
+}
+
+/// Like [`create_and_unlock`] but types a custom **display name** (the recents
+/// label) into the wizard. `vault` is the full `.vedge` home path; it is split
+/// into the name + location fields the redesigned Step 1 exposes (slice 5.2.0).
+pub async fn create_and_unlock_named(
+    s: &Session,
+    vault: &str,
+    display: Option<&str>,
+) -> Result<()> {
+    let (location, name) = split_home(vault);
     s.click_testid("launch-new-vault")
         .await
         .context("launch screen: New vault")?;
-    s.fill_id("vault-path", vault).await?;
+    s.fill_id("vault-name", &name).await?;
+    s.fill_id("vault-location", &location).await?;
+    if let Some(d) = display {
+        s.fill_id("vault-display-name", d).await?;
+    }
+    finish_create_wizard(s, vault).await
+}
+
+/// The create-wizard tail shared by [`create_and_unlock_named`] and the
+/// onboarding scenario: Next → master password → Create → Secret-Key ack →
+/// Finish → assert unlocked.
+pub async fn finish_create_wizard(s: &Session, vault: &str) -> Result<()> {
     s.click_testid("onboarding-next")
         .await
         .context("wizard: Next")?;
