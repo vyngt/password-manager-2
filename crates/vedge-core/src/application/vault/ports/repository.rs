@@ -78,6 +78,16 @@ pub trait VaultRepository: Send + Sync {
     /// is logically identical but defragmented (not byte-identical) to the source.
     async fn vacuum_into(&self, dest: &Path) -> Result<(), VaultError>;
 
+    /// Close the underlying DB pool, releasing the OS file handle SYNCHRONOUSLY (slice 5.2.1).
+    ///
+    /// 🔴 sqlx's pool close is async on `Drop`, so simply dropping a session leaves the
+    /// `.vdb`/`-wal`/`-shm` handle open for a while afterwards. A file operation that follows a
+    /// lock — an in-place `revert_to_snapshot`, a `.vbk` restore — would then race that
+    /// lingering handle and fail to rename the home on Windows (`os error 5`/`32`). Calling
+    /// this at lock time makes the handle GONE by the time the lock returns, so the race
+    /// cannot happen — deterministic, not a timing retry. Idempotent.
+    async fn close(&self);
+
     /// Set `vault_config.last_snapshot_at` in a targeted update (slice 5.2.1). Kept out
     /// of the config-upsert `update_columns`, so this is the only writer — a stale
     /// `save_config` can never clobber it. 🔴 Never `last_backup_at` (Decision ⑧).

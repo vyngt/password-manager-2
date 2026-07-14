@@ -601,6 +601,14 @@ impl VaultRepository for SqliteVaultRepository {
         Ok(())
     }
 
+    async fn close(&self) {
+        // Close the sqlx pool via a shared ref (no ownership needed) — `close().await`
+        // returns only once every connection is released, so the OS file handle on the `.vdb`
+        // is gone when this returns. `get_sqlite_connection_pool` is valid because every vault
+        // connection is SQLite (VaultDbConnection::open).
+        self.conn.get_sqlite_connection_pool().close().await;
+    }
+
     async fn touch_last_snapshot_at(&self, at: Timestamp) -> Result<(), VaultError> {
         config_entity::Entity::update_many()
             .col_expr(ConfigCol::LastSnapshotAt, Expr::value(ts_to_string(&at)))

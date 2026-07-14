@@ -36,7 +36,17 @@ pub async fn record_lock(session: &VaultSession) -> Result<(), VaultError> {
         occurred_at: now(),
         device_id: None,
     };
-    repo.append_audit(&event).await
+    let audit = repo.append_audit(&event).await;
+
+    // 🔴 Release the DB file handle SYNCHRONOUSLY before the session drops (slice 5.2.1).
+    // sqlx's pool close is async on `Drop`, so without this the `.vdb` handle lingers past
+    // the lock and a following file op (an in-place revert, a restore) races it on Windows.
+    // Closing here — the single hook every lock path (command, TTL reaper, screen-lock) runs
+    // through — makes the handle gone deterministically. Done even if the audit failed: the
+    // session is being torn down regardless.
+    repo.close().await;
+
+    audit
 }
 
 pub async fn lock_vault(session: VaultSession) -> Result<(), VaultError> {
