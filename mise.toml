@@ -152,6 +152,14 @@ run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Delete"
 description = "Purge the keychain entries left by e2e runs (always safe — never touches a real vault)"
 run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Service vedge-e2e-test -Delete"
 
+# Prove — from evidence, never deletes — that no pre-5.2 legacy artifact (a bare `<name>.vdb`
+# file, a `vault:*` keychain account, a path-hashed biometric credential, a null vault_uuid)
+# survives on this machine. It must be GREEN before slice 5.2.5 retires the migration code, since
+# that code is the only thing that could ever reach such an artifact. Cannot-see ⇒ FAIL.
+[tasks.legacy-audit]
+description = "Prove no legacy (.vdb / vault:* / path-hashed) artifact remains — read-only, exit 0 only if clean"
+run = "pwsh -NoProfile -File scripts/legacy_audit.ps1"
+
 # ---------------------------------------------------------------------------
 # Frontend wasm type-check
 # ---------------------------------------------------------------------------
