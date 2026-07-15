@@ -1,4 +1,5 @@
 pub mod auto_lock;
+pub mod backup_open_dialog;
 pub mod command_palette;
 pub mod context;
 pub mod document_attach;
@@ -10,6 +11,7 @@ pub mod folder_customize;
 pub mod folder_delete;
 pub mod folder_move;
 pub mod folder_tree;
+pub mod home_path;
 pub mod password_strength;
 pub mod recents_filter;
 pub mod secret_display;

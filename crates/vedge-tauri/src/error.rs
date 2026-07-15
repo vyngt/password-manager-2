@@ -147,6 +147,16 @@ impl From<VaultError> for CommandError {
             | VaultError::SnapshotUnsupportedFormat(_)
             | VaultError::SnapshotCorrupt(_)
             | VaultError::RollbackNotConfirmed
+            // Open-backup / Replace refusals (slice 5.2.2). Every one of these is
+            // pre-flighted by `inspect_backup`, so the GUI renders a *blocked* preview
+            // and never submits — these mappings are the backstop for a caller that
+            // skipped the preview (a programmatic invoke, or a race against the disk).
+            | VaultError::BackupUnsupportedFormat(_)
+            | VaultError::DestinationOccupied(_)
+            | VaultError::BackupWrongVault { .. }
+            | VaultError::BackupCredentialsDiffer
+            | VaultError::TargetUnverified
+            | VaultError::TargetMissing
             // A breach lookup failure is normally degraded inside `scan_health`
             // (surfaced as `breach_check_failed`); this mapping is defensive only.
             | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),

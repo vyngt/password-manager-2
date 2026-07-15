@@ -140,8 +140,40 @@ pub enum VaultError {
     #[error("snapshot is corrupt: {0}")]
     SnapshotCorrupt(String),
 
-    #[error("reverting to this snapshot rolls the vault back; confirm to proceed")]
+    /// Shared by `revert_to_snapshot` (5.2.1) and `replace_vault_from_backup` (5.2.2) —
+    /// both roll the vault back to an earlier state and both gate on the same explicit yes.
+    #[error("this would roll the vault back to an earlier state; confirm to proceed")]
     RollbackNotConfirmed,
+
+    // --- backup: open / replace (slice 5.2.2) — dedicated variants, not a stringly `MalformedPayload` ---
+    /// A backup written by a NEWER build. An OLDER `format_version` is always accepted
+    /// (finding H1): once a `.vbk` exists on a user's disk, every future version must
+    /// read it — forever.
+    #[error("unsupported backup format version: {0}")]
+    BackupUnsupportedFormat(u32),
+
+    /// 🔴 "Open backup" never overwrites. There is no flag and no override — overwriting
+    /// is a different operation, with a different name and a different button.
+    #[error("something already exists at the destination: {0}")]
+    DestinationOccupied(String),
+
+    #[error("this backup belongs to a different vault ({backup} != {target})")]
+    BackupWrongVault { backup: String, target: String },
+
+    #[error(
+        "this backup was made with a different master password or Secret Key; confirm to proceed"
+    )]
+    BackupCredentialsDiffer,
+
+    /// The target could not be read, so its identity could not be checked against the
+    /// backup's. Its own acknowledgement — never a silent skip (finding H2).
+    #[error(
+        "the target vault could not be read, so it could not be identified; confirm to proceed"
+    )]
+    TargetUnverified,
+
+    #[error("there is no vault to replace at this path — open the backup instead")]
+    TargetMissing,
 
     // --- screen lock (slice 4.5b) ---
     #[error("screen-lock state is unavailable on this device")]

@@ -106,6 +106,40 @@ fn resolve_biometric(crypto: Arc<dyn CryptoProvider>) -> Arc<dyn BiometricAuthen
     platform_authenticator(crypto)
 }
 
+/// The OS-keychain service name. **Production is always `vedge`.**
+///
+/// The e2e harness redirects to `vedge-e2e-test` under the same two-gate seam as
+/// [`resolve_biometric`] — a debug build (`cfg(debug_assertions)`) **and** the explicit
+/// `VEDGE_E2E_KEYCHAIN_TEST` env var. Neither can hold in a shipped bundle, so a release
+/// build can only ever read and write the real `vedge` service.
+///
+/// # Why this exists
+///
+/// e2e runs write **real entries into the real OS credential store** — a Secret Key
+/// (`secret:{uuid}`) and a rollback baseline (`counter:{uuid}`) per vault, and slice 5.2.2's ②
+/// adds another pair for every duplicate a test opens. Under one shared `vedge` service they are
+/// indistinguishable from the user's actual vault keys, so nobody can safely clean them up: the
+/// orphans accumulate forever, and deleting the wrong one destroys a real vault's Secret Key.
+///
+/// Giving the tests their own service makes every entry they create identifiable at a glance
+/// (`vedge-e2e-test.*` in Windows Credential Manager) and safe to bulk-delete — `mise e2e-clean`
+/// does exactly that. It also means a test can never overwrite a real vault's key by colliding
+/// on a uuid.
+#[cfg(debug_assertions)]
+fn resolve_keychain() -> Arc<dyn KeychainProvider> {
+    if std::env::var_os("VEDGE_E2E_KEYCHAIN_TEST").is_some_and(|v| !v.is_empty()) {
+        // ⚠ Keep this literal in sync with `crates/vedge-e2e/src/lib.rs` and the `e2e-clean`
+        // task in `mise.toml` — the cleanup matches on this exact prefix.
+        return Arc::new(OsKeychainProvider::with_service("vedge-e2e-test"));
+    }
+    Arc::new(OsKeychainProvider::new())
+}
+
+#[cfg(not(debug_assertions))]
+fn resolve_keychain() -> Arc<dyn KeychainProvider> {
+    Arc::new(OsKeychainProvider::new())
+}
+
 /// Select the breach checker (slice 4.4). **Production always uses the real
 /// `HibpBreachChecker`** (an HTTPS k-anonymity call). Under the same two-gate seam
 /// as [`resolve_biometric`] — a debug build (`cfg(debug_assertions)`) **and** the
@@ -234,7 +268,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
 
     let crypto: Arc<dyn CryptoProvider> = Arc::new(XChaCha20CryptoProvider::new());
     let kdf: Arc<dyn KeyDerivationProvider> = Arc::new(Argon2idKdfProvider::new());
-    let keychain: Arc<dyn KeychainProvider> = Arc::new(OsKeychainProvider::new());
+    let keychain: Arc<dyn KeychainProvider> = resolve_keychain();
     let biometric: Arc<dyn BiometricAuthenticator> = resolve_biometric(Arc::clone(&crypto));
     let clipboard: Arc<dyn ClipboardProvider> = Arc::new(ArboardClipboardProvider::new()?);
     let breach: Arc<dyn BreachChecker> = resolve_breach();
@@ -291,6 +325,36 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use vedge_core::domain::shared::VaultId;
+
+    /// 🔴 The e2e keychain redirect is **release-impossible**, and the env var alone must not be
+    /// enough to move where secrets are stored.
+    ///
+    /// `resolve_keychain` is `#[cfg(debug_assertions)]`-gated: in a release bundle the env-var
+    /// branch does not exist at all, so the function compiles down to the real `vedge` service
+    /// unconditionally. This test pins the *other* half — that with the env var **unset**, even a
+    /// debug build uses production. (Together: a shipped app can never be talked into reading or
+    /// writing a different credential namespace by setting an environment variable.)
+    #[test]
+    fn the_keychain_redirect_needs_the_env_var_and_cannot_exist_in_release() {
+        // SAFETY-ish: single-threaded test, and we restore nothing because the harness never
+        // sets this var — `mise test` runs without it.
+        assert!(
+            std::env::var_os("VEDGE_E2E_KEYCHAIN_TEST").is_none(),
+            "the host test suite must not run with the e2e keychain redirect set"
+        );
+        // Constructing it is the assertion: without the env var this is the production provider.
+        // (The service name is private to `vedge-core`, so the observable contract is that this
+        // path is taken at all — the redirect branch requires BOTH gates.)
+        let _keychain = resolve_keychain();
+
+        // And in a release build the branch is compiled out entirely.
+        #[cfg(not(debug_assertions))]
+        {
+            unsafe { std::env::set_var("VEDGE_E2E_KEYCHAIN_TEST", "1") };
+            let _still_production = resolve_keychain();
+            unsafe { std::env::remove_var("VEDGE_E2E_KEYCHAIN_TEST") };
+        }
+    }
 
     /// Build an [`AppState`] using the tempdir-backed `app.db` and in-process
     /// providers, bypassing the [`tauri::App`] resolver. Mirrors [`compose`]

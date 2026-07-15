@@ -94,6 +94,14 @@ pub struct AddRecentVaultInput {
     /// file stem.
     pub display_name: String,
     pub sort_order: i32,
+    /// The vault's plaintext `vault_uuid` (slice 5.2.2), so ②'s duplicate check can ask
+    /// *"is this identity already registered on this machine?"* without opening every vault.
+    ///
+    /// Supplied by the **shell**, which probes the vault file with `read_target_state`. The
+    /// app-layer use case deliberately does not reach into vault infrastructure to fetch it —
+    /// that layering is why this is a parameter and not a lookup. `None` is legitimate (an
+    /// unreadable or pre-4.6 vault) and simply means "unknown", never "no uuid".
+    pub vault_uuid: Option<String>,
 }
 
 /// Register a vault in the recents list.
@@ -168,10 +176,42 @@ pub async fn add_recent_vault(
         display_name,
         last_opened: Some(now()),
         sort_order: input.sort_order,
-        // Population from the vault's config uuid is deferred to slice 5.2.2 (dedup); the
-        // column + plumbing are in place now.
-        vault_uuid: None,
+        vault_uuid: input.vault_uuid,
     };
+    repo.upsert(&vault).await
+}
+
+/// Record the `vault_uuid` the vault at this recents row actually has (slice 5.2.2).
+///
+/// Backfills rows written before the uuid was captured, so ②'s duplicate check gets a complete
+/// picture of what this machine holds without waiting for every vault to be re-added. Called on
+/// unlock, where the caller has just proved it can read the vault.
+///
+/// **The vault file is the authority.** If the row already carries a *different* uuid, the row is
+/// stale — the vault at that path was converted, replaced from a backup, or swapped — and the
+/// value we just read from disk wins. A recents row that disagrees with the vault it points at is
+/// worse than one that says nothing: ②'s scan would consult it and reach the wrong conclusion
+/// about whether an identity is already present on this machine.
+///
+/// Best-effort by nature: a missing row is not an error (it may have been removed in another
+/// window between the unlock and this write).
+#[instrument(skip_all, fields(id = %id))]
+pub async fn record_vault_uuid(
+    repo: &dyn RecentVaultRepository,
+    id: &str,
+    vault_uuid: &str,
+) -> Result<(), AppDbError> {
+    let mut vault = match repo.get(id).await {
+        Ok(v) => v,
+        // The row vanished (removed in another window between the unlock and this write). That
+        // is not a failure of the unlock — there is simply nothing to backfill.
+        Err(AppDbError::RecentVaultNotFound(_)) => return Ok(()),
+        Err(e) => return Err(e),
+    };
+    if vault.vault_uuid.as_deref() == Some(vault_uuid) {
+        return Ok(());
+    }
+    vault.vault_uuid = Some(vault_uuid.to_owned());
     repo.upsert(&vault).await
 }
 
@@ -211,15 +251,20 @@ pub async fn touch_on_unlock(repo: &dyn RecentVaultRepository, id: &str) -> Resu
     repo.touch_last_opened(id, now()).await
 }
 
-/// Delete every recent-vault row whose path no longer resolves to a
-/// regular file. Returns the count of removed rows so the UI can show a
-/// "cleaned up N entries" toast.
+/// Delete every recent-vault row whose vault is no longer on disk. Returns the count of removed
+/// rows so the UI can show a "cleaned up N entries" toast.
+///
+/// 🔴 **This used to test `row.path.is_file()`.** Slice 5.2.0 turned `path` into the vault
+/// *home directory*, so `is_file()` became `false` for **every healthy vault** — this function
+/// would have deleted the user's entire recents list. It survived only because nothing ever
+/// called the command that wraps it. Staleness is now decided the same way as everywhere else:
+/// by the presence of `home/vault.vdb`, exactly as `list_recent_vaults_with_status` does.
 #[instrument(skip_all)]
 pub async fn remove_stale_recents(repo: &dyn RecentVaultRepository) -> Result<u64, AppDbError> {
     let rows = repo.list().await?;
     let mut removed: u64 = 0;
     for row in rows {
-        if !row.path.is_file() {
+        if !row.path.join(VAULT_FILE).is_file() {
             repo.delete(&row.id).await?;
             removed = removed.saturating_add(1);
         }
@@ -359,6 +404,7 @@ mod tests {
                 path: home.clone(),
                 display_name: "Work".into(),
                 sort_order: 0,
+                vault_uuid: None,
             },
         )
         .await
@@ -415,6 +461,7 @@ mod tests {
                 path: std::path::PathBuf::from("/definitely/does/not/exist.vdb"),
                 display_name: "x".into(),
                 sort_order: 0,
+                vault_uuid: None,
             },
         )
         .await
@@ -433,6 +480,7 @@ mod tests {
                 path: dir.path().to_path_buf(),
                 display_name: "x".into(),
                 sort_order: 0,
+                vault_uuid: None,
             },
         )
         .await
@@ -453,6 +501,7 @@ mod tests {
                 path: home,
                 display_name: "x".into(),
                 sort_order: 0,
+                vault_uuid: None,
             },
         )
         .await
@@ -473,6 +522,7 @@ mod tests {
                 path: home,
                 display_name: "x".into(),
                 sort_order: 0,
+                vault_uuid: None,
             },
         )
         .await
@@ -613,6 +663,7 @@ mod tests {
                 path: fresh,
                 display_name: "Fresh".into(),
                 sort_order: 0,
+                vault_uuid: None,
             },
         )
         .await
@@ -630,26 +681,108 @@ mod tests {
         assert_eq!(remove_stale_recents(&*repo).await.unwrap(), 0);
     }
 
+    /// 🔴 **Regression guard for a live bug (found in the 5.2.2 scan, not by any test).**
+    ///
+    /// 5.2.0 turned a recents `path` into the vault **home directory**, but `remove_stale_recents`
+    /// kept testing `path.is_file()` — which is `false` for a directory. So the "clean up ghosts"
+    /// command would have deleted **every healthy vault in the list**. It never fired only because
+    /// no frontend wrapper ever called it, so the bug sat in a registered command, loaded.
+    ///
+    /// This test seeds a real, healthy vault HOME (as 5.2.0 produces) and demands it survive.
+    /// Against the old `is_file()` check it fails immediately.
     #[tokio::test]
-    async fn remove_stale_keeps_real_removes_ghost() {
+    async fn remove_stale_keeps_a_healthy_vault_home_and_removes_ghosts() {
         let (dir, repo) = fixture().await;
-        let real = dir.path().join("real.vdb");
-        std::fs::write(&real, b"x").unwrap();
-        seed(&*repo, "real", real, 0).await;
-        seed(&*repo, "ghost", std::path::PathBuf::from("/nope.vdb"), 1).await;
+        let home = dir.path().join("real.vedge");
+        write_vault_home(&home); // a DIRECTORY holding vault.vdb — the 5.2.0 layout
+        seed(&*repo, "real", home, 0).await;
+        seed(&*repo, "ghost", dir.path().join("gone.vedge"), 1).await;
 
         let n = remove_stale_recents(&*repo).await.unwrap();
-        assert_eq!(n, 1);
+        assert_eq!(n, 1, "only the ghost goes");
         let rows = repo.list().await.unwrap();
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].id, "real");
+        assert_eq!(
+            rows[0].id, "real",
+            "a healthy vault home must NOT be swept away as stale"
+        );
+    }
+
+    /// A home directory that exists but has lost its `vault.vdb` is a ghost too — staleness is
+    /// decided by the vault, not by the folder, and identically to `list_recent_vaults_with_status`.
+    #[tokio::test]
+    async fn remove_stale_removes_a_home_whose_vault_file_is_gone() {
+        let (dir, repo) = fixture().await;
+        let hollow = dir.path().join("hollow.vedge");
+        std::fs::create_dir_all(&hollow).unwrap(); // the folder is there; the vault is not
+        seed(&*repo, "hollow", hollow, 0).await;
+
+        assert_eq!(remove_stale_recents(&*repo).await.unwrap(), 1);
+        assert_eq!(repo.list().await.unwrap().len(), 0);
+    }
+
+    // ---- vault_uuid (slice 5.2.2 — ② duplicate detection) --------------------
+
+    #[tokio::test]
+    async fn add_persists_the_vault_uuid_and_unlock_backfills_it() {
+        let (dir, repo) = fixture().await;
+        let home = dir.path().join("ident.vedge");
+        write_vault_home(&home);
+
+        // A row added WITHOUT a uuid (an older row, or a vault we could not read).
+        add_recent_vault(
+            &*repo,
+            AddRecentVaultInput {
+                id: "v1".into(),
+                path: home.clone(),
+                display_name: "Work".into(),
+                sort_order: 0,
+                vault_uuid: None,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(repo.list().await.unwrap()[0].vault_uuid, None);
+
+        // Unlock reads the vault, so it can fill the gap in.
+        record_vault_uuid(&*repo, "v1", "01UUIDUUIDUUIDUUIDUUIDUUID")
+            .await
+            .unwrap();
+        assert_eq!(
+            repo.list().await.unwrap()[0].vault_uuid.as_deref(),
+            Some("01UUIDUUIDUUIDUUIDUUIDUUID")
+        );
+
+        // Backfilling an unknown row is a no-op, not an error: the row may have been removed
+        // in another window between the unlock and the write.
+        record_vault_uuid(&*repo, "does-not-exist", "01XXXX")
+            .await
+            .expect("backfilling a vanished row must not fail the unlock that triggered it");
+
+        // And a row added WITH a uuid keeps it.
+        let home2 = dir.path().join("known.vedge");
+        write_vault_home(&home2);
+        add_recent_vault(
+            &*repo,
+            AddRecentVaultInput {
+                id: "v2".into(),
+                path: home2,
+                display_name: "Known".into(),
+                sort_order: 1,
+                vault_uuid: Some("01KNOWNKNOWNKNOWNKNOWNKNOW".into()),
+            },
+        )
+        .await
+        .unwrap();
+        let v2 = repo.get("v2").await.unwrap();
+        assert_eq!(v2.vault_uuid.as_deref(), Some("01KNOWNKNOWNKNOWNKNOWNKNOW"));
     }
 
     #[tokio::test]
     async fn remove_stale_empties_when_all_ghosts() {
         let (_dir, repo) = fixture().await;
-        seed(&*repo, "g1", std::path::PathBuf::from("/no1.vdb"), 0).await;
-        seed(&*repo, "g2", std::path::PathBuf::from("/no2.vdb"), 1).await;
+        seed(&*repo, "g1", std::path::PathBuf::from("/no1.vedge"), 0).await;
+        seed(&*repo, "g2", std::path::PathBuf::from("/no2.vedge"), 1).await;
 
         let n = remove_stale_recents(&*repo).await.unwrap();
         assert_eq!(n, 2);
@@ -669,6 +802,7 @@ mod tests {
                 path: home,
                 display_name: "   ".into(),
                 sort_order: 0,
+                vault_uuid: None,
             },
         )
         .await

@@ -1,11 +1,11 @@
-//! Backup & restore e2e scenarios (slice 5.2c).
+//! **Replace** e2e scenarios (slices 5.2c / 5.2.2) — the destructive escape hatch.
 //!
-//! The `backup_vault` / `restore_vault` commands are driven through `invoke`, not the
-//! Settings ▸ Backup UI: those buttons open **native** file dialogs (`window.__TAURI__
-//! .dialog`) that a WebDriver can't automate. Create / unlock / lock / assertions stay
-//! UI-driven so the Leptos state and backend session stay in sync (restore lands the
-//! vault locked, and the subsequent UI unlock reloads the view from the restored DB).
-//! The clickable Backup tab is covered by the manual QA smoke.
+//! 🔴 The everyday verb, *Open backup*, has its own suite in `tests/open_backup.rs`, and it is
+//! fully UI-driven. This file covers the one that overwrites.
+//!
+//! `backup_vault` is driven through `invoke` here purely as **setup** (its Settings button opens
+//! a native save dialog, which a WebDriver cannot automate). Every mutation *under test* — the
+//! lock, the replace, the re-unlock — is either UI-driven or the command being asserted.
 //!
 //! `#[ignore]` by default; run via `mise e2e`.
 
@@ -17,11 +17,11 @@ use serde_json::json;
 use common::*;
 use vedge_e2e::{Session, TestEnv, app_binary};
 
-/// 5.2c — back up a vault, move it forward, then restore the older backup over it:
-/// the restore reverts the vault to the backed-up state (a confirmed rollback).
+/// Back up a vault, move it forward, then REPLACE it with the older backup: the vault reverts to
+/// the backed-up state (a confirmed rollback), and — ⑭ — an undo point is left behind.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
-async fn backup_and_restore() -> Result<()> {
+async fn backup_and_replace() -> Result<()> {
     let env = TestEnv::new()?;
     let app = app_binary()?;
     let vault = env.vault_path_str();
@@ -44,16 +44,29 @@ async fn backup_and_restore() -> Result<()> {
     // Move the live vault FORWARD of the backup (so restoring it is a rollback).
     add_login(&session, "extra", "u", "p").await?;
 
-    // Lock, then restore the older backup (confirmed rollback).
+    // Lock, then replace with the older backup (confirmed rollback; same credentials, and the
+    // target reads fine, so the other two acknowledgements are not required).
     session.click_testid("vault-lock").await.context("lock")?;
     assert_unlocked(&session, &vault, false).await?;
-    session
+    let report = session
         .invoke(
-            "restore_vault",
-            json!({ "vault_path": vault, "archive_path": backup, "confirm_rollback": true }),
+            "replace_vault_from_backup",
+            json!({
+                "vault_path": vault,
+                "archive_path": backup,
+                "confirm_rollback": true,
+                "confirm_credential_change": false,
+                "confirm_unverified_target": false,
+            }),
         )
         .await
-        .context("restore_vault")?;
+        .context("replace_vault_from_backup")?;
+
+    // ⑭ Even the escape hatch is undoable: a `pre-restore` snapshot of what we just destroyed.
+    assert!(
+        report.get("undo_snapshot_id").is_some_and(|v| !v.is_null()),
+        "a replace must leave an undo point behind, got {report:?}"
+    );
 
     // Re-unlock through the UI and confirm the vault is back at the backed-up state:
     // "keeper" is present, "extra" (added after the backup) is gone.
@@ -61,11 +74,11 @@ async fn backup_and_restore() -> Result<()> {
     let entries = list_entries(&session, &vault).await?;
     assert!(
         entry_id(&entries, "keeper").is_some(),
-        "the backed-up entry must survive the restore"
+        "the backed-up entry must survive the replace"
     );
     assert!(
         entry_id(&entries, "extra").is_none(),
-        "an entry added after the backup must be gone after restoring it"
+        "an entry added after the backup must be gone after replacing with it"
     );
 
     session.assert_console_clean().await?;
@@ -73,11 +86,10 @@ async fn backup_and_restore() -> Result<()> {
     Ok(())
 }
 
-/// 5.2c — restore refuses an UNLOCKED target (Decision ⑦): the command errors and the
-/// live vault is left untouched.
+/// Replace refuses an UNLOCKED target: the command errors and the live vault is untouched.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
-async fn restore_refuses_unlocked_vault() -> Result<()> {
+async fn replace_refuses_unlocked_vault() -> Result<()> {
     let env = TestEnv::new()?;
     let app = app_binary()?;
     let vault = env.vault_path_str();
@@ -95,16 +107,22 @@ async fn restore_refuses_unlocked_vault() -> Result<()> {
         .await
         .context("backup_vault")?;
 
-    // Restore WITHOUT locking first → the command must refuse.
+    // Replace WITHOUT locking first → the command must refuse.
     let refused = session
         .invoke(
-            "restore_vault",
-            json!({ "vault_path": vault, "archive_path": backup, "confirm_rollback": true }),
+            "replace_vault_from_backup",
+            json!({
+                "vault_path": vault,
+                "archive_path": backup,
+                "confirm_rollback": true,
+                "confirm_credential_change": true,
+                "confirm_unverified_target": true,
+            }),
         )
         .await;
     assert!(
         refused.is_err(),
-        "restoring an unlocked vault must be refused, got {refused:?}"
+        "replacing an unlocked vault must be refused, got {refused:?}"
     );
 
     // The vault stays unlocked and intact.
@@ -112,7 +130,7 @@ async fn restore_refuses_unlocked_vault() -> Result<()> {
     let entries = list_entries(&session, &vault).await?;
     assert!(
         entry_id(&entries, "keeper").is_some(),
-        "a refused restore must leave the live vault untouched"
+        "a refused replace must leave the live vault untouched"
     );
 
     session.assert_console_clean().await?;

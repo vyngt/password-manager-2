@@ -25,6 +25,37 @@ use crate::infrastructure::backup::archive;
 use crate::infrastructure::backup::manifest::{
     BACKUP_FORMAT_VERSION, BLOBS_PREFIX, BackupManifest, MANIFEST_NAME, ManifestFile, VAULT_MEMBER,
 };
+// The `verify_hash` prefix helper is the snapshot module's (slice 5.2.1); M3 reuses it verbatim
+// so the two manifests describe credentials identically and a comparison can never mean two
+// different things.
+use crate::infrastructure::snapshot::manifest::verify_hash_prefix;
+
+/// The vault's backup health (Decision ⑧, slice 5.2.2).
+#[derive(Debug, Clone)]
+pub struct BackupStatus {
+    /// 🔴 When a `.vbk` was last written — **and only that**. Written by [`backup_vault`] alone.
+    ///
+    /// It is deliberately NOT derived from `BackupCreated` audit rows, because `create_snapshot`
+    /// emits those too (5.2.1). A snapshot must never be able to silence *"you have never backed
+    /// up"*: it lives on the same disk, in the same folder, and dies with it. Two different
+    /// safety properties, two different columns, two different writers — so they cannot be
+    /// confused by accident.
+    pub last_backup_at: Option<crate::domain::shared::Timestamp>,
+    /// When a local snapshot was last taken. Shown *beside* the above, never instead of it.
+    pub last_snapshot_at: Option<crate::domain::shared::Timestamp>,
+}
+
+/// Read the vault's backup health. See [`BackupStatus`] for why these are two separate facts.
+#[instrument(skip_all, fields(vault_id = %session.vault_id()))]
+pub async fn backup_status(session: &VaultSession) -> Result<BackupStatus, VaultError> {
+    // The LIVE config: `session.config` is an unlock-time snapshot, and a backup taken during
+    // this session would not be reflected in it.
+    let cfg = session.repo.load_config().await?;
+    Ok(BackupStatus {
+        last_backup_at: cfg.last_backup_at,
+        last_snapshot_at: cfg.last_snapshot_at,
+    })
+}
 
 /// Where to write the archive. The `.blake3` sidecar goes beside it.
 #[derive(Debug, Clone)]
@@ -158,7 +189,12 @@ pub async fn backup_vault(
     // `commit_counter` changes on every content write, so `session.config`'s
     // unlock-time snapshot is stale — read the LIVE value. Backup holds the session
     // (single writer), so this matches the `VACUUM INTO` snapshot's counter (5.2c).
-    let commit_counter = session.repo.load_config().await?.commit_counter;
+    // The same live read gives us `verify_hash` for M3's credential prefix: a change_password
+    // during this session would have rotated it, leaving `session.config`'s copy wrong — and a
+    // WRONG prefix is worse than none, because it asserts a mismatch that isn't there.
+    let live_config = session.repo.load_config().await?;
+    let commit_counter = live_config.commit_counter;
+    let verify_hash_prefix = Some(verify_hash_prefix(&live_config.verify_hash));
     let manifest = BackupManifest {
         format_version: BACKUP_FORMAT_VERSION,
         vault_uuid: session.config.vault_uuid.clone(),
@@ -167,6 +203,7 @@ pub async fn backup_vault(
         entry_count,
         blob_count,
         commit_counter,
+        verify_hash_prefix,
         files,
     };
     let manifest_path = staging_path.join(MANIFEST_NAME);
@@ -200,8 +237,11 @@ pub async fn backup_vault(
     // ---- POST-COMMIT (L1): the archive is on disk and valid. NOTHING below may report a
     //      successful backup as failed — a best-effort failure is logged, never propagated. ----
 
-    // 7. Advisory whole-archive hash sidecar (Decision ③).
-    let sidecar = append_suffix(&dest, ".blake3");
+    // 7. Advisory whole-archive hash sidecar (Decision ③). Now actually READ — as of
+    //    slice 5.2.2 (finding L2), `archive::verify_archive` verifies against it when it
+    //    is present. The path comes from `archive::sidecar_path` so the writer and the
+    //    reader cannot drift apart.
+    let sidecar = archive::sidecar_path(&dest);
     if let Err(e) = std::fs::write(&sidecar, format!("{archive_blake3}\n")) {
         tracing::warn!(error = %e, "backup committed but the .blake3 sidecar could not be written");
     }

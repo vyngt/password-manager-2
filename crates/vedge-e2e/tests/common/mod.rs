@@ -34,12 +34,44 @@ use vedge_e2e::{MASTER_PASSWORD, Session};
 
 /// Unlock the (single) vault from the launch picker with the master password.
 pub async fn unlock_ui(s: &Session, vault: &str) -> Result<()> {
-    click_vault_option(s).await?;
+    select_vault_until_unlock_panel(s).await?;
     s.fill_id("master-password", MASTER_PASSWORD).await?;
     s.click_testid("unlock-submit")
         .await
         .context("unlock panel: Unlock")?;
     assert_unlocked(s, vault, true).await?;
+    Ok(())
+}
+
+/// Click the vault row until the unlock panel's password field actually appears.
+///
+/// 🔴 A single click is NOT enough, and this was an intermittent failure
+/// (`element Id("master-password") not found in 10s`). A recents row only *selects* when it is
+/// `openable`, and `openable` comes from a per-row backend probe (`read_target_state`) that runs
+/// asynchronously after `refresh_recents()`. Immediately after an operation that reloads the
+/// picker — a snapshot revert, an Open backup — the row can render for a moment with
+/// `openable: false`, and a click that lands in that window is silently ignored: no selection, no
+/// password field, and 10 seconds later the test fails somewhere far from the actual cause.
+///
+/// So: click, wait for the field, and if it hasn't appeared, click again. The retry is the point.
+async fn select_vault_until_unlock_panel(s: &Session) -> Result<()> {
+    const ATTEMPTS: usize = 5;
+    for _ in 0..ATTEMPTS {
+        click_vault_option(s).await?;
+        if s.wait_for(By::Id("master-password"), Duration::from_secs(4))
+            .await
+            .is_ok()
+        {
+            return Ok(());
+        }
+    }
+    // Out of attempts — let `wait_for` produce the real diagnostic.
+    s.wait_for(By::Id("master-password"), Duration::from_secs(10))
+        .await
+        .context(
+            "the vault row never selected — it is probably still reporting `openable: false` \
+             (the per-row backend probe had not settled)",
+        )?;
     Ok(())
 }
 
@@ -62,10 +94,13 @@ pub async fn open_generator_panel(s: &Session) -> Result<()> {
     Ok(())
 }
 
-/// Split a vault **home** path (`…/<name>.vedge`) into its parent location and
-/// its `.vedge`-stripped name, so the redesigned Step-1 name+location fields
-/// recompose the identical home (slice 5.2.0).
-fn split_home(home: &str) -> (String, String) {
+/// Split a vault **home** path (`…/<name>.vedge`) into its parent location and its
+/// `.vedge`-stripped name, so a name+location field pair recomposes the identical home.
+///
+/// Shared by the create wizard's Step 1 (slice 5.2.0) and the Open-a-backup dialog's destination
+/// (slice 5.2.2) — the two must split the same way, or the suites would silently be testing two
+/// different destinations.
+pub fn split_home(home: &str) -> (String, String) {
     let home = home.trim_end_matches(['/', '\\']);
     let (parent, last) = match home.rfind(['/', '\\']) {
         Some(i) => (&home[..i], &home[i + 1..]),

@@ -1,13 +1,19 @@
-//! Backup / restore commands (slice 5.2). Mirrors
-//! `vedge-tauri/src/commands/backup.rs`.
+//! Backup commands (slices 5.2 / 5.2.2). Mirrors `vedge-tauri/src/commands/backup.rs`.
 //!
-//! `backup` needs an unlocked session (the live snapshot runs through it); `inspect`
-//! is a read-only preview; `restore` is a **file** op that refuses an unlocked target
-//! (the caller locks first) and re-bases the rollback baseline on success.
+//! Decision ⑦'s three verbs, and only one of them can destroy anything:
+//!
+//! - [`backup`] — write a `.vbk` anywhere (needs an unlocked session).
+//! - [`open`] — materialise a vault at a path with **nothing there**. 🟢 Cannot overwrite.
+//! - [`replace`] — the demoted escape hatch. 🔴 Overwrites a live vault; needs it **locked**,
+//!   and takes three *independent* acknowledgements.
+//!
+//! [`inspect`] previews for both, and [`status`] answers "when did I last actually back up?"
 
 use serde::Serialize;
 
-use vedge_ipc::{BackupPreviewDto, BackupReportDto, RestoreReportDto};
+use vedge_ipc::{
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, OpenBackupReportDto, ReplaceReportDto,
+};
 
 use crate::api::call::call;
 use crate::api::error::ApiError;
@@ -29,54 +35,101 @@ pub async fn backup(vault_path: &str, dest_path: &str) -> Result<BackupReportDto
     .await
 }
 
-/// Preview what restoring `archive_path` over `vault_path` would do (read-only; safe
-/// on a corrupt or missing target).
+/// Preview an archive. Read-only; safe on a corrupt or missing target.
 ///
-/// Backend-complete but frontend-pending: 5.2.1 moved snapshot restore to the launch screen
-/// (`api::snapshot::revert`) and deleted the Settings restore UI. `.vbk` "Open backup" is
-/// 5.2.2 — this wrapper is its consumer, so it is retained (not a dead wrapper to delete).
-#[allow(dead_code)]
-pub async fn inspect(vault_path: &str, archive_path: &str) -> Result<BackupPreviewDto, ApiError> {
+/// Pass `dest_home` for the **Open** flow (is the path free? is this a duplicate? do the
+/// credentials match?) or `target_vault` for the **Replace** flow (does it match this vault?
+/// would it roll back?). One preview, two callers.
+pub async fn inspect(
+    archive_path: &str,
+    target_vault: Option<&str>,
+    dest_home: Option<&str>,
+) -> Result<BackupPreviewDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
-        vault_path: &'a str,
         archive_path: &'a str,
+        target_vault: Option<&'a str>,
+        dest_home: Option<&'a str>,
     }
     call(
         "inspect_backup",
         &Args {
-            vault_path,
             archive_path,
+            target_vault,
+            dest_home,
         },
     )
     .await
 }
 
-/// Restore `vault_path` from `archive_path`. The target must be **locked**;
-/// `confirm_rollback` is the user's explicit yes to a rollback (restoring an older
-/// backup over a newer vault).
+/// 🟢 Open `archive_path` as a new vault at `dest_home`.
 ///
-/// Backend-complete but frontend-pending — see [`inspect`]. Consumed by 5.2.2's "Open
-/// backup" UI; retained rather than deleted (the 2.10.1 lesson).
-#[allow(dead_code)]
-pub async fn restore(
+/// `dest_home` **must not exist** — the backend refuses otherwise, and there is no override.
+/// That single constraint is what makes this the safe, everyday verb.
+pub async fn open(archive_path: &str, dest_home: &str) -> Result<OpenBackupReportDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        archive_path: &'a str,
+        dest_home: &'a str,
+    }
+    call(
+        "open_backup",
+        &Args {
+            archive_path,
+            dest_home,
+        },
+    )
+    .await
+}
+
+/// 🔴 Replace `vault_path`'s contents with `archive_path`. **Destructive.** The target must be
+/// **locked** (the caller locks first).
+///
+/// The three confirms are three *independent* risks — never bind them to one checkbox:
+/// - `confirm_rollback`: the backup is older than the live vault; the difference is dropped.
+/// - `confirm_credential_change`: the backup needs the master password / Secret Key in force
+///   when it was taken — possibly ones the user no longer has.
+/// - `confirm_unverified_target`: the target could not be read, so `VEdge` could not check that
+///   this backup even belongs to it.
+///
+/// A uuid mismatch has no confirm. It is refused outright.
+pub async fn replace(
     vault_path: &str,
     archive_path: &str,
     confirm_rollback: bool,
-) -> Result<RestoreReportDto, ApiError> {
+    confirm_credential_change: bool,
+    confirm_unverified_target: bool,
+) -> Result<ReplaceReportDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
         vault_path: &'a str,
         archive_path: &'a str,
         confirm_rollback: bool,
+        confirm_credential_change: bool,
+        confirm_unverified_target: bool,
     }
     call(
-        "restore_vault",
+        "replace_vault_from_backup",
         &Args {
             vault_path,
             archive_path,
             confirm_rollback,
+            confirm_credential_change,
+            confirm_unverified_target,
         },
     )
     .await
+}
+
+/// When this vault was last **backed up** (and, separately, last snapshotted).
+///
+/// 🔴 A snapshot is not a backup — it lives on the same disk and dies with it. The two are
+/// distinct fields precisely so the UI cannot accidentally let one reassure the user about the
+/// other (Decision ⑧).
+pub async fn status(vault_path: &str) -> Result<BackupStatusDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+    }
+    call("backup_status", &Args { vault_path }).await
 }

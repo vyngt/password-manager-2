@@ -243,3 +243,62 @@ async fn revert_refuses_unknown_snapshot() {
     );
     assert_eq!(ctx.active_entry_count().await, 2, "the vault is untouched");
 }
+
+/// 🔴 **Finding H1, applied to the snapshot store.** 5.2.1 shipped this guard as `!=`,
+/// which would orphan **every existing snapshot** the day `SNAPSHOT_FORMAT_VERSION`
+/// becomes 2 — the same defect H1 names in the `.vbk` path, in code written one slice
+/// earlier. The rule is the store's, not the container's: once it exists on a user's
+/// disk, every future version must read it — forever.
+///
+/// Refuse NEWER; accept OLDER. Both halves pinned.
+#[tokio::test]
+async fn revert_accepts_an_older_snapshot_format_and_refuses_a_newer_one() {
+    use vedge_core::domain::vault::errors::VaultError;
+    use vedge_core::infrastructure::snapshot::manifest::SNAPSHOT_FORMAT_VERSION;
+
+    let (ctx, factory) = build_two_snapshot_vault().await;
+    let store_dir = ctx.home.join(SNAPSHOTS_DIR);
+    let keychain = Arc::clone(&ctx.keychain);
+
+    let snaps = store::list_snapshots(&store_dir).unwrap();
+    let oldest = snaps.last().unwrap().clone(); // the 1-entry snapshot
+
+    // --- a NEWER format is refused, and the vault is untouched ---
+    let mut m = oldest.manifest.clone();
+    m.format_version = SNAPSHOT_FORMAT_VERSION + 1;
+    store::write_manifest(&oldest.dir, &m).unwrap();
+    let err = revert_to_snapshot(
+        &factory,
+        keychain.as_ref(),
+        RevertToSnapshotInput {
+            vault: ctx.home.clone(),
+            snapshot_id: oldest.id(),
+            confirm_rollback: true,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::SnapshotUnsupportedFormat(v) if v == SNAPSHOT_FORMAT_VERSION + 1),
+        "a NEWER snapshot format → refuse, got {err:?}"
+    );
+    assert_eq!(ctx.active_entry_count().await, 2, "the vault is untouched");
+
+    // --- an OLDER format still reverts (the half that matters) ---
+    let mut m = oldest.manifest.clone();
+    m.format_version = 0;
+    store::write_manifest(&oldest.dir, &m).unwrap();
+    let report = revert_to_snapshot(
+        &factory,
+        keychain.as_ref(),
+        RevertToSnapshotInput {
+            vault: ctx.home.clone(),
+            snapshot_id: oldest.id(),
+            confirm_rollback: true,
+        },
+    )
+    .await
+    .expect("an OLDER snapshot format_version must still revert — H1");
+    assert_eq!(report.entry_count, 1);
+    assert_eq!(ctx.active_entry_count().await, 1, "the revert took effect");
+}
