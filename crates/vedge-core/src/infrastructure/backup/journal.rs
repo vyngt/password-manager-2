@@ -287,6 +287,30 @@ pub(crate) fn rename_retrying(src: &Path, dst: &Path) -> Result<(), VaultError> 
     }
 }
 
+/// Recursively remove a directory, retrying on a Windows sharing/access violation (slice 5.2.4).
+///
+/// The same lingering-handle window as [`rename_retrying`]: a just-locked vault's `sqlx` pool can
+/// hold the `.vdb` handle briefly, so `remove_dir_all` on the home can fail with
+/// `ERROR_SHARING_VIOLATION` (32) / `ERROR_ACCESS_DENIED` (5) even though the handle will release.
+/// A missing directory is success (idempotent — a crash-resume re-run finds it already gone).
+/// Callers run this on a blocking thread so the async runtime stays free while we wait.
+pub(crate) fn remove_dir_all_retrying(path: &Path) -> Result<(), VaultError> {
+    const ATTEMPTS: u32 = 100;
+    const DELAY: std::time::Duration = std::time::Duration::from_millis(100);
+    let mut attempt: u32 = 0;
+    loop {
+        match std::fs::remove_dir_all(path) {
+            Ok(()) => return Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) if is_sharing_violation(&e) && attempt < ATTEMPTS.saturating_sub(1) => {
+                attempt = attempt.saturating_add(1);
+                std::thread::sleep(DELAY);
+            }
+            Err(e) => return Err(io_ctx("remove dir", &e)),
+        }
+    }
+}
+
 // ---- the swap ---------------------------------------------------------------
 
 struct SwapPaths {

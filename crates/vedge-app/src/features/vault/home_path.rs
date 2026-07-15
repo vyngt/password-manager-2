@@ -68,8 +68,36 @@ pub fn compose_home(location: &str, name: &str) -> String {
     format!("{base}{sep}{folder}")
 }
 
+/// Middle-truncate a path for display: keep the head and the tail — the vault name lives at the
+/// end — replacing the middle with `…`, so a long path stays recognizable at both ends. `max` is
+/// a **character** budget (including the `…`). Returns the input unchanged when it already fits.
+///
+/// 🔴 Never the `dir="rtl"` CSS trick (it reorders punctuation and mangles Windows paths). Written
+/// in Rust and char-boundary-safe: the workspace denies `indexing_slicing` + `arithmetic_side_effects`,
+/// and naive byte slicing panics on a multi-byte boundary. The tail (the vault name) gets the extra
+/// character when the budget is odd.
+#[must_use]
+pub fn middle_truncate(path: &str, max: usize) -> String {
+    let chars: Vec<char> = path.chars().collect();
+    if chars.len() <= max {
+        return path.to_owned();
+    }
+    let budget = max.saturating_sub(1); // one character for the ellipsis
+    let head_len = budget.div_euclid(2);
+    let tail_len = budget.saturating_sub(head_len); // the vault name gets the extra char
+    let head: String = chars.iter().take(head_len).collect();
+    let tail: String = chars
+        .iter()
+        .skip(chars.len().saturating_sub(tail_len))
+        .collect();
+    format!("{head}…{tail}")
+}
+
 #[cfg(test)]
 mod tests {
+    // `.ends_with(".vedge")` asserts the vault name survives at the tail — it is not a real
+    // file-extension check (the input is a truncated display string).
+    #![allow(clippy::case_sensitive_file_extension_comparisons)]
     use super::*;
 
     #[test]
@@ -126,5 +154,45 @@ mod tests {
             "D:\\Vaults\\work.vedge"
         );
         assert_eq!(compose_home("/home/me/", "work"), "/home/me/work.vedge");
+    }
+
+    #[test]
+    fn middle_truncate_leaves_a_fitting_path_unchanged() {
+        assert_eq!(middle_truncate("C:\\a", 20), "C:\\a");
+        let exact = "C:\\Users\\vy";
+        assert_eq!(middle_truncate(exact, exact.chars().count()), exact); // exact fit
+        assert_eq!(middle_truncate("short", 100), "short"); // shorter than max
+    }
+
+    #[test]
+    fn middle_truncate_keeps_the_head_and_the_vault_name_tail() {
+        let p = "C:\\Users\\vy\\Documents\\Vaults\\personal.vedge";
+        let out = middle_truncate(p, 24);
+        assert!(out.chars().count() <= 24, "within budget: {out:?}");
+        assert!(out.contains('…'), "has an ellipsis: {out:?}");
+        assert!(out.starts_with("C:\\"), "head preserved: {out:?}");
+        assert!(
+            out.ends_with(".vedge"),
+            "the vault name survives at the tail: {out:?}"
+        );
+    }
+
+    #[test]
+    fn middle_truncate_never_panics_on_a_tiny_budget() {
+        // budget < ellipsis + tail: saturating math, no panic, no out-of-bounds.
+        assert_eq!(middle_truncate("abcdef", 2), "…f");
+        assert_eq!(middle_truncate("abcdef", 1), "…");
+        assert_eq!(middle_truncate("abcdef", 0), "…");
+    }
+
+    #[test]
+    fn middle_truncate_respects_multibyte_char_boundaries() {
+        // Vietnamese + CJK — naive byte slicing panics on a boundary here.
+        let p = "C:\\Tài liệu\\Kho lưu trữ\\cá nhân日本語.vedge";
+        let out = middle_truncate(p, 16);
+        assert!(out.chars().count() <= 16, "within budget: {out:?}");
+        assert!(out.contains('…'));
+        // A `String` is always valid UTF-8 — the point is that we never split a char.
+        assert!(out.ends_with(".vedge"), "vault name intact: {out:?}");
     }
 }

@@ -55,16 +55,32 @@ pub fn VaultUnlockPanel(
                     )
                 }
                 Some(sel) => {
+                    let display_name = sel.display_name;
+                    let name_title = display_name.clone();
+                    let path = sel.path;
+                    let path_display = crate::features::vault::home_path::middle_truncate(
+                        &path,
+                        56,
+                    );
                     Either::Right(
+                        // Precompute the display strings so each owned value is moved exactly once
+                        // (the name/path each appear in a `title` and the body — avoids a redundant
+                        // clone under the `view!` macro's evaluation order).
                         view! {
                             <span class="mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-2xl">
                                 <Icon attr:aria-hidden="true" icon=i::FaFileShieldSolid />
                             </span>
-                            <div class="text-lg font-semibold text-text-primary">
-                                {sel.display_name.clone()}
+                            <div
+                                class="max-w-full truncate text-lg font-semibold text-text-primary"
+                                title=name_title
+                            >
+                                {display_name}
                             </div>
-                            <div class="mb-5 max-w-full truncate text-xs font-jetbrains-mono text-foreground/40">
-                                {sel.path}
+                            <div
+                                class="mb-5 max-w-full truncate text-xs font-jetbrains-mono text-foreground/40"
+                                title=path
+                            >
+                                {path_display}
                             </div>
                             <div class="w-full max-w-[280px]">
                                 {move || {

@@ -4,8 +4,8 @@
 use serde::Serialize;
 
 use vedge_ipc::{
-    ConvertVaultResultDto, CreateVaultInputDto, CreateVaultOutputDto, IndexEntryDto, TagMetaDto,
-    UnlockResultDto, UnlockVaultInputDto,
+    ConvertVaultResultDto, CreateVaultInputDto, CreateVaultOutputDto, DeleteVaultReportDto,
+    IndexEntryDto, TagMetaDto, UnlockResultDto, UnlockVaultInputDto, VaultDetailsDto,
 };
 
 use crate::api::call::{call, call_void};
@@ -38,7 +38,7 @@ pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
 }
 
 /// Convert a legacy `.vdb` vault to a `<name>.vedge/` home (slice 5.2.0). Returns the new home
-/// path (to re-point the recents row) and whether a legacy biometric credential was purged
+/// path (to re-point the registry row) and whether a legacy biometric credential was purged
 /// (slice 5.2.3 — the caller then prompts to re-enable Hello in Settings).
 pub async fn convert(vault_path: &str) -> Result<ConvertVaultResultDto, ApiError> {
     #[derive(Serialize)]
@@ -46,6 +46,37 @@ pub async fn convert(vault_path: &str) -> Result<ConvertVaultResultDto, ApiError
         vault_path: &'a str,
     }
     call("convert_vault", &Args { vault_path }).await
+}
+
+/// Destroy a vault — files, all three OS credentials, and its registry row (slice 5.2.4). Refuses
+/// an unlocked target. `registry_id` is the recents row id (removed last, as the tombstone). A
+/// report with `credentials_cleaned == false` means the UI must warn and name `mise keychain-audit`.
+pub async fn delete(
+    vault_path: &str,
+    registry_id: Option<&str>,
+) -> Result<DeleteVaultReportDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        registry_id: Option<&'a str>,
+    }
+    call(
+        "delete_vault",
+        &Args {
+            vault_path,
+            registry_id,
+        },
+    )
+    .await
+}
+
+/// Read-only stats for the vault-details dialog (entries, snapshots, size, uuid). Best-effort.
+pub async fn details(vault_path: &str) -> Result<VaultDetailsDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+    }
+    call("vault_details", &Args { vault_path }).await
 }
 
 /// Whether the backend still holds an unlocked session for this vault.

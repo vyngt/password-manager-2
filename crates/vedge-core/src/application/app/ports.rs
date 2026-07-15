@@ -1,15 +1,17 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::domain::app::entities::{AppSetting, ExtensionSession, KnownDevice, RecentVault, Theme};
+use crate::domain::app::entities::{
+    AppSetting, ExtensionSession, KnownDevice, RegisteredVault, Theme,
+};
 use crate::domain::app::errors::AppDbError;
 use crate::domain::shared::{DeviceId, SessionId, ThemeId, Timestamp};
 
 #[async_trait]
-pub trait RecentVaultRepository: Send + Sync {
-    async fn list(&self) -> Result<Vec<RecentVault>, AppDbError>;
-    async fn get(&self, id: &str) -> Result<RecentVault, AppDbError>;
-    async fn upsert(&self, vault: &RecentVault) -> Result<(), AppDbError>;
+pub trait VaultRegistry: Send + Sync {
+    async fn list(&self) -> Result<Vec<RegisteredVault>, AppDbError>;
+    async fn get(&self, id: &str) -> Result<RegisteredVault, AppDbError>;
+    async fn upsert(&self, vault: &RegisteredVault) -> Result<(), AppDbError>;
     async fn delete(&self, id: &str) -> Result<(), AppDbError>;
     async fn touch_last_opened(&self, id: &str, when: Timestamp) -> Result<(), AppDbError>;
 }

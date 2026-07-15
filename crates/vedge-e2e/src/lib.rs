@@ -309,11 +309,15 @@ impl Session {
     async fn wait_ready(&self, timeout: Duration) -> Result<()> {
         let start = Instant::now();
         loop {
-            if self.invoke("list_recent_vaults", json!({})).await.is_ok() {
+            if self
+                .invoke("list_registered_vaults", json!({}))
+                .await
+                .is_ok()
+            {
                 return Ok(());
             }
             if start.elapsed() > timeout {
-                bail!("`list_recent_vaults` never succeeded within {timeout:?}");
+                bail!("`list_registered_vaults` never succeeded within {timeout:?}");
             }
             tokio::time::sleep(Duration::from_millis(250)).await;
         }

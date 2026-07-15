@@ -48,7 +48,7 @@ pub async fn unlock_ui(s: &Session, vault: &str) -> Result<()> {
 /// 🔴 A single click is NOT enough, and this was an intermittent failure
 /// (`element Id("master-password") not found in 10s`). A recents row only *selects* when it is
 /// `openable`, and `openable` comes from a per-row backend probe (`read_target_state`) that runs
-/// asynchronously after `refresh_recents()`. Immediately after an operation that reloads the
+/// asynchronously after `refresh_registry()`. Immediately after an operation that reloads the
 /// picker — a snapshot revert, an Open backup — the row can render for a moment with
 /// `openable: false`, and a click that lands in that window is silently ignored: no selection, no
 /// password field, and 10 seconds later the test fails somewhere far from the actual cause.

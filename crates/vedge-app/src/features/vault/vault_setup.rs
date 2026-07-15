@@ -8,7 +8,7 @@
 //!
 //! Step 1 (slice 5.2.0 polish) splits the vault home into three fields — a
 //! **vault name** (the folder stem, `.vedge` appended automatically), an
-//! optional **display name** (the recents-list label), and a **location** (the
+//! optional **display name** (the registry-list label), and a **location** (the
 //! parent directory, with a Browse button) — plus a live preview of the final
 //! `<location>/<name>.vedge` home. The composed path drives `create_vault`.
 
@@ -18,7 +18,7 @@ use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 use uuid::Uuid;
 
-use vedge_ipc::{CreateVaultInputDto, RecentVaultDto};
+use vedge_ipc::{CreateVaultInputDto, RegisteredVaultDto};
 
 use crate::api;
 use crate::api::dialog::{DialogFilter, OpenDialogOptions, SaveDialogOptions};
@@ -66,7 +66,7 @@ pub fn VaultSetup() -> impl IntoView {
     let display_name = RwSignal::new(String::new());
     let location = RwSignal::new(String::new());
     // The composed `<location>/<name>.vedge` home, set at create time so Finish
-    // and the recents row reuse the exact same string.
+    // and the registry row reuse the exact same string.
     let home = RwSignal::new(String::new());
     let pw = RwSignal::new(String::new());
     let confirm = RwSignal::new(String::new());
@@ -143,7 +143,7 @@ pub fn VaultSetup() -> impl IntoView {
                                     </span>
                                 </div>
 
-                                // Display name (the recents-list label — optional).
+                                // Display name (the registry-list label — optional).
                                 <div class="flex flex-col gap-1">
                                     <span class="text-sm text-text-secondary">
                                         {move || t!(i18n, onboarding.display_name_label)}
@@ -376,14 +376,14 @@ pub fn VaultSetup() -> impl IntoView {
                                                                 keychain_ok.set(out.keychain_stored);
                                                                 created.set(true);
                                                                 current_step.set(2);
-                                                                let dto = RecentVaultDto {
+                                                                let dto = RegisteredVaultDto {
                                                                     id: Uuid::new_v4().to_string(),
                                                                     path: input.vault_path.clone(),
                                                                     display_name: display,
                                                                     last_opened: None,
                                                                     sort_order: 0,
                                                                 };
-                                                                let _ = api::recent::add_recent_vault(&dto).await;
+                                                                let _ = api::registry::register_vault(&dto).await;
                                                             }
                                                             Err(ApiError::AlreadyExists) => {
                                                                 show_error(msg_exists);

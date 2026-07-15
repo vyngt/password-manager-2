@@ -28,8 +28,8 @@ use crate::state::AppState;
 /// blob store rooted at `dir`.
 pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
     use vedge_core::application::app::ports::{
-        AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository,
-        RecentVaultRepository, ThemeRepository,
+        AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, ThemeRepository,
+        VaultRegistry,
     };
     use vedge_core::application::vault::ports::BiometricAuthenticator;
     use vedge_core::application::vault::ports::{
@@ -44,7 +44,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
     use vedge_core::infrastructure::screen_lock::MemoryScreenLockWatcher;
     use vedge_core::infrastructure::sqlite::app::{
         AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
-        SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
+        SqliteKnownDeviceRepository, SqliteThemeRepository, SqliteVaultRegistry,
     };
     use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 
@@ -59,8 +59,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
     let db = AppDbConnection::open(&dir.path().join("app.db"))
         .await
         .unwrap();
-    let recent_vaults: Arc<dyn RecentVaultRepository> =
-        Arc::new(SqliteRecentVaultRepository::new(db.handle()));
+    let vault_registry: Arc<dyn VaultRegistry> = Arc::new(SqliteVaultRegistry::new(db.handle()));
     let app_settings: Arc<dyn AppSettingRepository> =
         Arc::new(SqliteAppSettingRepository::new(db.handle()));
     let themes: Arc<dyn ThemeRepository> = Arc::new(SqliteThemeRepository::new(db.handle()));
@@ -96,7 +95,7 @@ pub async fn state_fixture(dir: &tempfile::TempDir) -> AppState {
         clipboard,
         breach,
         screen_lock,
-        recent_vaults,
+        vault_registry,
         app_settings,
         themes,
         known_devices,

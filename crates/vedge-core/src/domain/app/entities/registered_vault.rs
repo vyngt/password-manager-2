@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::domain::shared::Timestamp;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecentVault {
+pub struct RegisteredVault {
     pub id: String,
     /// The vault **home** directory (`…/<name>.vedge`), slice 5.2.0.
     pub path: PathBuf,

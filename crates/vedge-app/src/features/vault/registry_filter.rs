@@ -1,12 +1,12 @@
 //! Pure client-side filter + recency sort for the vault picker (2.8.1).
 //!
 //! Kept Leptos-free so it's host-testable: the picker derives its visible
-//! list from `filter_sort_recents(&recents, &query)` inside a `Memo`.
+//! list from `filter_sort_registry(&registry, &query)` inside a `Memo`.
 
 use crate::features::vault::timestamps::ts_millis;
-use vedge_ipc::RecentVaultStatusDto;
+use vedge_ipc::RegisteredVaultStatusDto;
 
-/// Filter recents by a free-text query (matched against display name +
+/// Filter registry by a free-text query (matched against display name +
 /// path, case-insensitive substring; an empty query keeps everything) and
 /// sort for display:
 ///
@@ -14,12 +14,12 @@ use vedge_ipc::RecentVaultStatusDto;
 /// 2. then most-recent first (`last_opened` desc; never-opened last),
 /// 3. then display name A→Z as a stable tiebreak.
 #[must_use]
-pub fn filter_sort_recents(
-    items: &[RecentVaultStatusDto],
+pub fn filter_sort_registry(
+    items: &[RegisteredVaultStatusDto],
     query: &str,
-) -> Vec<RecentVaultStatusDto> {
+) -> Vec<RegisteredVaultStatusDto> {
     let q = query.trim().to_lowercase();
-    let mut out: Vec<RecentVaultStatusDto> = items
+    let mut out: Vec<RegisteredVaultStatusDto> = items
         .iter()
         .filter(|r| {
             q.is_empty()
@@ -52,14 +52,14 @@ pub fn filter_sort_recents(
 
 /// `last_opened` parsed to epoch millis for recency ordering; never-opened /
 /// unparseable → `i64::MIN` (oldest). See [`super::timestamps::ts_millis`].
-fn recency_millis(r: &RecentVaultStatusDto) -> i64 {
+fn recency_millis(r: &RegisteredVaultStatusDto) -> i64 {
     r.vault.last_opened.as_deref().map_or(i64::MIN, ts_millis)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vedge_ipc::RecentVaultDto;
+    use vedge_ipc::RegisteredVaultDto;
 
     fn row(
         id: &str,
@@ -67,9 +67,9 @@ mod tests {
         path: &str,
         last_opened: Option<&str>,
         exists: bool,
-    ) -> RecentVaultStatusDto {
-        RecentVaultStatusDto {
-            vault: RecentVaultDto {
+    ) -> RegisteredVaultStatusDto {
+        RegisteredVaultStatusDto {
+            vault: RegisteredVaultDto {
                 id: id.into(),
                 path: path.into(),
                 display_name: name.into(),
@@ -78,10 +78,11 @@ mod tests {
             },
             exists,
             openable: exists,
+            vault_uuid: None,
         }
     }
 
-    fn ids(v: &[RecentVaultStatusDto]) -> Vec<&str> {
+    fn ids(v: &[RegisteredVaultStatusDto]) -> Vec<&str> {
         v.iter().map(|r| r.vault.id.as_str()).collect()
     }
 
@@ -110,7 +111,10 @@ mod tests {
                 true,
             ),
         ];
-        assert_eq!(ids(&filter_sort_recents(&items, "")), ["new", "mid", "old"]);
+        assert_eq!(
+            ids(&filter_sort_registry(&items, "")),
+            ["new", "mid", "old"]
+        );
     }
 
     #[test]
@@ -119,7 +123,7 @@ mod tests {
             row("work", "Work", "/w.vdb", None, true),
             row("home", "Home", "/h.vdb", None, true),
         ];
-        assert_eq!(ids(&filter_sort_recents(&items, "WOR")), ["work"]);
+        assert_eq!(ids(&filter_sort_registry(&items, "WOR")), ["work"]);
     }
 
     #[test]
@@ -129,13 +133,13 @@ mod tests {
             row("home", "Home", "C:\\home.vdb", None, true),
         ];
         // Query matches only the first vault's path.
-        assert_eq!(ids(&filter_sort_recents(&items, "vaults")), ["work"]);
+        assert_eq!(ids(&filter_sort_registry(&items, "vaults")), ["work"]);
     }
 
     #[test]
     fn no_match_returns_empty() {
         let items = vec![row("work", "Work", "/w.vdb", None, true)];
-        assert!(filter_sort_recents(&items, "zzz").is_empty());
+        assert!(filter_sort_registry(&items, "zzz").is_empty());
     }
 
     #[test]
@@ -157,7 +161,7 @@ mod tests {
             ),
         ];
         // The existing vault wins despite a much older timestamp.
-        assert_eq!(ids(&filter_sort_recents(&items, "")), ["ok", "gone"]);
+        assert_eq!(ids(&filter_sort_registry(&items, "")), ["ok", "gone"]);
     }
 
     #[test]
@@ -172,7 +176,7 @@ mod tests {
                 true,
             ),
         ];
-        assert_eq!(ids(&filter_sort_recents(&items, "")), ["opened", "never"]);
+        assert_eq!(ids(&filter_sort_registry(&items, "")), ["opened", "never"]);
     }
 
     #[test]
@@ -196,7 +200,7 @@ mod tests {
                 true,
             ),
         ];
-        assert_eq!(ids(&filter_sort_recents(&items, "")), ["later", "earlier"]);
+        assert_eq!(ids(&filter_sort_registry(&items, "")), ["later", "earlier"]);
     }
 
     #[test]
@@ -206,6 +210,6 @@ mod tests {
             row("bravo", "Bravo", "/b.vdb", None, true),
             row("alpha", "Alpha", "/a.vdb", None, true),
         ];
-        assert_eq!(ids(&filter_sort_recents(&items, "")), ["alpha", "bravo"]);
+        assert_eq!(ids(&filter_sort_registry(&items, "")), ["alpha", "bravo"]);
     }
 }

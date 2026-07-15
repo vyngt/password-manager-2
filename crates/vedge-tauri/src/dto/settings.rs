@@ -1,25 +1,25 @@
 //! App.db DTO conversion layer.
 
 pub use vedge_ipc::{
-    AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto, RecentVaultDto,
-    RecentVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
+    AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto,
+    RegisteredVaultDto, RegisteredVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
 };
 
 use std::path::PathBuf;
 
 use vedge_core::domain::app::entities::{
-    AppSetting, ExtensionSession, KnownDevice, RecentVault, Theme,
+    AppSetting, ExtensionSession, KnownDevice, RegisteredVault, Theme,
 };
 use vedge_core::domain::shared::{DeviceId, SessionId, ThemeId};
 
 use crate::dto::common::{b64_decode_fixed, b64_encode, ts_from_string, ts_to_string};
 use crate::error::CommandError;
 
-// ---- RecentVault -------------------------------------------------------------
+// ---- RegisteredVault -------------------------------------------------------------
 
 #[must_use]
-pub fn recent_vault_to_dto(r: &RecentVault) -> RecentVaultDto {
-    RecentVaultDto {
+pub fn registered_vault_to_dto(r: &RegisteredVault) -> RegisteredVaultDto {
+    RegisteredVaultDto {
         id: r.id.clone(),
         path: r.path.display().to_string(),
         display_name: r.display_name.clone(),
@@ -28,8 +28,8 @@ pub fn recent_vault_to_dto(r: &RecentVault) -> RecentVaultDto {
     }
 }
 
-pub fn recent_vault_from_dto(dto: RecentVaultDto) -> Result<RecentVault, CommandError> {
-    Ok(RecentVault {
+pub fn registered_vault_from_dto(dto: RegisteredVaultDto) -> Result<RegisteredVault, CommandError> {
+    Ok(RegisteredVault {
         id: dto.id,
         path: PathBuf::from(dto.path),
         display_name: dto.display_name,
@@ -42,14 +42,16 @@ pub fn recent_vault_from_dto(dto: RecentVaultDto) -> Result<RecentVault, Command
 }
 
 #[must_use]
-pub fn recent_vault_status_to_dto(
-    s: &vedge_core::RecentVaultStatus,
+pub fn registered_vault_status_to_dto(
+    s: &vedge_core::RegisteredVaultStatus,
     openable: bool,
-) -> RecentVaultStatusDto {
-    RecentVaultStatusDto {
-        vault: recent_vault_to_dto(&s.vault),
+    vault_uuid: Option<String>,
+) -> RegisteredVaultStatusDto {
+    RegisteredVaultStatusDto {
+        vault: registered_vault_to_dto(&s.vault),
         exists: s.exists,
         openable,
+        vault_uuid,
     }
 }
 

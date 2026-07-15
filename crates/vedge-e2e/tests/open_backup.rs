@@ -103,7 +103,7 @@ async fn open_backup_to_new_path_via_ui() -> Result<()> {
     // The copy appears in the picker and is openable.
     wait_until(Duration::from_secs(30), || async {
         let rows: Vec<serde_json::Value> = session
-            .invoke("list_recent_vaults_with_status", json!({}))
+            .invoke("list_registered_vaults_with_status", json!({}))
             .await
             .ok()
             .and_then(|v| serde_json::from_value(v).ok())

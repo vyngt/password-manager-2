@@ -29,8 +29,8 @@ fn vault_id_from_string(s: &str) -> VaultId {
 }
 
 async fn resolve_display_name(state: &AppState, vault_path: &str) -> Option<String> {
-    // `list_recent_vaults` is cheap; the recent-vault table is tiny.
-    let recents = state.recent_vaults.list().await.ok()?;
+    // `list_registered_vaults` is cheap; the recent-vault table is tiny.
+    let recents = state.vault_registry.list().await.ok()?;
     recents
         .into_iter()
         .find(|r| r.path.to_string_lossy() == vault_path)
