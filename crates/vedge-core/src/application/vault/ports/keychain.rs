@@ -1,6 +1,5 @@
 use zeroize::Zeroizing;
 
-use crate::domain::shared::VaultId;
 use crate::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use crate::domain::vault::errors::VaultError;
 
@@ -52,18 +51,4 @@ pub trait KeychainProvider: Send + Sync {
     /// and deliberately unlike [`Self::delete_secret_key`] — deleting a vault that never wrote
     /// a baseline (or was already deleted, on a crash-resume) must not error.
     fn delete_commit_baseline(&self, vault_uuid: &str) -> Result<(), VaultError>;
-
-    /// Migrate a **legacy** path-keyed Secret Key entry (`vault:{path}`, pre-5.2.0) to the
-    /// uuid-keyed account (`secret:{uuid}`) — slice 5.2.0's layout migration.
-    ///
-    /// Order is **store → verify → delete-old**, so a crash between the store and the
-    /// delete re-runs harmlessly and never loses the key. Idempotent: `Ok(true)` when a
-    /// legacy entry was migrated, `Ok(false)` when none exists (already migrated, or the
-    /// vault never had a keychain entry). `legacy_vault_id` is the OLD `.vdb` path the
-    /// entry was keyed on.
-    fn migrate_secret_key(
-        &self,
-        legacy_vault_id: &VaultId,
-        vault_uuid: &str,
-    ) -> Result<bool, VaultError>;
 }

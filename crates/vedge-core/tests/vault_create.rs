@@ -308,13 +308,6 @@ async fn keychain_failure_returns_valid_vault() {
         fn delete_commit_baseline(&self, _vault_uuid: &str) -> Result<(), VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
-        fn migrate_secret_key(
-            &self,
-            _legacy_vault_id: &VaultId,
-            _vault_uuid: &str,
-        ) -> Result<bool, VaultError> {
-            Err(VaultError::KeychainUnavailable)
-        }
     }
 
     let create = build_create(&p, Arc::new(FailingKeychain));

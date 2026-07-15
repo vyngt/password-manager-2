@@ -2,7 +2,6 @@ use keyring::{Entry, Error as KeyringError};
 use zeroize::Zeroizing;
 
 use crate::application::vault::ports::keychain::KeychainProvider;
-use crate::domain::shared::VaultId;
 use crate::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use crate::domain::vault::errors::VaultError;
 
@@ -45,16 +44,6 @@ impl OsKeychainProvider {
 
     fn counter_entry(&self, vault_uuid: &str) -> Result<Entry, VaultError> {
         Entry::new(&self.service, &Self::counter_account(vault_uuid)).map_err(map_keyring_err)
-    }
-
-    /// The LEGACY (pre-5.2.0) path-keyed Secret-Key account — read only by
-    /// `migrate_secret_key` to move the entry onto `secret:{uuid}`.
-    fn legacy_account(vault_id: &VaultId) -> String {
-        format!("vault:{}", vault_id.path().to_string_lossy())
-    }
-
-    fn legacy_entry(&self, vault_id: &VaultId) -> Result<Entry, VaultError> {
-        Entry::new(&self.service, &Self::legacy_account(vault_id)).map_err(map_keyring_err)
     }
 }
 
@@ -132,34 +121,6 @@ impl KeychainProvider for OsKeychainProvider {
         // `delete_secret_key`.
         match self.counter_entry(vault_uuid)?.delete_credential() {
             Ok(()) | Err(KeyringError::NoEntry) => Ok(()),
-            Err(e) => Err(map_keyring_err(e)),
-        }
-    }
-
-    fn migrate_secret_key(
-        &self,
-        legacy_vault_id: &VaultId,
-        vault_uuid: &str,
-    ) -> Result<bool, VaultError> {
-        let legacy = self.legacy_entry(legacy_vault_id)?;
-        let mut bytes = match legacy.get_secret() {
-            Ok(b) => b,
-            Err(KeyringError::NoEntry) => return Ok(false), // nothing to migrate
-            Err(e) => return Err(map_keyring_err(e)),
-        };
-        let key = <[u8; SECRET_KEY_LEN]>::try_from(bytes.as_slice()).map(Zeroizing::new);
-        bytes.fill(0);
-        let key = key.map_err(|_| VaultError::KeychainEntryNotFound)?;
-
-        // Store under the uuid, then VERIFY it reads back BEFORE deleting the legacy entry
-        // — the vault must stay unlockable if anything here fails.
-        self.store_secret_key(vault_uuid, &key)?;
-        let readback = self.read_secret_key(vault_uuid)?;
-        if *readback != *key {
-            return Err(VaultError::KeychainUnavailable);
-        }
-        match legacy.delete_credential() {
-            Ok(()) | Err(KeyringError::NoEntry) => Ok(true),
             Err(e) => Err(map_keyring_err(e)),
         }
     }

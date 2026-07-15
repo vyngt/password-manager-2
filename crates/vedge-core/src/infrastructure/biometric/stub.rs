@@ -1,7 +1,6 @@
 use zeroize::Zeroizing;
 
 use crate::application::vault::ports::biometric::BiometricAuthenticator;
-use crate::domain::shared::VaultId;
 use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::errors::VaultError;
 
@@ -45,10 +44,5 @@ impl BiometricAuthenticator for StubBiometricAuthenticator {
 
     fn disable(&self, _vault_uuid: &str) -> Result<(), VaultError> {
         Ok(())
-    }
-
-    fn purge_legacy(&self, _legacy_vault_id: &VaultId) -> Result<bool, VaultError> {
-        // A platform that never enrolls has nothing legacy to purge.
-        Ok(false)
     }
 }

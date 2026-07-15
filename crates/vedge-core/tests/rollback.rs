@@ -25,7 +25,6 @@ use vedge_core::application::vault::ports::{
     VaultRepository, VaultRepositoryFactory,
 };
 use vedge_core::application::vault::use_cases::{UnlockVault, UnlockVaultInput};
-use vedge_core::domain::shared::VaultId;
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
@@ -158,13 +157,6 @@ async fn rollback_check_never_fails_unlock_when_keychain_read_errors() {
         }
         fn delete_commit_baseline(&self, vault_uuid: &str) -> Result<(), VaultError> {
             self.inner.delete_commit_baseline(vault_uuid)
-        }
-        fn migrate_secret_key(
-            &self,
-            legacy_vault_id: &VaultId,
-            vault_uuid: &str,
-        ) -> Result<bool, VaultError> {
-            self.inner.migrate_secret_key(legacy_vault_id, vault_uuid)
         }
     }
 

@@ -4,8 +4,8 @@
 use serde::Serialize;
 
 use vedge_ipc::{
-    ConvertVaultResultDto, CreateVaultInputDto, CreateVaultOutputDto, DeleteVaultReportDto,
-    IndexEntryDto, TagMetaDto, UnlockResultDto, UnlockVaultInputDto, VaultDetailsDto,
+    CreateVaultInputDto, CreateVaultOutputDto, DeleteVaultReportDto, IndexEntryDto, TagMetaDto,
+    UnlockResultDto, UnlockVaultInputDto, VaultDetailsDto,
 };
 
 use crate::api::call::{call, call_void};
@@ -35,17 +35,6 @@ pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
         vault_path: &'a str,
     }
     call_void("lock_vault", &Args { vault_path }).await
-}
-
-/// Convert a legacy `.vdb` vault to a `<name>.vedge/` home (slice 5.2.0). Returns the new home
-/// path (to re-point the registry row) and whether a legacy biometric credential was purged
-/// (slice 5.2.3 — the caller then prompts to re-enable Hello in Settings).
-pub async fn convert(vault_path: &str) -> Result<ConvertVaultResultDto, ApiError> {
-    #[derive(Serialize)]
-    struct Args<'a> {
-        vault_path: &'a str,
-    }
-    call("convert_vault", &Args { vault_path }).await
 }
 
 /// Destroy a vault — files, all three OS credentials, and its registry row (slice 5.2.4). Refuses

@@ -37,8 +37,8 @@ pub mod totp;
 
 pub use audit::{ACTION_NAMES, AuditEventDto, AuditPageDto, AuditQueryDto};
 pub use backup::{
-    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto,
-    DeleteVaultReportDto, OpenBackupReportDto, ReplaceReportDto, TargetStateDto, VaultDetailsDto,
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, DeleteVaultReportDto, OpenBackupReportDto,
+    ReplaceReportDto, TargetStateDto, VaultDetailsDto,
 };
 pub use common::{
     CommonMetaDto, EntryTypeDto, Timestamp, b64_decode, b64_decode_fixed, b64_encode,

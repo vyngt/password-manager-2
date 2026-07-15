@@ -18,13 +18,13 @@
 
     HOW IT DECIDES (this is the whole safety argument — read it before running -Delete):
 
-      1. Read the vaults you have registered, from `local/app.db` → `recent_vaults.path`.
+      1. Read the vaults you have registered, from `local/app.db` → `vault_registry.path`.
       2. For each one still on disk, read `vault_config.vault_uuid` out of its `vault.vdb`.
          That set of uuids is LIVE. Everything protecting them is KEPT.
       3. Every other entry under the service is an ORPHAN.
 
     🔴 THE LIMIT OF THAT ARGUMENT: a vault that exists on disk but is NOT registered in
-    `recent_vaults` is invisible to step 1, so its Secret Key would be classed as an orphan.
+    `vault_registry` is invisible to step 1, so its Secret Key would be classed as an orphan.
     Open every vault you care about once (so it lands in the picker) BEFORE running -Delete.
     The script prints exactly what it will protect; check that list against what you own.
 
@@ -77,7 +77,7 @@ if (-not $isTestService) {
         throw "app database not found at '$AppDb'. Without it this script cannot see which vaults are yours. Pass -AppDb <path>, or open the app once."
     }
 
-    foreach ($p in @(& sqlite3 $AppDb "SELECT path FROM recent_vaults;")) {
+    foreach ($p in @(& sqlite3 $AppDb "SELECT path FROM vault_registry;")) {
         if (-not $p) { continue }
         $vdb = Join-Path $p 'vault.vdb'
         if (Test-Path $vdb) {
