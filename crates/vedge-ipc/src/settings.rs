@@ -4,10 +4,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-// ---- RecentVault -------------------------------------------------------------
+// ---- RegisteredVault -------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecentVaultDto {
+pub struct RegisteredVaultDto {
     pub id: String,
     /// Path as a string — platform-native separator.
     pub path: String,
@@ -18,9 +18,9 @@ pub struct RecentVaultDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecentVaultStatusDto {
+pub struct RegisteredVaultStatusDto {
     #[serde(flatten)]
-    pub vault: RecentVaultDto,
+    pub vault: RegisteredVaultDto,
     pub exists: bool,
     /// `true` when the vault's `vault.vdb` is present AND opens as a valid database (slice
     /// 5.2.1). A present-but-`!openable` vault is CORRUPT — the launch screen badges it
@@ -29,6 +29,12 @@ pub struct RecentVaultStatusDto {
     /// as `false` (treated as "not openable" — conservative).
     #[serde(default)]
     pub openable: bool,
+    /// The vault's plaintext `vault_uuid` (slice 5.2.4): from the openable probe's identity, or
+    /// the registry row's stored uuid for a corrupt/missing vault. Surfaced so the launch screen
+    /// can show a **copyable Vault ID** — `mise keychain-audit` keys on uuids, and there was no
+    /// way to see one without a debugger. `None` when unknown.
+    #[serde(default)]
+    pub vault_uuid: Option<String>,
 }
 
 // ---- AppSetting --------------------------------------------------------------

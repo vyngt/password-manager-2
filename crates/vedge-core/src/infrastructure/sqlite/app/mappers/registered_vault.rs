@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
-use crate::domain::app::entities::RecentVault;
+use crate::domain::app::entities::RegisteredVault;
 use crate::domain::shared::StorageError;
-use crate::infrastructure::sqlite::app::entities::recent_vault::Model;
+use crate::infrastructure::sqlite::app::entities::registered_vault::Model;
 
 use super::{string_to_ts_opt, ts_to_string};
 
-pub fn model_to_domain(model: Model) -> Result<RecentVault, StorageError> {
-    Ok(RecentVault {
+pub fn model_to_domain(model: Model) -> Result<RegisteredVault, StorageError> {
+    Ok(RegisteredVault {
         id: model.id,
         path: PathBuf::from(model.path),
         display_name: model.display_name,
@@ -17,7 +17,7 @@ pub fn model_to_domain(model: Model) -> Result<RecentVault, StorageError> {
     })
 }
 
-pub fn domain_to_model(vault: &RecentVault) -> Model {
+pub fn domain_to_model(vault: &RegisteredVault) -> Model {
     Model {
         id: vault.id.clone(),
         path: vault.path.to_string_lossy().into_owned(),

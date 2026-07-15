@@ -7,5 +7,5 @@ pub mod repositories;
 pub use connection::AppDbConnection;
 pub use repositories::{
     SqliteAppSettingRepository, SqliteExtensionSessionRepository, SqliteKnownDeviceRepository,
-    SqliteRecentVaultRepository, SqliteThemeRepository,
+    SqliteThemeRepository, SqliteVaultRegistry,
 };

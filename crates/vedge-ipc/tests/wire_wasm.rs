@@ -28,14 +28,14 @@ where
     serde_wasm_bindgen::from_value(js).unwrap()
 }
 
-/// The one this suite exists for: `RecentVaultStatusDto` uses `#[serde(flatten)]`,
+/// The one this suite exists for: `RegisteredVaultStatusDto` uses `#[serde(flatten)]`,
 /// which `serde_wasm_bindgen` is known to mishandle (the flattened `i32`
 /// `sort_order` in particular). If this fails, de-flatten the DTO in
-/// `vedge-ipc` + update `recent_vault_status_to_dto` in `vedge-tauri`.
+/// `vedge-ipc` + update `registered_vault_status_to_dto` in `vedge-tauri`.
 #[wasm_bindgen_test]
-fn recent_vault_status_flatten_decodes() {
-    let dto = RecentVaultStatusDto {
-        vault: RecentVaultDto {
+fn registered_vault_status_flatten_decodes() {
+    let dto = RegisteredVaultStatusDto {
+        vault: RegisteredVaultDto {
             id: "abc-123".into(),
             path: "/home/x/my-vault.vdb".into(),
             display_name: "my-vault".into(),
@@ -58,9 +58,9 @@ fn recent_vault_status_flatten_decodes() {
 /// Also cover `sort_order == 0` and `last_opened: None` — flatten + integer-zero
 /// + a `#[serde(default)]` Option are all footgun-prone.
 #[wasm_bindgen_test]
-fn recent_vault_status_zero_and_none() {
-    let dto = RecentVaultStatusDto {
-        vault: RecentVaultDto {
+fn registered_vault_status_zero_and_none() {
+    let dto = RegisteredVaultStatusDto {
+        vault: RegisteredVaultDto {
             id: "0".into(),
             path: "x.vdb".into(),
             display_name: "x".into(),

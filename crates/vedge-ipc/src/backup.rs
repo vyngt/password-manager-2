@@ -120,6 +120,29 @@ pub struct ConvertVaultResultDto {
     pub biometric_reset: bool,
 }
 
+/// The result of a successful `delete_vault` (slice 5.2.4).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteVaultReportDto {
+    /// Snapshots destroyed with the home (for the confirmation copy).
+    pub snapshots_deleted: u64,
+    /// Approximate bytes reclaimed.
+    pub bytes_freed: u64,
+    /// 🔴 `false` ⇒ the uuid was unknowable or a credential delete failed. The UI MUST say so
+    /// and point at `mise keychain-audit` — silence recreates the orphan this slice prevents.
+    pub credentials_cleaned: bool,
+}
+
+/// Read-only stats for the vault-details dialog (slice 5.2.4).
+///
+/// All best-effort — `0` on any read error, never a failure. The copyable Vault ID rides on
+/// `RegisteredVaultStatusDto`, so it is not repeated here.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VaultDetailsDto {
+    pub entry_count: u64,
+    pub snapshot_count: u64,
+    pub on_disk_bytes: u64,
+}
+
 /// The vault's backup health (Decision ⑧).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BackupStatusDto {

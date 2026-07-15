@@ -156,6 +156,9 @@ async fn rollback_check_never_fails_unlock_when_keychain_read_errors() {
         fn store_commit_baseline(&self, vault_uuid: &str, counter: i64) -> Result<(), VaultError> {
             self.inner.store_commit_baseline(vault_uuid, counter)
         }
+        fn delete_commit_baseline(&self, vault_uuid: &str) -> Result<(), VaultError> {
+            self.inner.delete_commit_baseline(vault_uuid)
+        }
         fn migrate_secret_key(
             &self,
             legacy_vault_id: &VaultId,

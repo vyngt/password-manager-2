@@ -17,7 +17,7 @@ use crate::domain::shared::Timestamp;
 
 #[derive(Debug, Clone)]
 pub struct EmergencyKitContent {
-    /// Display name the user gave this vault (from `recent_vaults`). Empty
+    /// Display name the user gave this vault (from `vault_registry`). Empty
     /// if the vault isn't in the recent list — shell should substitute a
     /// default like "Vedge Vault" before rendering.
     pub vault_name: String,

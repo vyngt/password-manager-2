@@ -1,18 +1,21 @@
-//! `list_recent_vaults_with_status` — list recents + flag stale paths.
+//! Vault registry operations — the app-DB table of every vault this machine knows about.
 //!
-//! The onboarding screen shows the user their recent vaults and needs to
-//! render a visual cue ("File not found — remove?") for entries whose
-//! path no longer exists on disk. We compute `exists` in the use case so
-//! the shell doesn't have to replicate the check, and so tests can
-//! exercise the logic against tempdir paths.
+//! Each row maps a `vault_uuid` to its home path and display name; the registry backs the
+//! launch-screen picker and is the delete tombstone. It was formerly the "recent vaults" list
+//! (renamed in slice 5.2.4).
+//!
+//! [`list_registered_vaults_with_status`] lists the registry and flags stale paths: the launch
+//! screen renders a visual cue ("File not found — remove?") for entries whose path no longer
+//! exists on disk. We compute `exists` in the use case so the shell doesn't have to replicate
+//! the check, and so tests can exercise the logic against tempdir paths.
 
 use std::path::PathBuf;
 
 use tokio::io::AsyncReadExt;
 use tracing::instrument;
 
-use crate::application::app::ports::RecentVaultRepository;
-use crate::domain::app::entities::RecentVault;
+use crate::application::app::ports::VaultRegistry;
+use crate::domain::app::entities::RegisteredVault;
 use crate::domain::app::errors::AppDbError;
 use crate::domain::shared::{StorageError, VAULT_FILE, now};
 
@@ -25,8 +28,8 @@ pub const SQLITE_MAGIC: &[u8; 16] = b"SQLite format 3\0";
 
 /// A recent vault row plus a filesystem existence flag.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecentVaultStatus {
-    pub vault: RecentVault,
+pub struct RegisteredVaultStatus {
+    pub vault: RegisteredVault,
     /// `true` if `vault.path` resolves to a readable file on disk at
     /// list time.
     pub exists: bool,
@@ -39,9 +42,9 @@ pub struct RecentVaultStatus {
 /// never opened — `NULL` — sort last); the shell re-sorts client-side to
 /// also push missing files to the bottom.
 #[instrument(skip_all)]
-pub async fn list_recent_vaults_with_status(
-    repo: &dyn RecentVaultRepository,
-) -> Result<Vec<RecentVaultStatus>, AppDbError> {
+pub async fn list_registered_vaults_with_status(
+    repo: &dyn VaultRegistry,
+) -> Result<Vec<RegisteredVaultStatus>, AppDbError> {
     let rows = repo.list().await?;
     Ok(rows
         .into_iter()
@@ -49,7 +52,7 @@ pub async fn list_recent_vaults_with_status(
             // `path` is the vault HOME (slice 5.2.0); it "exists" when its `vault.vdb`
             // is a readable file inside the home.
             let exists = v.path.join(VAULT_FILE).is_file();
-            RecentVaultStatus { vault: v, exists }
+            RegisteredVaultStatus { vault: v, exists }
         })
         .collect())
 }
@@ -58,18 +61,15 @@ pub async fn list_recent_vaults_with_status(
 
 /// List every recent vault. Pass-through to the repo.
 #[instrument(skip_all)]
-pub async fn list_recent_vaults(
-    repo: &dyn RecentVaultRepository,
-) -> Result<Vec<RecentVault>, AppDbError> {
+pub async fn list_registered_vaults(
+    repo: &dyn VaultRegistry,
+) -> Result<Vec<RegisteredVault>, AppDbError> {
     repo.list().await
 }
 
 /// Remove a recent-vault row. Pass-through to the repo.
 #[instrument(skip_all, fields(id = %id))]
-pub async fn remove_recent_vault(
-    repo: &dyn RecentVaultRepository,
-    id: &str,
-) -> Result<(), AppDbError> {
+pub async fn deregister_vault(repo: &dyn VaultRegistry, id: &str) -> Result<(), AppDbError> {
     repo.delete(id).await
 }
 
@@ -77,16 +77,13 @@ pub async fn remove_recent_vault(
 /// DESC`) is the single ordering key, so this alone floats the row to the
 /// top on next list. Equivalent to [`touch_on_unlock`].
 #[instrument(skip_all, fields(id = %id))]
-pub async fn touch_recent_vault(
-    repo: &dyn RecentVaultRepository,
-    id: &str,
-) -> Result<(), AppDbError> {
+pub async fn touch_registered_vault(repo: &dyn VaultRegistry, id: &str) -> Result<(), AppDbError> {
     repo.touch_last_opened(id, now()).await
 }
 
-/// Input to [`add_recent_vault`].
+/// Input to [`register_vault`].
 #[derive(Debug, Clone)]
-pub struct AddRecentVaultInput {
+pub struct RegisterVaultInput {
     /// Caller-supplied ID. Typically a fresh ULID from the frontend.
     pub id: String,
     pub path: PathBuf,
@@ -114,15 +111,15 @@ pub struct AddRecentVaultInput {
 /// Stamps `last_opened = now()`: adding a vault means it was just created
 /// or just opened, so it should sort to the **top** of the recency list.
 #[instrument(skip_all, fields(path = %input.path.display()))]
-pub async fn add_recent_vault(
-    repo: &dyn RecentVaultRepository,
-    input: AddRecentVaultInput,
+pub async fn register_vault(
+    repo: &dyn VaultRegistry,
+    input: RegisterVaultInput,
 ) -> Result<(), AppDbError> {
     // `input.path` is the vault HOME (slice 5.2.0); the DB lives at `home/vault.vdb`.
     let vault_file = input.path.join(VAULT_FILE);
     if !vault_file.is_file() {
         return Err(AppDbError::InvalidSettingValue {
-            key: "recent_vault.path".into(),
+            key: "registered_vault.path".into(),
             reason: "not a vault home (missing vault.vdb)".into(),
         });
     }
@@ -137,13 +134,13 @@ pub async fn add_recent_vault(
             // `read_exact` returns Ok(n) == buf.len() on success, but
             // treat anything else as a short read defensively.
             return Err(AppDbError::InvalidSettingValue {
-                key: "recent_vault.path".into(),
+                key: "registered_vault.path".into(),
                 reason: "file shorter than SQLite header".into(),
             });
         }
         Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
             return Err(AppDbError::InvalidSettingValue {
-                key: "recent_vault.path".into(),
+                key: "registered_vault.path".into(),
                 reason: "file shorter than SQLite header".into(),
             });
         }
@@ -153,7 +150,7 @@ pub async fn add_recent_vault(
     }
     if &header != SQLITE_MAGIC {
         return Err(AppDbError::InvalidSettingValue {
-            key: "recent_vault.path".into(),
+            key: "registered_vault.path".into(),
             reason: "not a sqlite database (bad header)".into(),
         });
     }
@@ -170,7 +167,7 @@ pub async fn add_recent_vault(
         trimmed.to_owned()
     };
 
-    let vault = RecentVault {
+    let vault = RegisteredVault {
         id: input.id,
         path: input.path,
         display_name,
@@ -197,7 +194,7 @@ pub async fn add_recent_vault(
 /// window between the unlock and this write).
 #[instrument(skip_all, fields(id = %id))]
 pub async fn record_vault_uuid(
-    repo: &dyn RecentVaultRepository,
+    repo: &dyn VaultRegistry,
     id: &str,
     vault_uuid: &str,
 ) -> Result<(), AppDbError> {
@@ -205,7 +202,7 @@ pub async fn record_vault_uuid(
         Ok(v) => v,
         // The row vanished (removed in another window between the unlock and this write). That
         // is not a failure of the unlock — there is simply nothing to backfill.
-        Err(AppDbError::RecentVaultNotFound(_)) => return Ok(()),
+        Err(AppDbError::RegisteredVaultNotFound(_)) => return Ok(()),
         Err(e) => return Err(e),
     };
     if vault.vault_uuid.as_deref() == Some(vault_uuid) {
@@ -218,20 +215,20 @@ pub async fn record_vault_uuid(
 /// Rename a recent vault's display name.
 ///
 /// Trims the input and rejects an all-whitespace name (unlike
-/// [`add_recent_vault`], which falls back to the file stem — a rename is
+/// [`register_vault`], which falls back to the file stem — a rename is
 /// an explicit edit, so an empty name is a user error, not a default). A
 /// file-opened vault is named from its file stem; this is the one
 /// "vault setting" that surface needs.
 #[instrument(skip_all, fields(id = %id))]
-pub async fn rename_recent_vault(
-    repo: &dyn RecentVaultRepository,
+pub async fn rename_registered_vault(
+    repo: &dyn VaultRegistry,
     id: &str,
     display_name: &str,
 ) -> Result<(), AppDbError> {
     let trimmed = display_name.trim();
     if trimmed.is_empty() {
         return Err(AppDbError::InvalidSettingValue {
-            key: "recent_vault.display_name".into(),
+            key: "registered_vault.display_name".into(),
             reason: "display name must not be empty".into(),
         });
     }
@@ -245,9 +242,9 @@ pub async fn rename_recent_vault(
 /// Bumps the target row's `last_opened` to now. Recency (`last_opened
 /// DESC`) is the single ordering key, so the freshly-opened vault rises
 /// to the top of the next list with no `sort_order` bookkeeping. Errors
-/// with [`AppDbError::RecentVaultNotFound`] if the id is unknown.
+/// with [`AppDbError::RegisteredVaultNotFound`] if the id is unknown.
 #[instrument(skip_all, fields(id = %id))]
-pub async fn touch_on_unlock(repo: &dyn RecentVaultRepository, id: &str) -> Result<(), AppDbError> {
+pub async fn touch_on_unlock(repo: &dyn VaultRegistry, id: &str) -> Result<(), AppDbError> {
     repo.touch_last_opened(id, now()).await
 }
 
@@ -258,9 +255,9 @@ pub async fn touch_on_unlock(repo: &dyn RecentVaultRepository, id: &str) -> Resu
 /// *home directory*, so `is_file()` became `false` for **every healthy vault** — this function
 /// would have deleted the user's entire recents list. It survived only because nothing ever
 /// called the command that wraps it. Staleness is now decided the same way as everywhere else:
-/// by the presence of `home/vault.vdb`, exactly as `list_recent_vaults_with_status` does.
+/// by the presence of `home/vault.vdb`, exactly as `list_registered_vaults_with_status` does.
 #[instrument(skip_all)]
-pub async fn remove_stale_recents(repo: &dyn RecentVaultRepository) -> Result<u64, AppDbError> {
+pub async fn remove_stale_recents(repo: &dyn VaultRegistry) -> Result<u64, AppDbError> {
     let rows = repo.list().await?;
     let mut removed: u64 = 0;
     for row in rows {
@@ -284,7 +281,7 @@ pub async fn remove_stale_recents(repo: &dyn RecentVaultRepository) -> Result<u6
 /// constraint that keeps `read_target_state` `mode=ro`. `None` when the row is fine, when there
 /// is no such sibling, or when the sibling is not a `SQLite` file.
 #[must_use]
-pub fn healed_recent_path(recorded: &std::path::Path) -> Option<PathBuf> {
+pub fn healed_registry_path(recorded: &std::path::Path) -> Option<PathBuf> {
     // Only heal a genuinely broken row.
     if recorded.join(VAULT_FILE).is_file() {
         return None;
@@ -308,14 +305,14 @@ pub fn healed_recent_path(recorded: &std::path::Path) -> Option<PathBuf> {
 /// the vault. Best-effort: a vanished row is not an error (the same discipline as
 /// [`record_vault_uuid`]).
 #[instrument(skip_all, fields(id = %id))]
-pub async fn repoint_recent_vault(
-    repo: &dyn RecentVaultRepository,
+pub async fn repoint_registered_vault(
+    repo: &dyn VaultRegistry,
     id: &str,
     new_path: PathBuf,
 ) -> Result<(), AppDbError> {
     let mut vault = match repo.get(id).await {
         Ok(v) => v,
-        Err(AppDbError::RecentVaultNotFound(_)) => return Ok(()),
+        Err(AppDbError::RegisteredVaultNotFound(_)) => return Ok(()),
         Err(e) => return Err(e),
     };
     vault.path = new_path;
@@ -333,15 +330,15 @@ mod tests {
 
     use super::*;
     use crate::domain::shared::{Timestamp, now};
-    use crate::infrastructure::sqlite::app::{AppDbConnection, SqliteRecentVaultRepository};
+    use crate::infrastructure::sqlite::app::{AppDbConnection, SqliteVaultRegistry};
     use std::sync::Arc;
 
-    async fn fixture() -> (tempfile::TempDir, Arc<SqliteRecentVaultRepository>) {
+    async fn fixture() -> (tempfile::TempDir, Arc<SqliteVaultRegistry>) {
         let dir = tempfile::tempdir().unwrap();
         let db = AppDbConnection::open(&dir.path().join("app.db"))
             .await
             .unwrap();
-        let repo = Arc::new(SqliteRecentVaultRepository::new(db.handle()));
+        let repo = Arc::new(SqliteVaultRegistry::new(db.handle()));
         (dir, repo)
     }
 
@@ -354,12 +351,12 @@ mod tests {
 
     /// Seed a row with an explicit `last_opened` (control recency ordering).
     async fn seed_at(
-        repo: &dyn RecentVaultRepository,
+        repo: &dyn VaultRegistry,
         id: &str,
         path: std::path::PathBuf,
         last_opened: Option<Timestamp>,
     ) {
-        repo.upsert(&RecentVault {
+        repo.upsert(&RegisteredVault {
             id: id.into(),
             path,
             display_name: id.into(),
@@ -374,7 +371,7 @@ mod tests {
     #[tokio::test]
     async fn empty_repo_returns_empty_list() {
         let (_dir, repo) = fixture().await;
-        let list = list_recent_vaults_with_status(&*repo).await.unwrap();
+        let list = list_registered_vaults_with_status(&*repo).await.unwrap();
         assert!(list.is_empty());
     }
 
@@ -386,7 +383,7 @@ mod tests {
         std::fs::create_dir_all(&home).unwrap();
         std::fs::write(home.join("vault.vdb"), b"placeholder").unwrap();
 
-        repo.upsert(&RecentVault {
+        repo.upsert(&RegisteredVault {
             id: "v1".into(),
             path: home.clone(),
             display_name: "Work".into(),
@@ -397,7 +394,7 @@ mod tests {
         .await
         .unwrap();
 
-        let list = list_recent_vaults_with_status(&*repo).await.unwrap();
+        let list = list_registered_vaults_with_status(&*repo).await.unwrap();
         assert_eq!(list.len(), 1);
         assert!(list[0].exists);
         assert_eq!(list[0].vault.path, home);
@@ -406,7 +403,7 @@ mod tests {
     #[tokio::test]
     async fn missing_path_flagged_false() {
         let (_dir, repo) = fixture().await;
-        repo.upsert(&RecentVault {
+        repo.upsert(&RegisteredVault {
             id: "gone".into(),
             path: std::path::PathBuf::from("/definitely/does/not/exist.vdb"),
             display_name: "Ghost".into(),
@@ -417,15 +414,15 @@ mod tests {
         .await
         .unwrap();
 
-        let list = list_recent_vaults_with_status(&*repo).await.unwrap();
+        let list = list_registered_vaults_with_status(&*repo).await.unwrap();
         assert_eq!(list.len(), 1);
         assert!(!list[0].exists);
     }
 
-    // ---- add_recent_vault ---------------------------------------------------
+    // ---- register_vault ---------------------------------------------------
 
     /// Write a file that starts with the `SQLite` header so the magic
-    /// check in `add_recent_vault` passes. We don't need a valid
+    /// check in `register_vault` passes. We don't need a valid
     /// database — the use case only reads the first 16 bytes.
     fn write_sqlite_stub(path: &std::path::Path) {
         let mut bytes = Vec::with_capacity(32);
@@ -435,7 +432,7 @@ mod tests {
     }
 
     /// Create a vault home with a valid-`SQLite`-header `vault.vdb` inside (slice 5.2.0),
-    /// so the header check in `add_recent_vault` passes.
+    /// so the header check in `register_vault` passes.
     fn write_vault_home(home: &std::path::Path) {
         std::fs::create_dir_all(home).unwrap();
         write_sqlite_stub(&home.join("vault.vdb"));
@@ -447,9 +444,9 @@ mod tests {
         let home = dir.path().join("work.vedge");
         write_vault_home(&home);
 
-        add_recent_vault(
+        register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v1".into(),
                 path: home.clone(),
                 display_name: "Work".into(),
@@ -468,14 +465,14 @@ mod tests {
         assert!(rows[0].last_opened.is_some());
     }
 
-    // ---- rename_recent_vault ------------------------------------------------
+    // ---- rename_registered_vault ------------------------------------------------
 
     #[tokio::test]
-    async fn rename_recent_vault_persists() {
+    async fn rename_registered_vault_persists() {
         let (dir, repo) = fixture().await;
         seed_at(&*repo, "v1", dir.path().join("v.vdb"), None).await;
 
-        rename_recent_vault(&*repo, "v1", "  My Vault  ")
+        rename_registered_vault(&*repo, "v1", "  My Vault  ")
             .await
             .unwrap();
 
@@ -488,7 +485,9 @@ mod tests {
         let (dir, repo) = fixture().await;
         seed_at(&*repo, "v1", dir.path().join("v.vdb"), None).await;
 
-        let err = rename_recent_vault(&*repo, "v1", "   ").await.unwrap_err();
+        let err = rename_registered_vault(&*repo, "v1", "   ")
+            .await
+            .unwrap_err();
         assert!(matches!(err, AppDbError::InvalidSettingValue { .. }));
         // Original name left untouched (seed set it to the id).
         assert_eq!(repo.get("v1").await.unwrap().display_name, "v1");
@@ -497,16 +496,18 @@ mod tests {
     #[tokio::test]
     async fn rename_errors_on_missing_id() {
         let (_dir, repo) = fixture().await;
-        let err = rename_recent_vault(&*repo, "ghost", "X").await.unwrap_err();
-        assert!(matches!(err, AppDbError::RecentVaultNotFound(_)));
+        let err = rename_registered_vault(&*repo, "ghost", "X")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AppDbError::RegisteredVaultNotFound(_)));
     }
 
     #[tokio::test]
     async fn add_rejects_missing_path() {
         let (_dir, repo) = fixture().await;
-        let err = add_recent_vault(
+        let err = register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v1".into(),
                 path: std::path::PathBuf::from("/definitely/does/not/exist.vdb"),
                 display_name: "x".into(),
@@ -523,9 +524,9 @@ mod tests {
     #[tokio::test]
     async fn add_rejects_directory() {
         let (dir, repo) = fixture().await;
-        let err = add_recent_vault(
+        let err = register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v1".into(),
                 path: dir.path().to_path_buf(),
                 display_name: "x".into(),
@@ -544,9 +545,9 @@ mod tests {
         let home = dir.path().join("fake.vedge");
         std::fs::create_dir_all(&home).unwrap();
         std::fs::write(home.join("vault.vdb"), b"NOT A SQLITE DB!").unwrap(); // 16 wrong bytes
-        let err = add_recent_vault(
+        let err = register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v1".into(),
                 path: home,
                 display_name: "x".into(),
@@ -565,9 +566,9 @@ mod tests {
         let home = dir.path().join("tiny.vedge");
         std::fs::create_dir_all(&home).unwrap();
         std::fs::write(home.join("vault.vdb"), b"short").unwrap(); // 5 bytes < 16
-        let err = add_recent_vault(
+        let err = register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v1".into(),
                 path: home,
                 display_name: "x".into(),
@@ -582,13 +583,8 @@ mod tests {
 
     // ---- touch_on_unlock ---------------------------------------------------
 
-    async fn seed(
-        repo: &dyn RecentVaultRepository,
-        id: &str,
-        path: std::path::PathBuf,
-        sort_order: i32,
-    ) {
-        repo.upsert(&RecentVault {
+    async fn seed(repo: &dyn VaultRegistry, id: &str, path: std::path::PathBuf, sort_order: i32) {
+        repo.upsert(&RegisteredVault {
             id: id.into(),
             path,
             display_name: id.into(),
@@ -647,7 +643,7 @@ mod tests {
     async fn touch_on_unlock_errors_on_missing_id() {
         let (_dir, repo) = fixture().await;
         let err = touch_on_unlock(&*repo, "ghost").await.unwrap_err();
-        assert!(matches!(err, AppDbError::RecentVaultNotFound(_)));
+        assert!(matches!(err, AppDbError::RegisteredVaultNotFound(_)));
     }
 
     #[tokio::test]
@@ -706,9 +702,9 @@ mod tests {
         // Adding a brand-new vault stamps last_opened = now().
         let fresh = dir.path().join("fresh.vedge");
         write_vault_home(&fresh);
-        add_recent_vault(
+        register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "fresh".into(),
                 path: fresh,
                 display_name: "Fresh".into(),
@@ -759,7 +755,7 @@ mod tests {
     }
 
     /// A home directory that exists but has lost its `vault.vdb` is a ghost too — staleness is
-    /// decided by the vault, not by the folder, and identically to `list_recent_vaults_with_status`.
+    /// decided by the vault, not by the folder, and identically to `list_registered_vaults_with_status`.
     #[tokio::test]
     async fn remove_stale_removes_a_home_whose_vault_file_is_gone() {
         let (dir, repo) = fixture().await;
@@ -780,9 +776,9 @@ mod tests {
         write_vault_home(&home);
 
         // A row added WITHOUT a uuid (an older row, or a vault we could not read).
-        add_recent_vault(
+        register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v1".into(),
                 path: home.clone(),
                 display_name: "Work".into(),
@@ -812,9 +808,9 @@ mod tests {
         // And a row added WITH a uuid keeps it.
         let home2 = dir.path().join("known.vedge");
         write_vault_home(&home2);
-        add_recent_vault(
+        register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v2".into(),
                 path: home2,
                 display_name: "Known".into(),
@@ -845,9 +841,9 @@ mod tests {
         let home = dir.path().join("my-vault.vedge");
         write_vault_home(&home);
 
-        add_recent_vault(
+        register_vault(
             &*repo,
-            AddRecentVaultInput {
+            RegisterVaultInput {
                 id: "v1".into(),
                 path: home,
                 display_name: "   ".into(),
@@ -870,7 +866,7 @@ mod tests {
         std::fs::create_dir_all(&real).unwrap();
         std::fs::write(real.join("vault.vdb"), b"x").unwrap();
 
-        repo.upsert(&RecentVault {
+        repo.upsert(&RegisteredVault {
             id: "ok".into(),
             path: real.clone(),
             display_name: "Real".into(),
@@ -880,7 +876,7 @@ mod tests {
         })
         .await
         .unwrap();
-        repo.upsert(&RecentVault {
+        repo.upsert(&RegisteredVault {
             id: "gone".into(),
             path: std::path::PathBuf::from("/nope.vdb"),
             display_name: "Gone".into(),
@@ -891,7 +887,7 @@ mod tests {
         .await
         .unwrap();
 
-        let list = list_recent_vaults_with_status(&*repo).await.unwrap();
+        let list = list_registered_vaults_with_status(&*repo).await.unwrap();
         assert_eq!(list.len(), 2);
         let ok = list.iter().find(|s| s.vault.id == "ok").unwrap();
         let gone = list.iter().find(|s| s.vault.id == "gone").unwrap();
@@ -915,7 +911,7 @@ mod tests {
         let vault_file = home.join("vault.vdb");
         let before = std::fs::metadata(&vault_file).unwrap().modified().unwrap();
 
-        let healed = healed_recent_path(&legacy).expect("the sibling .vedge home is found");
+        let healed = healed_registry_path(&legacy).expect("the sibling .vedge home is found");
         assert_eq!(healed, home);
 
         let after = std::fs::metadata(&vault_file).unwrap().modified().unwrap();
@@ -923,11 +919,11 @@ mod tests {
 
         // A healthy row is left alone; a row with no sibling stays broken.
         assert!(
-            healed_recent_path(&home).is_none(),
+            healed_registry_path(&home).is_none(),
             "a live home is not re-pointed"
         );
         assert!(
-            healed_recent_path(&dir.path().join("nope.vdb")).is_none(),
+            healed_registry_path(&dir.path().join("nope.vdb")).is_none(),
             "no sibling → no heal"
         );
     }
@@ -939,7 +935,7 @@ mod tests {
         let home = dir.path().join("bad.vedge");
         std::fs::create_dir_all(&home).unwrap();
         std::fs::write(home.join("vault.vdb"), b"NOT A SQLITE DB!").unwrap();
-        assert!(healed_recent_path(&dir.path().join("bad.vdb")).is_none());
+        assert!(healed_registry_path(&dir.path().join("bad.vdb")).is_none());
     }
 
     #[tokio::test]
@@ -948,14 +944,14 @@ mod tests {
         seed(&*repo, "v1", dir.path().join("old.vdb"), 0).await;
 
         let new = dir.path().join("new.vedge");
-        repoint_recent_vault(&*repo, "v1", new.clone())
+        repoint_registered_vault(&*repo, "v1", new.clone())
             .await
             .unwrap();
         let row = repo.get("v1").await.unwrap();
         assert_eq!(row.path, new);
         assert_eq!(row.display_name, "v1", "the rest of the row is untouched");
 
-        repoint_recent_vault(&*repo, "ghost", dir.path().join("x.vedge"))
+        repoint_registered_vault(&*repo, "ghost", dir.path().join("x.vedge"))
             .await
             .expect("re-pointing a vanished row must not error");
     }

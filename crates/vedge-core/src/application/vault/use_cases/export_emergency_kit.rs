@@ -29,7 +29,7 @@ use crate::domain::vault::recovery::format_secret_key;
 
 #[derive(Debug)]
 pub struct ExportEmergencyKitInput {
-    /// Optional display name from `recent_vaults`. Left to the caller
+    /// Optional display name from `vault_registry`. Left to the caller
     /// because the recent-vaults table lives in `app.db`, not the per-vault
     /// DB that `VaultSession` wraps.
     pub vault_display_name: Option<String>,

@@ -46,6 +46,13 @@ pub trait KeychainProvider: Send + Sync {
     /// Store (or overwrite) the rollback commit-counter baseline for a vault (5.2c).
     fn store_commit_baseline(&self, vault_uuid: &str, counter: i64) -> Result<(), VaultError>;
 
+    /// Delete a vault's rollback commit-counter baseline (slice 5.2.4 — vault deletion).
+    ///
+    /// **Idempotent: a missing entry is `Ok(())`**, mirroring [`Self::read_commit_baseline`]
+    /// and deliberately unlike [`Self::delete_secret_key`] — deleting a vault that never wrote
+    /// a baseline (or was already deleted, on a crash-resume) must not error.
+    fn delete_commit_baseline(&self, vault_uuid: &str) -> Result<(), VaultError>;
+
     /// Migrate a **legacy** path-keyed Secret Key entry (`vault:{path}`, pre-5.2.0) to the
     /// uuid-keyed account (`secret:{uuid}`) — slice 5.2.0's layout migration.
     ///

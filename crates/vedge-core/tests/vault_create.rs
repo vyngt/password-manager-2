@@ -305,6 +305,9 @@ async fn keychain_failure_returns_valid_vault() {
         ) -> Result<(), VaultError> {
             Err(VaultError::KeychainUnavailable)
         }
+        fn delete_commit_baseline(&self, _vault_uuid: &str) -> Result<(), VaultError> {
+            Err(VaultError::KeychainUnavailable)
+        }
         fn migrate_secret_key(
             &self,
             _legacy_vault_id: &VaultId,

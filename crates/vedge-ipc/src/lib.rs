@@ -37,8 +37,8 @@ pub mod totp;
 
 pub use audit::{ACTION_NAMES, AuditEventDto, AuditPageDto, AuditQueryDto};
 pub use backup::{
-    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto, OpenBackupReportDto,
-    ReplaceReportDto, TargetStateDto,
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto,
+    DeleteVaultReportDto, OpenBackupReportDto, ReplaceReportDto, TargetStateDto, VaultDetailsDto,
 };
 pub use common::{
     CommonMetaDto, EntryTypeDto, Timestamp, b64_decode, b64_decode_fixed, b64_encode,
@@ -61,8 +61,8 @@ pub use misc::{
     FieldSelectorDto, MaintenanceReportDto, UnlockResultDto, UnlockVaultInputDto,
 };
 pub use settings::{
-    AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto, RecentVaultDto,
-    RecentVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
+    AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto,
+    RegisteredVaultDto, RegisteredVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
 };
 pub use snapshot::{RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto};
 pub use tag::{CreateTagDto, RenameTagDto, TagMetaDto};

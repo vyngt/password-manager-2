@@ -173,7 +173,9 @@ impl From<StorageError> for CommandError {
 impl From<AppDbError> for CommandError {
     fn from(e: AppDbError) -> Self {
         match e {
-            AppDbError::RecentVaultNotFound(id) => Self::NotFound(format!("recent_vault {id}")),
+            AppDbError::RegisteredVaultNotFound(id) => {
+                Self::NotFound(format!("registered_vault {id}"))
+            }
             AppDbError::SettingNotFound(key) => Self::NotFound(format!("setting {key}")),
             AppDbError::ThemeNotFound(id) => Self::NotFound(format!("theme {id}")),
             AppDbError::DeviceNotFound(id) => Self::NotFound(format!("device {id}")),

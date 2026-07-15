@@ -1,6 +1,6 @@
 //! Legacy-layout convert e2e (slice 5.2.3, B4) — driven through the UI.
 //!
-//! `add_recent_vault` refuses a bare `.vdb` path, so an old-layout vault can't be seeded through
+//! `register_vault` refuses a bare `.vdb` path, so an old-layout vault can't be seeded through
 //! the normal API. A debug-only, `VEDGE_E2E_SEED`-gated seam (`e2e_downgrade_to_legacy`, inert in
 //! release) lays a real `.vedge/` home back out as a legacy `<stem>.vdb` + `<stem>.vedge_blobs/`
 //! and re-points its recents row — so the picker renders it as convertible. Only the SETUP uses

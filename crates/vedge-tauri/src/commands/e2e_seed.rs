@@ -1,7 +1,7 @@
 //! Debug-only test seam (slice 5.2.3, B4) — mirrors the `resolve_keychain` gate pattern.
 //!
 //! The `open_old_layout_vault_and_convert` e2e needs a genuine OLD-layout vault to click Convert
-//! on, but `add_recent_vault` refuses a non-home `.vdb` path, so it cannot be seeded through the
+//! on, but `register_vault` refuses a non-home `.vdb` path, so it cannot be seeded through the
 //! normal API. This command **inverts** `migrate_vault_layout`: it takes a real `.vedge/` home
 //! (built by the ordinary create flow, so it truly unlocks + decrypts) and lays it back out as a
 //! legacy `<stem>.vdb` + `<stem>.vedge_blobs/`, re-pointing its recents row so the picker shows
@@ -22,7 +22,7 @@ use std::path::PathBuf;
 use tracing::instrument;
 
 use vedge_core::domain::shared::VaultId;
-use vedge_core::repoint_recent_vault as repoint_recent_vault_core;
+use vedge_core::repoint_registered_vault as repoint_registered_vault_core;
 
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -91,7 +91,7 @@ pub async fn e2e_downgrade_to_legacy(
 
     // Re-point the recents row to the legacy `.vdb` so the picker renders it as convertible.
     let rows = state
-        .recent_vaults
+        .vault_registry
         .list()
         .await
         .map_err(CommandError::from)?;
@@ -99,7 +99,7 @@ pub async fn e2e_downgrade_to_legacy(
         .iter()
         .find(|r| r.path == home)
         .ok_or_else(|| CommandError::Invalid("no recents row points at this home".into()))?;
-    repoint_recent_vault_core(&*state.recent_vaults, &row.id, legacy_vdb.clone())
+    repoint_registered_vault_core(&*state.vault_registry, &row.id, legacy_vdb.clone())
         .await
         .map_err(CommandError::from)?;
 
