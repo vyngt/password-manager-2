@@ -115,7 +115,9 @@ async fn resolve_and_backfill(
         Some(id) => registry.get(id).await.ok().and_then(|row| row.vault_uuid),
         None => None,
     };
-    let config_uuid = read_target_identity(home).await.and_then(|id| id.vault_uuid);
+    let config_uuid = read_target_identity(home)
+        .await
+        .and_then(|id| id.vault_uuid);
     let resolved = config_uuid.or_else(|| row_uuid.clone());
 
     if let (Some(id), Some(uuid)) = (registry_id, resolved.as_deref()) {
@@ -244,7 +246,9 @@ mod tests {
         for i in 0..snapshots {
             std::fs::create_dir_all(snaps.join(format!("snap{i}"))).unwrap();
         }
-        let db = VaultDbConnection::open(&home.join("vault.vdb")).await.unwrap();
+        let db = VaultDbConnection::open(&home.join("vault.vdb"))
+            .await
+            .unwrap();
         {
             let repo = SqliteVaultRepository::new(db.handle());
             repo.save_config(&minimal_config(uuid)).await.unwrap();
@@ -303,7 +307,11 @@ mod tests {
         assert_eq!(report.snapshots_deleted, 3);
         assert!(report.credentials_cleaned);
         assert!(kc.read_secret_key(uuid).is_err(), "secret gone");
-        assert_eq!(kc.read_commit_baseline(uuid).unwrap(), None, "baseline gone");
+        assert_eq!(
+            kc.read_commit_baseline(uuid).unwrap(),
+            None,
+            "baseline gone"
+        );
         assert!(!bio.is_enrolled(uuid).unwrap(), "biometric gone");
         assert!(repo.get("row1").await.is_err(), "row gone");
     }
@@ -354,7 +362,10 @@ mod tests {
         .await
         .unwrap();
 
-        assert!(report.credentials_cleaned, "resume cleaned from the row uuid");
+        assert!(
+            report.credentials_cleaned,
+            "resume cleaned from the row uuid"
+        );
         assert!(kc.read_secret_key(uuid).is_err());
         assert_eq!(kc.read_commit_baseline(uuid).unwrap(), None);
         assert!(!bio.is_enrolled(uuid).unwrap());

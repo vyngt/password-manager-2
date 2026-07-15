@@ -78,6 +78,7 @@ mod tests {
             },
             exists,
             openable: exists,
+            vault_uuid: None,
         }
     }
 

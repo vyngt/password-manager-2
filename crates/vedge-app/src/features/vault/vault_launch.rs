@@ -17,6 +17,7 @@ use crate::features::vault::backup_open_dialog::BackupOpenDialog;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::registry_filter::filter_sort_registry;
 use crate::features::vault::vault_list::VaultList;
+use crate::features::vault::vault_manage_dialogs::{DeleteVaultDialog, VaultDetailsDialog};
 use crate::features::vault::vault_unlock_panel::VaultUnlockPanel;
 use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
@@ -27,7 +28,7 @@ use std::time::Duration;
 use uuid::Uuid;
 use vedge_ipc::{
     RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto,
-    UnlockWithRecoveryKeyInputDto,
+    UnlockWithRecoveryKeyInputDto, VaultDetailsDto,
 };
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -110,6 +111,13 @@ pub fn VaultLaunch() -> impl IntoView {
     let bio_available = RwSignal::new(false);
     let bio_enrolled = RwSignal::new(false);
     let show_password = RwSignal::new(true);
+
+    // 5.2.4 launch-screen management (Decision ⑥): the `⋯` details dialog + the type-to-confirm
+    // delete dialog. `details_stats` is loaded best-effort after the details dialog opens.
+    let details_target = RwSignal::new(Option::<RegisteredVaultStatusDto>::None);
+    let details_stats = RwSignal::new(Option::<VaultDetailsDto>::None);
+    let delete_target = RwSignal::new(Option::<RegisteredVaultStatusDto>::None);
+    let delete_typed = RwSignal::new(String::new());
 
     // The visible list: pure filter + recency/missing-last sort over registry.
     let filtered = Signal::derive(move || filter_sort_registry(&registry.get(), &query.get()));
@@ -307,6 +315,63 @@ pub fn VaultLaunch() -> impl IntoView {
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
+    });
+
+    // ⋯ → the vault-details dialog (5.2.4). Snapshot the row, then load best-effort stats.
+    let on_menu = Callback::new(move |id: String| {
+        let Some(row) = registry
+            .get_untracked()
+            .into_iter()
+            .find(|r| r.vault.id == id)
+        else {
+            return;
+        };
+        let path = row.vault.path.clone();
+        details_stats.set(None);
+        details_target.set(Some(row));
+        spawn_local(async move {
+            if let Ok(d) = api::vault::details(&path).await {
+                details_stats.set(Some(d));
+            }
+        });
+    });
+
+    // Delete a vault (from the confirm dialog): files + three credentials + registry row. The
+    // launch-screen target is always locked, so no lock step. Refresh + toast; a
+    // `credentials_cleaned == false` is a Warning naming `mise keychain-audit`.
+    let on_delete = Callback::new(move |row: RegisteredVaultStatusDto| {
+        let id = row.vault.id.clone();
+        let path = row.vault.path;
+        let clear = selected.get().and_then(|s| s.id).as_deref() == Some(id.as_str());
+        let ok_msg = untrack(|| t_string!(i18n, unlock.delete_done).to_owned());
+        let warn_msg = untrack(|| t_string!(i18n, unlock.delete_creds_left).to_owned());
+        let err_prefix = untrack(|| t_string!(i18n, unlock.err_open).to_owned());
+        spawn_local(async move {
+            match api::vault::delete(&path, Some(&id)).await {
+                Ok(report) => {
+                    delete_target.set(None);
+                    delete_typed.set(String::new());
+                    details_target.set(None);
+                    if clear {
+                        selected.set(None);
+                    }
+                    refresh_registry();
+                    if report.credentials_cleaned {
+                        show_success(ok_msg);
+                    } else {
+                        show_warning(warn_msg);
+                    }
+                }
+                Err(e) => show_error(format!("{err_prefix}{e}")),
+            }
+        });
+    });
+
+    // "Delete vault…" inside the details dialog → open the type-to-confirm dialog (close details).
+    let on_delete_request = Callback::new(move |row: RegisteredVaultStatusDto| {
+        details_target.set(None);
+        delete_typed.set(String::new());
+        delete_target.set(Some(row));
     });
 
     // H0 disaster path: a present-but-corrupt vault (`exists && !openable`) can't be unlocked,
@@ -569,7 +634,7 @@ pub fn VaultLaunch() -> impl IntoView {
     };
 
     view! {
-        <div class="flex h-full w-full items-center justify-center p-6">
+        <div class="flex h-full w-full items-center justify-center p-2">
             <Show
                 when=move || !loading.get()
                 fallback=move || {
@@ -583,14 +648,13 @@ pub fn VaultLaunch() -> impl IntoView {
                 }
             >
                 <Show when=move || !registry.get().is_empty() fallback=empty_state>
-                    <div class="flex h-[496px] w-[680px] max-w-full overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+                    <div class="flex h-full w-full gap-2">
                         <VaultList
                             filtered=filtered
                             query=query
                             selected=selected
                             on_select=on_select
-                            on_rename_commit=on_rename_commit
-                            on_remove=on_remove
+                            on_menu=on_menu
                             on_locate=on_locate
                             on_convert=on_convert
                             on_restore=on_restore
@@ -598,23 +662,38 @@ pub fn VaultLaunch() -> impl IntoView {
                             on_open_file=on_open_file
                             on_open_backup=on_open_backup
                         />
-                        <VaultUnlockPanel
-                            selected=selected
-                            pw=pw
-                            unlocking=unlocking
-                            bio_enrolled=bio_enrolled
-                            show_password=show_password
-                            recovery_open=recovery_open
-                            recovery_key=recovery_key
-                            on_unlock=on_unlock
-                            on_bio_unlock=on_bio_unlock
-                            on_use_password=on_use_password
-                            on_recover=on_recover
-                        />
+                        <div class="flex flex-1 overflow-hidden rounded-lg border border-border bg-surface">
+                            <VaultUnlockPanel
+                                selected=selected
+                                pw=pw
+                                unlocking=unlocking
+                                bio_enrolled=bio_enrolled
+                                show_password=show_password
+                                recovery_open=recovery_open
+                                recovery_key=recovery_key
+                                on_unlock=on_unlock
+                                on_bio_unlock=on_bio_unlock
+                                on_use_password=on_use_password
+                                on_recover=on_recover
+                            />
+                        </div>
                     </div>
                 </Show>
             </Show>
             <BackupOpenDialog open=backup_open selected=selected on_done=on_backup_done />
+            <VaultDetailsDialog
+                target=details_target
+                details=details_stats
+                on_rename=on_rename_commit
+                on_remove=on_remove
+                on_delete_request=on_delete_request
+            />
+            <DeleteVaultDialog
+                target=delete_target
+                typed=delete_typed
+                details=details_stats
+                on_confirm=on_delete
+            />
         </div>
     }
 }

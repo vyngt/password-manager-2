@@ -70,7 +70,11 @@ pub async fn list_registered_vaults_with_status(
                 vault,
                 exists: true,
             };
-            out.push(registered_vault_status_to_dto(&healed_status, openable, uuid));
+            out.push(registered_vault_status_to_dto(
+                &healed_status,
+                openable,
+                uuid,
+            ));
             continue;
         }
         // H0: a present-but-unopenable vault (its `vault.vdb` won't read as a DB) is CORRUPT,

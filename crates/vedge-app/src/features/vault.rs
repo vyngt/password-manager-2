@@ -27,6 +27,7 @@ pub mod vault_detail;
 pub mod vault_filters;
 pub mod vault_launch;
 pub mod vault_list;
+pub mod vault_manage_dialogs;
 pub mod vault_search;
 pub mod vault_setup;
 pub mod vault_table;

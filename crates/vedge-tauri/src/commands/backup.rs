@@ -31,17 +31,18 @@ use vedge_core::infrastructure::backup::target::read_target_identity;
 use vedge_core::infrastructure::snapshot::store;
 use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 use vedge_core::{
-    BackupVaultInput, DeleteVaultInput, InspectBackupInput, MigrateVaultLayoutInput, OpenBackupInput,
-    ReplaceVaultInput, backup_status as backup_status_core, backup_vault as backup_vault_core,
-    delete_vault as delete_vault_core, inspect_backup as inspect_backup_core,
-    list_registered_vaults, migrate_vault_layout as migrate_vault_layout_core,
-    open_backup as open_backup_core, replace_vault_from_backup as replace_vault_from_backup_core,
+    BackupVaultInput, DeleteVaultInput, InspectBackupInput, MigrateVaultLayoutInput,
+    OpenBackupInput, ReplaceVaultInput, backup_status as backup_status_core,
+    backup_vault as backup_vault_core, delete_vault as delete_vault_core,
+    inspect_backup as inspect_backup_core, list_registered_vaults,
+    migrate_vault_layout as migrate_vault_layout_core, open_backup as open_backup_core,
+    replace_vault_from_backup as replace_vault_from_backup_core,
 };
 
 use crate::dto::backup::{
-    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto, DeleteVaultReportDto,
-    OpenBackupReportDto, ReplaceReportDto, VaultDetailsDto, backup_preview_to_dto,
-    backup_report_to_dto, open_backup_report_to_dto, replace_report_to_dto,
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto,
+    DeleteVaultReportDto, OpenBackupReportDto, ReplaceReportDto, VaultDetailsDto,
+    backup_preview_to_dto, backup_report_to_dto, open_backup_report_to_dto, replace_report_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -253,7 +254,9 @@ pub async fn delete_vault(
 ) -> Result<DeleteVaultReportDto, CommandError> {
     let vault_id = vault_id_from_string(&vault_path);
     if state.is_unlocked(&vault_id) {
-        return Err(CommandError::Invalid("lock the vault before deleting".into()));
+        return Err(CommandError::Invalid(
+            "lock the vault before deleting".into(),
+        ));
     }
     let report = delete_vault_core(
         state.keychain.as_ref(),
