@@ -127,6 +127,15 @@ impl KeychainProvider for OsKeychainProvider {
             .map_err(map_keyring_err)
     }
 
+    fn delete_commit_baseline(&self, vault_uuid: &str) -> Result<(), VaultError> {
+        // Idempotent: a missing baseline is success (fresh device / crash-resume), unlike
+        // `delete_secret_key`.
+        match self.counter_entry(vault_uuid)?.delete_credential() {
+            Ok(()) | Err(KeyringError::NoEntry) => Ok(()),
+            Err(e) => Err(map_keyring_err(e)),
+        }
+    }
+
     fn migrate_secret_key(
         &self,
         legacy_vault_id: &VaultId,

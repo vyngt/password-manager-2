@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use zeroize::Zeroizing;
 
@@ -19,6 +20,9 @@ pub struct MemoryKeychainProvider {
     /// Rollback commit-counter baselines, keyed on `vault_uuid` (slice 5.2c). Plain
     /// integers, not secret — no zeroize needed.
     baselines: Mutex<HashMap<String, i64>>,
+    /// Test knob: when set, `delete_secret_key` and `delete_commit_baseline` return an error
+    /// — proves a failed credential delete never fails a vault delete (slice 5.2.4, L1).
+    delete_fails: AtomicBool,
 }
 
 impl MemoryKeychainProvider {
@@ -28,6 +32,7 @@ impl MemoryKeychainProvider {
             store: Mutex::new(HashMap::new()),
             legacy_store: Mutex::new(HashMap::new()),
             baselines: Mutex::new(HashMap::new()),
+            delete_fails: AtomicBool::new(false),
         }
     }
 
@@ -37,6 +42,12 @@ impl MemoryKeychainProvider {
         if let Ok(mut guard) = self.legacy_store.lock() {
             guard.insert(vault_id.clone(), *key);
         }
+    }
+
+    /// Test knob: make every `delete_secret_key` / `delete_commit_baseline` fail, to prove a
+    /// vault delete survives a keychain failure and reports it (slice 5.2.4).
+    pub fn set_delete_fails(&self, fails: bool) {
+        self.delete_fails.store(fails, Ordering::SeqCst);
     }
 }
 
@@ -90,6 +101,9 @@ impl KeychainProvider for MemoryKeychainProvider {
     }
 
     fn delete_secret_key(&self, vault_uuid: &str) -> Result<(), VaultError> {
+        if self.delete_fails.load(Ordering::SeqCst) {
+            return Err(VaultError::KeychainAccessDenied);
+        }
         let Ok(mut guard) = self.store.lock() else {
             return Err(VaultError::KeychainUnavailable);
         };
@@ -114,6 +128,17 @@ impl KeychainProvider for MemoryKeychainProvider {
             return Err(VaultError::KeychainUnavailable);
         };
         guard.insert(vault_uuid.to_owned(), counter);
+        Ok(())
+    }
+
+    fn delete_commit_baseline(&self, vault_uuid: &str) -> Result<(), VaultError> {
+        if self.delete_fails.load(Ordering::SeqCst) {
+            return Err(VaultError::KeychainAccessDenied);
+        }
+        let Ok(mut guard) = self.baselines.lock() else {
+            return Err(VaultError::KeychainUnavailable);
+        };
+        guard.remove(vault_uuid); // idempotent — missing is fine
         Ok(())
     }
 
