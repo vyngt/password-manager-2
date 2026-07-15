@@ -4,10 +4,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-// ---- RecentVault -------------------------------------------------------------
+// ---- RegisteredVault -------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecentVaultDto {
+pub struct RegisteredVaultDto {
     pub id: String,
     /// Path as a string — platform-native separator.
     pub path: String,
@@ -18,9 +18,9 @@ pub struct RecentVaultDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecentVaultStatusDto {
+pub struct RegisteredVaultStatusDto {
     #[serde(flatten)]
-    pub vault: RecentVaultDto,
+    pub vault: RegisteredVaultDto,
     pub exists: bool,
     /// `true` when the vault's `vault.vdb` is present AND opens as a valid database (slice
     /// 5.2.1). A present-but-`!openable` vault is CORRUPT — the launch screen badges it

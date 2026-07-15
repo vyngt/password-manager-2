@@ -38,7 +38,7 @@ pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
 }
 
 /// Convert a legacy `.vdb` vault to a `<name>.vedge/` home (slice 5.2.0). Returns the new home
-/// path (to re-point the recents row) and whether a legacy biometric credential was purged
+/// path (to re-point the registry row) and whether a legacy biometric credential was purged
 /// (slice 5.2.3 — the caller then prompts to re-enable Hello in Settings).
 pub async fn convert(vault_path: &str) -> Result<ConvertVaultResultDto, ApiError> {
     #[derive(Serialize)]

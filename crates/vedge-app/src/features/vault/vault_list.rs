@@ -12,7 +12,7 @@ use leptos::either::{Either, EitherOf3};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use std::time::Duration;
-use vedge_ipc::RecentVaultStatusDto;
+use vedge_ipc::RegisteredVaultStatusDto;
 use vedge_ui::components::{Button, IconButton, Input};
 use vedge_ui::primitives::tokens::{Size, Variant};
 use wasm_bindgen::JsCast;
@@ -39,7 +39,7 @@ fn scroll_into_view(list_ref: NodeRef<leptos::html::Div>, idx: usize) {
 
 #[component]
 pub fn VaultList(
-    filtered: Signal<Vec<RecentVaultStatusDto>>,
+    filtered: Signal<Vec<RegisteredVaultStatusDto>>,
     query: RwSignal<String>,
     selected: RwSignal<Option<Selected>>,
     on_select: Callback<Selected>,

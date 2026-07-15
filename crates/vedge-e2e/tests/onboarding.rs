@@ -56,7 +56,7 @@ async fn create_previews_and_names_vault() -> Result<()> {
 
     // The recents row carries the custom display name (read-only invoke).
     wait_until(Duration::from_secs(10), || async {
-        let rows = session.invoke("list_recent_vaults", json!({})).await?;
+        let rows = session.invoke("list_registered_vaults", json!({})).await?;
         Ok(rows
             .as_array()
             .map(|arr| {

@@ -20,8 +20,8 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use vedge_core::application::app::ports::{
-    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, RecentVaultRepository,
-    ThemeRepository,
+    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, ThemeRepository,
+    VaultRegistry,
 };
 use vedge_core::application::vault::ports::{
     BiometricAuthenticator, BlobStoreFactory, BreachChecker, ClipboardProvider, CryptoProvider,
@@ -36,7 +36,7 @@ use vedge_core::infrastructure::keychain::OsKeychainProvider;
 use vedge_core::infrastructure::screen_lock::platform_screen_lock_watcher;
 use vedge_core::infrastructure::sqlite::app::{
     AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
-    SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
+    SqliteKnownDeviceRepository, SqliteThemeRepository, SqliteVaultRegistry,
 };
 use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 
@@ -256,8 +256,8 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
     let app_db_path = app_dir.join("app.db");
     let app_conn = AppDbConnection::open(&app_db_path).await?;
 
-    let recent_vaults: Arc<dyn RecentVaultRepository> =
-        Arc::new(SqliteRecentVaultRepository::new(app_conn.handle()));
+    let vault_registry: Arc<dyn VaultRegistry> =
+        Arc::new(SqliteVaultRegistry::new(app_conn.handle()));
     let app_settings: Arc<dyn AppSettingRepository> =
         Arc::new(SqliteAppSettingRepository::new(app_conn.handle()));
     let themes: Arc<dyn ThemeRepository> = Arc::new(SqliteThemeRepository::new(app_conn.handle()));
@@ -303,7 +303,7 @@ pub async fn compose(app: &tauri::App) -> Result<AppState, ComposeError> {
         clipboard,
         breach,
         screen_lock,
-        recent_vaults,
+        vault_registry,
         app_settings,
         themes,
         known_devices,
@@ -365,8 +365,8 @@ mod tests {
         let app_db_path = dir.path().join("app.db");
         let app_conn = AppDbConnection::open(&app_db_path).await.unwrap();
 
-        let recent_vaults: Arc<dyn RecentVaultRepository> =
-            Arc::new(SqliteRecentVaultRepository::new(app_conn.handle()));
+        let vault_registry: Arc<dyn VaultRegistry> =
+            Arc::new(SqliteVaultRegistry::new(app_conn.handle()));
         let app_settings: Arc<dyn AppSettingRepository> =
             Arc::new(SqliteAppSettingRepository::new(app_conn.handle()));
         let themes: Arc<dyn ThemeRepository> =
@@ -422,7 +422,7 @@ mod tests {
             clipboard,
             breach,
             screen_lock,
-            recent_vaults,
+            vault_registry,
             app_settings,
             themes,
             known_devices,

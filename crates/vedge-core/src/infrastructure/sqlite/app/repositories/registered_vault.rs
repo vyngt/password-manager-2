@@ -4,19 +4,21 @@ use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, QueryOrder};
 
-use crate::application::app::ports::RecentVaultRepository;
-use crate::domain::app::entities::RecentVault;
+use crate::application::app::ports::VaultRegistry;
+use crate::domain::app::entities::RegisteredVault;
 use crate::domain::app::errors::AppDbError;
 use crate::domain::shared::{StorageError, Timestamp};
-use crate::infrastructure::sqlite::app::entities::recent_vault::{ActiveModel, Column, Entity};
-use crate::infrastructure::sqlite::app::mappers::recent_vault::{domain_to_model, model_to_domain};
+use crate::infrastructure::sqlite::app::entities::registered_vault::{ActiveModel, Column, Entity};
+use crate::infrastructure::sqlite::app::mappers::registered_vault::{
+    domain_to_model, model_to_domain,
+};
 use crate::infrastructure::sqlite::app::mappers::ts_to_string;
 
-pub struct SqliteRecentVaultRepository {
+pub struct SqliteVaultRegistry {
     conn: Arc<DatabaseConnection>,
 }
 
-impl SqliteRecentVaultRepository {
+impl SqliteVaultRegistry {
     #[must_use]
     pub const fn new(conn: Arc<DatabaseConnection>) -> Self {
         Self { conn }
@@ -29,8 +31,8 @@ fn db_err(e: sea_orm::DbErr) -> AppDbError {
 }
 
 #[async_trait]
-impl RecentVaultRepository for SqliteRecentVaultRepository {
-    async fn list(&self) -> Result<Vec<RecentVault>, AppDbError> {
+impl VaultRegistry for SqliteVaultRegistry {
+    async fn list(&self) -> Result<Vec<RegisteredVault>, AppDbError> {
         // Recency is the single ordering key: newest `last_opened` first.
         // Stored as RFC3339-UTC text, so lexical DESC == chronological DESC,
         // and SQLite sorts NULL (never-opened rows) last under DESC.
@@ -44,16 +46,16 @@ impl RecentVaultRepository for SqliteRecentVaultRepository {
             .collect()
     }
 
-    async fn get(&self, id: &str) -> Result<RecentVault, AppDbError> {
+    async fn get(&self, id: &str) -> Result<RegisteredVault, AppDbError> {
         let model = Entity::find_by_id(id.to_owned())
             .one(self.conn.as_ref())
             .await
             .map_err(db_err)?
-            .ok_or_else(|| AppDbError::RecentVaultNotFound(id.to_owned()))?;
+            .ok_or_else(|| AppDbError::RegisteredVaultNotFound(id.to_owned()))?;
         model_to_domain(model).map_err(AppDbError::from)
     }
 
-    async fn upsert(&self, vault: &RecentVault) -> Result<(), AppDbError> {
+    async fn upsert(&self, vault: &RegisteredVault) -> Result<(), AppDbError> {
         let model = domain_to_model(vault);
         let active: ActiveModel = ActiveModel {
             id: ActiveValue::Set(model.id),
@@ -87,7 +89,7 @@ impl RecentVaultRepository for SqliteRecentVaultRepository {
             .await
             .map_err(db_err)?;
         if res.rows_affected == 0 {
-            return Err(AppDbError::RecentVaultNotFound(id.to_owned()));
+            return Err(AppDbError::RegisteredVaultNotFound(id.to_owned()));
         }
         Ok(())
     }
@@ -97,7 +99,7 @@ impl RecentVaultRepository for SqliteRecentVaultRepository {
             .one(self.conn.as_ref())
             .await
             .map_err(db_err)?
-            .ok_or_else(|| AppDbError::RecentVaultNotFound(id.to_owned()))?;
+            .ok_or_else(|| AppDbError::RegisteredVaultNotFound(id.to_owned()))?;
         let mut active: ActiveModel = model.into();
         active.last_opened = ActiveValue::Set(Some(ts_to_string(&when)));
         active.update(self.conn.as_ref()).await.map_err(db_err)?;

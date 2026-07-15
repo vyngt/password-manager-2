@@ -5,9 +5,9 @@
 //! Unlocking sets the `ActiveVault` context and lands at `/v/vault`.
 //! Single-active-vault model — the Lock control in the `/v` shell returns here.
 //!
-//! This component is the orchestrator: it owns the recents state + all the
+//! This component is the orchestrator: it owns the registry state + all the
 //! signals/closures, deriving the visible list with the pure
-//! [`filter_sort_recents`] and threading callbacks to the two panes. Errors
+//! [`filter_sort_registry`] and threading callbacks to the two panes. Errors
 //! surface as `Danger` toasts.
 
 use crate::api;
@@ -15,7 +15,7 @@ use crate::api::dialog::OpenDialogOptions;
 use crate::api::error::ApiError;
 use crate::features::vault::backup_open_dialog::BackupOpenDialog;
 use crate::features::vault::context::ActiveVault;
-use crate::features::vault::recents_filter::filter_sort_recents;
+use crate::features::vault::registry_filter::filter_sort_registry;
 use crate::features::vault::vault_list::VaultList;
 use crate::features::vault::vault_unlock_panel::VaultUnlockPanel;
 use crate::i18n::{t, t_string, use_i18n};
@@ -26,7 +26,8 @@ use leptos_router::hooks::use_navigate;
 use std::time::Duration;
 use uuid::Uuid;
 use vedge_ipc::{
-    RecentVaultDto, RecentVaultStatusDto, UnlockVaultInputDto, UnlockWithRecoveryKeyInputDto,
+    RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto,
+    UnlockWithRecoveryKeyInputDto,
 };
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -34,8 +35,8 @@ use vedge_ui::components::{Button, EmptyState, Spinner};
 use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 use wasm_bindgen::JsCast;
 
-/// A chosen unlock target: a vault path + display name, plus the recents `id`
-/// when it came from the recents list (`None` for a file picked via "Open…").
+/// A chosen unlock target: a vault path + display name, plus the registry `id`
+/// when it came from the registry list (`None` for a file picked via "Open…").
 #[derive(Clone)]
 pub struct Selected {
     pub path: String,
@@ -66,21 +67,21 @@ fn focus_password() {
     }
 }
 
-/// Record a just-unlocked vault in recents (touch an existing entry, or add a
+/// Record a just-unlocked vault in registry (touch an existing entry, or add a
 /// freshly-picked one). Shared by the password and biometric unlock paths. A
 /// plain async fn — no reactive owner, so safe to `.await` inside `spawn_local`.
 async fn record_unlock(sel: &Selected) {
     if let Some(id) = &sel.id {
-        let _ = api::recent::touch_recent_vault_on_unlock(id).await;
+        let _ = api::registry::touch_registered_vault_on_unlock(id).await;
     } else {
-        let dto = RecentVaultDto {
+        let dto = RegisteredVaultDto {
             id: Uuid::new_v4().to_string(),
             path: sel.path.clone(),
             display_name: sel.display_name.clone(),
             last_opened: None,
             sort_order: 0,
         };
-        let _ = api::recent::add_recent_vault(&dto).await;
+        let _ = api::registry::register_vault(&dto).await;
     }
 }
 
@@ -90,7 +91,7 @@ pub fn VaultLaunch() -> impl IntoView {
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
 
-    let recents = RwSignal::new(Vec::<RecentVaultStatusDto>::new());
+    let registry = RwSignal::new(Vec::<RegisteredVaultStatusDto>::new());
     let loading = RwSignal::new(true);
     let query = RwSignal::new(String::new());
     let selected = RwSignal::new(Option::<Selected>::None);
@@ -110,8 +111,8 @@ pub fn VaultLaunch() -> impl IntoView {
     let bio_enrolled = RwSignal::new(false);
     let show_password = RwSignal::new(true);
 
-    // The visible list: pure filter + recency/missing-last sort over recents.
-    let filtered = Signal::derive(move || filter_sort_recents(&recents.get(), &query.get()));
+    // The visible list: pure filter + recency/missing-last sort over registry.
+    let filtered = Signal::derive(move || filter_sort_registry(&registry.get(), &query.get()));
 
     // Danger-toast helper. Called from event handlers *and* `spawn_local`
     // futures, so it reads its dismiss label via `untrack` (owner-less async).
@@ -144,14 +145,14 @@ pub fn VaultLaunch() -> impl IntoView {
         );
     };
 
-    let refresh_recents = move || {
+    let refresh_registry = move || {
         loading.set(true);
         // Called from an Effect *and* from inside `spawn_local`; `untrack`
         // reads the current locale string safely in both.
-        let err_prefix = untrack(|| t_string!(i18n, unlock.err_recents).to_owned());
+        let err_prefix = untrack(|| t_string!(i18n, unlock.err_vaults).to_owned());
         spawn_local(async move {
-            match api::recent::list_recent_vaults_with_status().await {
-                Ok(list) => recents.set(list),
+            match api::registry::list_registered_vaults_with_status().await {
+                Ok(list) => registry.set(list),
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
             loading.set(false);
@@ -159,7 +160,7 @@ pub fn VaultLaunch() -> impl IntoView {
     };
 
     Effect::new(move |_| {
-        refresh_recents();
+        refresh_registry();
     });
 
     // Biometric availability once on mount (device-wide, vault-independent).
@@ -201,11 +202,11 @@ pub fn VaultLaunch() -> impl IntoView {
         // Read `selected` in the handler body (owner-less inside `spawn_local`).
         let clear = selected.get().and_then(|s| s.id).as_deref() == Some(id.as_str());
         spawn_local(async move {
-            let _ = api::recent::remove_recent_vault(&id).await;
+            let _ = api::registry::deregister_vault(&id).await;
             if clear {
                 selected.set(None);
             }
-            refresh_recents();
+            refresh_registry();
         });
     });
 
@@ -213,7 +214,7 @@ pub fn VaultLaunch() -> impl IntoView {
     // display name → floats to top with a fresh `last_opened`), drop the stale
     // row. Reuses add + remove; no path-update command needed.
     let on_locate = Callback::new(move |id: String| {
-        let existing_name = recents
+        let existing_name = registry
             .get_untracked()
             .into_iter()
             .find(|r| r.vault.id == id)
@@ -231,7 +232,7 @@ pub fn VaultLaunch() -> impl IntoView {
                 Ok(Some(path)) => {
                     let display_name =
                         existing_name.unwrap_or_else(|| display_name_from_path(&path));
-                    let dto = RecentVaultDto {
+                    let dto = RegisteredVaultDto {
                         id: Uuid::new_v4().to_string(),
                         path,
                         display_name,
@@ -240,10 +241,10 @@ pub fn VaultLaunch() -> impl IntoView {
                     };
                     // Re-point only if the chosen file is a real vault; the
                     // stale row stays put (with an error) otherwise.
-                    match api::recent::add_recent_vault(&dto).await {
+                    match api::registry::register_vault(&dto).await {
                         Ok(()) => {
-                            let _ = api::recent::remove_recent_vault(&id).await;
-                            refresh_recents();
+                            let _ = api::registry::deregister_vault(&id).await;
+                            refresh_registry();
                         }
                         Err(e) => show_error(format!("{err_prefix}{e}")),
                     }
@@ -254,10 +255,10 @@ pub fn VaultLaunch() -> impl IntoView {
         });
     });
 
-    // Convert a legacy `.vdb` recents row to a `.vedge/` home (slice 5.2.0), then re-point
+    // Convert a legacy `.vdb` registry row to a `.vedge/` home (slice 5.2.0), then re-point
     // the row to the new home.
     let on_convert = Callback::new(move |id: String| {
-        let row = recents
+        let row = registry
             .get_untracked()
             .into_iter()
             .find(|r| r.vault.id == id);
@@ -273,17 +274,17 @@ pub fn VaultLaunch() -> impl IntoView {
         spawn_local(async move {
             match api::vault::convert(&legacy_path).await {
                 Ok(result) => {
-                    let dto = RecentVaultDto {
+                    let dto = RegisteredVaultDto {
                         id: Uuid::new_v4().to_string(),
                         path: result.home,
                         display_name,
                         last_opened: None,
                         sort_order: 0,
                     };
-                    match api::recent::add_recent_vault(&dto).await {
+                    match api::registry::register_vault(&dto).await {
                         Ok(()) => {
-                            let _ = api::recent::remove_recent_vault(&id).await;
-                            refresh_recents();
+                            let _ = api::registry::deregister_vault(&id).await;
+                            refresh_registry();
                             // 🔴 The convert purged the legacy path-hashed Hello credential, so
                             // biometric unlock is now off — tell the user to re-enable it.
                             if result.biometric_reset {
@@ -301,8 +302,8 @@ pub fn VaultLaunch() -> impl IntoView {
     let on_rename_commit = Callback::new(move |(id, name): (String, String)| {
         let err_prefix = untrack(|| t_string!(i18n, unlock.err_rename).to_owned());
         spawn_local(async move {
-            match api::recent::rename_recent_vault(&id, &name).await {
-                Ok(()) => refresh_recents(),
+            match api::registry::rename_registered_vault(&id, &name).await {
+                Ok(()) => refresh_registry(),
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
@@ -312,7 +313,7 @@ pub fn VaultLaunch() -> impl IntoView {
     // so restore it from its NEWEST snapshot. The vault is locked here (launch screen), so the
     // revert runs directly; on success the row becomes openable and the user unlocks normally.
     let on_restore = Callback::new(move |id: String| {
-        let Some(row) = recents
+        let Some(row) = registry
             .get_untracked()
             .into_iter()
             .find(|r| r.vault.id == id)
@@ -338,7 +339,7 @@ pub fn VaultLaunch() -> impl IntoView {
             match api::snapshot::revert(&path, &newest.id, true).await {
                 Ok(_) => {
                     show_success(done);
-                    refresh_recents();
+                    refresh_registry();
                 }
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
@@ -475,7 +476,7 @@ pub fn VaultLaunch() -> impl IntoView {
         });
     };
 
-    // Open a vault file not in recents → select it into the unlock panel.
+    // Open a vault file not in registry → select it into the unlock panel.
     let on_open_file = Callback::new(move |()| {
         let dialog_title = t_string!(i18n, unlock.open_file).to_owned();
         let err_prefix = t_string!(i18n, unlock.err_open).to_owned();
@@ -488,7 +489,7 @@ pub fn VaultLaunch() -> impl IntoView {
             };
             match api::dialog::open(&opts).await {
                 Ok(Some(path)) => {
-                    let existing = recents
+                    let existing = registry
                         .get_untracked()
                         .into_iter()
                         .find(|r| r.vault.path == path);
@@ -520,7 +521,7 @@ pub fn VaultLaunch() -> impl IntoView {
     // Slice 5.2.2 — "Open a backup…" (and, behind Advanced, Replace).
     let backup_open = RwSignal::new(false);
     let on_open_backup = Callback::new(move |()| backup_open.set(true));
-    let on_backup_done = Callback::new(move |()| refresh_recents());
+    let on_backup_done = Callback::new(move |()| refresh_registry());
 
     let empty_state = move || {
         view! {
@@ -549,7 +550,7 @@ pub fn VaultLaunch() -> impl IntoView {
                             {move || t!(i18n, unlock.open_file)}
                         </Button>
                     </div>
-                    // 🔴 A brand-new machine has NO recents — which is exactly the state a user
+                    // 🔴 A brand-new machine has NO registry — which is exactly the state a user
                     // arrives in holding a `.vbk` and an Emergency Kit. If "Open a backup…" only
                     // existed in the populated picker's footer, the new-machine flow (the whole
                     // reason this slice exists) would have no door at all.
@@ -581,7 +582,7 @@ pub fn VaultLaunch() -> impl IntoView {
                     }
                 }
             >
-                <Show when=move || !recents.get().is_empty() fallback=empty_state>
+                <Show when=move || !registry.get().is_empty() fallback=empty_state>
                     <div class="flex h-[496px] w-[680px] max-w-full overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
                         <VaultList
                             filtered=filtered

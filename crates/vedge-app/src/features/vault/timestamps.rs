@@ -1,7 +1,7 @@
 //! Ordering keys for DTO timestamp strings.
 //!
 //! **Standing rule:** timestamp comparisons operate on the *parsed instant*,
-//! never on the DTO string. The `IndexEntryDto` / `RecentVaultDto` timestamps
+//! never on the DTO string. The `IndexEntryDto` / `RegisteredVaultDto` timestamps
 //! cross the boundary as RFC-3339 text ([`vedge_ipc::ts_to_string`] → fixed-width
 //! millis-`Z`), but nothing type-enforces that width, so a lexical `str` compare
 //! is not guaranteed chronological (`"…+02:00"` sorts after `"…Z"` textually yet

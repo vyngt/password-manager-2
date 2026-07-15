@@ -17,8 +17,8 @@ use chrono::{DateTime, Utc};
 use tokio::sync::Mutex as AsyncMutex;
 
 use vedge_core::application::app::ports::{
-    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, RecentVaultRepository,
-    ThemeRepository,
+    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, ThemeRepository,
+    VaultRegistry,
 };
 use vedge_core::application::vault::ports::{
     BiometricAuthenticator, BreachChecker, ClipboardProvider, CryptoProvider,
@@ -145,7 +145,7 @@ pub struct AppState {
     pub screen_lock: Arc<dyn ScreenLockWatcher>,
 
     // ---- app.db repositories (one per repo, sharing one DB connection) -----
-    pub recent_vaults: Arc<dyn RecentVaultRepository>,
+    pub vault_registry: Arc<dyn VaultRegistry>,
     pub app_settings: Arc<dyn AppSettingRepository>,
     pub themes: Arc<dyn ThemeRepository>,
     pub known_devices: Arc<dyn KnownDeviceRepository>,
@@ -176,7 +176,7 @@ impl AppState {
         clipboard: Arc<dyn ClipboardProvider>,
         breach: Arc<dyn BreachChecker>,
         screen_lock: Arc<dyn ScreenLockWatcher>,
-        recent_vaults: Arc<dyn RecentVaultRepository>,
+        vault_registry: Arc<dyn VaultRegistry>,
         app_settings: Arc<dyn AppSettingRepository>,
         themes: Arc<dyn ThemeRepository>,
         known_devices: Arc<dyn KnownDeviceRepository>,
@@ -192,7 +192,7 @@ impl AppState {
             clipboard,
             breach,
             screen_lock,
-            recent_vaults,
+            vault_registry,
             app_settings,
             themes,
             known_devices,

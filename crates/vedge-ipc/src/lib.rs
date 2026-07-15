@@ -61,8 +61,8 @@ pub use misc::{
     FieldSelectorDto, MaintenanceReportDto, UnlockResultDto, UnlockVaultInputDto,
 };
 pub use settings::{
-    AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto, RecentVaultDto,
-    RecentVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
+    AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto,
+    RegisteredVaultDto, RegisteredVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
 };
 pub use snapshot::{RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto};
 pub use tag::{CreateTagDto, RenameTagDto, TagMetaDto};

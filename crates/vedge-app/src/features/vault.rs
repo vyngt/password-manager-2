@@ -13,7 +13,7 @@ pub mod folder_move;
 pub mod folder_tree;
 pub mod home_path;
 pub mod password_strength;
-pub mod recents_filter;
+pub mod registry_filter;
 pub mod secret_display;
 pub mod smart_folders;
 pub mod tag_assign;

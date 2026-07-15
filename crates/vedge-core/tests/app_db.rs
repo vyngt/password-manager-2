@@ -13,14 +13,14 @@ use serde_json::json;
 use tempfile::tempdir;
 
 use vedge_core::application::app::ports::{
-    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, RecentVaultRepository,
-    ThemeRepository,
+    AppSettingRepository, ExtensionSessionRepository, KnownDeviceRepository, ThemeRepository,
+    VaultRegistry,
 };
-use vedge_core::domain::app::entities::{ExtensionSession, KnownDevice, RecentVault, Theme};
+use vedge_core::domain::app::entities::{ExtensionSession, KnownDevice, RegisteredVault, Theme};
 use vedge_core::domain::shared::{DeviceId, SessionId, ThemeId, now};
 use vedge_core::infrastructure::sqlite::app::{
     AppDbConnection, SqliteAppSettingRepository, SqliteExtensionSessionRepository,
-    SqliteKnownDeviceRepository, SqliteRecentVaultRepository, SqliteThemeRepository,
+    SqliteKnownDeviceRepository, SqliteThemeRepository, SqliteVaultRegistry,
 };
 
 #[tokio::test]
@@ -45,14 +45,14 @@ async fn migrations_run_and_seed_themes() {
 }
 
 #[tokio::test]
-async fn recent_vaults_crud_round_trip() {
+async fn vault_registry_crud_round_trip() {
     let dir = tempdir().unwrap();
     let db = AppDbConnection::open(&dir.path().join("app.db"))
         .await
         .unwrap();
-    let repo = SqliteRecentVaultRepository::new(db.handle());
+    let repo = SqliteVaultRegistry::new(db.handle());
 
-    let vault = RecentVault {
+    let vault = RegisteredVault {
         id: "01HV0123456789".to_owned(),
         path: PathBuf::from("/tmp/work.vedge"),
         display_name: "Work".into(),

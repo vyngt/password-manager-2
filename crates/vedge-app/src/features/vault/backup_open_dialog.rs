@@ -38,7 +38,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use uuid::Uuid;
 
-use vedge_ipc::{BackupPreviewDto, RecentVaultDto, TargetStateDto};
+use vedge_ipc::{BackupPreviewDto, RegisteredVaultDto, TargetStateDto};
 
 use crate::api;
 use crate::api::dialog::{DialogFilter, OpenDialogOptions};
@@ -70,7 +70,7 @@ struct HardStops {
 #[component]
 pub fn BackupOpenDialog(
     open: RwSignal<bool>,
-    /// The recents row currently highlighted — the Replace target. Replace is unavailable
+    /// The registry row currently highlighted — the Replace target. Replace is unavailable
     /// without one; there is nothing to replace.
     selected: RwSignal<Option<Selected>>,
     /// Called after a successful open/replace so the picker reloads.
@@ -134,7 +134,7 @@ pub fn BackupOpenDialog(
     // The composed destination home, live: `<location>/<name>.vedge`.
     let dest_home = Signal::derive(move || compose_home(&location.get(), &name.get()));
 
-    // The Replace target = the highlighted recents row.
+    // The Replace target = the highlighted registry row.
     let target_path = Signal::derive(move || selected.get().map(|s| s.path));
 
     // Ready to ask the backend for a preview?
@@ -236,14 +236,14 @@ pub fn BackupOpenDialog(
                 Ok(report) => {
                     // Register it so it shows up in the picker. A duplicate got a fresh identity,
                     // so say so — the user made a copy, and it is now its own vault.
-                    let dto = RecentVaultDto {
+                    let dto = RegisteredVaultDto {
                         id: Uuid::new_v4().to_string(),
                         path: report.home.clone(),
                         display_name: label,
                         last_opened: None,
                         sort_order: 0,
                     };
-                    if let Err(e) = api::recent::add_recent_vault(&dto).await {
+                    if let Err(e) = api::registry::register_vault(&dto).await {
                         show(format!("{err_prefix}{e}"), ToastVariant::Danger);
                     } else if report.fresh_uuid {
                         show(copied, ToastVariant::Warning);

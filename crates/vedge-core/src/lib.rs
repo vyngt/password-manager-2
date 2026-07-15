@@ -21,15 +21,15 @@ pub mod infrastructure;
 // the things they'll reach for most often.
 
 pub use application::app::use_cases::{
-    ACTIVE_THEME_SETTING_KEY, AddRecentVaultInput, CreateCustomThemeInput, DEFAULT_THEME_ID,
-    RecentVaultStatus, SQLITE_MAGIC, UpdateCustomThemeInput, add_recent_vault, create_custom_theme,
+    ACTIVE_THEME_SETTING_KEY, CreateCustomThemeInput, DEFAULT_THEME_ID, RegisterVaultInput,
+    RegisteredVaultStatus, SQLITE_MAGIC, UpdateCustomThemeInput, create_custom_theme,
     delete_app_setting, delete_custom_theme, delete_extension_session, delete_known_device,
-    duplicate_theme, get_app_setting, get_theme, healed_recent_path, list_app_settings,
-    list_extension_sessions, list_known_devices, list_recent_vaults,
-    list_recent_vaults_with_status, list_themes, record_vault_uuid, remove_recent_vault,
-    remove_stale_recents, rename_recent_vault, repoint_recent_vault, resolve_active_theme,
+    deregister_vault, duplicate_theme, get_app_setting, get_theme, healed_registry_path,
+    list_app_settings, list_extension_sessions, list_known_devices, list_registered_vaults,
+    list_registered_vaults_with_status, list_themes, record_vault_uuid, register_vault,
+    remove_stale_recents, rename_registered_vault, repoint_registered_vault, resolve_active_theme,
     set_active_theme, set_app_setting, touch_extension_session_last_active,
-    touch_known_device_last_seen, touch_on_unlock, touch_recent_vault, update_custom_theme,
+    touch_known_device_last_seen, touch_on_unlock, touch_registered_vault, update_custom_theme,
     upsert_extension_session, upsert_known_device, validate_hex_color,
 };
 pub use application::vault::session::VaultSession;

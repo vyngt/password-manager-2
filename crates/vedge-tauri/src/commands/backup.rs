@@ -31,7 +31,7 @@ use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 use vedge_core::{
     BackupVaultInput, InspectBackupInput, MigrateVaultLayoutInput, OpenBackupInput,
     ReplaceVaultInput, backup_status as backup_status_core, backup_vault as backup_vault_core,
-    inspect_backup as inspect_backup_core, list_recent_vaults,
+    inspect_backup as inspect_backup_core, list_registered_vaults,
     migrate_vault_layout as migrate_vault_layout_core, open_backup as open_backup_core,
     replace_vault_from_backup as replace_vault_from_backup_core,
 };
@@ -50,11 +50,11 @@ fn vault_id_from_string(s: &str) -> VaultId {
 
 /// Every vault home this machine knows about, for ②'s duplicate check.
 ///
-/// The **shell** supplies these: `recent_vaults` lives in `app.db`, and a *vault* use case must
+/// The **shell** supplies these: `vault_registry` lives in `app.db`, and a *vault* use case must
 /// not reach into the app DB to find out what else is installed. `open_backup` and
 /// `inspect_backup` take the list as an argument and probe it themselves.
 async fn known_vaults(state: &AppState) -> Vec<PathBuf> {
-    match list_recent_vaults(&*state.recent_vaults).await {
+    match list_registered_vaults(&*state.vault_registry).await {
         Ok(rows) => rows.into_iter().map(|r| r.path).collect(),
         Err(e) => {
             // A duplicate we fail to notice mints no fresh uuid, which would let a copy share

@@ -5,7 +5,7 @@ use crate::domain::shared::{DeviceId, SessionId, StorageError, ThemeId};
 #[derive(Debug, Error)]
 pub enum AppDbError {
     #[error("recent vault not found: {0}")]
-    RecentVaultNotFound(String),
+    RegisteredVaultNotFound(String),
 
     #[error("setting not found: {0}")]
     SettingNotFound(String),
