@@ -95,6 +95,9 @@ pub fn middle_truncate(path: &str, max: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    // `.ends_with(".vedge")` asserts the vault name survives at the tail — it is not a real
+    // file-extension check (the input is a truncated display string).
+    #![allow(clippy::case_sensitive_file_extension_comparisons)]
     use super::*;
 
     #[test]

@@ -275,9 +275,10 @@ pub async fn delete_vault(
     })
 }
 
-/// Read-only stats for the vault-details dialog (slice 5.2.4). Best-effort — every field defaults
-/// to `0` on a read error; this never fails. (The copyable Vault ID comes from the registry status
-/// DTO, not from here.)
+/// Read-only stats for the vault-details dialog (slice 5.2.4).
+///
+/// Best-effort — every field defaults to `0` on a read error; this never fails. (The copyable
+/// Vault ID comes from the registry status DTO, not from here.)
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn vault_details(vault_path: String) -> Result<VaultDetailsDto, CommandError> {
