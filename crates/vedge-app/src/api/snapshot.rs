@@ -6,7 +6,7 @@
 
 use serde::Serialize;
 
-use vedge_ipc::{RevertReportDto, SnapshotDto, SnapshotReportDto};
+use vedge_ipc::{RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto};
 
 use crate::api::call::call;
 use crate::api::error::ApiError;
@@ -58,6 +58,32 @@ pub async fn revert(
     }
     call(
         "revert_to_snapshot",
+        &Args {
+            vault_path,
+            snapshot_id,
+            confirm_rollback,
+        },
+    )
+    .await
+}
+
+/// Seamless in-place revert from `/v/snapshots` (slice 5.2.3, Decision ⑰) — keeps the user IN
+/// the vault. Requires an **unlocked** session. `stayed_unlocked == false` in the returned DTO
+/// means the vault could not be re-opened (stale snapshot) and the UI should navigate to the
+/// launch screen — it is **not** a revert failure.
+pub async fn revert_in_session(
+    vault_path: &str,
+    snapshot_id: &str,
+    confirm_rollback: bool,
+) -> Result<SeamlessRevertDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        snapshot_id: &'a str,
+        confirm_rollback: bool,
+    }
+    call(
+        "revert_to_snapshot_in_session",
         &Args {
             vault_path,
             snapshot_id,

@@ -26,6 +26,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::{instrument, warn};
 
+use crate::application::vault::ports::biometric::BiometricAuthenticator;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::ports::repository::VaultRepository;
 use crate::domain::shared::{BLOBS_DIR, SNAPSHOTS_DIR, StorageError, VAULT_FILE, VaultId};
@@ -39,11 +40,17 @@ pub struct MigrateVaultLayoutInput {
     pub legacy_vdb_path: PathBuf,
 }
 
-/// Result of a conversion — the new home + whether a keychain entry was re-keyed.
+/// Result of a conversion — the new home + whether a keychain entry was re-keyed + whether a
+/// legacy biometric enrollment was purged (slice 5.2.3).
 #[derive(Debug, Clone)]
 pub struct MigrateVaultLayoutOutput {
     pub home: PathBuf,
     pub keychain_migrated: bool,
+    /// A legacy path-hashed Windows Hello credential existed and was purged — so biometric
+    /// unlock is now OFF and the UI must tell the user to re-enable it (slice 5.2.3). `false`
+    /// when none existed, or when the purge failed (it is best-effort and never fails the
+    /// migration).
+    pub biometric_reset: bool,
 }
 
 /// Crash points inside [`migrate_with_hook`]. Production passes a no-op hook; tests inject
@@ -134,13 +141,15 @@ async fn ensure_home_uuid(home: &Path) -> Result<String, VaultError> {
 #[instrument(skip_all, fields(legacy = %input.legacy_vdb_path.display()))]
 pub async fn migrate_vault_layout(
     keychain: &dyn KeychainProvider,
+    biometric: &dyn BiometricAuthenticator,
     input: MigrateVaultLayoutInput,
 ) -> Result<MigrateVaultLayoutOutput, VaultError> {
-    migrate_with_hook(keychain, input, &mut |_step| Ok(())).await
+    migrate_with_hook(keychain, biometric, input, &mut |_step| Ok(())).await
 }
 
 async fn migrate_with_hook(
     keychain: &dyn KeychainProvider,
+    biometric: &dyn BiometricAuthenticator,
     input: MigrateVaultLayoutInput,
     hook: &mut (dyn FnMut(MigrateStep) -> Result<(), VaultError> + Send),
 ) -> Result<MigrateVaultLayoutOutput, VaultError> {
@@ -201,6 +210,19 @@ async fn migrate_with_hook(
         }
     };
 
+    // 🔴 Purge the LEGACY path-hashed biometric credential (slice 5.2.3). Best-effort, beside
+    // the keychain re-key. This is the ONLY thing that will ever reach that credential — the
+    // vault's KEK is sealed behind it, and once the home is renamed the path it was keyed on
+    // is gone forever. We do NOT re-enroll (that needs a Hello prompt mid-migration); we report
+    // the reset so the UI can tell the user to re-enable biometric unlock in Settings.
+    let biometric_reset = match biometric.purge_legacy(&legacy_id) {
+        Ok(purged) => purged,
+        Err(e) => {
+            warn!(error = %e, "layout migration committed but the legacy biometric purge failed");
+            false
+        }
+    };
+
     // Reap the old layout LAST (after the home is committed + the key re-keyed).
     remove_file_if_exists(&old_vdb);
     remove_file_if_exists(&with_suffix(&old_vdb, "-wal"));
@@ -212,6 +234,7 @@ async fn migrate_with_hook(
     Ok(MigrateVaultLayoutOutput {
         home,
         keychain_migrated,
+        biometric_reset,
     })
 }
 
@@ -227,13 +250,15 @@ mod tests {
 
     use super::*;
     use crate::application::vault::ports::repository::VaultRepository;
-    use crate::domain::vault::crypto_constants::SECRET_KEY_LEN;
+    use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
     use crate::domain::vault::entities::VaultConfig;
     use crate::domain::vault::kdf_params::KdfParams;
+    use crate::infrastructure::biometric::MemoryBiometricAuthenticator;
     use crate::infrastructure::keychain::MemoryKeychainProvider;
     use crate::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
 
     const SK: [u8; SECRET_KEY_LEN] = [0x5Au8; SECRET_KEY_LEN];
+    const BIO_KEK: [u8; KEK_LEN] = [0x3Cu8; KEK_LEN];
 
     fn minimal_config(uuid: Option<String>) -> VaultConfig {
         VaultConfig {
@@ -292,10 +317,12 @@ mod tests {
     async fn happy_path_converts_reaps_and_rekeys() {
         let dir = tempfile::tempdir().unwrap();
         let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
         let old_vdb = build_old_layout(dir.path(), &kc, Some("01UUIDHOME".to_owned())).await;
 
         let out = migrate_vault_layout(
             &kc,
+            &bio,
             MigrateVaultLayoutInput {
                 legacy_vdb_path: old_vdb.clone(),
             },
@@ -326,10 +353,12 @@ mod tests {
     async fn crash_before_commit_leaves_the_old_layout_intact() {
         let dir = tempfile::tempdir().unwrap();
         let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
         let old_vdb = build_old_layout(dir.path(), &kc, Some("01UUIDX".to_owned())).await;
 
         let err = migrate_with_hook(
             &kc,
+            &bio,
             MigrateVaultLayoutInput {
                 legacy_vdb_path: old_vdb.clone(),
             },
@@ -356,6 +385,7 @@ mod tests {
         // A clean retry now succeeds (stale tmp is cleared).
         let out = migrate_vault_layout(
             &kc,
+            &bio,
             MigrateVaultLayoutInput {
                 legacy_vdb_path: old_vdb,
             },
@@ -370,12 +400,14 @@ mod tests {
     async fn crash_after_commit_is_finished_by_a_rerun() {
         let dir = tempfile::tempdir().unwrap();
         let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
         let old_vdb = build_old_layout(dir.path(), &kc, Some("01UUIDR".to_owned())).await;
 
         // Crash right after the commit rename: the home exists, but the re-key + reap
         // never ran.
         let _ = migrate_with_hook(
             &kc,
+            &bio,
             MigrateVaultLayoutInput {
                 legacy_vdb_path: old_vdb.clone(),
             },
@@ -396,6 +428,7 @@ mod tests {
         // Re-running finishes the migration (home already present → build is skipped).
         let out = migrate_vault_layout(
             &kc,
+            &bio,
             MigrateVaultLayoutInput {
                 legacy_vdb_path: old_vdb.clone(),
             },
@@ -414,10 +447,12 @@ mod tests {
         // does not lose the Secret Key.
         let dir = tempfile::tempdir().unwrap();
         let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
         let old_vdb = build_old_layout(dir.path(), &kc, Some("01UUIDMOVE".to_owned())).await;
 
         migrate_vault_layout(
             &kc,
+            &bio,
             MigrateVaultLayoutInput {
                 legacy_vdb_path: old_vdb,
             },
@@ -440,10 +475,12 @@ mod tests {
         // A legacy vault with no `vault_uuid` gets one minted so unlock can find the key.
         let dir = tempfile::tempdir().unwrap();
         let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
         let old_vdb = build_old_layout(dir.path(), &kc, None).await;
 
         let out = migrate_vault_layout(
             &kc,
+            &bio,
             MigrateVaultLayoutInput {
                 legacy_vdb_path: old_vdb,
             },
@@ -458,5 +495,101 @@ mod tests {
         let repo = SqliteVaultRepository::new(db.handle());
         let uuid = repo.load_config().await.unwrap().vault_uuid.unwrap();
         assert_eq!(*kc.read_secret_key(&uuid).unwrap(), SK);
+    }
+
+    /// 🔴 Slice 5.2.3 — B1: converting an enrolled legacy vault PURGES the old path-hashed
+    /// biometric credential (the KEK-holding one) and REPORTS the reset. Without the purge that
+    /// credential is stranded in the TPM forever, unreachable once the home is renamed.
+    #[tokio::test]
+    async fn migration_purges_a_legacy_biometric_credential_and_reports_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
+        let old_vdb = build_old_layout(dir.path(), &kc, Some("01UUIDBIO".to_owned())).await;
+        // The user was enrolled under the OLD path-hashed credential.
+        bio.seed_legacy_credential(&VaultId::new(&old_vdb), &BIO_KEK);
+
+        let out = migrate_vault_layout(
+            &kc,
+            &bio,
+            MigrateVaultLayoutInput {
+                legacy_vdb_path: old_vdb.clone(),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            out.biometric_reset,
+            "the legacy credential was found and the reset reported"
+        );
+        // The stranded credential is actually gone — a second purge finds nothing.
+        assert!(
+            !bio.purge_legacy(&VaultId::new(&old_vdb)).unwrap(),
+            "the legacy credential was deleted, not merely flagged"
+        );
+    }
+
+    /// B1: the purge is idempotent — a vault that was never enrolled (or a second convert)
+    /// reports no reset and does not error.
+    #[tokio::test]
+    async fn migration_biometric_purge_is_idempotent_when_not_enrolled() {
+        let dir = tempfile::tempdir().unwrap();
+        let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
+        let old_vdb = build_old_layout(dir.path(), &kc, Some("01UUIDNOBIO".to_owned())).await;
+
+        let out = migrate_vault_layout(
+            &kc,
+            &bio,
+            MigrateVaultLayoutInput {
+                legacy_vdb_path: old_vdb,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            !out.biometric_reset,
+            "nothing to purge → no reset reported, no error"
+        );
+    }
+
+    /// 🔴 B1 (L1): a purge failure must never fail the migration — the data is already durably
+    /// committed. The convert succeeds; a reset it could not complete is not falsely claimed.
+    #[tokio::test]
+    async fn a_failed_biometric_purge_never_fails_the_migration() {
+        let dir = tempfile::tempdir().unwrap();
+        let kc = MemoryKeychainProvider::new();
+        let bio = MemoryBiometricAuthenticator::new();
+        let old_vdb = build_old_layout(dir.path(), &kc, Some("01UUIDPURGEFAIL".to_owned())).await;
+        bio.seed_legacy_credential(&VaultId::new(&old_vdb), &BIO_KEK);
+        bio.set_purge_fails(true);
+
+        let out = migrate_vault_layout(
+            &kc,
+            &bio,
+            MigrateVaultLayoutInput {
+                legacy_vdb_path: old_vdb.clone(),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            out.home.join("vault.vdb").is_file(),
+            "home committed despite the purge failure"
+        );
+        assert!(out.keychain_migrated, "keychain re-key still ran");
+        assert!(
+            !out.biometric_reset,
+            "a failed purge does not claim a reset it could not complete"
+        );
+        // The credential really did survive the failed purge (proving the failure was real).
+        bio.set_purge_fails(false);
+        assert!(
+            bio.purge_legacy(&VaultId::new(&old_vdb)).unwrap(),
+            "the legacy credential survived the failed purge"
+        );
     }
 }

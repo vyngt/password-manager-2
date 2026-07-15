@@ -31,19 +31,24 @@ impl BiometricAuthenticator for StubBiometricAuthenticator {
         false
     }
 
-    fn is_enrolled(&self, _vault_id: &VaultId) -> Result<bool, VaultError> {
+    fn is_enrolled(&self, _vault_uuid: &str) -> Result<bool, VaultError> {
         Ok(false)
     }
 
-    fn enroll(&self, _vault_id: &VaultId, _kek: &[u8; KEK_LEN]) -> Result<(), VaultError> {
+    fn enroll(&self, _vault_uuid: &str, _kek: &[u8; KEK_LEN]) -> Result<(), VaultError> {
         Err(VaultError::BiometricUnavailable)
     }
 
-    fn retrieve(&self, _vault_id: &VaultId) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
+    fn retrieve(&self, _vault_uuid: &str) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
         Err(VaultError::BiometricUnavailable)
     }
 
-    fn disable(&self, _vault_id: &VaultId) -> Result<(), VaultError> {
+    fn disable(&self, _vault_uuid: &str) -> Result<(), VaultError> {
         Ok(())
+    }
+
+    fn purge_legacy(&self, _legacy_vault_id: &VaultId) -> Result<bool, VaultError> {
+        // A platform that never enrolls has nothing legacy to purge.
+        Ok(false)
     }
 }

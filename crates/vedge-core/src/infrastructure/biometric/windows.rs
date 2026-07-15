@@ -57,16 +57,31 @@ impl WindowsHelloAuthenticator {
     }
 
     /// Stable, character-safe identifier for a vault's Hello key + keyring entry:
-    /// `vedge-biometric-<url-safe base64 of sha256(path)>`.
-    fn key_name(vault_id: &VaultId) -> String {
+    /// `vedge-biometric-<url-safe base64 of sha256(vault_uuid)>` (slice 5.2.3 — was keyed on
+    /// the file path, which un-enrolled a moved/converted vault and stranded its credential).
+    fn key_name(vault_uuid: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(vault_uuid.as_bytes());
+        let digest = hasher.finalize();
+        format!("vedge-biometric-{}", URL_SAFE_NO_PAD.encode(digest))
+    }
+
+    fn entry(vault_uuid: &str) -> Result<Entry, VaultError> {
+        Entry::new(SERVICE, &Self::key_name(vault_uuid)).map_err(map_keyring_err)
+    }
+
+    /// The LEGACY (pre-5.2.3) path-hashed credential name — read only by
+    /// [`purge_legacy`](BiometricAuthenticator::purge_legacy) to delete the stranded
+    /// credential during the layout migration. The mirror of the keychain's `legacy_account`.
+    fn legacy_key_name(vault_id: &VaultId) -> String {
         let mut hasher = Sha256::new();
         hasher.update(vault_id.path().to_string_lossy().as_bytes());
         let digest = hasher.finalize();
         format!("vedge-biometric-{}", URL_SAFE_NO_PAD.encode(digest))
     }
 
-    fn entry(vault_id: &VaultId) -> Result<Entry, VaultError> {
-        Entry::new(SERVICE, &Self::key_name(vault_id)).map_err(map_keyring_err)
+    fn legacy_entry(vault_id: &VaultId) -> Result<Entry, VaultError> {
+        Entry::new(SERVICE, &Self::legacy_key_name(vault_id)).map_err(map_keyring_err)
     }
 }
 
@@ -172,10 +187,10 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
             .unwrap_or(false)
     }
 
-    fn is_enrolled(&self, vault_id: &VaultId) -> Result<bool, VaultError> {
+    fn is_enrolled(&self, vault_uuid: &str) -> Result<bool, VaultError> {
         // No prompt: presence of the stored wrapped-KEK blob is the enrollment signal.
         // A missing/reset TPM key is caught at `retrieve` time (→ falls back to password).
-        match Self::entry(vault_id)?.get_secret() {
+        match Self::entry(vault_uuid)?.get_secret() {
             Ok(mut b) => {
                 b.zeroize();
                 Ok(true)
@@ -185,8 +200,8 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
         }
     }
 
-    fn enroll(&self, vault_id: &VaultId, kek: &[u8; KEK_LEN]) -> Result<(), VaultError> {
-        let name = HSTRING::from(Self::key_name(vault_id));
+    fn enroll(&self, vault_uuid: &str, kek: &[u8; KEK_LEN]) -> Result<(), VaultError> {
+        let name = HSTRING::from(Self::key_name(vault_uuid));
         let sig = sign_challenge(&name, true)?;
         let wrap_key = wrap_key_from_signature(&sig);
 
@@ -196,15 +211,15 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
         let mut blob = Vec::with_capacity(NONCE_LEN.saturating_add(ct.len()));
         blob.extend_from_slice(&nonce);
         blob.extend_from_slice(&ct);
-        let result = Self::entry(vault_id)?
+        let result = Self::entry(vault_uuid)?
             .set_secret(&blob)
             .map_err(map_keyring_err);
         blob.zeroize();
         result
     }
 
-    fn retrieve(&self, vault_id: &VaultId) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
-        let mut blob = match Self::entry(vault_id)?.get_secret() {
+    fn retrieve(&self, vault_uuid: &str) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
+        let mut blob = match Self::entry(vault_uuid)?.get_secret() {
             Ok(b) => b,
             Err(KeyringError::NoEntry) => return Err(VaultError::BiometricNotEnrolled),
             Err(e) => return Err(map_keyring_err(e)),
@@ -222,7 +237,7 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
         let ct = ct_slice.to_vec();
 
         // Re-sign (Hello prompt) → same wrap key → decrypt the KEK.
-        let name = HSTRING::from(Self::key_name(vault_id));
+        let name = HSTRING::from(Self::key_name(vault_uuid));
         let sig = sign_challenge(&name, false)?;
         let wrap_key = wrap_key_from_signature(&sig);
 
@@ -237,14 +252,36 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
         Ok(Zeroizing::new(arr))
     }
 
-    fn disable(&self, vault_id: &VaultId) -> Result<(), VaultError> {
+    fn disable(&self, vault_uuid: &str) -> Result<(), VaultError> {
         // Remove the stored blob (best-effort — a missing entry is not an error).
-        if let Ok(entry) = Self::entry(vault_id) {
+        if let Ok(entry) = Self::entry(vault_uuid) {
             drop(entry.delete_credential());
         }
         // Remove the TPM key (best-effort; a Hello reset may already have removed it).
-        let name = HSTRING::from(Self::key_name(vault_id));
+        let name = HSTRING::from(Self::key_name(vault_uuid));
         drop(KeyCredentialManager::DeleteAsync(&name).and_then(|op| op.get()));
         Ok(())
+    }
+
+    fn purge_legacy(&self, legacy_vault_id: &VaultId) -> Result<bool, VaultError> {
+        // Was there a legacy (path-hashed) enrollment? The stored blob is the signal.
+        let existed = match Self::legacy_entry(legacy_vault_id)?.get_secret() {
+            Ok(mut b) => {
+                b.zeroize();
+                // Delete the stored blob (best-effort).
+                if let Ok(entry) = Self::legacy_entry(legacy_vault_id) {
+                    drop(entry.delete_credential());
+                }
+                true
+            }
+            Err(KeyringError::NoEntry) => false,
+            Err(e) => return Err(map_keyring_err(e)),
+        };
+        // Delete the Hello-gated TPM key too — the KEK-holding half (best-effort; a Hello
+        // reset may already have removed it). This is what makes the credential unreachable
+        // otherwise: the name is gone once the home is renamed.
+        let name = HSTRING::from(Self::legacy_key_name(legacy_vault_id));
+        drop(KeyCredentialManager::DeleteAsync(&name).and_then(|op| op.get()));
+        Ok(existed)
     }
 }

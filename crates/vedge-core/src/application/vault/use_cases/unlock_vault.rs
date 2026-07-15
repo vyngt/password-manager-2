@@ -213,6 +213,35 @@ impl UnlockVault {
         vault_path: PathBuf,
         kek_bytes: Zeroizing<[u8; KEK_LEN]>,
     ) -> Result<VaultSession, VaultError> {
+        self.open_with_kek(vault_path, kek_bytes, Some(AuditAction::BiometricUnlocked))
+            .await
+    }
+
+    /// Like [`unlock_with_kek`](Self::unlock_with_kek), but writes **no** unlock audit row.
+    ///
+    /// For the seamless in-place revert re-entry (slice 5.2.3): `revert_to_snapshot` has
+    /// already recorded `BackupRestored`, which is the honest event. Reusing the audited path
+    /// would forge a `BiometricUnlocked` row after every revert — including on password-only
+    /// vaults that were never enrolled. The KEK is still validated against the vault's own
+    /// ciphertext (a stale/failed-rewrap snapshot surfaces as `WrongCredentials`).
+    #[instrument(skip_all, fields(vault_path = %vault_path.display()))]
+    pub async fn unlock_with_kek_quiet(
+        &self,
+        vault_path: PathBuf,
+        kek_bytes: Zeroizing<[u8; KEK_LEN]>,
+    ) -> Result<VaultSession, VaultError> {
+        self.open_with_kek(vault_path, kek_bytes, None).await
+    }
+
+    /// Shared body of the two keyless-open paths. `audit_action` is the unlock event to
+    /// record, or `None` to suppress it (the seamless-revert reopen). Both paths remap a
+    /// decrypt failure to `WrongCredentials`.
+    async fn open_with_kek(
+        &self,
+        vault_path: PathBuf,
+        kek_bytes: Zeroizing<[u8; KEK_LEN]>,
+        audit_action: Option<AuditAction>,
+    ) -> Result<VaultSession, VaultError> {
         // ---- 0. Per-vault infrastructure ------------------------------------
         let repo = self.repo_factory.open(&vault_path).await?;
         let blob = self
@@ -251,16 +280,18 @@ impl UnlockVault {
             index.insert_entry(entry);
         }
 
-        // ---- 7. Audit + update last_unlocked_at -----------------------------
+        // ---- 7. Audit (optional) + update last_unlocked_at ------------------
         let when = now();
-        let event = AuditEvent {
-            id: ulid::Ulid::new().to_string(),
-            entry_id: None,
-            action: AuditAction::BiometricUnlocked,
-            occurred_at: when,
-            device_id: None,
-        };
-        repo.append_audit(&event).await?;
+        if let Some(action) = audit_action {
+            let event = AuditEvent {
+                id: ulid::Ulid::new().to_string(),
+                entry_id: None,
+                action,
+                occurred_at: when,
+                device_id: None,
+            };
+            repo.append_audit(&event).await?;
+        }
 
         let mut updated_config = config;
         updated_config.last_unlocked_at = Some(when);

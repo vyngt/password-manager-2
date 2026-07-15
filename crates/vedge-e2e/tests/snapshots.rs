@@ -45,7 +45,9 @@ fn corrupt_vault_db(home: &str) -> Result<()> {
 }
 
 /// The happy path: take a snapshot, move the vault forward, then revert to the snapshot —
-/// all through the `/v/snapshots` page. The entry added after the snapshot is gone.
+/// all through the `/v/snapshots` page. Since slice 5.2.3 (Decision ⑰) the revert is SEAMLESS:
+/// the user STAYS in the vault (no eject to the launch screen, no re-unlock), and the entry
+/// added after the snapshot is gone.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
 async fn snapshot_and_revert_via_ui() -> Result<()> {
@@ -117,18 +119,96 @@ async fn snapshot_and_revert_via_ui() -> Result<()> {
         .await
         .context("confirm revert")?;
 
-    // The revert locks the vault + returns to the launch screen. Re-unlock and assert the
-    // snapshot's state: "keeper" is back, "extra" (added after the snapshot) is gone.
-    assert_unlocked(&session, &vault, false).await?;
-    unlock_ui(&session, &vault).await?;
-    let entries = list_entries(&session, &vault).await?;
+    // 🔴 Seamless (5.2.3): the revert reflects the snapshot WITHOUT ejecting to the launch
+    // screen. Poll the entries — `list_entries` blocks on the session guard while the swap runs,
+    // so it returns only once the reverted session is in place: "keeper" back, "extra" gone.
+    wait_until(Duration::from_secs(30), || async {
+        let entries = list_entries(&session, &vault).await.unwrap_or_default();
+        Ok(entry_id(&entries, "keeper").is_some() && entry_id(&entries, "extra").is_none())
+    })
+    .await
+    .context("the seamless revert must reflect the snapshot without a re-unlock")?;
+    // And the vault stayed unlocked the whole time — no password was ever re-entered.
+    assert_unlocked(&session, &vault, true).await?;
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
+/// 🟠 B2 focus (slice 5.2.3, Decision ⑰): a revert from `/v/snapshots` keeps the user IN the
+/// vault — the snapshots page stays mounted and no launch-screen password field ever appears.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn revert_stays_in_the_vault() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+
+    let session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+    add_login(&session, "keeper", "u", "p").await?;
+
+    // Snapshot on /v/snapshots.
+    session
+        .click_testid("nav-snapshots")
+        .await
+        .context("nav snapshots")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshots-page']".to_string()),
+            Duration::from_secs(5),
+        )
+        .await
+        .context("snapshots page")?;
+    session
+        .click_testid("snapshot-take")
+        .await
+        .context("take snapshot")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshot-row']".to_string()),
+            Duration::from_secs(10),
+        )
+        .await
+        .context("snapshot row appears")?;
+
+    // Revert (inline confirm).
+    session
+        .click_testid("snapshot-revert")
+        .await
+        .context("arm revert confirm")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshot-revert-confirm']".to_string()),
+            Duration::from_secs(5),
+        )
+        .await
+        .context("revert confirm button")?;
+    session
+        .click_testid("snapshot-revert-confirm")
+        .await
+        .context("confirm revert")?;
+
+    // The vault stays unlocked and the snapshots page stays mounted — no eject. Give the swap
+    // time to finish, then assert both.
+    assert_unlocked(&session, &vault, true).await?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshots-page']".to_string()),
+            Duration::from_secs(10),
+        )
+        .await
+        .context("the snapshots page must stay mounted — the revert did not eject to launch")?;
+    // No launch-screen password field is present (the eject path would have shown one).
     assert!(
-        entry_id(&entries, "keeper").is_some(),
-        "the snapshot's entry must survive the revert"
-    );
-    assert!(
-        entry_id(&entries, "extra").is_none(),
-        "an entry added after the snapshot must be gone after reverting"
+        session
+            .driver()
+            .find(By::Id("master-password"))
+            .await
+            .is_err(),
+        "a seamless revert must not surface the launch-screen unlock prompt"
     );
 
     session.assert_console_clean().await?;

@@ -10,35 +10,24 @@ use std::path::PathBuf;
 
 use tracing::instrument;
 
-use vedge_core::infrastructure::backup::target::{TargetState, read_target_state};
+use vedge_core::infrastructure::backup::target::read_target_state;
 use vedge_core::{
-    AddRecentVaultInput, add_recent_vault as add_recent_vault_core,
-    list_recent_vaults as list_recent_vaults_core,
+    AddRecentVaultInput, RecentVaultStatus, add_recent_vault as add_recent_vault_core,
+    healed_recent_path, list_recent_vaults as list_recent_vaults_core,
     list_recent_vaults_with_status as list_recent_vaults_with_status_core,
     record_vault_uuid as record_vault_uuid_core, remove_recent_vault as remove_recent_vault_core,
     remove_stale_recents as remove_stale_recents_core,
-    rename_recent_vault as rename_recent_vault_core, touch_on_unlock as touch_on_unlock_core,
+    rename_recent_vault as rename_recent_vault_core,
+    repoint_recent_vault as repoint_recent_vault_core, touch_on_unlock as touch_on_unlock_core,
     touch_recent_vault as touch_recent_vault_core,
 };
 
+use crate::commands::probe_vault_uuid;
 use crate::dto::settings::{
     RecentVaultDto, RecentVaultStatusDto, recent_vault_status_to_dto, recent_vault_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
-
-/// Read a vault home's plaintext `vault_uuid` without unlocking it.
-///
-/// 🔴 Lives in the SHELL, not in the app-layer use case. `vault_uuid` is *vault* infrastructure
-/// and `recent_vaults` is *app* infrastructure; having the app use case reach across to open a
-/// vault would invert the dependency. The shell composes the two — the same layering the
-/// `openable` probe below already respects.
-async fn probe_vault_uuid(home: &std::path::Path) -> Option<String> {
-    match read_target_state(home).await {
-        TargetState::Readable(id) => id.vault_uuid,
-        TargetState::Missing | TargetState::Unreadable => None,
-    }
-}
 
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all)]
@@ -58,6 +47,25 @@ pub async fn list_recent_vaults_with_status(
     let rows = list_recent_vaults_with_status_core(&*state.recent_vaults).await?;
     let mut out = Vec::with_capacity(rows.len());
     for r in &rows {
+        // B3 self-heal (5.2.3): a row whose path is gone but whose `<stem>.vedge/` sibling holds
+        // a readable `vault.vdb` (a legacy `.vdb` converted, or a vault moved in place) is
+        // re-pointed. The vault probe is read-only; only the app.db row is written.
+        if !r.exists
+            && let Some(healed) = healed_recent_path(&r.vault.path)
+        {
+            // Best-effort — a heal failure must not break the whole list.
+            let _ =
+                repoint_recent_vault_core(&*state.recent_vaults, &r.vault.id, healed.clone()).await;
+            let openable = read_target_state(&healed).await.identity().is_some();
+            let mut vault = r.vault.clone();
+            vault.path = healed;
+            let healed_status = RecentVaultStatus {
+                vault,
+                exists: true,
+            };
+            out.push(recent_vault_status_to_dto(&healed_status, openable));
+            continue;
+        }
         // H0: a present-but-unopenable vault (its `vault.vdb` won't read as a DB) is CORRUPT,
         // so `openable` is false and the launch screen offers Restore. Eager per-row; fine for
         // a handful of recents.

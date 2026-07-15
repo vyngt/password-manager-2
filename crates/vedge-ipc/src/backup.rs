@@ -108,6 +108,18 @@ pub struct ReplaceReportDto {
     pub undo_snapshot_id: Option<String>,
 }
 
+/// The result of a successful `convert_vault` — a legacy `.vdb` → `.vedge/` layout migration
+/// (slice 5.2.0), extended in 5.2.3 to report the biometric reset.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConvertVaultResultDto {
+    /// The new `<name>.vedge/` home path, so the shell can re-point the recents row.
+    pub home: String,
+    /// 🔴 A legacy path-hashed Windows Hello credential was purged, so biometric unlock is now
+    /// OFF (slice 5.2.3). The UI tells the user to re-enable it in Settings. `false` when none
+    /// existed or the best-effort purge failed.
+    pub biometric_reset: bool,
+}
+
 /// The vault's backup health (Decision ⑧).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BackupStatusDto {
