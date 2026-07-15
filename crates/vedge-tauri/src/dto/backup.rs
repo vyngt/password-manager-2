@@ -1,8 +1,8 @@
 //! Backup DTO converters (slices 5.2 / 5.2.2). Core reports → wire DTOs.
 
 pub use vedge_ipc::{
-    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto,
-    DeleteVaultReportDto, OpenBackupReportDto, ReplaceReportDto, TargetStateDto, VaultDetailsDto,
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, DeleteVaultReportDto, OpenBackupReportDto,
+    ReplaceReportDto, TargetStateDto, VaultDetailsDto,
 };
 
 use vedge_core::{BackupPreview, BackupReport, OpenBackupReport, ReplaceReport, TargetStateKind};

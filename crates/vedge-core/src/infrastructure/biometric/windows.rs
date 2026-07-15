@@ -33,7 +33,6 @@ use windows::core::HSTRING;
 
 use crate::application::vault::ports::biometric::BiometricAuthenticator;
 use crate::application::vault::ports::crypto::CryptoProvider;
-use crate::domain::shared::VaultId;
 use crate::domain::vault::crypto_constants::{KEK_LEN, NONCE_LEN};
 use crate::domain::vault::errors::VaultError;
 
@@ -68,20 +67,6 @@ impl WindowsHelloAuthenticator {
 
     fn entry(vault_uuid: &str) -> Result<Entry, VaultError> {
         Entry::new(SERVICE, &Self::key_name(vault_uuid)).map_err(map_keyring_err)
-    }
-
-    /// The LEGACY (pre-5.2.3) path-hashed credential name — read only by
-    /// [`purge_legacy`](BiometricAuthenticator::purge_legacy) to delete the stranded
-    /// credential during the layout migration. The mirror of the keychain's `legacy_account`.
-    fn legacy_key_name(vault_id: &VaultId) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(vault_id.path().to_string_lossy().as_bytes());
-        let digest = hasher.finalize();
-        format!("vedge-biometric-{}", URL_SAFE_NO_PAD.encode(digest))
-    }
-
-    fn legacy_entry(vault_id: &VaultId) -> Result<Entry, VaultError> {
-        Entry::new(SERVICE, &Self::legacy_key_name(vault_id)).map_err(map_keyring_err)
     }
 }
 
@@ -261,27 +246,5 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
         let name = HSTRING::from(Self::key_name(vault_uuid));
         drop(KeyCredentialManager::DeleteAsync(&name).and_then(|op| op.get()));
         Ok(())
-    }
-
-    fn purge_legacy(&self, legacy_vault_id: &VaultId) -> Result<bool, VaultError> {
-        // Was there a legacy (path-hashed) enrollment? The stored blob is the signal.
-        let existed = match Self::legacy_entry(legacy_vault_id)?.get_secret() {
-            Ok(mut b) => {
-                b.zeroize();
-                // Delete the stored blob (best-effort).
-                if let Ok(entry) = Self::legacy_entry(legacy_vault_id) {
-                    drop(entry.delete_credential());
-                }
-                true
-            }
-            Err(KeyringError::NoEntry) => false,
-            Err(e) => return Err(map_keyring_err(e)),
-        };
-        // Delete the Hello-gated TPM key too — the KEK-holding half (best-effort; a Hello
-        // reset may already have removed it). This is what makes the credential unreachable
-        // otherwise: the name is gone once the home is renamed.
-        let name = HSTRING::from(Self::legacy_key_name(legacy_vault_id));
-        drop(KeyCredentialManager::DeleteAsync(&name).and_then(|op| op.get()));
-        Ok(existed)
     }
 }
