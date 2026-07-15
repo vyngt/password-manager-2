@@ -140,6 +140,9 @@ pub fn run() {
             commands::snapshot::list_snapshots,
             commands::snapshot::delete_snapshot,
             commands::snapshot::revert_to_snapshot,
+            commands::snapshot::revert_to_snapshot_in_session,
+            // ---- debug-only e2e seeding seam (slice 5.2.3; inert in release) ----
+            commands::e2e_seed::e2e_downgrade_to_legacy,
             // ---- emergency kit + recovery ----
             commands::emergency_kit::export_emergency_kit,
             commands::emergency_kit::emergency_kit_pdf,

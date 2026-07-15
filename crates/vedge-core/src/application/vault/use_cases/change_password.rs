@@ -142,9 +142,13 @@ pub async fn change_password(
     // ---- 6b. Refresh the biometric-gated KEK if enrolled --------------------
     // The stored KEK is now stale (the DEKs were re-wrapped under the new KEK). Re-store
     // the new KEK so biometric unlock keeps working. Done after the atomic commit so a
-    // rollback never leaves the gate holding a KEK the DB doesn't match.
-    if biometric.is_enrolled(session.vault_id())? {
-        biometric.enroll(session.vault_id(), session.kek.expose())?;
+    // rollback never leaves the gate holding a KEK the DB doesn't match. Keyed on
+    // `vault_uuid` (slice 5.2.3), not the file path.
+    let biometric_uuid = session
+        .vault_uuid()
+        .ok_or(VaultError::KeychainEntryNotFound)?;
+    if biometric.is_enrolled(biometric_uuid)? {
+        biometric.enroll(biometric_uuid, session.kek.expose())?;
     }
 
     // ---- 7. Audit ------------------------------------------------------------

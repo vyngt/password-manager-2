@@ -67,7 +67,10 @@ pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
 pub use reveal_totp::reveal_totp;
-pub use revert_to_snapshot::{RevertReport, RevertToSnapshotInput, revert_to_snapshot};
+pub use revert_to_snapshot::{
+    RevertReport, RevertToSnapshotInput, SeamlessRevertOutcome, revert_to_snapshot,
+    revert_to_snapshot_in_session,
+};
 pub use run_maintenance::{MaintenanceReport, run_maintenance};
 pub use scan_health::scan_health;
 pub use set_favorite::set_favorite;

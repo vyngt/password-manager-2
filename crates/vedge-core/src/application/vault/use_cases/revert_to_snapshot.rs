@@ -18,22 +18,29 @@
 use std::path::PathBuf;
 
 use tracing::{instrument, warn};
+use zeroize::Zeroizing;
 
 use crate::application::vault::ports::factories::VaultRepositoryFactory;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::ports::repository::VaultRepository;
+use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{
     BLOBS_DIR, SNAPSHOTS_DIR, StorageError, VAULT_FILE, format_rfc3339_millis, now,
 };
+use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::entities::{AuditAction, AuditEvent};
 use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::backup::target::read_target_identity;
 use crate::infrastructure::backup::{archive, journal};
-use crate::infrastructure::snapshot::manifest::{SNAPSHOT_FORMAT_VERSION, SnapshotReason};
+use crate::infrastructure::snapshot::manifest::{
+    SNAPSHOT_FORMAT_VERSION, SnapshotManifest, SnapshotReason,
+};
 use crate::infrastructure::snapshot::store;
 use crate::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
 
 use super::create_snapshot::write_snapshot;
+use super::lock_vault::close_session_db;
+use super::unlock_vault::UnlockVault;
 
 /// Which snapshot to revert this vault to.
 #[derive(Debug, Clone)]
@@ -161,23 +168,21 @@ pub(super) async fn commit_swap_blocking(
     .map_err(|e| VaultError::Storage(StorageError::Io(format!("swap task join: {e}"))))?
 }
 
-#[instrument(skip_all, fields(vault = %input.vault.display(), snapshot = %input.snapshot_id))]
-pub async fn revert_to_snapshot(
-    repo_factory: &dyn VaultRepositoryFactory,
-    keychain: &dyn KeychainProvider,
-    input: RevertToSnapshotInput,
-) -> Result<RevertReport, VaultError> {
-    let home = input.vault;
-    let snapshots_dir = home.join(SNAPSHOTS_DIR);
-
-    // 0. Reconcile any prior interrupted restore of this home before a fresh swap.
-    journal::recover_if_pending(&home)?;
-
-    // 1. Resolve + verify the snapshot. Self-verifying: each object's BLAKE3 == its filename,
-    //    and the snapshot's `vault.vdb` matches the manifest — no trust in the (maybe corrupt)
-    //    live target is required.
-    let snap_dir = store::resolve_snapshot_dir(&snapshots_dir, &input.snapshot_id)
-        .map_err(|_| VaultError::SnapshotNotFound(input.snapshot_id.clone()))?;
+/// Resolve + fully self-verify a snapshot: the manifest reads, its `format_version` is not
+/// NEWER than we understand (H1 — refuse newer, accept older forever), the snapshot's
+/// `vault.vdb` matches the manifest hash, and every referenced object is present and
+/// BLAKE3-intact. Returns the resolved snapshot dir + its manifest.
+///
+/// **Read-only, no session.** Extracted (slice 5.2.3) so the seamless-revert PRE-FLIGHT can run
+/// it while the live session is still alive: a bad-snapshot failure there leaves the user
+/// unlocked instead of ejected. `revert_to_snapshot` re-runs it (cheap, idempotent) as its own
+/// step 1.
+pub(super) fn verify_snapshot_revertable(
+    snapshots_dir: &std::path::Path,
+    snapshot_id: &str,
+) -> Result<(PathBuf, SnapshotManifest), VaultError> {
+    let snap_dir = store::resolve_snapshot_dir(snapshots_dir, snapshot_id)
+        .map_err(|_| VaultError::SnapshotNotFound(snapshot_id.to_owned()))?;
     let manifest = store::read_manifest(&snap_dir)
         .map_err(|e| VaultError::SnapshotManifestUnreadable(e.to_string()))?;
     // 🔴 H1 applies here too — refuse NEWER, accept OLDER. This shipped as `!=` in 5.2.1,
@@ -198,7 +203,7 @@ pub async fn revert_to_snapshot(
         ));
     }
     for obj in &manifest.objects {
-        let obj_path = store::object_path(&snapshots_dir, &obj.blake3);
+        let obj_path = store::object_path(snapshots_dir, &obj.blake3);
         let (_s, hash) = archive::hash_file(&obj_path).map_err(|_| {
             VaultError::SnapshotCorrupt(format!("missing object b3-{}", obj.blake3))
         })?;
@@ -209,6 +214,26 @@ pub async fn revert_to_snapshot(
             )));
         }
     }
+    Ok((snap_dir, manifest))
+}
+
+#[instrument(skip_all, fields(vault = %input.vault.display(), snapshot = %input.snapshot_id))]
+pub async fn revert_to_snapshot(
+    repo_factory: &dyn VaultRepositoryFactory,
+    keychain: &dyn KeychainProvider,
+    input: RevertToSnapshotInput,
+) -> Result<RevertReport, VaultError> {
+    let home = input.vault;
+    let snapshots_dir = home.join(SNAPSHOTS_DIR);
+
+    // 0. Reconcile any prior interrupted restore of this home before a fresh swap.
+    journal::recover_if_pending(&home)?;
+
+    // 1. Resolve + verify the snapshot. Self-verifying: each object's BLAKE3 == its filename,
+    //    and the snapshot's `vault.vdb` matches the manifest — no trust in the (maybe corrupt)
+    //    live target is required.
+    let (snap_dir, manifest) = verify_snapshot_revertable(&snapshots_dir, &input.snapshot_id)?;
+    let snap_vault = snap_dir.join(VAULT_FILE);
 
     // 2. Rollback gate + ⑭ auto-snapshot, both gated on the target being READABLE. A `None`
     //    identity means a corrupt/missing target: nothing to roll back over, nothing to
@@ -286,4 +311,89 @@ pub async fn revert_to_snapshot(
         blob_count,
         reverted_at: started_at,
     })
+}
+
+/// Outcome of a seamless in-place revert (slice 5.2.3, Decision ⑰).
+pub enum SeamlessRevertOutcome {
+    /// The swap committed and the vault re-opened — the user stays inside it. The session is
+    /// boxed: it is far larger than the other variants (a whole live `VaultSession`).
+    Reverted {
+        session: Box<VaultSession>,
+        report: RevertReport,
+    },
+    /// The swap committed, but re-opening failed — a STALE snapshot whose ⑬ rewrap failed, so
+    /// its `vault.vdb` no longer opens under the live KEK. The revert **succeeded**; the user
+    /// re-unlocks with the credentials of that snapshot's moment. NOT a revert failure (L1).
+    NeedsUnlock { report: RevertReport },
+    /// The session was torn down but the swap itself FAILED (e.g. a full disk after the
+    /// read-only preflight passed). The vault is unchanged and the revert did NOT happen — the
+    /// user lands on the launch screen with an honest error. Rare.
+    CommitFailed { error: VaultError },
+}
+
+/// Revert a snapshot IN PLACE while keeping the user inside the vault (slice 5.2.3, Decision ⑰).
+///
+/// The KEK accessor, `commit_preserving`, and `rename_retrying` are all crate-private, so this
+/// orchestration must live in core. It:
+///
+/// 1. PRE-FLIGHTs the snapshot (read-only) with the session STILL ALIVE — a bad-snapshot error
+///    returns here and the caller keeps the user unlocked (the ejection-bug fix).
+/// 2. Only then clones the KEK, closes the session's DB (synchronous, Windows-safe handle
+///    release), and runs the existing file-op [`revert_to_snapshot`] (whose swap uses
+///    `rename_retrying` on a blocking thread and preserves `snapshots/`).
+/// 3. Re-opens with `unlock_with_kek_quiet` (no forged audit row). A re-open failure is folded
+///    into [`SeamlessRevertOutcome::NeedsUnlock`], never surfaced as a revert failure — the swap
+///    already committed.
+///
+/// The caller normally passes `confirm_rollback = true` (reverting from inside IS the
+/// confirmation); an unconfirmed rollback is caught in the read-only preflight (step 1) and
+/// returned as `RollbackNotConfirmed` with the session untouched, so it can never tear down a
+/// live session either.
+pub async fn revert_to_snapshot_in_session(
+    session: &VaultSession,
+    unlock: &UnlockVault,
+    repo_factory: &dyn VaultRepositoryFactory,
+    keychain: &dyn KeychainProvider,
+    input: RevertToSnapshotInput,
+) -> Result<SeamlessRevertOutcome, VaultError> {
+    let home = session.vault_id().path().to_path_buf();
+
+    // 1. PRE-FLIGHT (read-only, session ALIVE): resolve + self-verify the snapshot, AND the
+    //    rollback gate. Any refusal here returns with the session UNTOUCHED, so the caller keeps
+    //    the user unlocked — the ejection-bug fix must cover EVERY pre-commit refusal, not just a
+    //    bad snapshot. `revert_to_snapshot` re-checks both after teardown; the double-check is
+    //    cheap and idempotent. The target read is `mode=ro` and coexists with the live session's
+    //    connection (SQLite WAL allows concurrent readers).
+    let (_snap_dir, manifest) =
+        verify_snapshot_revertable(&home.join(SNAPSHOTS_DIR), &input.snapshot_id)?;
+    if !input.confirm_rollback
+        && let Some(id) = read_target_identity(&home).await
+        && let Some(target_ctr) = id.commit_counter
+        && target_ctr > manifest.commit_counter
+    {
+        return Err(VaultError::RollbackNotConfirmed);
+    }
+
+    // 2. Committed to the swap → tear the session down. Clone the KEK out (in-crate; the same
+    //    deref-copy pattern as `change_password`), then release the DB handle SYNCHRONOUSLY so
+    //    the directory swap does not race a lingering `.vdb` handle on Windows.
+    let kek: Zeroizing<[u8; KEK_LEN]> = Zeroizing::new(*session.kek.expose());
+    close_session_db(session).await;
+
+    let report = match revert_to_snapshot(repo_factory, keychain, input).await {
+        Ok(report) => report,
+        // Post-teardown, pre-swap failure (rare — the snapshot was just verified). The vault is
+        // unchanged; report honestly rather than as a successful revert.
+        Err(error) => return Ok(SeamlessRevertOutcome::CommitFailed { error }),
+    };
+
+    // 3. Re-enter with the held KEK, suppressing the redundant unlock audit row. A stale
+    //    snapshot whose rewrap failed cannot open under this KEK → NeedsUnlock, NOT an error.
+    match unlock.unlock_with_kek_quiet(home, kek).await {
+        Ok(session) => Ok(SeamlessRevertOutcome::Reverted {
+            session: Box::new(session),
+            report,
+        }),
+        Err(_) => Ok(SeamlessRevertOutcome::NeedsUnlock { report }),
+    }
 }

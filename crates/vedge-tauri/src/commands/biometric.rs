@@ -27,10 +27,6 @@ use crate::dto::misc::UnlockResultDto;
 use crate::error::CommandError;
 use crate::state::AppState;
 
-fn vault_id_from_string(s: &str) -> VaultId {
-    VaultId::new(PathBuf::from(s))
-}
-
 /// Whether biometric hardware is present and usable on this device. Never prompts.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn biometric_available(state: tauri::State<'_, AppState>) -> Result<bool, CommandError> {
@@ -45,9 +41,12 @@ pub async fn biometric_is_enrolled(
     vault_path: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<bool, CommandError> {
-    Ok(state
-        .biometric
-        .is_enrolled(&vault_id_from_string(&vault_path))?)
+    // The gate is keyed on `vault_uuid` (slice 5.2.3), read read-only from the plaintext
+    // config. A vault whose uuid can't be read (missing/corrupt) can't be enrolled.
+    let Some(uuid) = crate::commands::probe_vault_uuid(&PathBuf::from(&vault_path)).await else {
+        return Ok(false);
+    };
+    Ok(state.biometric.is_enrolled(&uuid)?)
 }
 
 /// Enroll the (already-unlocked) vault for biometric unlock.
@@ -61,7 +60,7 @@ pub async fn biometric_enroll(
     master_password: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
-    let vault_id = vault_id_from_string(&vault_path);
+    let vault_id = VaultId::new(PathBuf::from(&vault_path));
     let handle = state.get_session(&vault_id)?;
     let guard = handle.lock().await;
 
@@ -96,7 +95,14 @@ pub async fn biometric_unlock(
         )));
     }
 
-    let kek = state.biometric.retrieve(&vault_id)?;
+    // Read the plaintext `vault_uuid` (read-only) BEFORE the Hello prompt (slice 5.2.3): the
+    // gate is uuid-keyed, and this fails fast on a corrupt/uuid-less vault without prompting.
+    // A uuid-less vault could never have been enrolled → surface as "not enrolled" so the UI
+    // falls back to the password screen.
+    let uuid = crate::commands::probe_vault_uuid(&path)
+        .await
+        .ok_or(vedge_core::domain::vault::errors::VaultError::BiometricNotEnrolled)?;
+    let kek = state.biometric.retrieve(&uuid)?;
     let session = state.unlock_vault.unlock_with_kek(path, kek).await?;
     let rollback_delta = session.rollback_warning();
     state.insert_session(
@@ -118,8 +124,10 @@ pub async fn biometric_disable(
     vault_path: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), CommandError> {
-    state
-        .biometric
-        .disable(&vault_id_from_string(&vault_path))?;
+    // Keyed on `vault_uuid` (slice 5.2.3). If the uuid can't be read (missing/corrupt) there
+    // is nothing addressable to disable — idempotent, as the port contract requires.
+    if let Some(uuid) = crate::commands::probe_vault_uuid(&PathBuf::from(&vault_path)).await {
+        state.biometric.disable(&uuid)?;
+    }
     Ok(())
 }

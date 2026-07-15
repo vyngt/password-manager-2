@@ -104,8 +104,12 @@ pub fn SnapshotsPage() -> impl IntoView {
         });
     };
 
-    // Revert: lock this vault (the swap refuses an unlocked target), revert, then return to
-    // the launch screen to unlock. The revert auto-snapshots first, so it is undoable.
+    // Revert SEAMLESSLY (slice 5.2.3, Decision ⑰): the backend holds the KEK, swaps, and
+    // re-opens — the user stays in the vault instead of being ejected to the launch screen. The
+    // revert auto-snapshots first, so it is undoable. `confirm_rollback = true`: reverting from
+    // inside the vault IS the confirmation. If a stale snapshot can't be re-opened, the backend
+    // reports `stayed_unlocked = false` and we navigate to the launch screen to unlock — that is
+    // not a revert failure.
     let do_revert = move |id: String| {
         let path = untrack(|| active.path.get()).unwrap_or_default();
         if path.is_empty() {
@@ -116,11 +120,15 @@ pub fn SnapshotsPage() -> impl IntoView {
         let nav = use_navigate();
         pending_revert.set(None);
         spawn_local(async move {
-            api::vault::lock(&path).await.ok();
-            match api::snapshot::revert(&path, &id, true).await {
-                Ok(_) => {
+            match api::snapshot::revert_in_session(&path, &id, true).await {
+                Ok(result) => {
                     notify(done, ToastVariant::Warning);
-                    nav("/", Default::default());
+                    if result.stayed_unlocked {
+                        // Still unlocked — refresh the list (a pre-restore snapshot was added).
+                        reload.update(|n| *n = n.wrapping_add(1));
+                    } else {
+                        nav("/", Default::default());
+                    }
                 }
                 Err(e) => notify(format!("{err_prefix}{e}"), ToastVariant::Danger),
             }
