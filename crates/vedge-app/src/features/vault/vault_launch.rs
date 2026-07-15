@@ -13,6 +13,7 @@
 use crate::api;
 use crate::api::dialog::OpenDialogOptions;
 use crate::api::error::ApiError;
+use crate::features::vault::backup_open_dialog::BackupOpenDialog;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::recents_filter::filter_sort_recents;
 use crate::features::vault::vault_list::VaultList;
@@ -508,6 +509,11 @@ pub fn VaultLaunch() -> impl IntoView {
     let on_use_password = Callback::new(move |()| show_password.set(true));
     let on_recover = Callback::new(move |()| do_recover());
 
+    // Slice 5.2.2 — "Open a backup…" (and, behind Advanced, Replace).
+    let backup_open = RwSignal::new(false);
+    let on_open_backup = Callback::new(move |()| backup_open.set(true));
+    let on_backup_done = Callback::new(move |()| refresh_recents());
+
     let empty_state = move || {
         view! {
             <div class="w-[420px] max-w-full rounded-xl border border-border bg-surface p-6 shadow-lg">
@@ -533,6 +539,19 @@ pub fn VaultLaunch() -> impl IntoView {
                             on:click=move |_: web_sys::MouseEvent| on_open_file.run(())
                         >
                             {move || t!(i18n, unlock.open_file)}
+                        </Button>
+                    </div>
+                    // 🔴 A brand-new machine has NO recents — which is exactly the state a user
+                    // arrives in holding a `.vbk` and an Emergency Kit. If "Open a backup…" only
+                    // existed in the populated picker's footer, the new-machine flow (the whole
+                    // reason this slice exists) would have no door at all.
+                    <div class="mt-3">
+                        <Button
+                            variant=Variant::Ghost
+                            attr:data-testid="open-backup"
+                            on:click=move |_: web_sys::MouseEvent| on_open_backup.run(())
+                        >
+                            {move || t!(i18n, unlock.ob_cta)}
                         </Button>
                     </div>
                 </EmptyState>
@@ -568,6 +587,7 @@ pub fn VaultLaunch() -> impl IntoView {
                             on_restore=on_restore
                             on_new=on_new
                             on_open_file=on_open_file
+                            on_open_backup=on_open_backup
                         />
                         <VaultUnlockPanel
                             selected=selected
@@ -585,6 +605,7 @@ pub fn VaultLaunch() -> impl IntoView {
                     </div>
                 </Show>
             </Show>
+            <BackupOpenDialog open=backup_open selected=selected on_done=on_backup_done />
         </div>
     }
 }

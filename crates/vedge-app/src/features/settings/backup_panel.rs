@@ -13,7 +13,7 @@
 
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use vedge_ipc::BackupReportDto;
+use vedge_ipc::{BackupReportDto, BackupStatusDto};
 use vedge_ui::components::Button;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -32,6 +32,30 @@ pub fn BackupPanel() -> impl IntoView {
 
     let busy = RwSignal::new(false);
     let last = RwSignal::new(None::<BackupReportDto>);
+    let status = RwSignal::new(None::<BackupStatusDto>);
+
+    // Decision ⑧ — the health readout, and the one place it is easy to get catastrophically
+    // wrong. `last_backup_at` is written ONLY by `backup_vault`. It is deliberately NOT derived
+    // from `BackupCreated` audit rows, because `create_snapshot` emits those too (5.2.1) — so an
+    // audit-derived readout would let a *snapshot* announce "you're backed up".
+    //
+    // A snapshot lives on the same disk, in the same folder, as the vault it protects. It
+    // survives a mistake. It does not survive a dead drive, a stolen laptop, or a ransomware
+    // pass. Telling someone they are backed up when they are not is worse than telling them
+    // nothing at all — so the two facts are separate columns, with separate writers, and they
+    // are shown separately here.
+    let load_status = move || {
+        let path = untrack(|| active.path.get()).unwrap_or_default();
+        if path.is_empty() {
+            return;
+        }
+        spawn_local(async move {
+            if let Ok(s) = api::backup::status(&path).await {
+                status.set(Some(s));
+            }
+        });
+    };
+    Effect::new(move |_| load_status());
 
     // Owner-safe toast (called from event handlers AND `spawn_local`, so the dismiss label is
     // read via `untrack`, like `vault_launch`'s helpers).
@@ -66,6 +90,7 @@ pub fn BackupPanel() -> impl IntoView {
                 Ok(Some(dest)) => match api::backup::backup(&path, &dest).await {
                     Ok(report) => {
                         last.set(Some(report));
+                        load_status(); // ⑧ the readout advances only on a REAL backup
                         show(saved, ToastVariant::Success);
                     }
                     Err(e) => show(format!("{err_prefix}{e}"), ToastVariant::Danger),
@@ -79,6 +104,47 @@ pub fn BackupPanel() -> impl IntoView {
     };
 
     view! {
+        // ---- ⑧ Backup health: when were you LAST actually backed up? ----
+        <div class="py-3.5 border-b border-border text-xs" data-testid="backup-health">
+            <div class="font-medium text-text-primary">
+                {move || t!(i18n, settings.backup_health_title)}
+            </div>
+            <div class="mt-1 space-y-0.5">
+                {move || {
+                    let s = status.get();
+                    let last_backup = s.as_ref().and_then(|s| s.last_backup_at.clone());
+                    let last_snapshot = s.and_then(|s| s.last_snapshot_at);
+                    let backed_up = last_backup.is_some();
+                    let line = last_backup
+                        .map_or_else(
+                            || t_string!(i18n, settings.backup_health_never).to_owned(),
+                            |t| format!("{} {t}", t_string!(i18n, settings.backup_health_last)),
+                        );
+                    // Not "backed up a while ago" — NEVER backed up. Say it plainly, and in the
+                    // warning colour: a snapshot on the same disk is not a backup, and a user who
+                    // believes otherwise finds out only when the disk is gone.
+                    view! {
+                        <div
+                            class=if backed_up { "text-text-secondary" } else { "font-medium" }
+                            style=if backed_up { "" } else { "color:var(--color-warning-text)" }
+                        >
+                            {line}
+                        </div>
+                        // Shown BESIDE the backup line, never instead of it: a snapshot is an
+                        // undo, not a backup. It dies with the disk it sits on.
+                        {last_snapshot
+                            .map(|t| {
+                                view! {
+                                    <div class="text-text-secondary">
+                                        {move || t!(i18n, settings.backup_health_snapshot)}" "{t}
+                                    </div>
+                                }
+                            })}
+                    }
+                }}
+            </div>
+        </div>
+
         // ---- Back up now row ----
         <div class="flex items-start justify-between gap-5 py-3.5 border-b border-border">
             <div>

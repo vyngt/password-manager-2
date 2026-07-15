@@ -24,6 +24,9 @@ use crate::api;
 use crate::api::dialog::{DialogFilter, OpenDialogOptions, SaveDialogOptions};
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
+// Shared with the Open-a-backup dialog (5.2.2) — one composition, so the same typed input can
+// never produce two different homes.
+use crate::features::vault::home_path::{compose_home, home_folder_name, path_sep};
 use crate::features::vault::password_strength::score as password_score;
 use crate::features::vault::secret_display::SecretDisplay;
 use crate::i18n::{t, t_string, use_i18n};
@@ -32,68 +35,6 @@ use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{Button, Checkbox, Input, PasswordStrengthMeter, Step, StepIndicator};
 use vedge_ui::primitives::tokens::{ToastVariant, Variant};
-
-/// Ensure a vault name normalizes to a `.vedge` home folder name (slice 5.2.0).
-/// A user may type a bare name or a legacy `.vdb`; both become a `.vedge` home.
-/// An already-`.vedge` name passes through unchanged.
-fn ensure_vedge_home(input: &str) -> String {
-    let trimmed = input.trim();
-    match std::path::Path::new(trimmed)
-        .extension()
-        .and_then(|s| s.to_str())
-    {
-        Some("vedge") => trimmed.to_owned(),
-        // A legacy `.vdb` typed in the field → swap the extension for `.vedge`.
-        Some("vdb") => format!("{}.vedge", trimmed.strip_suffix(".vdb").unwrap_or(trimmed)),
-        _ => format!("{trimmed}.vedge"),
-    }
-}
-
-/// Normalize a typed vault **name** into a `.vedge` home folder name: strip any
-/// path separators (a name is a single folder, not a path) then apply
-/// [`ensure_vedge_home`]. Empty when the name is blank.
-fn home_folder_name(name: &str) -> String {
-    let cleaned: String = name
-        .trim()
-        .chars()
-        .filter(|c| *c != '/' && *c != '\\')
-        .collect();
-    if cleaned.is_empty() {
-        String::new()
-    } else {
-        ensure_vedge_home(&cleaned)
-    }
-}
-
-/// Infer the path separator from a location string: a backslash for
-/// Windows-style paths (containing `\` or an `X:` drive prefix), a forward slash
-/// otherwise. Mirrors the platform-native folder picker's output so the composed
-/// home matches whatever the OS returned.
-fn path_sep(location: &str) -> char {
-    let mut chars = location.chars();
-    let drive = matches!(
-        (chars.next(), chars.next()),
-        (Some(c), Some(':')) if c.is_ascii_alphabetic()
-    );
-    if location.contains('\\') || drive {
-        '\\'
-    } else {
-        '/'
-    }
-}
-
-/// Compose the full vault-home path from a parent `location` and a vault `name`.
-/// Returns an empty string when either input is blank.
-fn compose_home(location: &str, name: &str) -> String {
-    let folder = home_folder_name(name);
-    let loc = location.trim();
-    if loc.is_empty() || folder.is_empty() {
-        return String::new();
-    }
-    let base = loc.trim_end_matches(['/', '\\']);
-    let sep = path_sep(loc);
-    format!("{base}{sep}{folder}")
-}
 
 /// Minimum strength (0–4) required to leave the password step.
 const MIN_STRENGTH: u8 = 2;

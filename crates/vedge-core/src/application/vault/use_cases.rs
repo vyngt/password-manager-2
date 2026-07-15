@@ -15,11 +15,12 @@ pub mod list_audit;
 pub mod lock_vault;
 pub mod migrate_vault_layout;
 pub mod move_entry;
+pub mod open_backup;
 pub mod queries;
 pub mod recover_vault;
 pub mod refs;
+pub mod replace_vault;
 pub mod restore_entry;
-pub mod restore_vault;
 pub mod reveal_totp;
 pub mod revert_to_snapshot;
 pub mod rewrap_snapshots;
@@ -33,7 +34,7 @@ pub mod tag_ops;
 pub mod unlock_vault;
 pub mod update_entry;
 
-pub use backup_vault::{BackupReport, BackupVaultInput, backup_vault};
+pub use backup_vault::{BackupReport, BackupStatus, BackupVaultInput, backup_status, backup_vault};
 pub use biometric::enroll_biometric;
 pub use change_password::{ChangePasswordInput, change_password};
 pub use copy_field::{CopyFieldInput, FieldSelector, copy_field, place_text_on_clipboard};
@@ -50,20 +51,21 @@ pub use entry_history::{
 pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
 pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
-pub use inspect_backup::{BackupPreview, InspectBackupInput, inspect_backup};
+pub use inspect_backup::{BackupPreview, InspectBackupInput, TargetStateKind, inspect_backup};
 pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
 pub use lock_vault::{close_session_db, lock_vault, record_lock};
 pub use migrate_vault_layout::{
     MigrateVaultLayoutInput, MigrateVaultLayoutOutput, migrate_vault_layout,
 };
 pub use move_entry::move_entry;
+pub use open_backup::{OpenBackupInput, OpenBackupReport, open_backup};
 pub use queries::{
     entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries, list_tags,
     list_trashed_entries, search_entries,
 };
 pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
+pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
-pub use restore_vault::{RestoreReport, RestoreVaultInput, restore_vault};
 pub use reveal_totp::reveal_totp;
 pub use revert_to_snapshot::{RevertReport, RevertToSnapshotInput, revert_to_snapshot};
 pub use run_maintenance::{MaintenanceReport, run_maintenance};

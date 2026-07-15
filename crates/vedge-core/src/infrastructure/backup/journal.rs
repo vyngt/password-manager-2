@@ -263,7 +263,7 @@ fn is_sharing_violation(e: &std::io::Error) -> bool {
 /// handle DOES release, it just needs time. Retry for up to ~10s. Callers run the swap on a
 /// blocking thread (`spawn_blocking`) so the async runtime stays free to finish the pool close
 /// while we wait. Non-contention errors return immediately (no point retrying a real failure).
-fn rename_retrying(src: &Path, dst: &Path) -> Result<(), VaultError> {
+pub(crate) fn rename_retrying(src: &Path, dst: &Path) -> Result<(), VaultError> {
     const ATTEMPTS: u32 = 100;
     const DELAY: std::time::Duration = std::time::Duration::from_millis(100);
     let mut attempt: u32 = 0;
@@ -350,19 +350,21 @@ fn op_cleanup(paths: &SwapPaths, staging_dir: &Path) -> Result<(), VaultError> {
     remove_dir_if_exists(staging_dir)
 }
 
-/// Production entry point: a whole-home swap (`.vbk` restore) with a no-op checkpoint hook.
-pub(crate) fn commit(
-    home: &Path,
-    staging_dir: &Path,
-    vault_blake3: &str,
-    started_at: &str,
-) -> Result<(), VaultError> {
-    commit_preserving(home, staging_dir, vault_blake3, started_at, &[])
-}
-
-/// Like [`commit`] but PRESERVES the named subdirs of the home across the swap (slice 5.2.1):
-/// they are moved from the `.old` original into the new home rather than replaced. Used by
-/// `revert_to_snapshot` with `&[SNAPSHOTS_DIR]` so a revert never destroys the snapshot store.
+/// Production entry point: swap `staging_dir` in as the home, PRESERVING the named subdirs
+/// across the swap (they are carried over from the `.old` original rather than replaced).
+///
+/// 🔴 **There is deliberately no bare `commit(…)` convenience wrapper**, and adding one back
+/// would be a mistake. Until slice 5.2.2 there was one — it called this with an empty
+/// preserve-list — and `restore_vault` used it. That was a **latent data-loss bug**: since
+/// 5.2.1 the snapshot store lives at `<home>/snapshots`, *inside* the very home being swapped,
+/// so a whole-home swap **deleted every snapshot the vault had**, including the `pre-restore`
+/// undo point taken moments earlier to make the operation reversible. It was never caught
+/// because nothing tested for the absence of a directory nobody thought about.
+///
+/// Both destructive verbs (`revert_to_snapshot`, `replace_vault_from_backup`) now pass
+/// `&[SNAPSHOTS_DIR]`. Requiring the argument means a future caller has to *decide* what
+/// survives its swap, out loud, instead of inheriting a silent default that eats the safety
+/// net. If you genuinely want to replace the entire home, pass `&[]` — and say why.
 pub(crate) fn commit_preserving(
     home: &Path,
     staging_dir: &Path,
@@ -832,7 +834,7 @@ mod tests {
         let newer = b"NEWER vault bytes from a second backup".to_vec();
         std::fs::write(staged_vault(&staging2), &newer).unwrap();
         let (_, h2) = hash_file(&staged_vault(&staging2)).unwrap();
-        commit(&fx.home, &staging2, &h2, "t2").unwrap();
+        commit_preserving(&fx.home, &staging2, &h2, "t2", &["snapshots"]).unwrap();
         assert_eq!(fx.live_vault_bytes(), newer);
         fx.assert_clean(true);
     }

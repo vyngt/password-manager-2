@@ -52,10 +52,7 @@ run = "cargo tauri build"
 alias = "format"
 description = "Format all Rust code (rustfmt) + `view!` macros (leptosfmt)"
 # rustfmt first (it skips macro bodies), then leptosfmt for the `view!` internals.
-run = [
-  "cargo fmt --all",
-  "leptosfmt crates/vedge-app crates/vedge-ui",
-]
+run = ["cargo fmt --all", "leptosfmt crates/vedge-app crates/vedge-ui"]
 
 [tasks.fmt-check]
 description = "Check rustfmt + leptosfmt formatting without writing"
@@ -124,6 +121,36 @@ run = [
   "cargo build -p vedge-tauri --features custom-protocol",
   "cargo test -p vedge-e2e -- --ignored --test-threads=1",
 ]
+
+# ---------------------------------------------------------------------------
+# OS keychain hygiene
+#
+# 🔴 The e2e suite does NOT fake the keychain — it drives the real OS credential store, because
+# that is the only way to actually test it. So every run leaves real entries behind: a Secret Key
+# (`secret:{uuid}`) + a rollback baseline (`counter:{uuid}`) per vault, and another pair for each
+# duplicate that slice 5.2.2's ② opens. Dev runs against throwaway vaults do the same. They are
+# keyed on an opaque ULID, so you cannot tell an orphan from a real vault's key by looking — and
+# deleting the wrong one destroys a vault (recoverable only via its Emergency Kit).
+#
+# Two defences:
+#   1. e2e writes under its OWN service (`vedge-e2e-test`, debug-only + env-gated), so its
+#      entries are always identifiable and always safe to bulk-delete → `mise e2e-clean`.
+#   2. For the production `vedge` service, `keychain-audit` decides orphan-vs-live from EVIDENCE
+#      — the uuids of the vaults you actually have registered and on disk — and refuses to delete
+#      anything if it cannot see them. Read `scripts/keychain_audit.ps1` before trusting it.
+# ---------------------------------------------------------------------------
+
+[tasks.keychain-audit]
+description = "Report which VEdge keychain entries are orphans (dry run — deletes nothing)"
+run = "pwsh -NoProfile -File scripts/keychain_audit.ps1"
+
+[tasks.keychain-clean]
+description = "🔴 Delete the orphaned VEdge keychain entries (keeps every registered vault's key)"
+run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Delete"
+
+[tasks.e2e-clean]
+description = "Purge the keychain entries left by e2e runs (always safe — never touches a real vault)"
+run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Service vedge-e2e-test -Delete"
 
 # ---------------------------------------------------------------------------
 # Frontend wasm type-check

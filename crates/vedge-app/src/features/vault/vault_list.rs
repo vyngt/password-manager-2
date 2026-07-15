@@ -54,6 +54,8 @@ pub fn VaultList(
     on_restore: Callback<String>,
     on_new: Callback<()>,
     on_open_file: Callback<()>,
+    /// Open the "Open a backup…" dialog (slice 5.2.2), which also hosts Advanced ▸ Replace.
+    on_open_backup: Callback<()>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let highlighted = RwSignal::new(0usize);
@@ -451,23 +453,39 @@ pub fn VaultList(
                 }}
             </div>
 
-            // Footer: New + Open.
-            <div class="flex gap-2 border-t border-border px-3 py-2.5">
+            // Footer: New + Open + Open a backup.
+            <div class="border-t border-border px-3 py-2.5 space-y-2">
+                <div class="flex gap-2">
+                    <Button
+                        variant=Variant::Primary
+                        size=Size::Sm
+                        full_width=true
+                        on:click=move |_: web_sys::MouseEvent| on_new.run(())
+                    >
+                        {move || t!(i18n, unlock.new_vault)}
+                    </Button>
+                    <Button
+                        variant=Variant::Secondary
+                        size=Size::Sm
+                        full_width=true
+                        on:click=move |_: web_sys::MouseEvent| on_open_file.run(())
+                    >
+                        {move || t!(i18n, unlock.open_file)}
+                    </Button>
+                </div>
+                // Slice 5.2.2 — "Open a backup…" belongs HERE, on the closed-vault screen. It is
+                // the new-machine flow's front door, and it is also where the Advanced ▸ Replace
+                // escape hatch hides. (Restore used to live in Settings, which needs an unlocked
+                // vault — so a corrupt vault, the one case that most needed it, could not reach
+                // it at all. That was H0.)
                 <Button
-                    variant=Variant::Primary
+                    variant=Variant::Ghost
                     size=Size::Sm
                     full_width=true
-                    on:click=move |_: web_sys::MouseEvent| on_new.run(())
+                    attr:data-testid="open-backup"
+                    on:click=move |_: web_sys::MouseEvent| on_open_backup.run(())
                 >
-                    {move || t!(i18n, unlock.new_vault)}
-                </Button>
-                <Button
-                    variant=Variant::Secondary
-                    size=Size::Sm
-                    full_width=true
-                    on:click=move |_: web_sys::MouseEvent| on_open_file.run(())
-                >
-                    {move || t!(i18n, unlock.open_file)}
+                    {move || t!(i18n, unlock.ob_cta)}
                 </Button>
             </div>
         </div>

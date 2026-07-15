@@ -1,11 +1,15 @@
-//! Backup + restore host suite (slices 5.2a / 5.2b).
+//! Backup + **Replace** host suite (slices 5.2a / 5.2b / 5.2.2).
 //!
-//! 5.2a proves the archive is produced live and well-formed; 5.2b proves the
-//! journaled restore round-trips a vault (entries + a document blob) and refuses a
-//! tampered archive, a uuid mismatch, a newer schema, and an unknown format. The
-//! crash-at-every-state matrix is a unit test in `infrastructure::backup::journal`
-//! (it drives the state machine directly, more precisely than a use-case fault
-//! point could).
+//! 5.2a proves the archive is produced live and well-formed. The rest proves the demoted
+//! escape hatch — `replace_vault_from_backup` — refuses everything it should and, when it
+//! does act, is **undoable**.
+//!
+//! 🔴 The non-destructive verb (`open_backup`) has its own suite in `tests/open_backup.rs`.
+//! That separation is the slice: a test that "restores into a fresh path" is testing *Open
+//! backup*, and it belongs over there. Replace **refuses** a missing target on purpose.
+//!
+//! The crash-at-every-state matrix is a unit test in `infrastructure::backup::journal` (it
+//! drives the state machine directly, more precisely than a use-case fault point could).
 
 #![allow(
     clippy::unwrap_used,
@@ -20,19 +24,23 @@
 mod common;
 
 use std::path::Path;
+use std::sync::Arc;
 
 use zeroize::Zeroizing;
 
 use common::{Harness, build_unlock};
 
-use vedge_core::application::vault::ports::{KeychainProvider, VaultRepository};
+use vedge_core::application::vault::ports::{
+    BiometricAuthenticator, KeyDerivationProvider, KeychainProvider, VaultRepository,
+};
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    BackupVaultInput, CreateEntryInput, ImportDocumentInput, InspectBackupInput, RestoreVaultInput,
-    UnlockVaultInput, backup_vault, create_entry, export_document, import_document, inspect_backup,
-    restore_vault,
+    BackupVaultInput, ChangePasswordInput, CreateEntryInput, InspectBackupInput, OpenBackupInput,
+    ReplaceVaultInput, RevertToSnapshotInput, TargetStateKind, UnlockVaultInput, backup_vault,
+    change_password, create_entry, inspect_backup, open_backup, replace_vault_from_backup,
+    revert_to_snapshot,
 };
-use vedge_core::domain::shared::{EntryId, VAULT_FILE};
+use vedge_core::domain::shared::{EntryId, SNAPSHOTS_DIR, VAULT_FILE};
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
@@ -222,6 +230,52 @@ async fn set_uuid(h: &Harness, uuid: &str) {
     h.keychain.store_secret_key(uuid, &h.secret_key).unwrap();
 }
 
+/// Rotate the vault's master password (the ports are explicit at the use case; this keeps the
+/// M3 tests readable).
+async fn rotate_password(h: &Harness, session: &mut VaultSession, new: &str) {
+    change_password(
+        session,
+        Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
+        ChangePasswordInput {
+            new_password: Zeroizing::new(new.to_owned()),
+            new_secret_key: None,
+        },
+    )
+    .await
+    .unwrap();
+}
+
+/// A Replace with nothing acknowledged — the default a UI submits when its preview showed no
+/// risks. Every refusal test starts here and turns on exactly the one confirm it is probing,
+/// which is the point of ③: **three independent risks, three independent acknowledgements.**
+fn replace(target: &Path, archive: &Path) -> ReplaceVaultInput {
+    ReplaceVaultInput {
+        target_vault: target.to_path_buf(),
+        archive_path: archive.to_path_buf(),
+        confirm_rollback: false,
+        confirm_credential_change: false,
+        confirm_unverified_target: false,
+    }
+}
+
+/// Materialise an archive at a fresh path (the *Open backup* verb), with no known vaults —
+/// i.e. the new-machine case, where nothing can be a duplicate. Used to SET UP Replace tests
+/// that need a populated target; the verb itself is proven in `tests/open_backup.rs`.
+async fn open_at(archive: &Path, dest: &Path, keychain: &MemoryKeychainProvider) {
+    open_backup(
+        keychain,
+        OpenBackupInput {
+            archive_path: archive.to_path_buf(),
+            dest_home: dest.to_path_buf(),
+            known_vaults: vec![],
+        },
+    )
+    .await
+    .unwrap();
+}
+
 /// Build a minimal, internally-consistent `.vbk` with a chosen format/schema — for
 /// the refusal tests, whose gate fires *after* `verify_archive` passes.
 fn write_min_archive(dir: &Path, format_version: u32, schema_version: i32) -> std::path::PathBuf {
@@ -236,6 +290,7 @@ fn write_min_archive(dir: &Path, format_version: u32, schema_version: i32) -> st
         entry_count: 0,
         blob_count: 0,
         commit_counter: 0,
+        verify_hash_prefix: None,
         files: vec![ManifestFile {
             name: VAULT_MEMBER.to_owned(),
             size,
@@ -256,29 +311,16 @@ fn write_min_archive(dir: &Path, format_version: u32, schema_version: i32) -> st
     dest
 }
 
-/// The whole-slice proof: back up a live vault (3 logins + a document), restore it
-/// into a fresh location, unlock it, and decrypt the document.
+/// 🔴 **Replace REFUSES a missing target.** Not an error to confirm away — a different verb.
+/// The whole of Decision ⑦ in one assertion: if there is nothing there, you wanted *Open
+/// backup*, and the UI must send you there rather than quietly creating a vault behind a
+/// dialog that said "replace".
 #[tokio::test]
-async fn restore_round_trip_recovers_entries_and_a_document() {
+async fn replace_refuses_a_missing_target() {
     let h = Harness::fresh().await;
-    let mut session = unlock(&h).await;
-    add(&mut session, "a").await;
-    add(&mut session, "b").await;
-    add(&mut session, "c").await;
-    let doc_id = import_document(
-        &mut session,
-        ImportDocumentInput {
-            filename: "notes.txt".into(),
-            mime_type: "text/plain".into(),
-            content: b"the quick brown fox".to_vec(),
-            meta: CommonMeta::new("notes", EntryType::Document),
-        },
-    )
-    .await
-    .unwrap();
-
+    let session = unlock(&h).await;
     let out = tempfile::tempdir().unwrap();
-    let dest = out.path().join("full.vbk");
+    let dest = out.path().join("m.vbk");
     backup_vault(
         &session,
         BackupVaultInput {
@@ -289,50 +331,36 @@ async fn restore_round_trip_recovers_entries_and_a_document() {
     .unwrap();
     drop(session);
 
-    // Install-from-backup into a fresh, absent target home (no open handles).
     let target_dir = tempfile::tempdir().unwrap();
-    let target = target_dir.path().join("restored.vedge");
+    let target = target_dir.path().join("nothing-here.vedge");
     let factory = SqliteVaultRepositoryFactory::new();
-    let report = restore_vault(
+    let err = replace_vault_from_backup(
         &factory,
         &MemoryKeychainProvider::new(),
-        RestoreVaultInput {
-            target_vault: target.clone(),
-            archive_path: dest,
-            confirm_rollback: false,
-        },
+        replace(&target, &dest),
     )
     .await
-    .unwrap();
-    assert_eq!(report.entry_count, 4);
-    assert_eq!(report.blob_count, 1);
-
-    // Unlock the restored vault and decrypt the document — every layer round-trips.
-    let restored = unlock_at(&h, &target).await;
-    let (name, bytes) = export_document(&restored, &doc_id).await.unwrap();
-    assert_eq!(name, "notes.txt");
-    assert_eq!(bytes.to_vec(), b"the quick brown fox".to_vec());
-    drop(restored);
-
-    // Independent DB check: 4 entries + exactly one BackupRestored row.
-    let db = VaultDbConnection::open(&target.join(VAULT_FILE))
-        .await
-        .unwrap();
-    let repo = SqliteVaultRepository::new(db.handle());
-    assert_eq!(repo.all_entries().await.unwrap().len(), 4);
-    let restored_rows = repo
-        .recent_audit(200)
-        .await
-        .unwrap()
-        .iter()
-        .filter(|e| e.action == AuditAction::BackupRestored)
-        .count();
-    assert_eq!(restored_rows, 1, "exactly one BackupRestored row");
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::TargetMissing),
+        "an absent target is Open-backup's job, got {err:?}"
+    );
+    assert!(
+        !target.exists(),
+        "a refused replace must not create a vault"
+    );
 }
 
-/// Restore OVER an existing (locked, matching-uuid) vault — exercises the
-/// move-aside + `.old` cleanup and, on Windows, the close-the-read-handle-before-
-/// rename path that the fresh-install case never touches.
+/// Replace OVER an existing (locked, matching-uuid) vault — exercises the move-aside + `.old`
+/// cleanup and, on Windows, the close-the-read-handle-before-rename path.
+///
+/// ⚠️ **This test used to build its target by copying `vault.vdb` alone, out from under a live
+/// session** — so the config rows were still sitting in the uncheckpointed `-wal` and the copy
+/// was *unreadable*. It passed anyway, because 5.2b's unreadable-target fail-open skipped every
+/// identity check (**that is finding H2**). The test believed it was proving "an existing target
+/// with a matching uuid is replaced"; it was in fact proving that an unidentifiable target is
+/// replaced without question. Now the target is built by OPENING the backup — a genuine,
+/// readable, matching-uuid vault — so the guards it claims to pass are actually running.
 #[tokio::test]
 async fn restore_over_an_existing_vault_replaces_it() {
     let h = Harness::fresh().await;
@@ -351,26 +379,15 @@ async fn restore_over_an_existing_vault_replaces_it() {
     .unwrap();
     drop(session);
 
-    // An existing, locked target HOME with the same uuid — a copy of the source's
-    // vault.vdb into a fresh home (the copy has no open handles).
+    let keychain = MemoryKeychainProvider::new();
     let target_dir = tempfile::tempdir().unwrap();
     let target = target_dir.path().join("existing.vedge");
-    std::fs::create_dir_all(target.join("blobs")).unwrap();
-    std::fs::create_dir_all(target.join("snapshots")).unwrap();
-    std::fs::copy(h.home.join(VAULT_FILE), target.join(VAULT_FILE)).unwrap();
+    open_at(&dest, &target, &keychain).await;
 
     let factory = SqliteVaultRepositoryFactory::new();
-    restore_vault(
-        &factory,
-        &MemoryKeychainProvider::new(),
-        RestoreVaultInput {
-            target_vault: target.clone(),
-            archive_path: dest,
-            confirm_rollback: false,
-        },
-    )
-    .await
-    .unwrap();
+    replace_vault_from_backup(&factory, &keychain, replace(&target, &dest))
+        .await
+        .unwrap();
 
     // No transient artifacts survive.
     assert!(!target_dir.path().join("existing.vedge.old").exists());
@@ -429,14 +446,10 @@ async fn restore_refuses_a_tampered_archive_and_leaves_the_target_untouched() {
     let target_dir = tempfile::tempdir().unwrap();
     let target = target_dir.path().join("t.vedge");
     let factory = SqliteVaultRepositoryFactory::new();
-    let err = restore_vault(
+    let err = replace_vault_from_backup(
         &factory,
         &MemoryKeychainProvider::new(),
-        RestoreVaultInput {
-            target_vault: target,
-            archive_path: dest,
-            confirm_rollback: false,
-        },
+        replace(&target, &dest),
     )
     .await
     .unwrap_err();
@@ -473,21 +486,30 @@ async fn restore_refuses_a_uuid_mismatch() {
     let hb = Harness::fresh().await;
     set_uuid(&hb, "01BBBBBBBBBBBBBBBBBBBBBBBB").await;
 
+    // 🔴 A HARD refusal — and note there is no `confirm_wrong_vault` to turn on. Every OTHER
+    // risk on this path has an acknowledgement; this one does not, because there is no
+    // legitimate reason to write vault B's contents over vault A.
     let factory = SqliteVaultRepositoryFactory::new();
-    let err = restore_vault(
+    let err = replace_vault_from_backup(
         &factory,
         &MemoryKeychainProvider::new(),
-        RestoreVaultInput {
-            target_vault: hb.home.clone(),
-            archive_path: dest,
-            confirm_rollback: false,
+        ReplaceVaultInput {
+            // Everything the user could possibly say yes to, said yes to. It still refuses.
+            confirm_rollback: true,
+            confirm_credential_change: true,
+            confirm_unverified_target: true,
+            ..replace(&hb.home, &dest)
         },
     )
     .await
     .unwrap_err();
     assert!(
-        matches!(err, VaultError::MalformedPayload(_)),
-        "uuid mismatch → MalformedPayload, got {err:?}"
+        matches!(
+            err,
+            VaultError::BackupWrongVault { ref backup, ref target }
+                if backup == "01AAAAAAAAAAAAAAAAAAAAAAAA" && target == "01BBBBBBBBBBBBBBBBBBBBBBBB"
+        ),
+        "uuid mismatch → an unconfirmable BackupWrongVault, got {err:?}"
     );
 }
 
@@ -497,14 +519,13 @@ async fn restore_refuses_a_newer_schema() {
     let archive_path = write_min_archive(dir.path(), BACKUP_FORMAT_VERSION, 2);
     let target_dir = tempfile::tempdir().unwrap();
     let factory = SqliteVaultRepositoryFactory::new();
-    let err = restore_vault(
+    // The format/schema gates fire BEFORE the target is even looked at — so this refuses on
+    // the schema, not on `TargetMissing`. That ordering matters: a user pointing a
+    // from-the-future backup at anything must hear about the format, not the path.
+    let err = replace_vault_from_backup(
         &factory,
         &MemoryKeychainProvider::new(),
-        RestoreVaultInput {
-            target_vault: target_dir.path().join("s.vedge"),
-            archive_path,
-            confirm_rollback: false,
-        },
+        replace(&target_dir.path().join("s.vedge"), &archive_path),
     )
     .await
     .unwrap_err();
@@ -516,27 +537,205 @@ async fn restore_refuses_a_newer_schema() {
 }
 
 #[tokio::test]
-async fn restore_refuses_an_unknown_format() {
+async fn restore_refuses_a_newer_format() {
     let dir = tempfile::tempdir().unwrap();
-    let archive_path = write_min_archive(dir.path(), 2, 1);
+    let archive_path = write_min_archive(dir.path(), BACKUP_FORMAT_VERSION + 1, 1);
     let target_dir = tempfile::tempdir().unwrap();
     let factory = SqliteVaultRepositoryFactory::new();
-    let err = restore_vault(
+    let err = replace_vault_from_backup(
         &factory,
         &MemoryKeychainProvider::new(),
-        RestoreVaultInput {
-            target_vault: target_dir.path().join("f.vedge"),
-            archive_path,
-            confirm_rollback: false,
+        replace(&target_dir.path().join("f.vedge"), &archive_path),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(
+            err,
+            VaultError::BackupUnsupportedFormat(v) if v == BACKUP_FORMAT_VERSION + 1
+        ),
+        "a NEWER format → refuse, got {err:?}"
+    );
+    assert_eq!(std::fs::read_dir(target_dir.path()).unwrap().count(), 0);
+}
+
+/// Repack an existing `.vbk` with a doctored manifest — the members are re-hashed, so
+/// the result is internally consistent and passes `verify_archive`. Only the manifest's
+/// own metadata changes.
+fn repack_with(
+    archive_path: &Path,
+    work: &Path,
+    mutate: impl FnOnce(&mut BackupManifest),
+) -> std::path::PathBuf {
+    let mut manifest = archive::read_manifest(archive_path).unwrap();
+    let mut members = Vec::new();
+    for file in &manifest.files {
+        let dest = work.join(file.name.replace('/', "_"));
+        archive::extract_member(archive_path, &file.name, &dest).unwrap();
+        members.push((file.name.clone(), dest));
+    }
+    mutate(&mut manifest);
+    let manifest_path = work.join("manifest.json");
+    std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let mut all = vec![("manifest.json".to_owned(), manifest_path)];
+    all.extend(members);
+    let dest = work.join("repacked.vbk");
+    archive::write_archive(&all, &dest).unwrap();
+    dest
+}
+
+/// 🔴 **Finding H1 — the pin.** The guard is `>`, not `!=`: a backup written by an OLDER
+/// build must still open, **forever**. This is the half nobody writes, and it is the half that
+/// matters — the day `BACKUP_FORMAT_VERSION` becomes 2, a `!=` guard would refuse every `.vbk`
+/// on every user's disk as "unknown format", inverting the entire purpose of a self-describing
+/// manifest and breaking the folder's standing rule: *once a backup exists on a user's disk,
+/// every future version must read it.*
+///
+/// Proven end-to-end on a REAL vault (not a dummy archive), so it also proves the older archive
+/// genuinely opens afterwards — a refusal that merely moved downstream would not pass.
+#[tokio::test]
+async fn an_older_format_still_opens_forever() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "keeper").await;
+
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("old.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    // Forge a manifest claiming format_version 0 — "written by a build older than any that
+    // ever shipped". It must still open.
+    let work = tempfile::tempdir().unwrap();
+    let old = repack_with(&dest, work.path(), |m| m.format_version = 0);
+
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("old.vedge");
+    let report = open_backup(
+        &MemoryKeychainProvider::new(),
+        OpenBackupInput {
+            archive_path: old,
+            dest_home: target.clone(),
+            known_vaults: vec![],
+        },
+    )
+    .await
+    .expect("an OLDER format_version must open — H1");
+    assert_eq!(report.entry_count, 1);
+    assert!(target.join(VAULT_FILE).is_file());
+}
+
+/// Take a crash-image of a live vault home: `vault.vdb` + its **uncheckpointed `-wal`**,
+/// with no `-shm` and no open handle — exactly what a killed process leaves behind.
+///
+/// Called while the harness still holds its connection open, so `SQLite` has NOT had the
+/// chance to checkpoint and delete the WAL. (`-shm` is deliberately not copied; it is
+/// rebuilt on the next open, and `migrate_vault_layout` skips it for the same reason.)
+fn crash_image_of(home: &Path, dest: &Path) {
+    std::fs::create_dir_all(dest.join("blobs")).unwrap();
+    std::fs::create_dir_all(dest.join(SNAPSHOTS_DIR)).unwrap();
+    std::fs::copy(home.join(VAULT_FILE), dest.join(VAULT_FILE)).unwrap();
+
+    let wal_name = format!("{VAULT_FILE}-wal");
+    let wal = home.join(&wal_name);
+    let wal_len = std::fs::metadata(&wal).map_or(0, |m| m.len());
+    // 🔴 Guard the premise. If the WAL were empty (or absent), this test would still
+    // pass while proving nothing at all — the exact failure mode where a regression
+    // test quietly stops testing.
+    assert!(
+        wal_len > 0,
+        "premise broken: the live vault has no dirty -wal to copy, so this test would \
+         be vacuous. (Did WAL mode stop being pinned in VaultDbConnection::open?)"
+    );
+    std::fs::copy(&wal, dest.join(&wal_name)).unwrap();
+    assert!(
+        !dest.join(format!("{VAULT_FILE}-shm")).exists(),
+        "a crash image must not carry a -shm"
+    );
+}
+
+/// 🔴 **Finding H2.** A vault whose process was killed mid-write leaves a dirty `-wal`. 5.2
+/// collapsed *"no vault here"* and *"a vault I could not read"* into one `None`, and restore
+/// then skipped **every** identity check on that `None` — so **the uuid-mismatch guard
+/// silently disarmed itself on precisely the vaults most likely to be restored over.**
+///
+/// The property that must hold: a crashed vault stays **identified**, so the guard stays
+/// **armed**. Asserted on the outcome, never on which connection mode delivered it — the fix
+/// must survive `SQLite`'s version-specific read-only WAL behaviour either way.
+///
+/// (The 5.2.2 spec proposed a `mode=rw` fallback on the theory that `mode=ro` cannot replay a
+/// dirty WAL. Measured — it can. See the `target` module docs.)
+#[tokio::test]
+async fn a_dirty_wal_target_stays_readable_and_identified() {
+    use vedge_core::infrastructure::backup::target::{TargetState, read_target_state};
+
+    let h = Harness::fresh().await;
+    set_uuid(&h, "01VAULTAAAAAAAAAAAAAAAAAAA").await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "a").await;
+    add(&mut session, "b").await;
+
+    // Image the home while the connection is STILL OPEN → the WAL cannot have been
+    // checkpointed away.
+    let crash_dir = tempfile::tempdir().unwrap();
+    let crashed = crash_dir.path().join("crashed.vedge");
+    crash_image_of(&h.home, &crashed);
+
+    let state = read_target_state(&crashed).await;
+    let TargetState::Readable(id) = state else {
+        panic!("a dirty-WAL vault must still be identified, got {state:?}");
+    };
+    assert_eq!(
+        id.vault_uuid.as_deref(),
+        Some("01VAULTAAAAAAAAAAAAAAAAAAA"),
+        "the uuid guard's input must survive a dirty WAL — H2"
+    );
+    assert_eq!(id.entry_count, 2, "the WAL's frames were replayed");
+
+    // 🔴 And now the half that H2 was actually ABOUT: the guard must still FIRE. Point a
+    // DIFFERENT vault's backup at this crashed one — if the crash had made it "unreadable",
+    // 5.2b would have skipped the uuid check entirely and cheerfully overwritten it.
+    let hb = Harness::fresh().await;
+    set_uuid(&hb, "01VAULTBBBBBBBBBBBBBBBBBBB").await;
+    let sb = unlock(&hb).await;
+    let out = tempfile::tempdir().unwrap();
+    let b_backup = out.path().join("b.vbk");
+    backup_vault(
+        &sb,
+        BackupVaultInput {
+            dest_archive: b_backup.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(sb);
+
+    let factory = SqliteVaultRepositoryFactory::new();
+    let err = replace_vault_from_backup(
+        &factory,
+        &MemoryKeychainProvider::new(),
+        ReplaceVaultInput {
+            // Even with the unverified-target escape hatch armed, the guard fires — because the
+            // target is NOT unverified. It read fine. That is the fix.
+            confirm_unverified_target: true,
+            confirm_rollback: true,
+            confirm_credential_change: true,
+            ..replace(&crashed, &b_backup)
         },
     )
     .await
     .unwrap_err();
     assert!(
-        matches!(err, VaultError::MalformedPayload(_)),
-        "format 2 → refuse, got {err:?}"
+        matches!(err, VaultError::BackupWrongVault { .. }),
+        "a crashed vault must keep its identity, and the guard must keep firing, got {err:?}"
     );
-    assert_eq!(std::fs::read_dir(target_dir.path()).unwrap().count(), 0);
 }
 
 #[tokio::test]
@@ -556,11 +755,13 @@ async fn inspect_backup_reports_counts_and_flags() {
     .await
     .unwrap();
 
-    // Preview against a fresh (absent) target → unreadable, no hard-stops.
+    // Preview against a fresh (absent) target → MISSING (not "unreadable"), no hard-stops.
     let target_dir = tempfile::tempdir().unwrap();
     let preview = inspect_backup(InspectBackupInput {
-        target_vault: target_dir.path().join("none.vedge"),
         archive_path: dest,
+        target_vault: Some(target_dir.path().join("none.vedge")),
+        dest_home: None,
+        known_vaults: vec![],
     })
     .await
     .unwrap();
@@ -569,8 +770,137 @@ async fn inspect_backup_reports_counts_and_flags() {
     assert!(!preview.unknown_format);
     assert!(!preview.unknown_schema);
     assert!(!preview.uuid_mismatch);
-    assert!(preview.target_unreadable);
+    // 🔴 H2: absent is `Missing`, NOT `Unreadable`. Collapsing the two is the bug.
+    assert_eq!(preview.target_state, TargetStateKind::Missing);
+    assert!(
+        preview.target_entry_count.is_none(),
+        "an unknown count is None — never 0. A zero the user believes is a zero they act on."
+    );
     assert!(preview.rollback_delta.is_none());
+}
+
+/// 🔴 **M3.** Back up, rotate the master password, then preview: the backup must be flagged as
+/// needing the OLD credentials — *before* the user spends ten minutes discovering it.
+///
+/// And the other half, which is the one that protects people: an archive that predates the
+/// check reports **unknown**, never *"same"*. Asserting a match you never verified is how a
+/// user shreds the only Emergency Kit that could still open their backups.
+#[tokio::test]
+async fn m3_flags_a_credential_change_and_never_guesses() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "a").await;
+
+    let out = tempfile::tempdir().unwrap();
+    let dest = out.path().join("cred.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: dest.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // Same credentials on both sides → a VERIFIED match. Only now may it say `Some(false)`.
+    let same = inspect_backup(InspectBackupInput {
+        archive_path: dest.clone(),
+        target_vault: Some(h.home.clone()),
+        dest_home: None,
+        known_vaults: vec![],
+    })
+    .await
+    .unwrap();
+    assert_eq!(same.credentials_differ, Some(false));
+
+    // Rotate the master password → the archive now needs the OLD one.
+    rotate_password(&h, &mut session, "an-entirely-different-master-phrase").await;
+    drop(session);
+
+    let changed = inspect_backup(InspectBackupInput {
+        archive_path: dest.clone(),
+        target_vault: Some(h.home.clone()),
+        dest_home: None,
+        known_vaults: vec![],
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        changed.credentials_differ,
+        Some(true),
+        "M3: the backup was sealed under the old password and must say so"
+    );
+
+    // 🔴 A pre-5.2.2 archive carries no prefix. UNKNOWN — never `Some(false)`.
+    let work = tempfile::tempdir().unwrap();
+    let legacy = repack_with(&dest, work.path(), |m| m.verify_hash_prefix = None);
+    let unknown = inspect_backup(InspectBackupInput {
+        archive_path: legacy,
+        target_vault: Some(h.home.clone()),
+        dest_home: None,
+        known_vaults: vec![],
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        unknown.credentials_differ, None,
+        "no prefix ⇒ UNKNOWN. Never assert a match you did not verify."
+    );
+}
+
+/// 🔴 **② is an OPEN-mode question only.** Regression guard.
+///
+/// On the Replace path the target *is* the same vault — that is the operation's whole
+/// precondition. A duplicate scan there finds the target itself and reports it as a "duplicate",
+/// and the UI then tells the user they are making a *separate copy with its own identity* while
+/// they are in fact **overwriting the original**. Two verbs, two questions.
+#[tokio::test]
+async fn a_replace_preview_never_calls_its_own_target_a_duplicate() {
+    const UUID: &str = "01SELFSELFSELFSELFSELFSELF";
+    let h = Harness::fresh().await;
+    set_uuid(&h, UUID).await;
+    let session = unlock(&h).await;
+    let out = tempfile::tempdir().unwrap();
+    let vbk = out.path().join("self.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: vbk.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // Replace mode: the target is in `known_vaults` (it comes from recents, which of course
+    // lists the vault the user just selected) and carries the very uuid in the manifest.
+    let replace_preview = inspect_backup(InspectBackupInput {
+        archive_path: vbk.clone(),
+        target_vault: Some(h.home.clone()),
+        dest_home: None,
+        known_vaults: vec![h.home.clone()],
+    })
+    .await
+    .unwrap();
+    assert!(
+        replace_preview.duplicate_of.is_none(),
+        "replacing a vault with its OWN backup is not making a copy of it"
+    );
+    assert!(!replace_preview.uuid_mismatch, "and it is the right vault");
+
+    // Open mode, same inputs: now it IS a duplicate, and must say so.
+    let open_preview = inspect_backup(InspectBackupInput {
+        archive_path: vbk,
+        target_vault: None,
+        dest_home: Some(out.path().join("copy.vedge")),
+        known_vaults: vec![h.home.clone()],
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        open_preview.duplicate_of.as_deref(),
+        Some(h.home.as_path()),
+        "opening a backup of a live vault at a new path IS making a copy"
+    );
 }
 
 /// T4 (5.2c): previewing an OLD backup against a live target that has moved on
@@ -603,8 +933,10 @@ async fn inspect_reports_rollback_delta_against_a_live_ahead_target() {
 
     // Preview against the live (WAL) target — a mode=ro read coexists with the session.
     let preview = inspect_backup(InspectBackupInput {
-        target_vault: h.home.clone(),
         archive_path: dest,
+        target_vault: Some(h.home.clone()),
+        dest_home: None,
+        known_vaults: vec![],
     })
     .await
     .unwrap();
@@ -616,7 +948,7 @@ async fn inspect_reports_rollback_delta_against_a_live_ahead_target() {
         "restoring the older backup would drop (target − backup) commits"
     );
     assert!(!preview.uuid_mismatch, "same vault → no uuid mismatch");
-    assert!(!preview.target_unreadable);
+    assert_eq!(preview.target_state, TargetStateKind::Readable);
 }
 
 /// T3 (5.2c): restoring an OLDER backup over a newer target is refused without
@@ -664,46 +996,28 @@ async fn restore_confirm_gate_refuses_then_rebaselines() {
     let factory = SqliteVaultRepositoryFactory::new();
     let keychain = MemoryKeychainProvider::new();
 
-    // Install the HIGH backup into a fresh target → the target is now at `high_counter`.
+    // Set up: OPEN the high backup at a fresh path (the non-destructive verb) → the target is
+    // now at `high_counter`, and it is a real, readable, matching-uuid vault.
     let target_dir = tempfile::tempdir().unwrap();
     let target = target_dir.path().join("t.vedge");
-    restore_vault(
-        &factory,
-        &keychain,
-        RestoreVaultInput {
-            target_vault: target.clone(),
-            archive_path: high,
-            confirm_rollback: false,
-        },
-    )
-    .await
-    .unwrap();
+    open_at(&high, &target, &keychain).await;
 
-    // (a) Restoring the LOW backup over it without confirmation → the rollback gate refuses.
-    let err = restore_vault(
-        &factory,
-        &keychain,
-        RestoreVaultInput {
-            target_vault: target.clone(),
-            archive_path: low.clone(),
-            confirm_rollback: false,
-        },
-    )
-    .await
-    .unwrap_err();
+    // (a) Replacing with the LOW backup, unconfirmed → the rollback gate refuses.
+    let err = replace_vault_from_backup(&factory, &keychain, replace(&target, &low))
+        .await
+        .unwrap_err();
     assert!(
-        matches!(err, VaultError::MalformedPayload(_)),
-        "rollback without confirm → refuse, got {err:?}"
+        matches!(err, VaultError::RollbackNotConfirmed),
+        "rollback without confirm → a dedicated refusal, got {err:?}"
     );
 
-    // (b) With confirmation it restores and re-bases the keychain to the restored counter.
-    restore_vault(
+    // (b) With confirmation it replaces and re-bases the keychain to the restored counter.
+    let report = replace_vault_from_backup(
         &factory,
         &keychain,
-        RestoreVaultInput {
-            target_vault: target,
-            archive_path: low,
+        ReplaceVaultInput {
             confirm_rollback: true,
+            ..replace(&target, &low)
         },
     )
     .await
@@ -711,6 +1025,341 @@ async fn restore_confirm_gate_refuses_then_rebaselines() {
     assert_eq!(
         keychain.read_commit_baseline(UUID).unwrap(),
         Some(low_counter),
-        "a confirmed restore re-bases the keychain to the restored (low) counter"
+        "a confirmed replace re-bases the keychain to the restored (low) counter"
+    );
+    // ⑭: and it left an undo point behind.
+    assert!(
+        report.undo_snapshot_id.is_some(),
+        "even the escape hatch must be undoable"
+    );
+}
+
+// ---- 5.2.2: Replace is undoable, and the undo survives the swap ------------------
+
+/// Give the vault at `target` a snapshot store holding `marker`, so a subsequent Replace can be
+/// checked for having eaten it.
+fn seed_snapshot_store(target: &Path, marker: &str) {
+    let store = target.join(SNAPSHOTS_DIR);
+    std::fs::create_dir_all(store.join("objects")).unwrap();
+    std::fs::write(store.join(marker), b"a snapshot the user is relying on").unwrap();
+}
+
+/// 🔴🔴 **The bug this slice exists to have found.**
+///
+/// `restore_vault` committed through `journal::commit`, which swaps the WHOLE home. Since
+/// 5.2.1 the snapshot store lives at `<home>/snapshots` — **inside** that home. So every
+/// `.vbk` restore silently **deleted every snapshot the vault had**, including the
+/// `pre-restore` undo point taken seconds earlier to make the operation reversible. ⑭'s
+/// promise ("even the escape hatch is undoable") was, in shipped code, a lie.
+///
+/// Nothing caught it because no test asserted the continued existence of a directory nobody
+/// was thinking about. This one does, and it is why `journal::commit` no longer exists.
+#[tokio::test]
+async fn replace_preserves_the_snapshot_store() {
+    const UUID: &str = "01PRESERVEPRESERVEPRESERVE";
+    let h = Harness::fresh().await;
+    set_uuid(&h, UUID).await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "keeper").await;
+
+    let out = tempfile::tempdir().unwrap();
+    let vbk = out.path().join("p.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: vbk.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    let keychain = MemoryKeychainProvider::new();
+    let factory = SqliteVaultRepositoryFactory::new();
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("live.vedge");
+    open_at(&vbk, &target, &keychain).await;
+
+    // The user has snapshots. They are the safety net. They are inside the home.
+    seed_snapshot_store(&target, "20260101T000000000Z");
+
+    let report = replace_vault_from_backup(&factory, &keychain, replace(&target, &vbk))
+        .await
+        .unwrap();
+
+    // 🔴 The store survived the whole-home swap.
+    let store = target.join(SNAPSHOTS_DIR);
+    assert!(
+        store.join("20260101T000000000Z").is_file(),
+        "the Replace swap DELETED the user's snapshot store — commit_preserving(&[SNAPSHOTS_DIR]) \
+         is not being used"
+    );
+    assert!(
+        store.join("objects").is_dir(),
+        "the object pool survived too"
+    );
+
+    // And ⑭'s undo point — written into that same store moments before the swap — is still
+    // there. If the store were wiped, this would be gone with it, and the "undoable" claim
+    // would be false in exactly the case where it matters.
+    let undo = report.undo_snapshot_id.expect("⑭ an undo point was taken");
+    assert!(
+        store.join(&undo).is_dir(),
+        "the pre-restore undo point did not survive its own swap"
+    );
+}
+
+/// **#9 / ⑭.** The undo is not just present — it *works*. Replace over a vault that has moved
+/// on, then revert to the auto-snapshot and get the pre-replace state back, exactly.
+#[tokio::test]
+async fn the_replace_undo_point_restores_the_exact_pre_replace_state() {
+    const UUID: &str = "01UNDOUNDOUNDOUNDOUNDOUNDO";
+    let h = Harness::fresh().await;
+    set_uuid(&h, UUID).await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "in-the-backup").await;
+
+    let out = tempfile::tempdir().unwrap();
+    let vbk = out.path().join("u.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: vbk.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    let keychain = MemoryKeychainProvider::new();
+    let factory = SqliteVaultRepositoryFactory::new();
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("live.vedge");
+    open_at(&vbk, &target, &keychain).await;
+
+    // The live vault moves on: it now holds work that the backup does not.
+    {
+        let mut live = unlock_at(&h, &target).await;
+        add(&mut live, "precious-unbacked-up-work").await;
+        drop(live);
+    }
+    let entries_before = count_entries(&target).await;
+    assert_eq!(entries_before, 2);
+
+    // Replace it with the (older, 1-entry) backup. The user confirms the rollback.
+    let report = replace_vault_from_backup(
+        &factory,
+        &keychain,
+        ReplaceVaultInput {
+            confirm_rollback: true,
+            ..replace(&target, &vbk)
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(count_entries(&target).await, 1, "the replace took effect");
+
+    // 🟢 Now undo it. This is the entire point of ⑭: the escape hatch did not have to be a
+    // one-way door.
+    let undo = report.undo_snapshot_id.expect("⑭ an undo point was taken");
+    revert_to_snapshot(
+        &factory,
+        &keychain,
+        RevertToSnapshotInput {
+            vault: target.clone(),
+            snapshot_id: undo,
+            confirm_rollback: true,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        count_entries(&target).await,
+        2,
+        "the undo did not bring back the work the replace destroyed"
+    );
+}
+
+/// Count active entries in a locked vault on disk, opening and closing a connection of its own
+/// (so nothing is left holding the `.vdb` when the next swap renames it).
+async fn count_entries(home: &Path) -> usize {
+    let db = VaultDbConnection::open(&home.join(VAULT_FILE))
+        .await
+        .unwrap();
+    let repo = SqliteVaultRepository::new(db.handle());
+    let n = repo
+        .all_entries()
+        .await
+        .unwrap()
+        .iter()
+        .filter(|e| !e.is_trashed)
+        .count();
+    drop(repo);
+    db.close().await.unwrap();
+    n
+}
+
+/// 🔴 **H2's acknowledgement.** An unreadable target cannot be identified, so the uuid guard
+/// *could not run*. In 5.2b that silently allowed the replace. Now it is its own risk with its
+/// own yes — and the vault is untouched until that yes arrives.
+#[tokio::test]
+async fn replace_refuses_an_unverified_target_until_it_is_confirmed() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "keeper").await;
+    let out = tempfile::tempdir().unwrap();
+    let vbk = out.path().join("uv.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: vbk.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    // A target that EXISTS but cannot be identified.
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("corrupt.vedge");
+    std::fs::create_dir_all(target.join("blobs")).unwrap();
+    std::fs::create_dir_all(target.join(SNAPSHOTS_DIR)).unwrap();
+    let garbage = b"this is not a database".to_vec();
+    std::fs::write(target.join(VAULT_FILE), &garbage).unwrap();
+
+    let factory = SqliteVaultRepositoryFactory::new();
+    let keychain = MemoryKeychainProvider::new();
+
+    // Unconfirmed → refuse, and the corrupt target is byte-identical afterwards.
+    let err = replace_vault_from_backup(&factory, &keychain, replace(&target, &vbk))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, VaultError::TargetUnverified),
+        "an unidentifiable target must ASK, not assume, got {err:?}"
+    );
+    assert_eq!(
+        std::fs::read(target.join(VAULT_FILE)).unwrap(),
+        garbage,
+        "a refused replace must leave the target byte-identical"
+    );
+
+    // 🔴 And the confirm is its OWN. Saying yes to the other two risks must NOT let this
+    // through — one checkbox must never stand in for another.
+    let err = replace_vault_from_backup(
+        &factory,
+        &keychain,
+        ReplaceVaultInput {
+            confirm_rollback: true,
+            confirm_credential_change: true,
+            ..replace(&target, &vbk)
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::TargetUnverified),
+        "confirming OTHER risks must not confirm this one, got {err:?}"
+    );
+
+    // Confirmed → it proceeds, and the vault is real again.
+    let report = replace_vault_from_backup(
+        &factory,
+        &keychain,
+        ReplaceVaultInput {
+            confirm_unverified_target: true,
+            ..replace(&target, &vbk)
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(count_entries(&target).await, 1);
+    assert!(
+        report.undo_snapshot_id.is_none(),
+        "there was nothing readable to snapshot — an undo point would be a fiction"
+    );
+}
+
+/// 🔴 **M3's acknowledgement.** The backup was sealed under credentials the live vault no
+/// longer uses, so replacing leaves a vault that will not open with today's password. Its own
+/// risk, its own yes.
+#[tokio::test]
+async fn replace_refuses_a_credential_change_until_it_is_confirmed() {
+    const UUID: &str = "01CREDCREDCREDCREDCREDCRED";
+    let h = Harness::fresh().await;
+    set_uuid(&h, UUID).await;
+    let mut session = unlock(&h).await;
+    add(&mut session, "old-creds").await;
+
+    // (1) A backup under the OLD credentials.
+    let out = tempfile::tempdir().unwrap();
+    let old_creds = out.path().join("old-creds.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: old_creds.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // (2) Rotate the master password, and back up again under the NEW ones.
+    rotate_password(&h, &mut session, "a-brand-new-master-phrase").await;
+    add(&mut session, "post-rotation").await;
+    let new_creds = out.path().join("new-creds.vbk");
+    backup_vault(
+        &session,
+        BackupVaultInput {
+            dest_archive: new_creds.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    drop(session);
+
+    let factory = SqliteVaultRepositoryFactory::new();
+    let keychain = MemoryKeychainProvider::new();
+
+    // (3) A live vault holding the NEW credentials. (Built at its own path — the harness still
+    // holds a connection to `h.home`, and a swap of a vault with a live handle is exactly what
+    // the product prevents by requiring a LOCKED target.)
+    let target_dir = tempfile::tempdir().unwrap();
+    let target = target_dir.path().join("live.vedge");
+    open_at(&new_creds, &target, &keychain).await;
+
+    // (4) Now try to put the OLD-credentials backup over it. After this swap the vault would
+    // only open with a password the user has replaced — possibly one they no longer have.
+    let err = replace_vault_from_backup(
+        &factory,
+        &keychain,
+        ReplaceVaultInput {
+            // The rollback risk IS acknowledged. The credential risk is NOT. It must still
+            // refuse: one checkbox never stands in for another.
+            confirm_rollback: true,
+            ..replace(&target, &old_creds)
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(err, VaultError::BackupCredentialsDiffer),
+        "a backup needing the OLD password must say so BEFORE it lands, got {err:?}"
+    );
+
+    replace_vault_from_backup(
+        &factory,
+        &keychain,
+        ReplaceVaultInput {
+            confirm_rollback: true,
+            confirm_credential_change: true,
+            ..replace(&target, &old_creds)
+        },
+    )
+    .await
+    .expect("with both risks acknowledged it proceeds");
+    assert_eq!(
+        count_entries(&target).await,
+        1,
+        "the old-creds backup landed"
     );
 }

@@ -131,7 +131,9 @@ pub fn run() {
             commands::backup::backup_vault,
             // ---- restore (slice 5.2b) ----
             commands::backup::inspect_backup,
-            commands::backup::restore_vault,
+            commands::backup::open_backup,
+            commands::backup::replace_vault_from_backup,
+            commands::backup::backup_status,
             commands::backup::convert_vault,
             // ---- snapshots (slice 5.2.1) ----
             commands::snapshot::create_snapshot,
