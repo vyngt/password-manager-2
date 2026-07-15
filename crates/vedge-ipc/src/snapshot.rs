@@ -37,3 +37,18 @@ pub struct RevertReportDto {
     pub blob_count: u64,
     pub reverted_at: String,
 }
+
+/// The result of a SEAMLESS in-place revert from `/v/snapshots` (slice 5.2.3, Decision ⑰).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SeamlessRevertDto {
+    /// 🔴 `true` ⇒ the vault re-opened and the user STAYS on the snapshots page. `false` ⇒ the
+    /// swap committed but the vault could not be re-opened (a stale snapshot whose rewrap failed,
+    /// **or** a rare post-teardown swap failure) — the UI navigates to the launch screen. Either
+    /// way the revert is not a failure to report as one.
+    pub stayed_unlocked: bool,
+    pub entry_count: u64,
+    pub reverted_at: String,
+    /// A rollback was detected on the re-opened session (the reverted state is older than this
+    /// device's baseline). `None` when the vault did not stay unlocked.
+    pub rollback_detected: bool,
+}

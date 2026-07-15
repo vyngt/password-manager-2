@@ -272,6 +272,56 @@ pub async fn remove_stale_recents(repo: &dyn RecentVaultRepository) -> Result<u6
     Ok(removed)
 }
 
+/// Picker self-heal (slice 5.2.3, B3): find a stale recents row's real home.
+///
+/// If a recents `path` no longer resolves to a vault, look for a sibling `<file_stem>.vedge/`
+/// whose `vault.vdb` reads as a `SQLite` database, and return its path. Heals a row left pointing
+/// at a legacy `.vdb` (or a vault re-materialised in place) once its `.vedge` home appears beside
+/// it — the case no Locate/Convert button covers.
+///
+/// 🔴 **Read-only, and it never opens a pool, migrates, or WAL-pins.** It runs against every
+/// recent at startup, so it must not write to a vault the user has not unlocked — the same
+/// constraint that keeps `read_target_state` `mode=ro`. `None` when the row is fine, when there
+/// is no such sibling, or when the sibling is not a `SQLite` file.
+#[must_use]
+pub fn healed_recent_path(recorded: &std::path::Path) -> Option<PathBuf> {
+    // Only heal a genuinely broken row.
+    if recorded.join(VAULT_FILE).is_file() {
+        return None;
+    }
+    let parent = recorded.parent()?;
+    let stem = recorded.file_stem()?.to_str()?;
+    let candidate = parent.join(format!("{stem}.vedge"));
+    // A missing `.vedge` home in the same parent is genuinely gone — nothing new to point at.
+    if candidate == recorded {
+        return None;
+    }
+    // Read the first 16 bytes and require the SQLite header — the same cheap check `add` uses,
+    // but purely read-only (no pool, no migration). A read never mutates the file.
+    let mut header = [0u8; 16];
+    let mut file = std::fs::File::open(candidate.join(VAULT_FILE)).ok()?;
+    std::io::Read::read_exact(&mut file, &mut header).ok()?;
+    (&header == SQLITE_MAGIC).then_some(candidate)
+}
+
+/// Re-point a recents row to a new path (slice 5.2.3 self-heal). Writes ONLY the app.db — never
+/// the vault. Best-effort: a vanished row is not an error (the same discipline as
+/// [`record_vault_uuid`]).
+#[instrument(skip_all, fields(id = %id))]
+pub async fn repoint_recent_vault(
+    repo: &dyn RecentVaultRepository,
+    id: &str,
+    new_path: PathBuf,
+) -> Result<(), AppDbError> {
+    let mut vault = match repo.get(id).await {
+        Ok(v) => v,
+        Err(AppDbError::RecentVaultNotFound(_)) => return Ok(()),
+        Err(e) => return Err(e),
+    };
+    vault.path = new_path;
+    repo.upsert(&vault).await
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(
@@ -847,5 +897,66 @@ mod tests {
         let gone = list.iter().find(|s| s.vault.id == "gone").unwrap();
         assert!(ok.exists);
         assert!(!gone.exists);
+    }
+
+    // ---- B3 picker self-heal (slice 5.2.3) ---------------------------------
+
+    /// 🔴 The probe re-points a stale row to its sibling `.vedge` home, and NEVER writes the
+    /// vault — the vault's `vault.vdb` mtime is unchanged after the probe.
+    #[tokio::test]
+    async fn heal_probe_finds_the_sibling_home_and_never_writes_the_vault() {
+        let (dir, _repo) = fixture().await;
+        // A stale recents row still points at the legacy `.vdb` path; the `.vedge` home now sits
+        // beside it (e.g. an out-of-app convert, or a vault moved into place).
+        let legacy = dir.path().join("work.vdb");
+        let home = dir.path().join("work.vedge");
+        write_vault_home(&home); // home/vault.vdb with a real SQLite header
+
+        let vault_file = home.join("vault.vdb");
+        let before = std::fs::metadata(&vault_file).unwrap().modified().unwrap();
+
+        let healed = healed_recent_path(&legacy).expect("the sibling .vedge home is found");
+        assert_eq!(healed, home);
+
+        let after = std::fs::metadata(&vault_file).unwrap().modified().unwrap();
+        assert_eq!(before, after, "the heal probe must never write the vault");
+
+        // A healthy row is left alone; a row with no sibling stays broken.
+        assert!(
+            healed_recent_path(&home).is_none(),
+            "a live home is not re-pointed"
+        );
+        assert!(
+            healed_recent_path(&dir.path().join("nope.vdb")).is_none(),
+            "no sibling → no heal"
+        );
+    }
+
+    /// A non-SQLite sibling is NOT accepted (the probe requires the header, like `add`).
+    #[tokio::test]
+    async fn heal_probe_rejects_a_non_sqlite_sibling() {
+        let (dir, _repo) = fixture().await;
+        let home = dir.path().join("bad.vedge");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::write(home.join("vault.vdb"), b"NOT A SQLITE DB!").unwrap();
+        assert!(healed_recent_path(&dir.path().join("bad.vdb")).is_none());
+    }
+
+    #[tokio::test]
+    async fn repoint_updates_the_row_path_and_is_a_noop_for_a_vanished_row() {
+        let (dir, repo) = fixture().await;
+        seed(&*repo, "v1", dir.path().join("old.vdb"), 0).await;
+
+        let new = dir.path().join("new.vedge");
+        repoint_recent_vault(&*repo, "v1", new.clone())
+            .await
+            .unwrap();
+        let row = repo.get("v1").await.unwrap();
+        assert_eq!(row.path, new);
+        assert_eq!(row.display_name, "v1", "the rest of the row is untouched");
+
+        repoint_recent_vault(&*repo, "ghost", dir.path().join("x.vedge"))
+            .await
+            .expect("re-pointing a vanished row must not error");
     }
 }

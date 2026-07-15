@@ -1,6 +1,6 @@
 //! Snapshot DTO converters (slice 5.2.1). Core reports / store entries → wire DTOs.
 
-pub use vedge_ipc::{RevertReportDto, SnapshotDto, SnapshotReportDto};
+pub use vedge_ipc::{RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto};
 
 use vedge_core::infrastructure::snapshot::store::SnapshotEntry;
 use vedge_core::{RevertReport, SnapshotReport};

@@ -4,8 +4,8 @@
 use serde::Serialize;
 
 use vedge_ipc::{
-    CreateVaultInputDto, CreateVaultOutputDto, IndexEntryDto, TagMetaDto, UnlockResultDto,
-    UnlockVaultInputDto,
+    ConvertVaultResultDto, CreateVaultInputDto, CreateVaultOutputDto, IndexEntryDto, TagMetaDto,
+    UnlockResultDto, UnlockVaultInputDto,
 };
 
 use crate::api::call::{call, call_void};
@@ -37,9 +37,10 @@ pub async fn lock(vault_path: &str) -> Result<(), ApiError> {
     call_void("lock_vault", &Args { vault_path }).await
 }
 
-/// Convert a legacy `.vdb` vault to a `<name>.vedge/` home (slice 5.2.0). Returns the new
-/// home path so the caller can re-point the recents row.
-pub async fn convert(vault_path: &str) -> Result<String, ApiError> {
+/// Convert a legacy `.vdb` vault to a `<name>.vedge/` home (slice 5.2.0). Returns the new home
+/// path (to re-point the recents row) and whether a legacy biometric credential was purged
+/// (slice 5.2.3 — the caller then prompts to re-enable Hello in Settings).
+pub async fn convert(vault_path: &str) -> Result<ConvertVaultResultDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
         vault_path: &'a str,

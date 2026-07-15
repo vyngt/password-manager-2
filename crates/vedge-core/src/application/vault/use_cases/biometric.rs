@@ -74,7 +74,8 @@ pub async fn enroll_biometric(
     }
 
     // 4. Store the KEK behind the biometric gate (shows the OS prompt). `kek_z`
-    //    zeroizes on drop immediately after.
-    biometric.enroll(session.vault_id(), &kek_z)?;
+    //    zeroizes on drop immediately after. Keyed on `vault_uuid` (slice 5.2.3), the same
+    //    `uuid` the keychain read used above — so a later move/rename keeps the enrollment.
+    biometric.enroll(uuid, &kek_z)?;
     Ok(())
 }

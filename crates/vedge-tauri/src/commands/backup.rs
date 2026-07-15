@@ -37,8 +37,9 @@ use vedge_core::{
 };
 
 use crate::dto::backup::{
-    BackupPreviewDto, BackupReportDto, BackupStatusDto, OpenBackupReportDto, ReplaceReportDto,
-    backup_preview_to_dto, backup_report_to_dto, open_backup_report_to_dto, replace_report_to_dto,
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto, OpenBackupReportDto,
+    ReplaceReportDto, backup_preview_to_dto, backup_report_to_dto, open_backup_report_to_dto,
+    replace_report_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -205,13 +206,14 @@ pub async fn backup_status(
 /// A **file** operation — refuses an unlocked legacy vault (the migration copies then
 /// reaps its files; Windows holds the `.vdb` open while a session is live). Crash-safe:
 /// the original layout survives until the home is atomically committed. Returns the new
-/// home path so the shell can re-point the recents row.
+/// home path (so the shell can re-point the recents row) and whether a legacy biometric
+/// credential was purged (slice 5.2.3 — the UI then prompts to re-enable Hello).
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn convert_vault(
     vault_path: String,
     state: tauri::State<'_, AppState>,
-) -> Result<String, CommandError> {
+) -> Result<ConvertVaultResultDto, CommandError> {
     let vault_id = vault_id_from_string(&vault_path);
     if state.is_unlocked(&vault_id) {
         return Err(CommandError::Invalid(
@@ -221,10 +223,14 @@ pub async fn convert_vault(
 
     let out = migrate_vault_layout_core(
         state.keychain.as_ref(),
+        state.biometric.as_ref(),
         MigrateVaultLayoutInput {
             legacy_vdb_path: PathBuf::from(vault_path),
         },
     )
     .await?;
-    Ok(out.home.to_string_lossy().into_owned())
+    Ok(ConvertVaultResultDto {
+        home: out.home.to_string_lossy().into_owned(),
+        biometric_reset: out.biometric_reset,
+    })
 }

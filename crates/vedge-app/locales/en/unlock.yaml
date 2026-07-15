@@ -38,6 +38,8 @@ new_vault: "New"
 no_vaults_title: "No vaults yet"
 no_vaults_body: "Create your first vault, open an existing one, or open a backup."
 err_rename: "Could not rename the vault: "
+# --- 5.2.3 biometric reset on convert ---
+biometric_reset: "Biometric unlock was turned off by the upgrade. Re-enable it in Settings."
 # --- 5.2.2 Open a backup (+ Advanced: Replace) ---
 ob_cta: "Open a backup…"
 ob_title: "Open a backup"

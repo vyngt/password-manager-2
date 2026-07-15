@@ -267,12 +267,15 @@ pub fn VaultLaunch() -> impl IntoView {
         let legacy_path = row.vault.path;
         let display_name = row.vault.display_name;
         let err_prefix = t_string!(i18n, unlock.err_open).to_owned();
+        // Read the biometric-reset copy here (owner present) — the toast fires from inside the
+        // async block below, which has no reactive owner (slice 5.2.3).
+        let bio_reset_msg = t_string!(i18n, unlock.biometric_reset).to_owned();
         spawn_local(async move {
             match api::vault::convert(&legacy_path).await {
-                Ok(home) => {
+                Ok(result) => {
                     let dto = RecentVaultDto {
                         id: Uuid::new_v4().to_string(),
-                        path: home,
+                        path: result.home,
                         display_name,
                         last_opened: None,
                         sort_order: 0,
@@ -281,6 +284,11 @@ pub fn VaultLaunch() -> impl IntoView {
                         Ok(()) => {
                             let _ = api::recent::remove_recent_vault(&id).await;
                             refresh_recents();
+                            // 🔴 The convert purged the legacy path-hashed Hello credential, so
+                            // biometric unlock is now off — tell the user to re-enable it.
+                            if result.biometric_reset {
+                                show_warning(bio_reset_msg);
+                            }
                         }
                         Err(e) => show_error(format!("{err_prefix}{e}")),
                     }

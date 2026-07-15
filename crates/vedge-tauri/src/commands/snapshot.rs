@@ -21,13 +21,14 @@ use vedge_core::infrastructure::backup::target::read_target_identity;
 use vedge_core::infrastructure::snapshot::store;
 use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 use vedge_core::{
-    RevertToSnapshotInput, SnapshotReason, create_snapshot as create_snapshot_core,
-    revert_to_snapshot as revert_to_snapshot_core,
+    RevertToSnapshotInput, SeamlessRevertOutcome, SnapshotReason,
+    create_snapshot as create_snapshot_core, revert_to_snapshot as revert_to_snapshot_core,
+    revert_to_snapshot_in_session as revert_to_snapshot_in_session_core,
 };
 
 use crate::dto::snapshot::{
-    RevertReportDto, SnapshotDto, SnapshotReportDto, revert_report_to_dto, snapshot_entry_to_dto,
-    snapshot_report_to_dto,
+    RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto, revert_report_to_dto,
+    snapshot_entry_to_dto, snapshot_report_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -115,4 +116,79 @@ pub async fn revert_to_snapshot(
     )
     .await?;
     Ok(revert_report_to_dto(report))
+}
+
+/// Seamless in-place revert from `/v/snapshots` (slice 5.2.3, Decision ⑰) — keeps the user IN
+/// the vault instead of ejecting to the launch screen.
+///
+/// Requires an **unlocked** session (the opposite of `revert_to_snapshot`, which stays the H0
+/// launch-screen path). The core use case pre-flights the snapshot with the session still alive
+/// (a bad-snapshot error
+/// leaves the user unlocked), then tears the session down, swaps, and re-opens. On success we
+/// replace the session **in place** in its existing slot (no remove/insert race). A stale
+/// snapshot that can't be re-opened — or a rare post-teardown swap failure — drops the session
+/// and tells the UI to navigate to the launch screen; a re-open failure is NOT reported as a
+/// failed revert (L1).
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path))]
+pub async fn revert_to_snapshot_in_session(
+    vault_path: String,
+    snapshot_id: String,
+    confirm_rollback: bool,
+    state: tauri::State<'_, AppState>,
+) -> Result<SeamlessRevertDto, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    // Keep the slot (get_session, not remove) so a success can replace the session in place. The
+    // guard is held across the whole operation, so the reaper / screen-lock watcher / maintenance
+    // cannot find and race the swap.
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let factory = SqliteVaultRepositoryFactory::new();
+    let outcome = revert_to_snapshot_in_session_core(
+        &guard,
+        &state.unlock_vault,
+        &factory,
+        state.keychain.as_ref(),
+        RevertToSnapshotInput {
+            vault: PathBuf::from(vault_path),
+            snapshot_id,
+            confirm_rollback,
+        },
+    )
+    .await;
+
+    match outcome {
+        // Pre-flight failure — the session is UNTOUCHED, so keep it: the user stays unlocked.
+        Err(e) => Err(e.into()),
+        Ok(SeamlessRevertOutcome::Reverted { session, report }) => {
+            let rollback_detected = session.rollback_warning().is_some();
+            // Replace the session in place; the old (already-closed) session drops + zeroizes.
+            *guard = *session;
+            drop(guard);
+            let ttl = crate::setup::services::session_ttl(&state).await;
+            state.touch_deadline(&vault_id, ttl);
+            Ok(SeamlessRevertDto {
+                stayed_unlocked: true,
+                entry_count: report.entry_count,
+                reverted_at: report.reverted_at,
+                rollback_detected,
+            })
+        }
+        Ok(SeamlessRevertOutcome::NeedsUnlock { report }) => {
+            drop(guard);
+            let _ = state.remove_session(&vault_id);
+            Ok(SeamlessRevertDto {
+                stayed_unlocked: false,
+                entry_count: report.entry_count,
+                reverted_at: report.reverted_at,
+                rollback_detected: false,
+            })
+        }
+        Ok(SeamlessRevertOutcome::CommitFailed { error }) => {
+            drop(guard);
+            let _ = state.remove_session(&vault_id);
+            Err(error.into())
+        }
+    }
 }

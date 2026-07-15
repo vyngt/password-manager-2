@@ -89,12 +89,12 @@ async fn enroll_then_unlock_with_kek_roundtrip() {
 
     // Enroll with the correct master password stores the live KEK behind the gate.
     enroll(&h, &session, PW).await.unwrap();
-    assert!(h.biometric.is_enrolled(&h.vault_id).unwrap());
+    assert!(h.biometric.is_enrolled(&h.vault_uuid).unwrap());
     lock_vault(session).await.unwrap();
 
     // Biometric unlock: gate releases the KEK → `unlock_with_kek` rebuilds the session
     // with no password.
-    let kek = h.biometric.retrieve(&h.vault_id).unwrap();
+    let kek = h.biometric.retrieve(&h.vault_uuid).unwrap();
     let session2 = build_unlock(&h)
         .unlock_with_kek(h.home.clone(), kek)
         .await
@@ -110,6 +110,32 @@ async fn enroll_then_unlock_with_kek_roundtrip() {
         "biometric unlock is audited"
     );
     lock_vault(session2).await.unwrap();
+}
+
+/// 🔴 Slice 5.2.3 — B1: biometric enrollment is keyed on the vault's intrinsic `vault_uuid`,
+/// not its file path, so a moved or renamed home keeps its Hello enrollment. The exact mirror
+/// of 5.2.0's `a_moved_home_keeps_its_keychain_entry` — which passed while this one could not
+/// even be written, because the port took a `&VaultId` (path). The physical-move proof is the
+/// on-device human smoke; here the point is the credential lookup no longer involves any path.
+#[tokio::test]
+async fn a_moved_home_keeps_its_biometric_enrollment() {
+    let h = Harness::fresh().await;
+    let session = unlock_pw(&h, PW).await;
+    enroll(&h, &session, PW).await.unwrap();
+    lock_vault(session).await.unwrap();
+
+    // The uuid is invariant under a move/rename (unlike the pre-5.2.3 `SHA-256(path)` key, which
+    // a move would change and thereby silently un-enroll the user). The port takes ONLY the
+    // uuid, so a change of the home path cannot reach or invalidate the stored credential.
+    assert!(
+        h.biometric.is_enrolled(&h.vault_uuid).unwrap(),
+        "the vault is enrolled under its uuid"
+    );
+    let kek = h.biometric.retrieve(&h.vault_uuid).unwrap();
+    assert_eq!(
+        *kek, h.kek,
+        "the exact KEK is released, keyed on the move-invariant uuid"
+    );
 }
 
 #[tokio::test]
@@ -137,7 +163,7 @@ async fn enroll_rejects_wrong_password() {
     let err = enroll(&h, &session, "not-the-password").await.unwrap_err();
     assert!(matches!(err, VaultError::WrongCredentials), "got {err:?}");
     assert!(
-        !h.biometric.is_enrolled(&h.vault_id).unwrap(),
+        !h.biometric.is_enrolled(&h.vault_uuid).unwrap(),
         "nothing stored on a wrong-password enroll"
     );
 }
@@ -168,7 +194,7 @@ async fn change_password_restores_stored_kek() {
 
     // The gate now holds the refreshed KEK; biometric unlock still decrypts the entry
     // (which was re-wrapped under the new KEK).
-    let kek = h.biometric.retrieve(&h.vault_id).unwrap();
+    let kek = h.biometric.retrieve(&h.vault_uuid).unwrap();
     let session2 = build_unlock(&h)
         .unlock_with_kek(h.home.clone(), kek)
         .await
@@ -182,17 +208,17 @@ async fn disable_removes_key() {
     let h = Harness::fresh().await;
     let session = unlock_pw(&h, PW).await;
     enroll(&h, &session, PW).await.unwrap();
-    assert!(h.biometric.is_enrolled(&h.vault_id).unwrap());
+    assert!(h.biometric.is_enrolled(&h.vault_uuid).unwrap());
 
-    h.biometric.disable(&h.vault_id).unwrap();
-    assert!(!h.biometric.is_enrolled(&h.vault_id).unwrap());
+    h.biometric.disable(&h.vault_uuid).unwrap();
+    assert!(!h.biometric.is_enrolled(&h.vault_uuid).unwrap());
     assert!(matches!(
-        h.biometric.retrieve(&h.vault_id).unwrap_err(),
+        h.biometric.retrieve(&h.vault_uuid).unwrap_err(),
         VaultError::BiometricNotEnrolled
     ));
 
     // Disable is idempotent — a second call is not an error.
-    h.biometric.disable(&h.vault_id).unwrap();
+    h.biometric.disable(&h.vault_uuid).unwrap();
     lock_vault(session).await.unwrap();
 }
 
