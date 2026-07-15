@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use zeroize::Zeroizing;
 
 use crate::application::vault::ports::keychain::KeychainProvider;
-use crate::domain::shared::VaultId;
 use crate::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use crate::domain::vault::errors::VaultError;
 
@@ -14,9 +13,6 @@ use crate::domain::vault::errors::VaultError;
 pub struct MemoryKeychainProvider {
     /// Secret Keys, keyed on `vault_uuid` (slice 5.2.0 — was keyed on `VaultId`).
     store: Mutex<HashMap<String, [u8; SECRET_KEY_LEN]>>,
-    /// LEGACY path-keyed Secret Keys, for migration-test support only (slice 5.2.0).
-    /// Seeded via [`Self::seed_legacy_secret_key`]; drained by `migrate_secret_key`.
-    legacy_store: Mutex<HashMap<VaultId, [u8; SECRET_KEY_LEN]>>,
     /// Rollback commit-counter baselines, keyed on `vault_uuid` (slice 5.2c). Plain
     /// integers, not secret — no zeroize needed.
     baselines: Mutex<HashMap<String, i64>>,
@@ -30,17 +26,8 @@ impl MemoryKeychainProvider {
     pub fn new() -> Self {
         Self {
             store: Mutex::new(HashMap::new()),
-            legacy_store: Mutex::new(HashMap::new()),
             baselines: Mutex::new(HashMap::new()),
             delete_fails: AtomicBool::new(false),
-        }
-    }
-
-    /// Seed a LEGACY path-keyed Secret Key, simulating a pre-5.2.0 vault whose keychain
-    /// entry is still keyed on the file path — so a test can exercise `migrate_secret_key`.
-    pub fn seed_legacy_secret_key(&self, vault_id: &VaultId, key: &[u8; SECRET_KEY_LEN]) {
-        if let Ok(mut guard) = self.legacy_store.lock() {
-            guard.insert(vault_id.clone(), *key);
         }
     }
 
@@ -60,11 +47,6 @@ impl Default for MemoryKeychainProvider {
 impl Drop for MemoryKeychainProvider {
     fn drop(&mut self) {
         if let Ok(mut map) = self.store.lock() {
-            for v in map.values_mut() {
-                v.fill(0);
-            }
-        }
-        if let Ok(mut map) = self.legacy_store.lock() {
             for v in map.values_mut() {
                 v.fill(0);
             }
@@ -140,25 +122,5 @@ impl KeychainProvider for MemoryKeychainProvider {
         };
         guard.remove(vault_uuid); // idempotent — missing is fine
         Ok(())
-    }
-
-    fn migrate_secret_key(
-        &self,
-        legacy_vault_id: &VaultId,
-        vault_uuid: &str,
-    ) -> Result<bool, VaultError> {
-        let legacy = {
-            let Ok(mut guard) = self.legacy_store.lock() else {
-                return Err(VaultError::KeychainUnavailable);
-            };
-            guard.remove(legacy_vault_id)
-        };
-        match legacy {
-            Some(key) => {
-                self.store_secret_key(vault_uuid, &key)?;
-                Ok(true)
-            }
-            None => Ok(false),
-        }
     }
 }

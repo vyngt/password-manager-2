@@ -31,18 +31,17 @@ use vedge_core::infrastructure::backup::target::read_target_identity;
 use vedge_core::infrastructure::snapshot::store;
 use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 use vedge_core::{
-    BackupVaultInput, DeleteVaultInput, InspectBackupInput, MigrateVaultLayoutInput,
-    OpenBackupInput, ReplaceVaultInput, backup_status as backup_status_core,
-    backup_vault as backup_vault_core, delete_vault as delete_vault_core,
-    inspect_backup as inspect_backup_core, list_registered_vaults,
-    migrate_vault_layout as migrate_vault_layout_core, open_backup as open_backup_core,
+    BackupVaultInput, DeleteVaultInput, InspectBackupInput, OpenBackupInput, ReplaceVaultInput,
+    backup_status as backup_status_core, backup_vault as backup_vault_core,
+    delete_vault as delete_vault_core, inspect_backup as inspect_backup_core,
+    list_registered_vaults, open_backup as open_backup_core,
     replace_vault_from_backup as replace_vault_from_backup_core,
 };
 
 use crate::dto::backup::{
-    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto,
-    DeleteVaultReportDto, OpenBackupReportDto, ReplaceReportDto, VaultDetailsDto,
-    backup_preview_to_dto, backup_report_to_dto, open_backup_report_to_dto, replace_report_to_dto,
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, DeleteVaultReportDto, OpenBackupReportDto,
+    ReplaceReportDto, VaultDetailsDto, backup_preview_to_dto, backup_report_to_dto,
+    open_backup_report_to_dto, replace_report_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -201,40 +200,6 @@ pub async fn backup_status(
     Ok(BackupStatusDto {
         last_backup_at: status.last_backup_at.map(|t| t.to_string()),
         last_snapshot_at: status.last_snapshot_at.map(|t| t.to_string()),
-    })
-}
-
-/// Convert a legacy `.vdb` + sibling-blobs vault to a `<name>.vedge/` home (slice 5.2.0).
-///
-/// A **file** operation — refuses an unlocked legacy vault (the migration copies then
-/// reaps its files; Windows holds the `.vdb` open while a session is live). Crash-safe:
-/// the original layout survives until the home is atomically committed. Returns the new
-/// home path (so the shell can re-point the recents row) and whether a legacy biometric
-/// credential was purged (slice 5.2.3 — the UI then prompts to re-enable Hello).
-#[tauri::command(rename_all = "snake_case")]
-#[instrument(skip_all, fields(vault_path = %vault_path))]
-pub async fn convert_vault(
-    vault_path: String,
-    state: tauri::State<'_, AppState>,
-) -> Result<ConvertVaultResultDto, CommandError> {
-    let vault_id = vault_id_from_string(&vault_path);
-    if state.is_unlocked(&vault_id) {
-        return Err(CommandError::Invalid(
-            "lock the vault before converting it".into(),
-        ));
-    }
-
-    let out = migrate_vault_layout_core(
-        state.keychain.as_ref(),
-        state.biometric.as_ref(),
-        MigrateVaultLayoutInput {
-            legacy_vdb_path: PathBuf::from(vault_path),
-        },
-    )
-    .await?;
-    Ok(ConvertVaultResultDto {
-        home: out.home.to_string_lossy().into_owned(),
-        biometric_reset: out.biometric_reset,
     })
 }
 

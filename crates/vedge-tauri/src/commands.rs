@@ -24,8 +24,6 @@ pub mod biometric;
 pub mod clipboard;
 pub mod device;
 pub mod document;
-/// Debug-only e2e seeding seam (slice 5.2.3) — gated at runtime; inert in release.
-pub mod e2e_seed;
 pub mod emergency_kit;
 pub mod entry;
 pub mod health;

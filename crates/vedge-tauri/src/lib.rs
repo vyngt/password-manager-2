@@ -134,7 +134,6 @@ pub fn run() {
             commands::backup::open_backup,
             commands::backup::replace_vault_from_backup,
             commands::backup::backup_status,
-            commands::backup::convert_vault,
             commands::backup::delete_vault,
             commands::backup::vault_details,
             // ---- snapshots (slice 5.2.1) ----
@@ -143,8 +142,6 @@ pub fn run() {
             commands::snapshot::delete_snapshot,
             commands::snapshot::revert_to_snapshot,
             commands::snapshot::revert_to_snapshot_in_session,
-            // ---- debug-only e2e seeding seam (slice 5.2.3; inert in release) ----
-            commands::e2e_seed::e2e_downgrade_to_legacy,
             // ---- emergency kit + recovery ----
             commands::emergency_kit::export_emergency_kit,
             commands::emergency_kit::emergency_kit_pdf,

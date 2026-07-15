@@ -9,8 +9,7 @@
 //! no second copy. These are pure functions, so they are host-testable — no Leptos, no DOM.
 
 /// Ensure a vault name normalizes to a `.vedge` home folder name (slice 5.2.0).
-/// A user may type a bare name or a legacy `.vdb`; both become a `.vedge` home.
-/// An already-`.vedge` name passes through unchanged.
+/// A bare name gets `.vedge` appended; an already-`.vedge` name passes through unchanged.
 pub fn ensure_vedge_home(input: &str) -> String {
     let trimmed = input.trim();
     match std::path::Path::new(trimmed)
@@ -18,8 +17,6 @@ pub fn ensure_vedge_home(input: &str) -> String {
         .and_then(|s| s.to_str())
     {
         Some("vedge") => trimmed.to_owned(),
-        // A legacy `.vdb` typed in the field → swap the extension for `.vedge`.
-        Some("vdb") => format!("{}.vedge", trimmed.strip_suffix(".vdb").unwrap_or(trimmed)),
         _ => format!("{trimmed}.vedge"),
     }
 }
@@ -107,9 +104,10 @@ mod tests {
     }
 
     #[test]
-    fn a_legacy_vdb_name_is_upgraded_not_double_suffixed() {
-        assert_eq!(home_folder_name("work.vdb"), "work.vedge");
+    fn a_vedge_name_passes_through_unchanged() {
         assert_eq!(home_folder_name("work.vedge"), "work.vedge");
+        // Any other name — even one with a dotted extension — simply gets `.vedge` appended.
+        assert_eq!(home_folder_name("my.notes"), "my.notes.vedge");
     }
 
     #[test]

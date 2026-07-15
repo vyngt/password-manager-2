@@ -637,7 +637,7 @@ async fn an_older_format_still_opens_forever() {
 ///
 /// Called while the harness still holds its connection open, so `SQLite` has NOT had the
 /// chance to checkpoint and delete the WAL. (`-shm` is deliberately not copied; it is
-/// rebuilt on the next open, and `migrate_vault_layout` skips it for the same reason.)
+/// rebuilt on the next open.)
 fn crash_image_of(home: &Path, dest: &Path) {
     std::fs::create_dir_all(dest.join("blobs")).unwrap();
     std::fs::create_dir_all(dest.join(SNAPSHOTS_DIR)).unwrap();

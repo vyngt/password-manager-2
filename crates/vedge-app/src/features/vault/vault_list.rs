@@ -52,8 +52,6 @@ pub fn VaultList(
     /// and the danger zone (Remove / Delete). Slice 5.2.4.
     on_menu: Callback<String>,
     on_locate: Callback<String>,
-    /// Convert a legacy `.vdb` row to a `.vedge/` home (slice 5.2.0).
-    on_convert: Callback<String>,
     /// Restore a present-but-corrupt vault (`exists && !openable`) from its newest snapshot
     /// (slice 5.2.1 — the H0 disaster path). Passes the vault id.
     on_restore: Callback<String>,
@@ -171,9 +169,6 @@ pub fn VaultList(
                             let openable = rec.openable;
                             let id = rec.vault.id.clone();
                             let path = rec.vault.path.clone();
-                            let is_old_layout = std::path::Path::new(path.as_str())
-                                .extension()
-                                .is_some_and(|e| e.eq_ignore_ascii_case("vdb"));
                             let name = rec.vault.display_name.clone();
                             let recency = rec.vault.last_opened.as_deref().map(short_date);
                             let row_icon = if exists {
@@ -195,7 +190,6 @@ pub fn VaultList(
                             let disp_path = middle_truncate(&path, 40);
                             let menu_id = id.clone();
                             let loc_id = id.clone();
-                            let conv_id = id.clone();
                             let restore_id = id;
 
                             view! {
@@ -283,8 +277,8 @@ pub fn VaultList(
                                             )
                                         } else {
                                             EitherOf3::C(
-                                                // Missing: the ONE inline action is Convert (legacy
-                                                // `.vdb`, un-pickable by a folder dialog) or Locate.
+                                                // Missing: the ONE inline action is Locate (re-point
+                                                // the row at the moved `.vedge/` home).
                                                 view! {
                                                     <span
                                                         class="rounded px-1.5 py-0.5 text-[10px]"
@@ -292,38 +286,16 @@ pub fn VaultList(
                                                     >
                                                         {move || t!(i18n, unlock.vault_missing)}
                                                     </span>
-                                                    {if is_old_layout {
-                                                        Either::Left(
-                                                            view! {
-                                                                <Button
-                                                                    variant=Variant::Ghost
-                                                                    size=Size::Sm
-                                                                    attr:data-testid="vault-convert"
-                                                                    on:click=move |ev: web_sys::MouseEvent| {
-                                                                        ev.stop_propagation();
-                                                                        on_convert.run(conv_id.clone());
-                                                                    }
-                                                                >
-                                                                    {move || t!(i18n, unlock.vault_convert)}
-                                                                </Button>
-                                                            },
-                                                        )
-                                                    } else {
-                                                        Either::Right(
-                                                            view! {
-                                                                <Button
-                                                                    variant=Variant::Ghost
-                                                                    size=Size::Sm
-                                                                    on:click=move |ev: web_sys::MouseEvent| {
-                                                                        ev.stop_propagation();
-                                                                        on_locate.run(loc_id.clone());
-                                                                    }
-                                                                >
-                                                                    {move || t!(i18n, unlock.vault_locate)}
-                                                                </Button>
-                                                            },
-                                                        )
-                                                    }}
+                                                    <Button
+                                                        variant=Variant::Ghost
+                                                        size=Size::Sm
+                                                        on:click=move |ev: web_sys::MouseEvent| {
+                                                            ev.stop_propagation();
+                                                            on_locate.run(loc_id.clone());
+                                                        }
+                                                    >
+                                                        {move || t!(i18n, unlock.vault_locate)}
+                                                    </Button>
                                                 },
                                             )
                                         }}

@@ -46,13 +46,10 @@ pub struct Selected {
 }
 
 /// Derive a human display name from a vault path: the last path segment without its
-/// `.vedge` (or legacy `.vdb`) extension.
+/// `.vedge` extension.
 pub fn display_name_from_path(path: &str) -> String {
     let name = path.rsplit(['/', '\\']).next().unwrap_or(path);
-    name.strip_suffix(".vedge")
-        .or_else(|| name.strip_suffix(".vdb"))
-        .unwrap_or(name)
-        .to_owned()
+    name.strip_suffix(".vedge").unwrap_or(name).to_owned()
 }
 
 /// Focus the master-password field after a vault is selected. A no-op if the
@@ -258,50 +255,6 @@ pub fn VaultLaunch() -> impl IntoView {
                     }
                 }
                 Ok(None) => {}
-                Err(e) => show_error(format!("{err_prefix}{e}")),
-            }
-        });
-    });
-
-    // Convert a legacy `.vdb` registry row to a `.vedge/` home (slice 5.2.0), then re-point
-    // the row to the new home.
-    let on_convert = Callback::new(move |id: String| {
-        let row = registry
-            .get_untracked()
-            .into_iter()
-            .find(|r| r.vault.id == id);
-        let Some(row) = row else {
-            return;
-        };
-        let legacy_path = row.vault.path;
-        let display_name = row.vault.display_name;
-        let err_prefix = t_string!(i18n, unlock.err_open).to_owned();
-        // Read the biometric-reset copy here (owner present) — the toast fires from inside the
-        // async block below, which has no reactive owner (slice 5.2.3).
-        let bio_reset_msg = t_string!(i18n, unlock.biometric_reset).to_owned();
-        spawn_local(async move {
-            match api::vault::convert(&legacy_path).await {
-                Ok(result) => {
-                    let dto = RegisteredVaultDto {
-                        id: Uuid::new_v4().to_string(),
-                        path: result.home,
-                        display_name,
-                        last_opened: None,
-                        sort_order: 0,
-                    };
-                    match api::registry::register_vault(&dto).await {
-                        Ok(()) => {
-                            let _ = api::registry::deregister_vault(&id).await;
-                            refresh_registry();
-                            // 🔴 The convert purged the legacy path-hashed Hello credential, so
-                            // biometric unlock is now off — tell the user to re-enable it.
-                            if result.biometric_reset {
-                                show_warning(bio_reset_msg);
-                            }
-                        }
-                        Err(e) => show_error(format!("{err_prefix}{e}")),
-                    }
-                }
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
@@ -662,7 +615,6 @@ pub fn VaultLaunch() -> impl IntoView {
                             on_select=on_select
                             on_menu=on_menu
                             on_locate=on_locate
-                            on_convert=on_convert
                             on_restore=on_restore
                             on_new=on_new
                             on_open_file=on_open_file
@@ -709,29 +661,25 @@ mod tests {
     use super::display_name_from_path;
 
     #[test]
-    fn strips_dir_and_vedge_or_vdb_extension() {
-        // A `.vedge` home (slice 5.2.0) and a legacy `.vdb` both reduce to the stem.
+    fn strips_dir_and_vedge_extension() {
+        // A `.vedge` home (slice 5.2.0) reduces to its stem.
         assert_eq!(
             display_name_from_path("C:/Users/me/my-vault.vedge"),
             "my-vault"
         );
         assert_eq!(display_name_from_path("/home/me/vaults/work.vedge"), "work");
-        assert_eq!(
-            display_name_from_path("/home/me/vaults/legacy.vdb"),
-            "legacy"
-        );
     }
 
     #[test]
     fn handles_bare_name_and_no_extension() {
-        assert_eq!(display_name_from_path("personal.vdb"), "personal");
+        assert_eq!(display_name_from_path("personal.vedge"), "personal");
         assert_eq!(display_name_from_path("weird"), "weird");
     }
 
     #[test]
     fn windows_backslash_separator() {
         assert_eq!(
-            display_name_from_path("D:\\Vaults\\Home Vault.vdb"),
+            display_name_from_path("D:\\Vaults\\Home Vault.vedge"),
             "Home Vault"
         );
     }
