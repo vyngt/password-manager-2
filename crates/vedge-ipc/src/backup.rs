@@ -132,9 +132,10 @@ pub struct DeleteVaultReportDto {
     pub credentials_cleaned: bool,
 }
 
-/// Read-only stats for the vault-details dialog (slice 5.2.4). All best-effort — `0` on any read
-/// error, never a failure. (The copyable Vault ID rides on `RegisteredVaultStatusDto`, so it is
-/// not repeated here.)
+/// Read-only stats for the vault-details dialog (slice 5.2.4).
+///
+/// All best-effort — `0` on any read error, never a failure. The copyable Vault ID rides on
+/// `RegisteredVaultStatusDto`, so it is not repeated here.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultDetailsDto {
     pub entry_count: u64,
