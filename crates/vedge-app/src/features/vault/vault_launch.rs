@@ -331,7 +331,13 @@ pub fn VaultLaunch() -> impl IntoView {
         details_target.set(Some(row));
         spawn_local(async move {
             if let Ok(d) = api::vault::details(&path).await {
-                details_stats.set(Some(d));
+                // Ignore a stale load if the user has since opened a different vault's details.
+                if details_target
+                    .get_untracked()
+                    .is_some_and(|r| r.vault.id == id)
+                {
+                    details_stats.set(Some(d));
+                }
             }
         });
     });

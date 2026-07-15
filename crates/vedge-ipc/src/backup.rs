@@ -132,12 +132,11 @@ pub struct DeleteVaultReportDto {
     pub credentials_cleaned: bool,
 }
 
-/// Read-only stats for the vault-details dialog (slice 5.2.4). All best-effort — `0` / `None`
-/// on any read error, never a failure.
+/// Read-only stats for the vault-details dialog (slice 5.2.4). All best-effort — `0` on any read
+/// error, never a failure. (The copyable Vault ID rides on `RegisteredVaultStatusDto`, so it is
+/// not repeated here.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultDetailsDto {
-    /// The vault's plaintext `vault_uuid` (copyable in the UI for `mise keychain-audit`).
-    pub vault_uuid: Option<String>,
     pub entry_count: u64,
     pub snapshot_count: u64,
     pub on_disk_bytes: u64,

@@ -27,6 +27,7 @@ use crate::domain::shared::{StorageError, VaultId};
 use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::backup::journal::remove_dir_all_retrying;
 use crate::infrastructure::backup::target::read_target_identity;
+use crate::infrastructure::snapshot::store;
 
 /// Input to [`delete_vault`].
 pub struct DeleteVaultInput {
@@ -63,9 +64,11 @@ pub async fn delete_vault(
     //      row BEFORE any destruction (the P0-1 keystone). See [`resolve_and_backfill`].
     let resolved = resolve_and_backfill(registry, registry_id.as_deref(), &home).await;
 
-    // 3. Report stats — computed BEFORE deletion (best-effort; 0 on error).
+    // 3. Report stats — computed BEFORE deletion (best-effort; 0 on error). Count via the
+    //    snapshot store (not a raw subdir count, which would also count the CAS `objects/` pool).
     let snapshots_dir = VaultId::new(&home).snapshots_dir();
-    let snapshots_deleted = count_subdirs(&snapshots_dir);
+    let snapshots_deleted = store::list_snapshots(&snapshots_dir)
+        .map_or(0, |s| u64::try_from(s.len()).unwrap_or(u64::MAX));
     let bytes_freed = dir_size(&home);
 
     // 4. Destroy the files — the ONE hard error. Retry the Windows lingering-handle window on a
@@ -149,18 +152,6 @@ fn clean_credentials(
     bio_ok && baseline_ok && secret_ok
 }
 
-/// Count the immediate subdirectories of a directory (the snapshot count). Best-effort → 0.
-fn count_subdirs(dir: &Path) -> u64 {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return 0;
-    };
-    let count = entries
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
-        .count();
-    u64::try_from(count).unwrap_or(u64::MAX)
-}
-
 /// Recursive on-disk byte size of a directory. Best-effort; saturating (the workspace denies
 /// `arithmetic_side_effects`).
 fn dir_size(path: &Path) -> u64 {
@@ -242,7 +233,9 @@ mod tests {
         std::fs::create_dir_all(home.join("blobs")).unwrap();
         std::fs::write(home.join("blobs").join("01BLOB.blob"), b"ciphertext").unwrap();
         let snaps = home.join("snapshots");
-        std::fs::create_dir_all(&snaps).unwrap();
+        // The CAS `objects/` pool lives inside `snapshots/` (5.2.1) — it must NOT be counted as a
+        // snapshot. Placeholder `snapN` dirs have no manifest, so they aren't valid snapshots either.
+        std::fs::create_dir_all(snaps.join("objects")).unwrap();
         for i in 0..snapshots {
             std::fs::create_dir_all(snaps.join(format!("snap{i}"))).unwrap();
         }
@@ -304,7 +297,9 @@ mod tests {
         .unwrap();
 
         assert!(!home.exists(), "home destroyed");
-        assert_eq!(report.snapshots_deleted, 3);
+        // The `objects/` pool and manifest-less placeholder dirs are not valid snapshots (finding
+        // #1: a raw subdir count would report 4 here).
+        assert_eq!(report.snapshots_deleted, 0);
         assert!(report.credentials_cleaned);
         assert!(kc.read_secret_key(uuid).is_err(), "secret gone");
         assert_eq!(

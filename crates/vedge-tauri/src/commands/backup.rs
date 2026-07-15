@@ -276,26 +276,16 @@ pub async fn delete_vault(
 }
 
 /// Read-only stats for the vault-details dialog (slice 5.2.4). Best-effort — every field defaults
-/// to `0` / `None` on a read error; this never fails.
+/// to `0` on a read error; this never fails. (The copyable Vault ID comes from the registry status
+/// DTO, not from here.)
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
-pub async fn vault_details(
-    vault_path: String,
-    state: tauri::State<'_, AppState>,
-) -> Result<VaultDetailsDto, CommandError> {
+pub async fn vault_details(vault_path: String) -> Result<VaultDetailsDto, CommandError> {
     let home = PathBuf::from(&vault_path);
-    // uuid + entry_count from the read-only identity; fall back to the registry row's stored uuid
-    // (a corrupt vault whose config is unreadable).
-    let identity = read_target_identity(&home).await;
-    let entry_count = identity.as_ref().map_or(0, |id| id.entry_count);
-    let mut vault_uuid = identity.and_then(|id| id.vault_uuid);
-    if vault_uuid.is_none() {
-        vault_uuid = state.vault_registry.list().await.ok().and_then(|rows| {
-            rows.into_iter()
-                .find(|r| r.path == home)
-                .and_then(|r| r.vault_uuid)
-        });
-    }
+    // Entry count from the read-only identity (0 for a corrupt/unreadable vault).
+    let entry_count = read_target_identity(&home)
+        .await
+        .map_or(0, |id| id.entry_count);
     // snapshot count + on-disk size on a blocking thread (a large blobs dir is slow to walk).
     let snapshots_dir = VaultId::new(&home).snapshots_dir();
     let (snapshot_count, on_disk_bytes) = tokio::task::spawn_blocking(move || {
@@ -306,7 +296,6 @@ pub async fn vault_details(
     .await
     .unwrap_or((0, 0));
     Ok(VaultDetailsDto {
-        vault_uuid,
         entry_count,
         snapshot_count,
         on_disk_bytes,
