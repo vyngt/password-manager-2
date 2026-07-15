@@ -135,6 +135,8 @@ pub fn run() {
             commands::backup::replace_vault_from_backup,
             commands::backup::backup_status,
             commands::backup::convert_vault,
+            commands::backup::delete_vault,
+            commands::backup::vault_details,
             // ---- snapshots (slice 5.2.1) ----
             commands::snapshot::create_snapshot,
             commands::snapshot::list_snapshots,

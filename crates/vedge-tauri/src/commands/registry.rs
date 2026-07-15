@@ -58,21 +58,32 @@ pub async fn list_registered_vaults_with_status(
             let _ =
                 repoint_registered_vault_core(&*state.vault_registry, &r.vault.id, healed.clone())
                     .await;
-            let openable = read_target_state(&healed).await.identity().is_some();
+            let healed_target = read_target_state(&healed).await;
+            let openable = healed_target.identity().is_some();
+            let uuid = healed_target
+                .identity()
+                .and_then(|id| id.vault_uuid.clone())
+                .or_else(|| r.vault.vault_uuid.clone());
             let mut vault = r.vault.clone();
             vault.path = healed;
             let healed_status = RegisteredVaultStatus {
                 vault,
                 exists: true,
             };
-            out.push(registered_vault_status_to_dto(&healed_status, openable));
+            out.push(registered_vault_status_to_dto(&healed_status, openable, uuid));
             continue;
         }
         // H0: a present-but-unopenable vault (its `vault.vdb` won't read as a DB) is CORRUPT,
         // so `openable` is false and the launch screen offers Restore. Eager per-row; fine for
-        // a handful of recents.
-        let openable = r.exists && read_target_state(&r.vault.path).await.identity().is_some();
-        out.push(registered_vault_status_to_dto(r, openable));
+        // a handful of recents. The same read yields the copyable `vault_uuid` (5.2.4), falling
+        // back to the row's stored uuid for a corrupt/missing vault.
+        let target = read_target_state(&r.vault.path).await;
+        let openable = r.exists && target.identity().is_some();
+        let uuid = target
+            .identity()
+            .and_then(|id| id.vault_uuid.clone())
+            .or_else(|| r.vault.vault_uuid.clone());
+        out.push(registered_vault_status_to_dto(r, openable, uuid));
     }
     Ok(out)
 }

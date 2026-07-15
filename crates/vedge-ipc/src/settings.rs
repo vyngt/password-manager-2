@@ -29,6 +29,12 @@ pub struct RegisteredVaultStatusDto {
     /// as `false` (treated as "not openable" — conservative).
     #[serde(default)]
     pub openable: bool,
+    /// The vault's plaintext `vault_uuid` (slice 5.2.4): from the openable probe's identity, or
+    /// the registry row's stored uuid for a corrupt/missing vault. Surfaced so the launch screen
+    /// can show a **copyable Vault ID** — `mise keychain-audit` keys on uuids, and there was no
+    /// way to see one without a debugger. `None` when unknown.
+    #[serde(default)]
+    pub vault_uuid: Option<String>,
 }
 
 // ---- AppSetting --------------------------------------------------------------

@@ -45,11 +45,13 @@ pub fn registered_vault_from_dto(dto: RegisteredVaultDto) -> Result<RegisteredVa
 pub fn registered_vault_status_to_dto(
     s: &vedge_core::RegisteredVaultStatus,
     openable: bool,
+    vault_uuid: Option<String>,
 ) -> RegisteredVaultStatusDto {
     RegisteredVaultStatusDto {
         vault: registered_vault_to_dto(&s.vault),
         exists: s.exists,
         openable,
+        vault_uuid,
     }
 }
 

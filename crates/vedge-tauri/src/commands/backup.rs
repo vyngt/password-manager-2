@@ -27,19 +27,21 @@ use std::path::PathBuf;
 use tracing::instrument;
 
 use vedge_core::domain::shared::VaultId;
+use vedge_core::infrastructure::backup::target::read_target_identity;
+use vedge_core::infrastructure::snapshot::store;
 use vedge_core::infrastructure::sqlite::vault::SqliteVaultRepositoryFactory;
 use vedge_core::{
-    BackupVaultInput, InspectBackupInput, MigrateVaultLayoutInput, OpenBackupInput,
+    BackupVaultInput, DeleteVaultInput, InspectBackupInput, MigrateVaultLayoutInput, OpenBackupInput,
     ReplaceVaultInput, backup_status as backup_status_core, backup_vault as backup_vault_core,
-    inspect_backup as inspect_backup_core, list_registered_vaults,
-    migrate_vault_layout as migrate_vault_layout_core, open_backup as open_backup_core,
-    replace_vault_from_backup as replace_vault_from_backup_core,
+    delete_vault as delete_vault_core, inspect_backup as inspect_backup_core,
+    list_registered_vaults, migrate_vault_layout as migrate_vault_layout_core,
+    open_backup as open_backup_core, replace_vault_from_backup as replace_vault_from_backup_core,
 };
 
 use crate::dto::backup::{
-    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto, OpenBackupReportDto,
-    ReplaceReportDto, backup_preview_to_dto, backup_report_to_dto, open_backup_report_to_dto,
-    replace_report_to_dto,
+    BackupPreviewDto, BackupReportDto, BackupStatusDto, ConvertVaultResultDto, DeleteVaultReportDto,
+    OpenBackupReportDto, ReplaceReportDto, VaultDetailsDto, backup_preview_to_dto,
+    backup_report_to_dto, open_backup_report_to_dto, replace_report_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -233,4 +235,97 @@ pub async fn convert_vault(
         home: out.home.to_string_lossy().into_owned(),
         biometric_reset: out.biometric_reset,
     })
+}
+
+/// Destroy a vault — its files, all three OS credentials, and its registry row (slice 5.2.4).
+///
+/// A **file** operation: refuses an unlocked target (Windows holds the `.vdb` open while a
+/// session is live; the danger dialog locks first). `registry_id` is the recents row id — used to
+/// remove the tombstone LAST and to backfill the uuid before the files die. A report with
+/// `credentials_cleaned == false` means the UI must say the credentials were left and name
+/// `mise keychain-audit`.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path))]
+pub async fn delete_vault(
+    vault_path: String,
+    registry_id: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<DeleteVaultReportDto, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    if state.is_unlocked(&vault_id) {
+        return Err(CommandError::Invalid("lock the vault before deleting".into()));
+    }
+    let report = delete_vault_core(
+        state.keychain.as_ref(),
+        state.biometric.as_ref(),
+        &*state.vault_registry,
+        DeleteVaultInput {
+            home: PathBuf::from(vault_path),
+            registry_id,
+        },
+    )
+    .await?;
+    Ok(DeleteVaultReportDto {
+        snapshots_deleted: report.snapshots_deleted,
+        bytes_freed: report.bytes_freed,
+        credentials_cleaned: report.credentials_cleaned,
+    })
+}
+
+/// Read-only stats for the vault-details dialog (slice 5.2.4). Best-effort — every field defaults
+/// to `0` / `None` on a read error; this never fails.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path))]
+pub async fn vault_details(
+    vault_path: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<VaultDetailsDto, CommandError> {
+    let home = PathBuf::from(&vault_path);
+    // uuid + entry_count from the read-only identity; fall back to the registry row's stored uuid
+    // (a corrupt vault whose config is unreadable).
+    let identity = read_target_identity(&home).await;
+    let entry_count = identity.as_ref().map_or(0, |id| id.entry_count);
+    let mut vault_uuid = identity.and_then(|id| id.vault_uuid);
+    if vault_uuid.is_none() {
+        vault_uuid = state.vault_registry.list().await.ok().and_then(|rows| {
+            rows.into_iter()
+                .find(|r| r.path == home)
+                .and_then(|r| r.vault_uuid)
+        });
+    }
+    // snapshot count + on-disk size on a blocking thread (a large blobs dir is slow to walk).
+    let snapshots_dir = VaultId::new(&home).snapshots_dir();
+    let (snapshot_count, on_disk_bytes) = tokio::task::spawn_blocking(move || {
+        let snapshot_count = store::list_snapshots(&snapshots_dir)
+            .map_or(0, |s| u64::try_from(s.len()).unwrap_or(u64::MAX));
+        (snapshot_count, dir_size(&home))
+    })
+    .await
+    .unwrap_or((0, 0));
+    Ok(VaultDetailsDto {
+        vault_uuid,
+        entry_count,
+        snapshot_count,
+        on_disk_bytes,
+    })
+}
+
+/// Recursive on-disk byte size of a directory. Best-effort → 0; saturating.
+fn dir_size(path: &std::path::Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(path) else {
+        return 0;
+    };
+    let mut total: u64 = 0;
+    for entry in entries.filter_map(Result::ok) {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        let add = if file_type.is_dir() {
+            dir_size(&entry.path())
+        } else {
+            entry.metadata().map_or(0, |m| m.len())
+        };
+        total = total.saturating_add(add);
+    }
+    total
 }
