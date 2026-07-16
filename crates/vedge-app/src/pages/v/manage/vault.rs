@@ -24,7 +24,7 @@ use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
 use crate::features::vault::vault_filters::{
-    Filters, SortKey, VaultFilters, filter_and_sort, reorder_within,
+    Filters, SortKey, TagMatch, VaultFilters, filter_and_sort, reorder_within,
 };
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::{t, t_string, use_i18n};
@@ -79,7 +79,8 @@ pub fn VaultPage() -> impl IntoView {
 
     // Filter / sort facets (client-side over the loaded metadata).
     let entry_type = RwSignal::new(Option::<EntryTypeDto>::None);
-    let tag_id = RwSignal::new(Option::<String>::None);
+    let tag_ids = RwSignal::new(Vec::<String>::new());
+    let tag_match = RwSignal::new(TagMatch::default());
     let favorites_only = RwSignal::new(false);
     let sort = RwSignal::new(SortKey::default());
     // Active vs trashed switches the *fetch source* (see `refresh`), not a facet.
@@ -133,7 +134,8 @@ pub fn VaultPage() -> impl IntoView {
         let filters = Filters {
             query: search_query.get(),
             entry_type: entry_type.get(),
-            tag_id: tag_id.get(),
+            tag_ids: tag_ids.get(),
+            tag_match: tag_match.get(),
             favorites_only: favorites_only.get(),
             scope: current_scope.get(),
         };
@@ -147,7 +149,8 @@ pub fn VaultPage() -> impl IntoView {
             Filters {
                 query: search_query.get(),
                 entry_type: entry_type.get(),
-                tag_id: tag_id.get(),
+                tag_ids: tag_ids.get(),
+                tag_match: tag_match.get(),
                 favorites_only: favorites_only.get(),
                 scope: current_scope.get(),
             },
@@ -164,6 +167,19 @@ pub fn VaultPage() -> impl IntoView {
             selected.set(Vec::new());
         }
         cur
+    });
+    // 🔴 ⑪ Custom order is a property of a *folder*, not a search result — its
+    // per-folder `sort_order` interleaves meaninglessly across folders. Enforce the
+    // invariant "Custom ⟹ a single-folder scope": whenever the sort is Custom but
+    // the scope isn't a `Folder`, coerce back to the default. This self-corrects (it
+    // re-runs after the set, sees a valid state, and stops) so no invalid order can
+    // ever render — even from the transitional sort Select that still offers it.
+    Effect::new(move |_| {
+        if matches!(sort.get(), SortKey::Custom)
+            && !matches!(current_scope.get(), FolderScope::Folder(_))
+        {
+            sort.set(SortKey::default());
+        }
     });
     // Distinguish *no entries yet* / *no matches* / *empty trash* when the table
     // is empty (shown by `VaultTable`'s fallback).
@@ -265,7 +281,8 @@ pub fn VaultPage() -> impl IntoView {
         trashed_view.set(false);
         search_query.set(filters.query);
         entry_type.set(filters.entry_type);
-        tag_id.set(filters.tag_id);
+        tag_ids.set(filters.tag_ids);
+        tag_match.set(filters.tag_match);
         favorites_only.set(filters.favorites_only);
         current_scope.set(filters.scope);
         sort.set(sk);
@@ -277,7 +294,8 @@ pub fn VaultPage() -> impl IntoView {
         let filters = Filters {
             query: search_query.get_untracked(),
             entry_type: entry_type.get_untracked(),
-            tag_id: tag_id.get_untracked(),
+            tag_ids: tag_ids.get_untracked(),
+            tag_match: tag_match.get_untracked(),
             favorites_only: favorites_only.get_untracked(),
             scope: current_scope.get_untracked(),
         };
@@ -884,7 +902,7 @@ pub fn VaultPage() -> impl IntoView {
                     <VaultFilters
                         search_query=search_query
                         entry_type=entry_type
-                        tag_id=tag_id
+                        tag_ids=tag_ids
                         favorites_only=favorites_only
                         sort=sort
                         tags=Signal::derive(move || tags.get())
@@ -1039,7 +1057,10 @@ pub fn VaultPage() -> impl IntoView {
                         on_favorite=on_favorite
                         on_move_request=on_move_request
                         on_reorder=on_reorder
-                        reorder_enabled=Signal::derive(move || sort.get() == SortKey::Manual)
+                        reorder_enabled=Signal::derive(move || {
+                            matches!(sort.get(), SortKey::Custom)
+                                && matches!(current_scope.get(), FolderScope::Folder(_))
+                        })
                         selectable=Signal::derive(move || !trashed_view.get())
                         selected_rows=selected
                         on_selection_change=Callback::new(move |ids: Vec<String>| selected.set(ids))

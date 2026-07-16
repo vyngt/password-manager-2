@@ -22,6 +22,17 @@ use vedge_ipc::{EntryTypeDto, IndexEntryDto, TagMetaDto};
 use vedge_ui::components::select::{Select, SelectItem};
 use vedge_ui::components::toggle::Toggle;
 
+/// Whether a multi-tag filter broadens (any) or narrows (all). Default `Any`
+/// (OR): adding a tag shows *more*, never silently less. Persisted via
+/// [`SmartFolder`](super::smart_folders::SmartFolder), so it carries serde.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TagMatch {
+    #[default]
+    Any,
+    All,
+}
+
 /// The active facet state. `query` matches name + url + tag names; the rest are
 /// exact facets that AND together. Active-vs-trashed is handled by the source
 /// fetch, not here.
@@ -29,26 +40,128 @@ use vedge_ui::components::toggle::Toggle;
 pub struct Filters {
     pub query: String,
     pub entry_type: Option<EntryTypeDto>,
-    pub tag_id: Option<String>,
+    /// Selected tag ids; empty = no tag facet. Combined by [`tag_match`](Self::tag_match).
+    pub tag_ids: Vec<String>,
+    /// How `tag_ids` combine (Any = OR, All = AND). Ignored when `tag_ids` is empty.
+    pub tag_match: TagMatch,
     pub favorites_only: bool,
     /// Folder navigation scope. `All` (the default) shows everything; `Unfiled`
     /// shows entries with no folder; `Folder(id)` shows that folder's contents.
     pub scope: FolderScope,
 }
 
-/// How the filtered list is ordered.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SortKey {
-    /// Name, case-insensitive A–Z.
+/// Sort direction for a column-backed sort (Name / Url / Updated).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SortDir {
     #[default]
-    NameAsc,
-    /// `updated_at` descending (most recently edited first).
-    RecentlyUpdated,
+    Asc,
+    Desc,
+}
+
+/// How the filtered list is ordered. The column sorts carry a direction; the two
+/// *modes* (`RecentlyUsed`, `Custom`) have no column and no direction — they are a
+/// lens, not a header state (a smart folder can't hold `Custom`; see [`SavedSort`]).
+/// Transient view state — **not persisted** (only [`SavedSort`] is).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortKey {
+    /// Name, case-insensitive.
+    Name(SortDir),
+    /// Url, case-insensitive; a missing url sorts as empty.
+    Url(SortDir),
+    /// `updated_at` as an instant (Desc = most recently edited first).
+    Updated(SortDir),
     /// `accessed_at` descending, entries never used (`None`) sorted last.
     RecentlyUsed,
-    /// Manual drag order: `sort_order` ascending, ties broken by name. Meaningful
-    /// within a folder view (where a drag-reorder renumbers the siblings).
-    Manual,
+    /// Manual drag order: `sort_order` ascending, ties by name. Only meaningful in
+    /// a single folder scope, where a drag renumbers the siblings.
+    Custom,
+}
+
+impl Default for SortKey {
+    fn default() -> Self {
+        SortKey::Name(SortDir::Asc)
+    }
+}
+
+/// The subset of [`SortKey`] a `SmartFolder` may hold — **no `Custom`** (⑪: you
+/// can arrange the icons in a folder, but not a search result; a preset can span
+/// folders, whose per-folder `sort_order` interleaves meaninglessly). Making it a
+/// narrower type turns "don't save Custom" from a rule into a compile error.
+///
+/// Serialized as a stable `snake_case` token via `String`, and it **reads the legacy
+/// fieldless [`SortKey`] tokens** (`"NameAsc"`, `"RecentlyUpdated"`, `"RecentlyUsed"`,
+/// `"Manual"`) so presets saved before this slice still load — `"Manual"` (the old
+/// custom order) coerces to `Name(Asc)`. Unknown → `Name(Asc)`; never fails.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "String", into = "String")]
+pub enum SavedSort {
+    Name(SortDir),
+    Url(SortDir),
+    Updated(SortDir),
+    RecentlyUsed,
+}
+
+impl Default for SavedSort {
+    fn default() -> Self {
+        SavedSort::Name(SortDir::Asc)
+    }
+}
+
+impl From<SavedSort> for String {
+    fn from(s: SavedSort) -> String {
+        match s {
+            SavedSort::Name(SortDir::Asc) => "name_asc",
+            SavedSort::Name(SortDir::Desc) => "name_desc",
+            SavedSort::Url(SortDir::Asc) => "url_asc",
+            SavedSort::Url(SortDir::Desc) => "url_desc",
+            SavedSort::Updated(SortDir::Asc) => "updated_asc",
+            SavedSort::Updated(SortDir::Desc) => "updated_desc",
+            SavedSort::RecentlyUsed => "recently_used",
+        }
+        .to_owned()
+    }
+}
+
+impl From<String> for SavedSort {
+    fn from(s: String) -> SavedSort {
+        match s.as_str() {
+            "name_desc" => SavedSort::Name(SortDir::Desc),
+            "url_asc" => SavedSort::Url(SortDir::Asc),
+            "url_desc" => SavedSort::Url(SortDir::Desc),
+            "updated_asc" => SavedSort::Updated(SortDir::Asc),
+            "updated_desc" | "RecentlyUpdated" => SavedSort::Updated(SortDir::Desc),
+            "recently_used" | "RecentlyUsed" => SavedSort::RecentlyUsed,
+            // `Name(Asc)` is the default, so it is the fallback: the canonical
+            // `"name_asc"`, the legacy `"NameAsc"`, the legacy custom `"Manual"` (a
+            // preset can't be Custom — ⑪), and anything unknown all resolve here.
+            // We never fail a read.
+            _ => SavedSort::Name(SortDir::Asc),
+        }
+    }
+}
+
+impl From<SavedSort> for SortKey {
+    fn from(s: SavedSort) -> SortKey {
+        match s {
+            SavedSort::Name(d) => SortKey::Name(d),
+            SavedSort::Url(d) => SortKey::Url(d),
+            SavedSort::Updated(d) => SortKey::Updated(d),
+            SavedSort::RecentlyUsed => SortKey::RecentlyUsed,
+        }
+    }
+}
+
+/// Narrow a live [`SortKey`] to a [`SavedSort`] for persistence; `Custom` coerces
+/// to `Name(Asc)` (it cannot be saved — ⑪).
+#[must_use]
+pub fn saved_from(sk: SortKey) -> SavedSort {
+    match sk {
+        SortKey::Name(d) => SavedSort::Name(d),
+        SortKey::Url(d) => SavedSort::Url(d),
+        SortKey::Updated(d) => SavedSort::Updated(d),
+        SortKey::RecentlyUsed => SavedSort::RecentlyUsed,
+        SortKey::Custom => SavedSort::Name(SortDir::Asc),
+    }
 }
 
 /// Filter `items` by `f` (query + facets) and order by `sort`.
@@ -71,7 +184,14 @@ pub fn filter_and_sort(
         .filter(|e| query_matches(e, &q, tag_names))
         .filter(|e| scope_matches(&f.scope, e))
         .filter(|e| f.entry_type.as_ref().is_none_or(|t| &e.entry_type == t))
-        .filter(|e| f.tag_id.as_ref().is_none_or(|id| e.tag_ids.contains(id)))
+        // Multi-tag: empty ⇒ no facet; else Any = OR, All = AND over the selected ids.
+        .filter(|e| {
+            f.tag_ids.is_empty()
+                || match f.tag_match {
+                    TagMatch::Any => f.tag_ids.iter().any(|id| e.tag_ids.contains(id)),
+                    TagMatch::All => f.tag_ids.iter().all(|id| e.tag_ids.contains(id)),
+                }
+        })
         .filter(|e| !f.favorites_only || e.is_favorite)
         .cloned()
         .collect();
@@ -82,19 +202,36 @@ pub fn filter_and_sort(
     // once per element (O(n)) and is a stable sort, so equal instants keep input
     // order. See [`super::timestamps`] for the standing rule.
     match sort {
-        // `sort_by_cached_key` lowercases once per element (O(n)) rather than on
-        // every comparison, and is stable — equal keys keep input order.
-        SortKey::NameAsc => out.sort_by_cached_key(|e| e.name.to_lowercase()),
-        SortKey::RecentlyUpdated => out.sort_by_cached_key(|e| Reverse(ts_millis(&e.updated_at))),
+        // Column sorts lowercase/parse once per element (O(n)) and are stable —
+        // equal keys keep input order. `Desc` sorts the `Reverse`d key (a stable
+        // reverse, so it does not flip the tie order the way `out.reverse()` would).
+        SortKey::Name(dir) => dir_key(&mut out, dir, |e| e.name.to_lowercase()),
+        SortKey::Url(dir) => {
+            dir_key(&mut out, dir, |e| {
+                e.url.as_deref().unwrap_or_default().to_lowercase()
+            });
+        }
+        SortKey::Updated(dir) => dir_key(&mut out, dir, |e| ts_millis(&e.updated_at)),
         SortKey::RecentlyUsed => out.sort_by_cached_key(|e| {
             // `None`/unparseable → `i64::MIN` → `Reverse` largest → sorts last.
             Reverse(e.accessed_at.as_deref().map_or(i64::MIN, ts_millis))
         }),
-        // A `(u32, String)` tuple key is `Ord` (sort_order asc, ties by name) and
-        // caches the lowercase once — same order as the prior `sort_by` comparator.
-        SortKey::Manual => out.sort_by_cached_key(|e| (e.sort_order, e.name.to_lowercase())),
+        // A `(u32, String)` tuple key is `Ord` (sort_order asc, ties by name).
+        SortKey::Custom => out.sort_by_cached_key(|e| (e.sort_order, e.name.to_lowercase())),
     }
     out
+}
+
+/// Stable sort `out` by `key`, ascending or (for `Desc`) by the `Reverse`d key.
+fn dir_key<K, F>(out: &mut [IndexEntryDto], dir: SortDir, key: F)
+where
+    K: Ord,
+    F: Fn(&IndexEntryDto) -> K,
+{
+    match dir {
+        SortDir::Asc => out.sort_by_cached_key(|e| key(e)),
+        SortDir::Desc => out.sort_by_cached_key(|e| Reverse(key(e))),
+    }
 }
 
 /// Recompute manual `sort_order` after dropping `moved_id` onto `target_id`
@@ -175,21 +312,26 @@ fn filterable_types() -> [EntryTypeDto; 8] {
 
 /// Stable `Select` option value for a [`SortKey`].
 fn sort_to_key(s: SortKey) -> &'static str {
+    // The transitional toolbar Select can't express a direction; it maps each
+    // column to its default. (d2 moves sort into the headers, which do carry a
+    // direction, and drops this Select.)
     match s {
-        SortKey::NameAsc => "name",
-        SortKey::RecentlyUpdated => "updated",
+        SortKey::Name(_) => "name",
+        SortKey::Url(_) => "url",
+        SortKey::Updated(_) => "updated",
         SortKey::RecentlyUsed => "used",
-        SortKey::Manual => "manual",
+        SortKey::Custom => "manual",
     }
 }
 
-/// Inverse of [`sort_to_key`]; unrecognized keys fall back to `NameAsc`.
+/// Inverse of [`sort_to_key`]; unrecognized keys fall back to `Name(Asc)`.
 fn sort_from_key(k: &str) -> SortKey {
     match k {
-        "updated" => SortKey::RecentlyUpdated,
+        "url" => SortKey::Url(SortDir::Asc),
+        "updated" => SortKey::Updated(SortDir::Desc),
         "used" => SortKey::RecentlyUsed,
-        "manual" => SortKey::Manual,
-        _ => SortKey::NameAsc,
+        "manual" => SortKey::Custom,
+        _ => SortKey::Name(SortDir::Asc),
     }
 }
 
@@ -201,7 +343,9 @@ fn sort_from_key(k: &str) -> SortKey {
 pub fn VaultFilters(
     search_query: RwSignal<String>,
     entry_type: RwSignal<Option<EntryTypeDto>>,
-    tag_id: RwSignal<Option<String>>,
+    /// Selected tag ids. This transitional toolbar Select is single-select (writes
+    /// a 0-or-1-element vec); the multi-select popover replaces it in d2.
+    tag_ids: RwSignal<Vec<String>>,
     favorites_only: RwSignal<bool>,
     sort: RwSignal<SortKey>,
     #[prop(into)] tags: Signal<Vec<TagMetaDto>>,
@@ -269,7 +413,9 @@ pub fn VaultFilters(
                             );
                         options
                     })
-                    value=Signal::derive(move || tag_id.get().unwrap_or_default())
+                    value=Signal::derive(move || {
+                        tag_ids.with(|v| v.first().cloned().unwrap_or_default())
+                    })
                     placeholder=Signal::derive(move || {
                         t_string!(i18n, vault.filter_tag).to_owned()
                     })
@@ -277,7 +423,7 @@ pub fn VaultFilters(
                         t_string!(i18n, vault.filter_tag_aria).to_owned()
                     })
                     on_change=Callback::new(move |id: String| {
-                        tag_id.set(if id.is_empty() { None } else { Some(id) });
+                        tag_ids.set(if id.is_empty() { Vec::new() } else { vec![id] });
                     })
                 />
             </div>
@@ -329,7 +475,9 @@ pub fn VaultFilters(
 
 #[cfg(test)]
 mod tests {
-    use super::{Filters, SortKey, filter_and_sort, reorder_within};
+    use super::{
+        Filters, SavedSort, SortDir, SortKey, TagMatch, filter_and_sort, reorder_within, saved_from,
+    };
     use std::collections::HashMap;
     use vedge_ipc::{EntryTypeDto, IndexEntryDto};
 
@@ -378,7 +526,7 @@ mod tests {
                 &items,
                 &q("hub"),
                 &tag_names,
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["1"]
         );
@@ -387,7 +535,7 @@ mod tests {
                 &items,
                 &q("example"),
                 &tag_names,
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["2"]
         );
@@ -397,7 +545,7 @@ mod tests {
                 &items,
                 &q("work"),
                 &tag_names,
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["3"]
         );
@@ -417,7 +565,7 @@ mod tests {
                 &items,
                 &f,
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["c"]
         );
@@ -425,13 +573,14 @@ mod tests {
 
     #[test]
     fn filter_by_tag() {
+        // A single-element `tag_ids` behaves like the old single-tag facet.
         let mut a = entry("a", "A");
         a.tag_ids = vec!["t1".into(), "t2".into()];
         let mut b = entry("b", "B");
         b.tag_ids = vec!["t2".into()];
         let items = vec![a, b];
         let f = Filters {
-            tag_id: Some("t1".into()),
+            tag_ids: vec!["t1".into()],
             ..Default::default()
         };
         assert_eq!(
@@ -439,9 +588,79 @@ mod tests {
                 &items,
                 &f,
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["a"]
+        );
+    }
+
+    #[test]
+    fn filter_by_tags_any_broadens() {
+        // Any (OR): an entry with *either* tag matches.
+        let mut a = entry("a", "A");
+        a.tag_ids = vec!["work".into()];
+        let mut b = entry("b", "B");
+        b.tag_ids = vec!["personal".into()];
+        let c = entry("c", "C"); // no tags
+        let items = vec![a, b, c];
+        let f = Filters {
+            tag_ids: vec!["work".into(), "personal".into()],
+            tag_match: TagMatch::Any,
+            ..Default::default()
+        };
+        assert_eq!(
+            ids(&filter_and_sort(
+                &items,
+                &f,
+                &HashMap::new(),
+                SortKey::default()
+            )),
+            ["a", "b"]
+        );
+    }
+
+    #[test]
+    fn filter_by_tags_all_narrows() {
+        // All (AND): only an entry with *both* tags matches.
+        let mut a = entry("a", "A");
+        a.tag_ids = vec!["work".into(), "personal".into()];
+        let mut b = entry("b", "B");
+        b.tag_ids = vec!["work".into()];
+        let items = vec![a, b];
+        let f = Filters {
+            tag_ids: vec!["work".into(), "personal".into()],
+            tag_match: TagMatch::All,
+            ..Default::default()
+        };
+        assert_eq!(
+            ids(&filter_and_sort(
+                &items,
+                &f,
+                &HashMap::new(),
+                SortKey::default()
+            )),
+            ["a"]
+        );
+    }
+
+    #[test]
+    fn empty_tag_ids_is_no_tag_facet() {
+        let mut a = entry("a", "A");
+        a.tag_ids = vec!["work".into()];
+        let items = vec![a, entry("b", "B")];
+        let f = Filters {
+            tag_ids: vec![],
+            tag_match: TagMatch::All, // ignored when empty
+            ..Default::default()
+        };
+        assert_eq!(
+            ids(&filter_and_sort(
+                &items,
+                &f,
+                &HashMap::new(),
+                SortKey::default()
+            )),
+            ["a", "b"]
         );
     }
 
@@ -459,7 +678,7 @@ mod tests {
                 &items,
                 &f,
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["f"]
         );
@@ -476,7 +695,7 @@ mod tests {
                 &items,
                 &Filters::default(),
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["l"]
         );
@@ -498,7 +717,7 @@ mod tests {
                 &items,
                 &Filters::default(),
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             ))
             .len(),
             3
@@ -513,7 +732,7 @@ mod tests {
                 &items,
                 &f,
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["a"]
         );
@@ -527,7 +746,7 @@ mod tests {
                 &items,
                 &f,
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["r"]
         );
@@ -553,7 +772,7 @@ mod tests {
                 &items,
                 &f,
                 &HashMap::new(),
-                SortKey::NameAsc
+                SortKey::Name(SortDir::Asc)
             )),
             ["a"]
         );
@@ -570,7 +789,7 @@ mod tests {
             &items,
             &Filters::default(),
             &HashMap::new(),
-            SortKey::NameAsc,
+            SortKey::Name(SortDir::Asc),
         );
         assert_eq!(
             r.iter().map(|e| e.name.as_str()).collect::<Vec<_>>(),
@@ -591,7 +810,7 @@ mod tests {
             &items,
             &Filters::default(),
             &HashMap::new(),
-            SortKey::RecentlyUpdated,
+            SortKey::Updated(SortDir::Desc),
         );
         assert_eq!(ids(&r), ["b", "c", "a"]);
     }
@@ -628,7 +847,7 @@ mod tests {
             &items,
             &Filters::default(),
             &HashMap::new(),
-            SortKey::RecentlyUpdated,
+            SortKey::Updated(SortDir::Desc),
         );
         assert_eq!(ids(&r), ["later", "earlier"]);
     }
@@ -662,7 +881,7 @@ mod tests {
             &items,
             &Filters::default(),
             &HashMap::new(),
-            SortKey::RecentlyUpdated,
+            SortKey::Updated(SortDir::Desc),
         );
         assert_eq!(ids(&r), ["good", "bad"]);
     }
@@ -683,7 +902,7 @@ mod tests {
             &items,
             &Filters::default(),
             &HashMap::new(),
-            SortKey::Manual,
+            SortKey::Custom,
         );
         // order 0: Beta(d), Zeta(a) [name tie]; then Mid(c)=1; then Alpha(b)=2.
         assert_eq!(ids(&r), ["d", "a", "c", "b"]);
@@ -731,11 +950,132 @@ mod tests {
             &items,
             &Filters::default(),
             &HashMap::new(),
-            SortKey::NameAsc,
+            SortKey::Name(SortDir::Asc),
         );
         assert_eq!(
             r.iter().map(|e| e.name.as_str()).collect::<Vec<_>>(),
             ["Alpha", "Zeta"]
         );
+    }
+
+    #[test]
+    fn sort_name_desc_reverses() {
+        let items = vec![
+            entry("1", "banana"),
+            entry("2", "Apple"),
+            entry("3", "cherry"),
+        ];
+        let r = filter_and_sort(
+            &items,
+            &Filters::default(),
+            &HashMap::new(),
+            SortKey::Name(SortDir::Desc),
+        );
+        assert_eq!(
+            r.iter().map(|e| e.name.as_str()).collect::<Vec<_>>(),
+            ["cherry", "banana", "Apple"] // case-insensitive, reversed
+        );
+    }
+
+    #[test]
+    fn sort_by_url_asc_and_desc_missing_url_sorts_as_empty() {
+        let mut a = entry("a", "A");
+        a.url = Some("https://zebra.example".into());
+        let mut b = entry("b", "B");
+        b.url = Some("https://apple.example".into());
+        let c = entry("c", "C"); // no url → sorts as ""
+        let items = vec![a, b, c];
+        // Asc: "" (c) first, then apple (b), then zebra (a).
+        let asc = filter_and_sort(
+            &items,
+            &Filters::default(),
+            &HashMap::new(),
+            SortKey::Url(SortDir::Asc),
+        );
+        assert_eq!(ids(&asc), ["c", "b", "a"]);
+        // Desc reverses.
+        let desc = filter_and_sort(
+            &items,
+            &Filters::default(),
+            &HashMap::new(),
+            SortKey::Url(SortDir::Desc),
+        );
+        assert_eq!(ids(&desc), ["a", "b", "c"]);
+    }
+
+    #[test]
+    fn sort_key_default_is_name_asc() {
+        assert_eq!(SortKey::default(), SortKey::Name(SortDir::Asc));
+    }
+
+    #[test]
+    fn saved_sort_round_trips_every_new_token() {
+        for s in [
+            SavedSort::Name(SortDir::Asc),
+            SavedSort::Name(SortDir::Desc),
+            SavedSort::Url(SortDir::Asc),
+            SavedSort::Url(SortDir::Desc),
+            SavedSort::Updated(SortDir::Asc),
+            SavedSort::Updated(SortDir::Desc),
+            SavedSort::RecentlyUsed,
+        ] {
+            let token: String = s.into();
+            assert_eq!(SavedSort::from(token), s, "token round-trips");
+        }
+    }
+
+    #[test]
+    fn saved_sort_reads_legacy_tokens() {
+        // The old fieldless `SortKey` serialized as these bare strings.
+        assert_eq!(
+            SavedSort::from("NameAsc".to_owned()),
+            SavedSort::Name(SortDir::Asc)
+        );
+        assert_eq!(
+            SavedSort::from("RecentlyUpdated".to_owned()),
+            SavedSort::Updated(SortDir::Desc)
+        );
+        assert_eq!(
+            SavedSort::from("RecentlyUsed".to_owned()),
+            SavedSort::RecentlyUsed
+        );
+        // 🔴 The old custom order can't be saved (⑪) → coerces to Name(Asc).
+        assert_eq!(
+            SavedSort::from("Manual".to_owned()),
+            SavedSort::Name(SortDir::Asc)
+        );
+        // Anything unrecognized also coerces, never fails.
+        assert_eq!(
+            SavedSort::from("garbage".to_owned()),
+            SavedSort::Name(SortDir::Asc)
+        );
+    }
+
+    #[test]
+    fn saved_sort_survives_a_serde_json_round_trip() {
+        let s = SavedSort::Updated(SortDir::Desc);
+        let json = serde_json::to_string(&s).unwrap();
+        assert_eq!(json, "\"updated_desc\"");
+        assert_eq!(serde_json::from_str::<SavedSort>(&json).unwrap(), s);
+        // A legacy value deserializes too.
+        assert_eq!(
+            serde_json::from_str::<SavedSort>("\"Manual\"").unwrap(),
+            SavedSort::Name(SortDir::Asc)
+        );
+    }
+
+    #[test]
+    fn saved_from_coerces_custom_and_widens_back() {
+        // Custom has no SavedSort home → Name(Asc).
+        assert_eq!(saved_from(SortKey::Custom), SavedSort::Name(SortDir::Asc));
+        // Every SavedSort widens back to the same SortKey.
+        for s in [
+            SavedSort::Name(SortDir::Desc),
+            SavedSort::Url(SortDir::Asc),
+            SavedSort::Updated(SortDir::Desc),
+            SavedSort::RecentlyUsed,
+        ] {
+            assert_eq!(saved_from(SortKey::from(s)), s);
+        }
     }
 }
