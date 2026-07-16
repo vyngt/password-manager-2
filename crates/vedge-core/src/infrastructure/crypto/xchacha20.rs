@@ -33,7 +33,11 @@ fn cipher(key: &[u8; 32]) -> XChaCha20Poly1305 {
     XChaCha20Poly1305::new(key.into())
 }
 
-fn aead_encrypt(
+/// XChaCha20-Poly1305 seal with a fresh random nonce. `pub(crate)` so the export
+/// envelope (slice 5.3) seals its tar through the SAME AEAD as the vault, rather
+/// than forking a second code path. The nonce is returned to be stored alongside
+/// the ciphertext; the caller supplies its own `aad`.
+pub(crate) fn aead_encrypt(
     key: &[u8; 32],
     payload: &[u8],
     aad: &[u8],
@@ -48,7 +52,9 @@ fn aead_encrypt(
     Ok((nonce_bytes, ct))
 }
 
-fn aead_decrypt(
+/// XChaCha20-Poly1305 open. `pub(crate)` companion to [`aead_encrypt`] for the
+/// export envelope. Any authentication failure collapses to `DecryptionFailed`.
+pub(crate) fn aead_decrypt(
     key: &[u8; 32],
     nonce: &[u8; NONCE_LEN],
     ct: &[u8],

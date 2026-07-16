@@ -157,6 +157,11 @@ impl From<VaultError> for CommandError {
             | VaultError::BackupCredentialsDiffer
             | VaultError::TargetUnverified
             | VaultError::TargetMissing
+            // Export/import refusals (slice 5.3): an export sealed by a newer build,
+            // or a structurally invalid export file. A wrong export passphrase is
+            // `DecryptionFailed` (above), not one of these.
+            | VaultError::ExportUnsupportedFormat(_)
+            | VaultError::ExportMalformed(_)
             // A breach lookup failure is normally degraded inside `scan_health`
             // (surfaced as `breach_check_failed`); this mapping is defensive only.
             | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),

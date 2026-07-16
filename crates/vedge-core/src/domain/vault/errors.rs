@@ -175,6 +175,18 @@ pub enum VaultError {
     #[error("there is no vault to replace at this path — open the backup instead")]
     TargetMissing,
 
+    // --- export / import entries (slice 5.3) ---
+    /// An export sealed by a NEWER build. An OLDER `format_version` is always
+    /// accepted (H1): once one export exists on a user's disk, every future
+    /// version must read it — forever. Guarded with `>`, never `!=`.
+    #[error("unsupported export format version: {0}")]
+    ExportUnsupportedFormat(u32),
+
+    /// The export file's header is not a `VEdge` export (bad magic, truncated, or
+    /// structurally invalid) — distinct from a wrong password (`DecryptionFailed`).
+    #[error("export file is malformed: {0}")]
+    ExportMalformed(String),
+
     // --- screen lock (slice 4.5b) ---
     #[error("screen-lock state is unavailable on this device")]
     ScreenLockUnavailable,
