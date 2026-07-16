@@ -32,9 +32,17 @@ pub fn DataTable<T>(
     /// are stable `row_key`s (never indices). Dragging is gated by `reorder_enabled`.
     #[prop(into, default = None)]
     on_row_reorder: Option<Callback<(String, String)>>,
-    /// Gates row dragging. When false, rows are not draggable and drops are ignored.
+    /// Gates row-to-row **reorder**: the drop indicator + `on_row_reorder`. When
+    /// false, rows accept no in-table drops.
     #[prop(into, default = Signal::stored(false))]
     reorder_enabled: Signal<bool>,
+    /// Makes rows draggable for an **external** drop target (one outside the table
+    /// — e.g. a folder tree) independent of `reorder_enabled`. On dragstart the
+    /// row's `row_key` is written to `dataTransfer` as `text/plain` for that target
+    /// to read. Rows drag when this OR `reorder_enabled` is set; only
+    /// `reorder_enabled` makes the table itself a drop target.
+    #[prop(into, default = Signal::stored(false))]
+    row_draggable: Signal<bool>,
     /// Optional per-row `data-testid` value (e.g. an e2e hook), computed from the row.
     #[prop(into, default = None)]
     row_testid: Option<StringFn<T>>,
@@ -374,7 +382,9 @@ where
                 };
 
                 let on_dragstart = move |ev: web_sys::DragEvent| {
-                    if !reorder_enabled.get_untracked() {
+                    // Write the key whenever the row can be dragged anywhere — an
+                    // external target (folder tree) reads it just like reorder does.
+                    if !reorder_enabled.get_untracked() && !row_draggable.get_untracked() {
                         return;
                     }
                     if let Some(dt) = ev.data_transfer() {
@@ -425,7 +435,9 @@ where
                         node_ref=tr_ref
                         class=tr_class
                         data-testid=row_testid_val
-                        draggable=move || reorder_enabled.get().then_some("true")
+                        draggable=move || {
+                            (reorder_enabled.get() || row_draggable.get()).then_some("true")
+                        }
                         aria-selected=move || is_selected.get().then_some("true")
                         aria-rowindex=(idx + 1).to_string()
                         tabindex=tr_tabindex
