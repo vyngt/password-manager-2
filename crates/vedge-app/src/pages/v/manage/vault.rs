@@ -10,6 +10,11 @@ use crate::features::vault::folder_move::FolderMove;
 use crate::features::vault::folder_tree::{
     FolderBreadcrumb, FolderScope, FolderTree, build_folder_tree, subtree_contents,
 };
+use crate::features::vault::selection::{ViewIdentity, identity_changed, union_tags};
+use crate::features::vault::selection_bar::SelectionBar;
+use crate::features::vault::selection_dialogs::{
+    BulkTrashDialog, SelectionMoveDialog, SelectionTagDialog,
+};
 use crate::features::vault::smart_folders::{
     SmartFolder, SmartFolders, apply_preset, capture_preset,
 };
@@ -25,7 +30,7 @@ use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -81,6 +86,11 @@ pub fn VaultPage() -> impl IntoView {
     let trashed_view = RwSignal::new(false);
     // Tags back both the tag facet and tag-name search.
     let tags = RwSignal::new(Vec::<TagMetaDto>::new());
+    // Multi-select set (entry ULIDs) for the bulk action bar (slice 5.3.1c).
+    // Keyed by stable id (⓪), so it survives a re-sort; cleared on a filter
+    // change (⑤, the Effect below). Distinct from the single-entry `selected_id`
+    // that drives the detail drawer.
+    let selected = RwSignal::new(Vec::<String>::new());
 
     // Folder navigation scope (client-side, over the loaded index) + the targets
     // for the move-to-folder picker and the non-empty-folder delete confirm.
@@ -93,6 +103,10 @@ pub fn VaultPage() -> impl IntoView {
     // the empty-trash gate.
     let hard_delete_target = RwSignal::new(Option::<IndexEntryDto>::None);
     let empty_trash_open = RwSignal::new(false);
+    // Bulk action-bar dialogs (slice 5.3.1c), each opened from the selection bar.
+    let bulk_trash_open = RwSignal::new(false);
+    let bulk_move_open = RwSignal::new(false);
+    let bulk_tag_open = RwSignal::new(false);
     // Saved "smart folder" filter presets (per-vault, persisted in app_settings).
     let smart_folders = RwSignal::new(Vec::<SmartFolder>::new());
 
@@ -124,6 +138,32 @@ pub fn VaultPage() -> impl IntoView {
             scope: current_scope.get(),
         };
         tag_map.with(|m| filter_and_sort(&items.get(), &filters, m, sort.get()))
+    });
+    // ⑤ The identity of the *visible set* — the facets plus the active/trashed
+    // source, but deliberately **not** `sort` (a re-sort shows the same rows in a
+    // new order). A `Memo` so it only changes when the set actually changes.
+    let view_identity = Memo::new(move |_| {
+        ViewIdentity::new(
+            Filters {
+                query: search_query.get(),
+                entry_type: entry_type.get(),
+                tag_id: tag_id.get(),
+                favorites_only: favorites_only.get(),
+                scope: current_scope.get(),
+            },
+            trashed_view.get(),
+        )
+    });
+    // 🔴 ⑤ Clear the selection when the visible set changes — you must not be able
+    // to Trash rows you can no longer see. Prev-guarded so the initial mount clears
+    // nothing; `sort` is absent from `view_identity`, so a sort change never even
+    // re-runs this Effect (the selection survives a re-sort, ⓪).
+    Effect::new(move |prev: Option<ViewIdentity>| {
+        let cur = view_identity.get();
+        if prev.as_ref().is_some_and(|p| identity_changed(p, &cur)) {
+            selected.set(Vec::new());
+        }
+        cur
     });
     // Distinguish *no entries yet* / *no matches* / *empty trash* when the table
     // is empty (shown by `VaultTable`'s fallback).
@@ -705,60 +745,194 @@ pub fn VaultPage() -> impl IntoView {
         });
     });
 
+    // --- Bulk actions (slice 5.3.1c) ---
+    // No batch commands exist, so each loops the single-entry api wrapper
+    // sequentially, stops on first error, clears the selection, then refreshes
+    // (the `on_empty` / `on_empty_trash` precedent). Every handler restricts the
+    // selection to ids still present in the active list — a stale id (an entry
+    // deleted single-handedly since selecting) is dropped, never acted on.
+    let present_selected = move || {
+        let present: HashSet<String> =
+            items.with_untracked(|l| l.iter().map(|e| e.id.clone()).collect());
+        selected
+            .get_untracked()
+            .into_iter()
+            .filter(|id| present.contains(id))
+            .collect::<Vec<String>>()
+    };
+
+    let on_bulk_trash = Callback::new(move |()| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_bulk_trash).to_owned();
+        let ids = present_selected();
+        if ids.is_empty() {
+            selected.set(Vec::new());
+            return;
+        }
+        let ok_msg = t_string!(i18n, vault.bulk_trashed).to_owned();
+        // Close the detail drawer if its entry is in the batch (it's leaving the
+        // active list). Read in the handler body (owner present).
+        let open_in_batch = ui.selected_id.get().is_some_and(|sid| ids.contains(&sid));
+        spawn_local(async move {
+            let mut failed = false;
+            for id in &ids {
+                if let Err(e) = api::entry::soft_delete_entry(&vault_path, id).await {
+                    show_error(format!("{err_prefix}{e}"));
+                    failed = true;
+                    break;
+                }
+            }
+            selected.set(Vec::new());
+            if open_in_batch {
+                ui.selected_id.set(None);
+            }
+            if !failed {
+                show_success(ok_msg);
+            }
+            refresh();
+        });
+    });
+
+    let on_bulk_move = Callback::new(move |dest: Option<String>| {
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_bulk_move).to_owned();
+        let ids = present_selected();
+        if ids.is_empty() {
+            selected.set(Vec::new());
+            return;
+        }
+        let ok_msg = t_string!(i18n, vault.bulk_moved).to_owned();
+        spawn_local(async move {
+            let mut failed = false;
+            for id in &ids {
+                if let Err(e) = api::entry::move_entry(&vault_path, id, dest.as_deref()).await {
+                    show_error(format!("{err_prefix}{e}"));
+                    failed = true;
+                    break;
+                }
+            }
+            selected.set(Vec::new());
+            if !failed {
+                show_success(ok_msg);
+            }
+            refresh();
+        });
+    });
+
+    let on_bulk_tag = Callback::new(move |add: Vec<String>| {
+        if add.is_empty() {
+            return;
+        }
+        let vault_path = active.path.get().unwrap_or_default();
+        let err_prefix = t_string!(i18n, vault.err_bulk_tag).to_owned();
+        // Snapshot each selected entry's current tag_ids up front — `set_tags`
+        // *replaces* the list, so we union with the existing set per entry.
+        let targets: Vec<(String, Vec<String>)> = items.with_untracked(|l| {
+            selected
+                .get_untracked()
+                .iter()
+                .filter_map(|id| {
+                    l.iter()
+                        .find(|e| e.id == *id)
+                        .map(|e| (e.id.clone(), e.tag_ids.clone()))
+                })
+                .collect()
+        });
+        if targets.is_empty() {
+            selected.set(Vec::new());
+            return;
+        }
+        let ok_msg = t_string!(i18n, vault.bulk_tagged).to_owned();
+        spawn_local(async move {
+            let mut failed = false;
+            for (id, existing) in &targets {
+                let new_ids = union_tags(existing, &add);
+                if let Err(e) = api::entry::set_tags(&vault_path, id, &new_ids).await {
+                    show_error(format!("{err_prefix}{e}"));
+                    failed = true;
+                    break;
+                }
+            }
+            selected.set(Vec::new());
+            if !failed {
+                show_success(ok_msg);
+            }
+            refresh();
+        });
+    });
+
     view! {
         <div class="h-full flex flex-col gap-4 p-4">
             <div class="flex items-center gap-3">
-                <VaultFilters
-                    search_query=search_query
-                    entry_type=entry_type
-                    tag_id=tag_id
-                    favorites_only=favorites_only
-                    sort=sort
-                    tags=Signal::derive(move || tags.get())
-                />
-                <Button
-                    variant=Variant::Primary
-                    size=Size::Sm
-                    class="whitespace-nowrap"
-                    attr:data-testid="vault-new-entry"
-                    on:click=move |_| {
-                        show_attach.set(false);
-                        ui.show_create.update(|v| *v = !*v);
+                // ⑥ At N>0 the toolbar IS replaced by the action bar (a mode, not a
+                // stacked strip). Selection is active-view only, so the trash
+                // toolbar is never swapped.
+                <Show
+                    when=move || selected.get().is_empty()
+                    fallback=move || {
+                        view! {
+                            <SelectionBar
+                                count=Signal::derive(move || selected.get().len())
+                                on_tag=Callback::new(move |()| bulk_tag_open.set(true))
+                                on_move=Callback::new(move |()| bulk_move_open.set(true))
+                                on_trash=Callback::new(move |()| bulk_trash_open.set(true))
+                                on_clear=Callback::new(move |()| selected.set(Vec::new()))
+                            />
+                        }
                     }
                 >
-                    {move || t!(i18n, vault.new_item)}
-                </Button>
-                <Button
-                    variant=Variant::Secondary
-                    size=Size::Sm
-                    class="whitespace-nowrap"
-                    on:click=move |_| {
-                        ui.show_create.set(false);
-                        show_attach.update(|v| *v = !*v);
-                    }
-                >
-                    {move || t!(i18n, vault.attach_document)}
-                </Button>
-                <Button
-                    variant=Variant::Secondary
-                    size=Size::Sm
-                    class="whitespace-nowrap"
-                    on:click=move |_| manage_tags_open.set(true)
-                >
-                    {move || t!(i18n, vault.tag_manage)}
-                </Button>
-                // Empty-trash — only in Trash view, and only when there's something
-                // to empty (an empty list shows the "Trash is empty" state instead).
-                <Show when=move || trashed_view.get() && !items.get().is_empty()>
+                    <VaultFilters
+                        search_query=search_query
+                        entry_type=entry_type
+                        tag_id=tag_id
+                        favorites_only=favorites_only
+                        sort=sort
+                        tags=Signal::derive(move || tags.get())
+                    />
                     <Button
-                        variant=Variant::Danger
+                        variant=Variant::Primary
                         size=Size::Sm
                         class="whitespace-nowrap"
-                        attr:data-testid="trash-empty"
-                        on:click=move |_| empty_trash_open.set(true)
+                        attr:data-testid="vault-new-entry"
+                        on:click=move |_| {
+                            show_attach.set(false);
+                            ui.show_create.update(|v| *v = !*v);
+                        }
                     >
-                        {move || t!(i18n, vault.empty_trash_action)}
+                        {move || t!(i18n, vault.new_item)}
                     </Button>
+                    <Button
+                        variant=Variant::Secondary
+                        size=Size::Sm
+                        class="whitespace-nowrap"
+                        on:click=move |_| {
+                            ui.show_create.set(false);
+                            show_attach.update(|v| *v = !*v);
+                        }
+                    >
+                        {move || t!(i18n, vault.attach_document)}
+                    </Button>
+                    <Button
+                        variant=Variant::Secondary
+                        size=Size::Sm
+                        class="whitespace-nowrap"
+                        on:click=move |_| manage_tags_open.set(true)
+                    >
+                        {move || t!(i18n, vault.tag_manage)}
+                    </Button>
+                    // Empty-trash — only in Trash view, and only when there's something
+                    // to empty (an empty list shows the "Trash is empty" state instead).
+                    <Show when=move || trashed_view.get() && !items.get().is_empty()>
+                        <Button
+                            variant=Variant::Danger
+                            size=Size::Sm
+                            class="whitespace-nowrap"
+                            attr:data-testid="trash-empty"
+                            on:click=move |_| empty_trash_open.set(true)
+                        >
+                            {move || t!(i18n, vault.empty_trash_action)}
+                        </Button>
+                    </Show>
                 </Show>
             </div>
 
@@ -784,6 +958,25 @@ pub fn VaultPage() -> impl IntoView {
                 open=empty_trash_open
                 count=Signal::derive(move || items.get().len())
                 on_confirm=on_empty_trash
+            />
+
+            // Bulk action-bar dialogs (slice 5.3.1c). `count` mirrors the bar.
+            <BulkTrashDialog
+                open=bulk_trash_open
+                count=Signal::derive(move || selected.get().len())
+                on_confirm=on_bulk_trash
+            />
+            <SelectionMoveDialog
+                open=bulk_move_open
+                count=Signal::derive(move || selected.get().len())
+                folders=folders
+                on_move=on_bulk_move
+            />
+            <SelectionTagDialog
+                open=bulk_tag_open
+                count=Signal::derive(move || selected.get().len())
+                tags=Signal::derive(move || tags.get())
+                on_apply=on_bulk_tag
             />
 
             <Show when=move || ui.show_create.get()>
@@ -847,6 +1040,9 @@ pub fn VaultPage() -> impl IntoView {
                         on_move_request=on_move_request
                         on_reorder=on_reorder
                         reorder_enabled=Signal::derive(move || sort.get() == SortKey::Manual)
+                        selectable=Signal::derive(move || !trashed_view.get())
+                        selected_rows=selected
+                        on_selection_change=Callback::new(move |ids: Vec<String>| selected.set(ids))
                     />
                 </Show>
                 {move || {

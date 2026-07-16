@@ -25,7 +25,7 @@ use vedge_ui::components::toggle::Toggle;
 /// The active facet state. `query` matches name + url + tag names; the rest are
 /// exact facets that AND together. Active-vs-trashed is handled by the source
 /// fetch, not here.
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Filters {
     pub query: String,
     pub entry_type: Option<EntryTypeDto>,
