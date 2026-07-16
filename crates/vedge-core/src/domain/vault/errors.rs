@@ -187,6 +187,11 @@ pub enum VaultError {
     #[error("export file is malformed: {0}")]
     ExportMalformed(String),
 
+    /// `commit_import` / `cancel_import` was called with no import staged in this
+    /// session — begin the import first (slice 5.3b).
+    #[error("no import is in progress for this session")]
+    ImportNotStarted,
+
     // --- screen lock (slice 4.5b) ---
     #[error("screen-lock state is unavailable on this device")]
     ScreenLockUnavailable,

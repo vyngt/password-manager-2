@@ -5698,6 +5698,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "psl"
+version = "2.1.219"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c29b88c3f8002851c2571f798b898d257cec88d40246523af0afc7e6b30b3640"
+dependencies = [
+ "psl-types",
+]
+
+[[package]]
 name = "psl-types"
 version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9033,6 +9042,7 @@ dependencies = [
  "indexmap 2.14.0",
  "keyring",
  "libsqlite3-sys",
+ "psl",
  "rand 0.10.1",
  "region",
  "sea-orm",
@@ -9050,6 +9060,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "ulid",
+ "url",
  "windows",
  "zeroize",
  "zxcvbn",

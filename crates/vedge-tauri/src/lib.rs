@@ -129,6 +129,10 @@ pub fn run() {
             commands::maintenance::run_maintenance,
             // ---- export entries (slice 5.3a) ----
             commands::export::export_entries,
+            // ---- import entries (slice 5.3b) ----
+            commands::import::begin_import,
+            commands::import::commit_import,
+            commands::import::cancel_import,
             // ---- backup (slice 5.2) ----
             commands::backup::backup_vault,
             // ---- restore (slice 5.2b) ----
