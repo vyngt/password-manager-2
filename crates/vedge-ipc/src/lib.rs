@@ -28,6 +28,7 @@ pub mod emergency_kit;
 pub mod entry;
 pub mod envelope;
 pub mod error;
+pub mod export;
 pub mod health;
 pub mod misc;
 pub mod settings;
@@ -52,6 +53,7 @@ pub use entry::{
 };
 pub use envelope::ErrorEnvelope;
 pub use error::IpcError;
+pub use export::ExportReportDto;
 pub use health::{
     AgeConfidenceDto, FindingDto, FindingKindDto, HealthReportDto, HealthScanInputDto,
     HealthSummaryDto, SecretFieldDto, SeverityDto, SkipReasonDto, SkippedDto,

@@ -95,3 +95,20 @@ backup_health_snapshot: "Last local snapshot (not a backup):"
 # NOTE: the 5.2c `restore_*` keys were removed in 5.2.2. Restore/Replace no longer lives in
 # Settings at all — it lives on the launch screen (`unlock.ob_*`), because a vault you need to
 # replace is a vault you cannot unlock, and Settings requires an unlocked vault. That was H0.
+# --- 5.3a export entries ---
+export: "Export"
+export_title: "Export entries"
+export_desc: "Save a portable copy of this vault's entries to a file."
+# 🔴 Decision ⑧ — the honest warning. Never claim a file can be securely wiped.
+export_warning: "An export contains your secrets. Keep it on an encrypted volume and delete it when you're done — a file cannot be reliably wiped from modern drives, and a cloud-synced folder may keep old copies."
+export_encrypt_label: "Encrypt the export (recommended)"
+export_encrypt_desc: "All entry types, sealed with a passphrase you choose. You'll need that passphrase to open it again."
+export_passphrase_placeholder: "Export passphrase"
+export_csv_title: "Plaintext CSV — logins only"
+export_csv_warning: "This file is NOT encrypted: anyone who opens it sees your passwords. Only login entries are included."
+export_spreadsheet_safe: "Spreadsheet-safe (prefix values that could run as formulas)"
+export_button: "Export…"
+export_saved: "Export saved."
+export_failed: "Could not export: "
+export_report_title: "Last export"
+export_report_entries: "entries exported"
