@@ -11,11 +11,13 @@
 //! Data loading follows the house `RwSignal` + `spawn_local` + `Effect` idiom (see
 //! `manage/health.rs`), not `Resource`/`Action`.
 
+use std::collections::HashMap;
+
 use leptos::either::Either;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
-use vedge_ipc::SnapshotDto;
+use vedge_ipc::{ImportActionDto, ImportPreviewRow, SnapshotDto};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::foundation::button::Button;
@@ -23,6 +25,7 @@ use vedge_ui::components::foundation::empty_state::EmptyState;
 use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 
 use crate::api;
+use crate::features::settings::import_preview_table::ImportPreviewTable;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::entry_view::{clock_time, long_date};
 use crate::i18n::{t_string, use_i18n};
@@ -42,6 +45,10 @@ pub fn SnapshotsPage() -> impl IntoView {
     let reload = RwSignal::new(0_u32);
     // The id of the snapshot whose Revert is awaiting an inline confirm (None = no prompt).
     let pending_revert = RwSignal::new(Option::<String>::None);
+    // The tweezers (5.3c): recover individual entries FROM a snapshot into the live vault.
+    // One preview at a time; picking + committing reuse the 5.3b import path.
+    let preview = RwSignal::new(Vec::<ImportPreviewRow>::new());
+    let picked = RwSignal::new(HashMap::<u32, bool>::new());
 
     // Dismiss label read `untrack`ed so it is safe to use from `spawn_local` futures.
     let notify = move |msg: String, variant: ToastVariant| {
@@ -135,6 +142,79 @@ pub fn SnapshotsPage() -> impl IntoView {
         });
     };
 
+    // Begin recovering entries from a snapshot: open it with the CURRENT session and load
+    // the derivatives-only preview (Decision ⑦). A stale snapshot returns an error whose
+    // message is the honest "recover with its original password" copy — surfaced, never a
+    // silent no-op. Reuses `begin_snapshot_import` → the shared 5.3b commit path.
+    let do_recover = move |id: String| {
+        let path = untrack(|| active.path.get()).unwrap_or_default();
+        if path.is_empty() || busy.get_untracked() {
+            return;
+        }
+        let err_prefix = untrack(|| t_string!(i18n, snapshots.err_recover).to_owned());
+        busy.set(true);
+        spawn_local(async move {
+            match api::snapshot::begin_recover(&path, &id).await {
+                Ok(rows) => {
+                    // Default: recover everything except rows that cannot be committed.
+                    let init: HashMap<u32, bool> = rows
+                        .iter()
+                        .map(|r| (r.row_id, r.status != "error"))
+                        .collect();
+                    picked.set(init);
+                    preview.set(rows);
+                }
+                Err(e) => notify(format!("{err_prefix}{e}"), ToastVariant::Danger),
+            }
+            busy.set(false);
+        });
+    };
+
+    let recover_commit = move || {
+        let path = untrack(|| active.path.get()).unwrap_or_default();
+        let rows = preview.get_untracked();
+        let pk = picked.get_untracked();
+        if rows.is_empty() || path.is_empty() {
+            return;
+        }
+        let actions: Vec<ImportActionDto> = rows
+            .iter()
+            .map(|r| ImportActionDto {
+                row_id: r.row_id,
+                import: pk.get(&r.row_id).copied().unwrap_or(false),
+            })
+            .collect();
+        let err_prefix = untrack(|| t_string!(i18n, snapshots.err_recover).to_owned());
+        let done = untrack(|| t_string!(i18n, snapshots.recover_done).to_owned());
+        busy.set(true);
+        spawn_local(async move {
+            match api::import::commit(&path, &actions).await {
+                Ok(rep) => {
+                    let variant = if rep.failed.is_empty() {
+                        ToastVariant::Success
+                    } else {
+                        ToastVariant::Warning
+                    };
+                    notify(format!("{} {done}", rep.imported), variant);
+                    preview.set(Vec::new());
+                    picked.set(HashMap::new());
+                    reload.update(|n| *n = n.wrapping_add(1));
+                }
+                Err(e) => notify(format!("{err_prefix}{e}"), ToastVariant::Danger),
+            }
+            busy.set(false);
+        });
+    };
+
+    let recover_cancel = move || {
+        let path = untrack(|| active.path.get()).unwrap_or_default();
+        preview.set(Vec::new());
+        picked.set(HashMap::new());
+        spawn_local(async move {
+            let _ = api::import::cancel(&path).await;
+        });
+    };
+
     view! {
         <div class="h-full overflow-y-auto p-6" data-testid="snapshots-page">
             <div class="max-w-4xl mx-auto space-y-4">
@@ -193,6 +273,7 @@ pub fn SnapshotsPage() -> impl IntoView {
                                                     pending_revert=pending_revert
                                                     on_delete=Callback::new(delete)
                                                     on_revert=Callback::new(do_revert)
+                                                    on_recover=Callback::new(do_recover)
                                                 />
                                             }
                                         }
@@ -202,6 +283,47 @@ pub fn SnapshotsPage() -> impl IntoView {
                         )
                     }
                 }}
+
+                // ---- The tweezers: recover picked entries from a snapshot (5.3c) ----
+                <Show when=move || !preview.get().is_empty() fallback=|| ()>
+                    <div
+                        class="rounded-md border border-border bg-surface-1 p-4 space-y-3"
+                        data-testid="recover-panel"
+                    >
+                        <div class="text-sm font-medium text-text-primary">
+                            {move || t_string!(i18n, snapshots.recover_title).to_owned()}
+                        </div>
+                        <ImportPreviewTable
+                            preview=preview
+                            picked=picked
+                            testid="recover-preview-table"
+                        />
+                        <div class="flex items-center justify-end gap-2">
+                            <Button
+                                variant=Variant::Secondary
+                                on:click=move |_: web_sys::MouseEvent| recover_cancel()
+                            >
+                                {move || t_string!(i18n, snapshots.recover_cancel).to_owned()}
+                            </Button>
+                            {move || {
+                                let b = busy.get();
+                                view! {
+                                    <Button
+                                        variant=Variant::Primary
+                                        loading=b
+                                        disabled=b
+                                        attr:data-testid="recover-commit"
+                                        on:click=move |_: web_sys::MouseEvent| recover_commit()
+                                    >
+                                        {move || {
+                                            t_string!(i18n, snapshots.recover_commit).to_owned()
+                                        }}
+                                    </Button>
+                                }
+                            }}
+                        </div>
+                    </div>
+                </Show>
             </div>
         </div>
     }
@@ -213,6 +335,7 @@ fn SnapshotRow(
     pending_revert: RwSignal<Option<String>>,
     on_delete: Callback<String>,
     on_revert: Callback<String>,
+    on_recover: Callback<String>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     let id = snap.id.clone();
@@ -225,6 +348,7 @@ fn SnapshotRow(
     let id_revert = id.clone();
     let id_confirm = id.clone();
     let id_delete = id.clone();
+    let id_recover = id.clone();
     let id_pending = id;
     let awaiting = move || pending_revert.get().as_deref() == Some(id_pending.as_str());
 
@@ -301,8 +425,18 @@ fn SnapshotRow(
                     } else {
                         let id_r = id_revert.clone();
                         let id_d = id_delete.clone();
+                        let id_rec = id_recover.clone();
                         Either::Right(
                             view! {
+                                <Button
+                                    variant=Variant::Secondary
+                                    attr:data-testid="snapshot-recover"
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        on_recover.run(id_rec.clone());
+                                    }
+                                >
+                                    {move || t_string!(i18n, snapshots.recover).to_owned()}
+                                </Button>
                                 <Button
                                     variant=Variant::Secondary
                                     attr:data-testid="snapshot-revert"

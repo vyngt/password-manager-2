@@ -21,6 +21,7 @@ use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 
 use crate::api;
 use crate::api::dialog::{DialogFilter, OpenDialogOptions};
+use crate::features::settings::import_preview_table::ImportPreviewTable;
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::{t, t_string, use_i18n};
 
@@ -242,64 +243,11 @@ pub fn ImportPanel() -> impl IntoView {
             }}
         </div>
 
-        // ---- Preview table ----
-        <Show when=move || !preview.get().is_empty() fallback=|| ()>
-            <div class="py-3.5 border-b border-border" data-testid="import-preview-table">
-                <table class="w-full text-xs">
-                    <tbody>
-                        <For
-                            each=move || preview.get()
-                            key=|r| r.row_id
-                            children=move |r: ImportPreviewRow| {
-                                let rid = r.row_id;
-                                let is_error = r.status == "error";
-                                let ty = r.entry_type;
-                                let name = r.name;
-                                let username = r.username.unwrap_or_default();
-                                let has_pw = r.has_password;
-                                let dup = r.duplicate_of;
-                                let status_badge = render_status(&r.status, r.status_message, dup);
-                                let checked = move || {
-                                    picked.get().get(&rid).copied().unwrap_or(false)
-                                };
-                                view! {
-                                    <tr class="border-b border-border/50">
-                                        <td class="py-1 pr-2 align-top">
-                                            <input
-                                                type="checkbox"
-                                                prop:checked=checked
-                                                disabled=is_error
-                                                on:change:target=move |ev| {
-                                                    let c = ev.target().checked();
-                                                    picked
-                                                        .update(|m| {
-                                                            m.insert(rid, c);
-                                                        });
-                                                }
-                                            />
-                                        </td>
-                                        <td class="py-1 pr-2 align-top text-text-secondary">
-                                            {ty}
-                                        </td>
-                                        <td class="py-1 pr-2 align-top text-text-primary font-medium">
-                                            {name}
-                                            <span class="block text-text-secondary font-normal">
-                                                {username}
-                                            </span>
-                                        </td>
-                                        <td class="py-1 pr-2 align-top text-text-secondary">
-                                            {if has_pw { "•••" } else { "" }}
-                                        </td>
-                                        <td class="py-1 align-top">{status_badge}</td>
-                                    </tr>
-                                }
-                            }
-                        />
-                    </tbody>
-                </table>
-            </div>
+        // ---- Preview table (shared component — identical rows on every surface) ----
+        <ImportPreviewTable preview=preview picked=picked />
 
-            // ---- Commit / Cancel ----
+        // ---- Commit / Cancel ----
+        <Show when=move || !preview.get().is_empty() fallback=|| ()>
             <div class="flex items-center justify-end gap-2 py-3.5 border-b border-border">
                 <Button
                     variant=Variant::Secondary
@@ -357,29 +305,4 @@ pub fn ImportPanel() -> impl IntoView {
                 })
         }}
     }
-}
-
-/// Render a row's status badge. `ok` → nothing; `warning`/`error` → the (English)
-/// backend message; a `duplicate_of` adds an advisory hint. `+ use<>` so the
-/// returned `impl IntoView` captures no borrow (Rust 2024 RPIT capture rule) — the
-/// view owns its `text`.
-fn render_status(
-    status: &str,
-    message: Option<String>,
-    duplicate_of: Option<u32>,
-) -> impl IntoView + use<> {
-    let color = match status {
-        "error" => "var(--color-danger-text)",
-        "warning" => "var(--color-warning-text)",
-        _ => "var(--color-text-secondary)",
-    };
-    let mut text = message.unwrap_or_default();
-    if let Some(other) = duplicate_of {
-        if !text.is_empty() {
-            text.push_str(" · ");
-        }
-        text.push_str("duplicate of row ");
-        text.push_str(&other.to_string());
-    }
-    view! { <span style=format!("color:{color}")>{text}</span> }
 }

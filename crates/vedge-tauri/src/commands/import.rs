@@ -23,7 +23,8 @@ use zeroize::Zeroizing;
 
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{
-    ImportSource, begin_import as begin_import_core, cancel_import as cancel_import_core,
+    ImportSource, begin_import as begin_import_core,
+    begin_snapshot_import as begin_snapshot_import_core, cancel_import as cancel_import_core,
     commit_import as commit_import_core,
 };
 
@@ -81,6 +82,27 @@ pub async fn begin_import(
 
     let source = read_source(src_path, paste_text, encrypted, passphrase)?;
     let rows = begin_import_core(&mut guard, source)?;
+    Ok(rows.iter().map(preview_row_to_dto).collect())
+}
+
+/// Begin a staged import sourced from one of this vault's local snapshots — the
+/// tweezers (slice 5.3c).
+///
+/// Returns the derivatives-only preview; `commit_import` / `cancel_import` finish or
+/// discard it, unchanged. A **stale** snapshot surfaces as `Invalid` carrying the honest
+/// "recover with its original password" message.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, snapshot_id = %snapshot_id))]
+pub async fn begin_snapshot_import(
+    vault_path: String,
+    snapshot_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<ImportPreviewRow>, CommandError> {
+    let vault_id = VaultId::new(PathBuf::from(&vault_path));
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let rows = begin_snapshot_import_core(&mut guard, &snapshot_id).await?;
     Ok(rows.iter().map(preview_row_to_dto).collect())
 }
 

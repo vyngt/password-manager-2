@@ -108,6 +108,10 @@ run = "cargo test --workspace --exclude vedge-e2e --lib --bins --tests"
 description = "Fast frontend host tests only"
 run = "cargo test -p vedge-app"
 
+[tasks.bench]
+description = "Unlock benchmark — O(n) index-build loop at 100/1k/10k entries (slice 5.3c, hard gate 2). NOT in `ci`; run to decide slice 5.5. `--release` so the numbers reflect production crypto, not a debug build."
+run = "cargo test --release -p vedge-core --test unlock_bench -- --ignored --nocapture"
+
 [tasks.e2e]
 description = "End-to-end WebDriver run (tauri-driver + thirtyfour; needs a display + platform driver)"
 dir = "crates/vedge-tauri"

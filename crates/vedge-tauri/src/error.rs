@@ -165,6 +165,9 @@ impl From<VaultError> for CommandError {
             // No import staged for this session — a programmatic/state guard
             // (the GUI always begins an import before committing).
             | VaultError::ImportNotStarted
+            // A stale snapshot as a tweezers source (5.3c): its message IS the honest
+            // "recover with its original password" copy, surfaced to the snapshots page.
+            | VaultError::SnapshotStale
             // A breach lookup failure is normally degraded inside `scan_health`
             // (surfaced as `breach_check_failed`); this mapping is defensive only.
             | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),

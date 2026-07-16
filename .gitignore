@@ -12,3 +12,7 @@ local/
 
 # E2E driver
 msedgedriver.exe
+
+# Scale-test CSVs produced by scripts/gen_import_csv.ps1 — generated artifacts, not source
+# (large + full of throwaway plaintext credentials).
+vedge-import-*.csv
