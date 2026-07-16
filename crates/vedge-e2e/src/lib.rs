@@ -41,7 +41,8 @@
 //! switch never breaks the suite. Form **inputs** keep their existing DOM `id`s
 //! (`vault-name`, `vault-location`, `master-password`, `ef-*`, `vault-search`, `folder-new`,
 //! `gen-bulk-count`) used via `fill_id`. A few structural hooks are reused
-//! directly: `tr[data-entry-row]` / `tr[data-entry-id]` (rows), `[role='option']`
+//! directly: `tr[data-testid=<entry-id>]` (entry rows, since 5.3.1b's `DataTable`
+//! migration — the `row_testid` hook carries the id), `[role='option']`
 //! (vault picker + Select options, plus `[data-value=…]` for a specific option),
 //! `[role='combobox']` (a Select trigger), `div[role='dialog']`. The testid naming
 //! convention is documented in the crate README.
@@ -600,11 +601,14 @@ impl Session {
         Ok(())
     }
 
-    /// Number of entry rows currently rendered in the vault table.
+    /// Number of entry rows currently rendered in the vault table. Since slice
+    /// 5.3.1b the table is a `DataTable`; each body row carries `data-testid`
+    /// (the entry id) via the `row_testid` hook — the header row does not, so
+    /// `tr[data-testid]` selects exactly the entry rows.
     pub async fn entry_row_count(&self) -> Result<usize> {
         Ok(self
             .driver()
-            .find_all(By::Css("tr[data-entry-row]"))
+            .find_all(By::Css("tr[data-testid]"))
             .await
             .unwrap_or_default()
             .len())

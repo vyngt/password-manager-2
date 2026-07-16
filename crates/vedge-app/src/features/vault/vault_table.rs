@@ -1,15 +1,86 @@
+//! The vault's entries rendered as a `DataTable`. Migrated from a hand-rolled
+//! `<table>` (slice 5.3.1b) to clear the Gate 1.0 a11y blocker — `role="grid"`,
+//! roving focus, `aria-selected`, keyboard nav all come from `DataTable`.
+//!
+//! Because a `DataTable` cell closure must be `Send + Sync` (so it cannot call
+//! `t_string!` — that captures the non-`Send` `I18nContext` — nor read app
+//! signals), each entry is pre-resolved into a [`VaultRow`] view-model in a
+//! reactive `Signal::derive` *before* the table (the health/audit pattern). The
+//! interactive cells (favourite + the action cluster) capture the page's
+//! `Callback`s directly, which is sound: Leptos `Callback` is `Send + Sync`.
+
 use super::entry_view::{short_date, type_label_i18n};
-use crate::i18n::{t, t_string, use_i18n};
+use crate::i18n::{Locale, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
+use leptos_i18n::I18nContext;
 use std::collections::HashMap;
 use vedge_ipc::{IndexEntryDto, TagMetaDto};
-use vedge_ui::components::empty_state::EmptyState;
+use vedge_ui::components::data_display::{
+    CellValue, ColumnDef, ColumnType, ColumnWidth, DataTable, cell_fn, string_fn,
+};
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::primitives::tokens::{Size, Variant};
+use vedge_ui::primitives::tokens::{Align, Size, Variant};
 
 use icondata as i;
 use leptos_icons::Icon;
+
+/// A resolved entry row. Every display string is final (localized / formatted)
+/// so the `Send + Sync` cell closures read plain data. `entry` is carried whole
+/// because the row-click / move / hard-delete callbacks take the full DTO.
+#[derive(Clone)]
+struct VaultRow {
+    id: String,
+    entry: IndexEntryDto,
+    name: String,
+    url: String,
+    type_label: String,
+    updated: String,
+    is_favorite: bool,
+    favorite_aria: String,
+    move_aria: String,
+    delete_aria: String,
+    restore_aria: String,
+    hard_delete_aria: String,
+    /// Resolved tag chips (name, optional color); unresolved ids are skipped.
+    chips: Vec<(String, Option<String>)>,
+    /// Whether this is the trashed view (Restore + Delete-permanent instead of
+    /// Move + Delete). Carried per-row so the action cell reads plain data.
+    hide_delete: bool,
+}
+
+fn build_row(
+    i18n: I18nContext<Locale>,
+    e: &IndexEntryDto,
+    tags: &HashMap<String, TagMetaDto>,
+    hide_delete: bool,
+) -> VaultRow {
+    let chips = e
+        .tag_ids
+        .iter()
+        .filter_map(|id| tags.get(id).map(|m| (m.name.clone(), m.color.clone())))
+        .collect();
+    VaultRow {
+        id: e.id.clone(),
+        name: e.name.clone(),
+        url: e.url.clone().unwrap_or_default(),
+        type_label: type_label_i18n(i18n, &e.entry_type),
+        updated: short_date(&e.updated_at),
+        is_favorite: e.is_favorite,
+        favorite_aria: if e.is_favorite {
+            t_string!(i18n, vault.unfavorite).to_owned()
+        } else {
+            t_string!(i18n, vault.favorite).to_owned()
+        },
+        move_aria: t_string!(i18n, vault.folder_move).to_owned(),
+        delete_aria: t_string!(i18n, vault.delete).to_owned(),
+        restore_aria: t_string!(i18n, vault.restore).to_owned(),
+        hard_delete_aria: t_string!(i18n, vault.delete_permanently).to_owned(),
+        chips,
+        hide_delete,
+        entry: e.clone(),
+    }
+}
 
 #[component]
 pub fn VaultTable(
@@ -42,241 +113,166 @@ pub fn VaultTable(
 ) -> impl IntoView {
     let i18n = use_i18n();
 
-    view! {
-        <div class="flex-1 min-w-0 overflow-auto">
-            <Show
-                when=move || !items.get().is_empty()
-                fallback=move || {
+    // Pre-resolve rows. Reads items + tags + hide_delete + i18n, so it re-derives
+    // on any of them — matching today's optimistic in-place `items` mutations and
+    // relocalizing on a language switch.
+    let rows = Signal::derive(move || {
+        let tags = tags.get();
+        let hide = hide_delete.get();
+        items
+            .get()
+            .iter()
+            .map(|e| build_row(i18n, e, &tags, hide))
+            .collect::<Vec<_>>()
+    });
+
+    let columns = vec![
+        // Favourite star — Custom so the whole cell isn't a stop-propagation zone
+        // (only the button stops); clicking the cell padding still opens the row.
+        ColumnDef {
+            id: "favorite",
+            header: "".into(),
+            col_type: ColumnType::Custom,
+            sortable: false,
+            width: ColumnWidth::Fixed(44),
+            align: Align::Start,
+            cell: cell_fn(move |r: &VaultRow| {
+                let id = r.id.clone();
+                let is_fav = r.is_favorite;
+                let aria = r.favorite_aria.clone();
+                CellValue::View(
                     view! {
-                        <div class="flex items-center justify-center h-full">
-                            <EmptyState icon=i::FaInboxSolid title=empty_label />
+                        <IconButton
+                            attr:data-testid="row-favorite"
+                            aria_label=aria
+                            variant=Variant::Ghost
+                            size=Size::Sm
+                            on:click=move |ev: web_sys::MouseEvent| {
+                                ev.stop_propagation();
+                                on_favorite.run((id.clone(), !is_fav));
+                            }
+                        >
+                            {if is_fav {
+                                Either::Left(
+                                    view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> },
+                                )
+                            } else {
+                                Either::Right(
+                                    view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> },
+                                )
+                            }}
+                        </IconButton>
+                    }
+                    .into_any(),
+                )
+            }),
+        },
+        // Name + tag chips.
+        ColumnDef {
+            id: "name",
+            header: Signal::derive(move || t_string!(i18n, vault.col_name).to_owned()).into(),
+            col_type: ColumnType::Custom,
+            sortable: false,
+            width: ColumnWidth::Flexible,
+            align: Align::Start,
+            cell: cell_fn(|r: &VaultRow| {
+                let name = r.name.clone();
+                let title = r.name.clone();
+                let chips = r.chips.clone();
+                CellValue::View(
+                    view! {
+                        <div class="flex flex-col gap-1 min-w-0">
+                            <span class="block max-w-[16rem] truncate" title=title>
+                                {name}
+                            </span>
+                            <div class="flex flex-wrap gap-1">
+                                {chips
+                                    .into_iter()
+                                    .map(|(nm, color)| {
+                                        let style = color
+                                            .map(|c| format!("color:{c}"))
+                                            .unwrap_or_default();
+                                        view! {
+                                            <span
+                                                class="inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] px-1.5 py-0.5"
+                                                style=style
+                                            >
+                                                {nm}
+                                            </span>
+                                        }
+                                    })
+                                    .collect_view()}
+                            </div>
                         </div>
                     }
-                }
-            >
-                <table class="w-full table-auto">
-                    <thead>
-                        <tr class="border-b border-secondary/20 text-left text-foreground/60 text-xs uppercase tracking-wider">
-                            <th class="p-3 w-[40px]"></th>
-                            <th class="p-3">{move || t!(i18n, vault.col_name)}</th>
-                            <th class="p-3">{move || t!(i18n, vault.col_type)}</th>
-                            <th class="p-3">{move || t!(i18n, vault.col_url)}</th>
-                            <th class="p-3">{move || t!(i18n, vault.col_updated)}</th>
-                            <th class="p-3 w-[80px]">{move || t!(i18n, vault.col_actions)}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <For
-                            each=move || items.get()
-                            // Key includes the mutable display fields so an
-                            // optimistic favorite/tag flip or a post-edit
-                            // `updated_at` change re-renders the row — a keyed
-                            // `<For>` otherwise keeps stale children for a fixed key.
-                            key=|item| {
-                                (
-                                    item.id.clone(),
-                                    item.is_favorite,
-                                    item.tag_ids.join(","),
-                                    item.folder_id.clone(),
-                                    item.sort_order,
-                                    item.updated_at.clone(),
-                                )
-                            }
-                            children=move |item| {
-                                view! {
-                                    <VaultTableRow
-                                        item=item
-                                        hide_delete=hide_delete
-                                        tags=tags
-                                        on_delete=on_delete
-                                        on_restore=on_restore
-                                        on_hard_delete=on_hard_delete
-                                        on_select=on_select
-                                        on_favorite=on_favorite
-                                        on_move_request=on_move_request
-                                        on_reorder=on_reorder
-                                        reorder_enabled=reorder_enabled
-                                    />
-                                }
-                            }
-                        />
-                    </tbody>
-                </table>
-            </Show>
-        </div>
-    }
-}
-
-#[component]
-fn VaultTableRow(
-    item: IndexEntryDto,
-    hide_delete: Signal<bool>,
-    tags: Signal<HashMap<String, TagMetaDto>>,
-    on_delete: Callback<String>,
-    on_restore: Callback<String>,
-    on_hard_delete: Callback<IndexEntryDto>,
-    on_select: Callback<IndexEntryDto>,
-    on_favorite: Callback<(String, bool)>,
-    on_move_request: Callback<IndexEntryDto>,
-    on_reorder: Callback<(String, String)>,
-    reorder_enabled: Signal<bool>,
-) -> impl IntoView {
-    let i18n = use_i18n();
-
-    let entry_for_select = item.clone();
-    let entry_for_move = item.clone();
-    // Trash-view action cluster (shown when `hide_delete` is true): Restore takes
-    // the id, Delete-permanently takes the whole entry (to open the named confirm).
-    let restore_id = item.id.clone();
-    let entry_for_hard_delete = item.clone();
-    let item_id = item.id.clone();
-    // Stable per-entry hook for the e2e harness (slice 2.9.2) — lets a test
-    // address a specific row without matching on (localized) cell text.
-    let row_id = item.id.clone();
-    let drag_id = item.id.clone();
-    // This row as a reorder drop target: the dragged entry's id + the highlight.
-    let drop_target_id = item.id.clone();
-    let drag_over = RwSignal::new(false);
-    let fav_id = item.id.clone();
-    let is_fav = item.is_favorite;
-    let tag_ids = item.tag_ids.clone();
-    let name = item.name.clone();
-    let name_title = name.clone();
-    // Reactive so it doesn't read the i18n locale in the (owner-less) row body
-    // and relocalizes on language switch.
-    let entry_type = item.entry_type.clone();
-    let type_lbl = Signal::derive(move || type_label_i18n(i18n, &entry_type));
-    let url = item.url.clone().unwrap_or_default();
-    let url_title = url.clone();
-    let updated = short_date(&item.updated_at);
-
-    // Resolve this row's tag ids to name + color chips (unresolved ids skipped).
-    let chips = move || {
-        let map = tags.get();
-        tag_ids
-            .iter()
-            .filter_map(|id| {
-                let meta = map.get(id)?;
-                let style = meta
-                    .color
-                    .clone()
-                    .map(|c| format!("color:{c}"))
-                    .unwrap_or_default();
-                Some(view! {
-                    <span
-                        class="inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] px-1.5 py-0.5"
-                        style=style
-                    >
-                        {meta.name.clone()}
-                    </span>
-                })
-            })
-            .collect_view()
-    };
-
-    view! {
-        <tr
-            data-entry-row="true"
-            data-entry-id=row_id
-            class="border-b border-secondary/10 hover:bg-primary/5 transition-colors cursor-pointer"
-            class=("border-t-2", move || drag_over.get())
-            class=("border-t-primary", move || drag_over.get())
-            draggable="true"
-            on:click=move |_: web_sys::MouseEvent| on_select.run(entry_for_select.clone())
-            on:dragstart=move |ev: web_sys::DragEvent| {
-                if let Some(dt) = ev.data_transfer() {
-                    let _ = dt.set_data("text/plain", &drag_id);
-                }
-            }
-            // Reorder drop target — active only under the Manual sort, so a plain
-            // move-to-folder drag isn't hijacked. Not preventing default under the
-            // other sorts means the row simply isn't a drop target there.
-            on:dragover=move |ev: web_sys::DragEvent| {
-                if reorder_enabled.get() {
-                    ev.prevent_default();
-                }
-            }
-            on:dragenter=move |_: web_sys::DragEvent| {
-                if reorder_enabled.get_untracked() {
-                    drag_over.set(true);
-                }
-            }
-            on:dragleave=move |_: web_sys::DragEvent| drag_over.set(false)
-            on:drop=move |ev: web_sys::DragEvent| {
-                drag_over.set(false);
-                if !reorder_enabled.get_untracked() {
-                    return;
-                }
-                ev.prevent_default();
-                let moved = ev
-                    .data_transfer()
-                    .and_then(|dt| dt.get_data("text/plain").ok())
-                    .filter(|s| !s.is_empty());
-                if let Some(moved) = moved {
-                    if moved != drop_target_id {
-                        on_reorder.run((moved, drop_target_id.clone()));
+                    .into_any(),
+                )
+            }),
+        },
+        // Type — pre-resolved label.
+        ColumnDef {
+            id: "type",
+            header: Signal::derive(move || t_string!(i18n, vault.col_type).to_owned()).into(),
+            col_type: ColumnType::Text,
+            sortable: false,
+            width: ColumnWidth::Fixed(140),
+            align: Align::Start,
+            cell: cell_fn(|r: &VaultRow| CellValue::Text(r.type_label.clone())),
+        },
+        // Url — mono, truncated, with a title tooltip for the full value.
+        ColumnDef {
+            id: "url",
+            header: Signal::derive(move || t_string!(i18n, vault.col_url).to_owned()).into(),
+            col_type: ColumnType::Custom,
+            sortable: false,
+            width: ColumnWidth::MinMax(120, 240),
+            align: Align::Start,
+            cell: cell_fn(|r: &VaultRow| {
+                let url = r.url.clone();
+                let title = r.url.clone();
+                CellValue::View(
+                    view! {
+                        <span
+                            class="block truncate font-jetbrains-mono text-foreground/60"
+                            title=title
+                        >
+                            {url}
+                        </span>
                     }
-                }
-            }
-        >
-            <td class="p-3">
-                <IconButton
-                    attr:data-testid="row-favorite"
-                    aria_label=Signal::derive(move || {
-                        if is_fav {
-                            t_string!(i18n, vault.unfavorite).to_owned()
-                        } else {
-                            t_string!(i18n, vault.favorite).to_owned()
-                        }
-                    })
-                    variant=Variant::Ghost
-                    size=Size::Sm
-                    on:click=move |ev: web_sys::MouseEvent| {
-                        ev.stop_propagation();
-                        on_favorite.run((fav_id.clone(), !is_fav));
-                    }
-                >
-                    {if is_fav {
-                        Either::Left(view! { <Icon attr:aria-hidden="true" icon=i::FaStarSolid /> })
-                    } else {
-                        Either::Right(
-                            view! { <Icon attr:aria-hidden="true" icon=i::FaStarRegular /> },
-                        )
-                    }}
-                </IconButton>
-            </td>
-            <td class="p-3 text-sm">
-                <div class="flex flex-col gap-1 min-w-0">
-                    <span class="block max-w-[16rem] truncate" title=name_title>
-                        {name}
-                    </span>
-                    <div class="flex flex-wrap gap-1">{chips}</div>
-                </div>
-            </td>
-            <td class="p-3 text-sm text-foreground/70">{type_lbl}</td>
-            <td
-                class="p-3 text-sm font-jetbrains-mono text-foreground/60 max-w-[14rem] truncate"
-                title=url_title
-            >
-                {url}
-            </td>
-            <td class="p-3 text-sm text-foreground/60">{updated}</td>
-            <td class="p-3">
-                <Show
-                    when=move || { !hide_delete.get() }
-                    fallback=move || {
-                        let restore_id = restore_id.clone();
-                        let entry_for_hard_delete = entry_for_hard_delete.clone();
-                        // Trashed rows: Restore + Delete-permanently (the inverse
-                        // of the active-view Move + Delete). Clone per render — the
-                        // fallback is a re-runnable `Fn`.
+                    .into_any(),
+                )
+            }),
+        },
+        // Updated — pre-resolved short date.
+        ColumnDef {
+            id: "updated",
+            header: Signal::derive(move || t_string!(i18n, vault.col_updated).to_owned()).into(),
+            col_type: ColumnType::Date,
+            sortable: false,
+            width: ColumnWidth::Fixed(120),
+            align: Align::End,
+            cell: cell_fn(|r: &VaultRow| CellValue::Text(r.updated.clone())),
+        },
+        // Actions — Move + Delete (active) or Restore + Delete-permanent (trash).
+        ColumnDef {
+            id: "actions",
+            header: Signal::derive(move || t_string!(i18n, vault.col_actions).to_owned()).into(),
+            col_type: ColumnType::Action,
+            sortable: false,
+            width: ColumnWidth::Fixed(80),
+            align: Align::End,
+            cell: cell_fn(move |r: &VaultRow| {
+                if r.hide_delete {
+                    let restore_id = r.id.clone();
+                    let entry = r.entry.clone();
+                    let restore_aria = r.restore_aria.clone();
+                    let hard_delete_aria = r.hard_delete_aria.clone();
+                    CellValue::View(
                         view! {
                             <div class="flex items-center gap-1">
                                 <IconButton
                                     attr:data-testid="row-restore"
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.restore).to_owned()
-                                    })
+                                    aria_label=restore_aria
                                     variant=Variant::Ghost
                                     size=Size::Sm
                                     on:click=move |ev: web_sys::MouseEvent| {
@@ -288,63 +284,73 @@ fn VaultTableRow(
                                 </IconButton>
                                 <IconButton
                                     attr:data-testid="row-delete-permanent"
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.delete_permanently).to_owned()
-                                    })
+                                    aria_label=hard_delete_aria
                                     variant=Variant::Danger
                                     size=Size::Sm
                                     on:click=move |ev: web_sys::MouseEvent| {
                                         ev.stop_propagation();
-                                        on_hard_delete.run(entry_for_hard_delete.clone());
+                                        on_hard_delete.run(entry.clone());
                                     }
                                 >
                                     <Icon attr:aria-hidden="true" icon=i::FaTrashCanSolid />
                                 </IconButton>
                             </div>
                         }
-                    }
-                >
-                    {
-                        let item_id = item_id.clone();
-                        let entry_for_move = entry_for_move.clone();
-                        // Clone per render so the inner `on:click` (a `move`
-                        // closure) doesn't take ownership out of the `Show`'s
-                        // re-runnable `Fn` children.
+                        .into_any(),
+                    )
+                } else {
+                    let entry = r.entry.clone();
+                    let del_id = r.id.clone();
+                    let move_aria = r.move_aria.clone();
+                    let delete_aria = r.delete_aria.clone();
+                    CellValue::View(
                         view! {
                             <div class="flex items-center gap-1">
                                 <IconButton
                                     attr:data-testid="row-move"
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.folder_move).to_owned()
-                                    })
+                                    aria_label=move_aria
                                     variant=Variant::Ghost
                                     size=Size::Sm
                                     on:click=move |ev: web_sys::MouseEvent| {
                                         ev.stop_propagation();
-                                        on_move_request.run(entry_for_move.clone());
+                                        on_move_request.run(entry.clone());
                                     }
                                 >
                                     <Icon attr:aria-hidden="true" icon=i::FaFolderOpenSolid />
                                 </IconButton>
                                 <IconButton
                                     attr:data-testid="row-delete"
-                                    aria_label=Signal::derive(move || {
-                                        t_string!(i18n, vault.delete).to_owned()
-                                    })
+                                    aria_label=delete_aria
                                     variant=Variant::Danger
                                     size=Size::Sm
                                     on:click=move |ev: web_sys::MouseEvent| {
                                         ev.stop_propagation();
-                                        on_delete.run(item_id.clone());
+                                        on_delete.run(del_id.clone());
                                     }
                                 >
                                     <Icon attr:aria-hidden="true" icon=i::BiTrashRegular />
                                 </IconButton>
                             </div>
                         }
-                    }
-                </Show>
-            </td>
-        </tr>
+                        .into_any(),
+                    )
+                }
+            }),
+        },
+    ];
+
+    view! {
+        <div class="flex-1 min-w-0 overflow-auto">
+            <DataTable
+                columns=columns
+                rows=rows
+                row_key=string_fn(|r: &VaultRow| r.id.clone())
+                row_testid=string_fn(|r: &VaultRow| r.id.clone())
+                on_row_click=Callback::new(move |r: VaultRow| on_select.run(r.entry))
+                reorder_enabled=reorder_enabled
+                on_row_reorder=on_reorder
+                empty_message=empty_label
+            />
+        </div>
     }
 }
