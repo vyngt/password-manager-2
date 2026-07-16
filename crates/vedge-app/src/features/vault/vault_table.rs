@@ -42,6 +42,10 @@ struct VaultRow {
     delete_aria: String,
     restore_aria: String,
     hard_delete_aria: String,
+    /// Per-row selection-checkbox aria-label ("Select {name}") — pre-resolved
+    /// because the `DataTable` `row_select_label` closure is `Send + Sync` and so
+    /// cannot call `t_string!`.
+    select_aria: String,
     /// Resolved tag chips (name, optional color); unresolved ids are skipped.
     chips: Vec<(String, Option<String>)>,
     /// Whether this is the trashed view (Restore + Delete-permanent instead of
@@ -76,6 +80,7 @@ fn build_row(
         delete_aria: t_string!(i18n, vault.delete).to_owned(),
         restore_aria: t_string!(i18n, vault.restore).to_owned(),
         hard_delete_aria: t_string!(i18n, vault.delete_permanently).to_owned(),
+        select_aria: format!("{} {}", t_string!(i18n, vault.row_select_aria), e.name),
         chips,
         hide_delete,
         entry: e.clone(),
@@ -110,8 +115,23 @@ pub fn VaultTable(
     /// Whether drag-reorder is active (only under the Manual sort).
     #[prop(into)]
     reorder_enabled: Signal<bool>,
+    /// Whether the selection column is shown (5.3.1c). **Read once at mount** —
+    /// the page remounts `VaultTable` on every active/trash switch (via its
+    /// `loading` `<Show>`), and the value is constant within a mount, so a
+    /// mount-time snapshot is always correct for the current view.
+    #[prop(into, default = Signal::stored(false))]
+    selectable: Signal<bool>,
+    /// The selected entry ids (ULIDs), controlled by the page.
+    #[prop(into, default = Signal::stored(Vec::<String>::new()))]
+    selected_rows: Signal<Vec<String>>,
+    /// Fires the new selection set (ULIDs) whenever the selection changes.
+    #[prop(into, default = None)]
+    on_selection_change: Option<Callback<Vec<String>>>,
 ) -> impl IntoView {
     let i18n = use_i18n();
+    // Mount-time snapshot (see the prop doc): `DataTable::selectable` is a static
+    // bool, and the page guarantees a remount whenever the active/trash view flips.
+    let is_selectable = selectable.get_untracked();
 
     // Pre-resolve rows. Reads items + tags + hide_delete + i18n, so it re-derives
     // on any of them — matching today's optimistic in-place `items` mutations and
@@ -346,9 +366,24 @@ pub fn VaultTable(
                 rows=rows
                 row_key=string_fn(|r: &VaultRow| r.id.clone())
                 row_testid=string_fn(|r: &VaultRow| r.id.clone())
+                selectable=is_selectable
+                selected_rows=selected_rows
+                on_selection_change=on_selection_change
+                select_all_label=Signal::derive(move || {
+                    t_string!(i18n, vault.select_all_aria).to_owned()
+                })
+                deselect_all_label=Signal::derive(move || {
+                    t_string!(i18n, vault.deselect_all_aria).to_owned()
+                })
+                row_select_label=string_fn(|r: &VaultRow| r.select_aria.clone())
                 on_row_click=Callback::new(move |r: VaultRow| on_select.run(r.entry))
                 reorder_enabled=reorder_enabled
                 on_row_reorder=on_reorder
+                // Entries are always draggable onto the folder tree (which reads
+                // the row key = entry id off `text/plain`) — restoring the
+                // drag-to-folder the pre-DataTable table had in every sort. Only
+                // Manual sort (`reorder_enabled`) makes the table a drop target.
+                row_draggable=Signal::stored(true)
                 empty_message=empty_label
             />
         </div>
