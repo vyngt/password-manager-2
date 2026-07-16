@@ -9,6 +9,7 @@ pub mod delete_vault;
 pub mod document_ops;
 pub mod entry_history;
 pub mod export_emergency_kit;
+pub mod export_entries;
 pub mod get_entry;
 pub mod hard_delete_entry;
 pub mod inspect_backup;
@@ -50,6 +51,7 @@ pub use entry_history::{
     copy_history_field, get_history_value, list_history, restore_from_history,
 };
 pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
+pub use export_entries::{ExportEntriesInput, ExportFormat, ExportReport, export_entries};
 pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
 pub use inspect_backup::{BackupPreview, InspectBackupInput, TargetStateKind, inspect_backup};

@@ -127,6 +127,8 @@ pub fn run() {
             // ---- password + maintenance ----
             commands::password::change_password,
             commands::maintenance::run_maintenance,
+            // ---- export entries (slice 5.3a) ----
+            commands::export::export_entries,
             // ---- backup (slice 5.2) ----
             commands::backup::backup_vault,
             // ---- restore (slice 5.2b) ----

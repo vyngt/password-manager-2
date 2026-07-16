@@ -26,6 +26,7 @@ pub mod device;
 pub mod document;
 pub mod emergency_kit;
 pub mod entry;
+pub mod export;
 pub mod health;
 pub mod maintenance;
 pub mod password;
