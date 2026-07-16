@@ -15,10 +15,19 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use serde_json::Value;
 use thirtyfour::By;
 
 use common::*;
 use vedge_e2e::{Session, TestEnv, app_binary};
+
+/// How many active entries carry this name (the tweezers recovers a fresh copy).
+fn count_named(entries: &[Value], name: &str) -> usize {
+    entries
+        .iter()
+        .filter(|e| e.get("name").and_then(Value::as_str) == Some(name))
+        .count()
+}
 
 /// Overwrite a vault home's `vault.vdb` header so it no longer opens as a database — the
 /// filesystem seam the H0 disaster test needs (no `invoke`, just the harness touching disk).
@@ -294,6 +303,78 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
         entry_id(&entries, "keeper").is_some(),
         "the entry must be recovered from the snapshot"
     );
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
+/// 🟢 The tweezers (slice 5.3c): recover entries FROM a snapshot into the live vault,
+/// UI-driven end to end — no native dialog. Add "keeper", snapshot it, then use the
+/// snapshot's **Recover** action + preview table + Recover-selected to pull it back; the
+/// recovered copy materializes in the live vault (a second active "keeper"). This is the
+/// first import e2e — 5.3a/5.3b deferred theirs because their sources need native file
+/// dialogs; the snapshot source has none.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn recover_one_entry_from_a_snapshot() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+
+    let session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+    add_login(&session, "keeper", "u", "p").await?;
+
+    // Snapshot on /v/snapshots.
+    session
+        .click_testid("nav-snapshots")
+        .await
+        .context("nav snapshots")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshots-page']".to_string()),
+            Duration::from_secs(5),
+        )
+        .await
+        .context("snapshots page")?;
+    session
+        .click_testid("snapshot-take")
+        .await
+        .context("take snapshot")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshot-row']".to_string()),
+            Duration::from_secs(10),
+        )
+        .await
+        .context("snapshot row appears")?;
+
+    // The tweezers: open the snapshot's entries, then Recover them into the live vault.
+    session
+        .click_testid("snapshot-recover")
+        .await
+        .context("open the recover preview")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='recover-preview-table']".to_string()),
+            Duration::from_secs(10),
+        )
+        .await
+        .context("recover preview table appears")?;
+    session
+        .click_testid("recover-commit")
+        .await
+        .context("recover selected")?;
+
+    // The snapshot's "keeper" is recovered as a FRESH copy → two active "keeper" entries.
+    wait_until(Duration::from_secs(30), || async {
+        let entries = list_entries(&session, &vault).await.unwrap_or_default();
+        Ok(count_named(&entries, "keeper") == 2)
+    })
+    .await
+    .context("the recovered entry must appear in the live vault (a fresh copy)")?;
 
     session.assert_console_clean().await?;
     session.close().await;

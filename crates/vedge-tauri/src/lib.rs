@@ -131,6 +131,7 @@ pub fn run() {
             commands::export::export_entries,
             // ---- import entries (slice 5.3b) ----
             commands::import::begin_import,
+            commands::import::begin_snapshot_import,
             commands::import::commit_import,
             commands::import::cancel_import,
             // ---- backup (slice 5.2) ----

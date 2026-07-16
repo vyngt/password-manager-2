@@ -6,7 +6,9 @@
 
 use serde::Serialize;
 
-use vedge_ipc::{RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto};
+use vedge_ipc::{
+    ImportPreviewRow, RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto,
+};
 
 use crate::api::call::call;
 use crate::api::error::ApiError;
@@ -35,6 +37,30 @@ pub async fn delete(vault_path: &str, snapshot_id: &str) -> Result<(), ApiError>
     }
     call(
         "delete_snapshot",
+        &Args {
+            vault_path,
+            snapshot_id,
+        },
+    )
+    .await
+}
+
+/// Begin recovering entries FROM a snapshot into the live vault — the tweezers (slice 5.3c).
+/// Opens the snapshot with the current session and returns the derivatives-only preview; pick
+/// rows, then finish with `api::import::commit` or discard with `api::import::cancel`. A stale
+/// snapshot returns an error whose message is the honest "recover with its original password"
+/// copy (the launch-screen revert path is the way to open one under its old credentials).
+pub async fn begin_recover(
+    vault_path: &str,
+    snapshot_id: &str,
+) -> Result<Vec<ImportPreviewRow>, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        snapshot_id: &'a str,
+    }
+    call(
+        "begin_snapshot_import",
         &Args {
             vault_path,
             snapshot_id,

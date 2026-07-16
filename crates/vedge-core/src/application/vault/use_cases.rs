@@ -57,7 +57,7 @@ pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
 pub use import_entries::{
     ImportAction, ImportFailure, ImportPreviewRow, ImportReport, ImportSession, ImportSource,
-    RowAction, RowStatus, begin_import, cancel_import, commit_import,
+    RowAction, RowStatus, begin_import, begin_snapshot_import, cancel_import, commit_import,
 };
 pub use inspect_backup::{BackupPreview, InspectBackupInput, TargetStateKind, inspect_backup};
 pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
