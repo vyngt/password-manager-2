@@ -401,31 +401,16 @@ async fn build_snapshot_staging(
 }
 
 /// Decrypt every active entry (+ its document plaintext) of an opened snapshot repo into
-/// the export DTO, using the live session's KEK. A decrypt failure that slips past the
-/// prefix guard is surfaced as `SnapshotStale` (belt-and-braces — never a silent skip).
+/// the export DTO, using the live session's KEK. An ENTRY-DEK decrypt failure that slips past
+/// the prefix guard is surfaced as `SnapshotStale` (belt-and-braces — never a silent skip);
+/// tag-name resolution is best-effort (see [`read_snapshot_tag_names`]).
 async fn read_snapshot_entries(
     session: &VaultSession,
     repo: &SqliteVaultRepository,
     manifest: &SnapshotManifest,
     snapshots_dir: &Path,
 ) -> Result<(Vec<ExportEntry>, Vec<(String, Zeroizing<Vec<u8>>)>), VaultError> {
-    // The snapshot's own tag id → name table (decrypted under the live KEK).
-    let mut tag_names_by_id: HashMap<TagId, String> = HashMap::new();
-    for tag_row in repo.all_tags().await? {
-        let aad = tag_aad(&tag_row.id)?;
-        let plaintext = session
-            .crypto
-            .decrypt_tag(
-                session.kek.expose(),
-                &tag_row.nonce,
-                &tag_row.ciphertext,
-                &aad,
-            )
-            .map_err(snapshot_kek_error)?;
-        let payload: TagPayload = serde_json::from_slice(&plaintext)
-            .map_err(|e| VaultError::MalformedPayload(format!("snapshot tag payload: {e}")))?;
-        tag_names_by_id.insert(tag_row.id.clone(), payload.name);
-    }
+    let tag_names_by_id = read_snapshot_tag_names(session, repo).await;
 
     let rows = repo.all_entries().await?;
     let mut entries: Vec<ExportEntry> = Vec::with_capacity(rows.len());
@@ -463,6 +448,48 @@ async fn read_snapshot_entries(
         entries.push(payload_to_export(&row.id, &payload, tag_names));
     }
     Ok((entries, blobs))
+}
+
+/// Resolve the snapshot's tag id → name table under the live KEK — **best-effort**.
+///
+/// Tags are sealed directly under the KEK, and the ⑬ rewrap re-wraps only entry DEKs +
+/// `verify_hash`, NOT tag rows (see `rewrap_snapshots`). So a snapshot taken before a credential
+/// change carries tag rows under the OLD KEK even once its prefix reads "current". The ENTRIES
+/// still recover under the current KEK, so a tag table we cannot decrypt must NOT abort the whole
+/// recovery — it degrades to no tag names (the recovered entries simply lose their tags). Fixing
+/// the asymmetry at the source (rewrap tags too) is a `rewrap_snapshots` follow-up.
+async fn read_snapshot_tag_names(
+    session: &VaultSession,
+    repo: &SqliteVaultRepository,
+) -> HashMap<TagId, String> {
+    let mut map: HashMap<TagId, String> = HashMap::new();
+    let Ok(tag_rows) = repo.all_tags().await else {
+        return map;
+    };
+    for tag_row in tag_rows {
+        let Ok(aad) = tag_aad(&tag_row.id) else {
+            continue;
+        };
+        let Ok(plaintext) = session.crypto.decrypt_tag(
+            session.kek.expose(),
+            &tag_row.nonce,
+            &tag_row.ciphertext,
+            &aad,
+        ) else {
+            // All tags share the snapshot-moment KEK, so one failure means the whole table is
+            // under an old KEK (a pre-credential-change snapshot the rewrap didn't cover). Warn
+            // once and recover the entries WITHOUT tag names rather than refusing everything.
+            tracing::warn!(
+                "snapshot tags predate a credential change and can't be resolved under the \
+                 current KEK; recovering entries without their tag names"
+            );
+            return HashMap::new();
+        };
+        if let Ok(payload) = serde_json::from_slice::<TagPayload>(&plaintext) {
+            map.insert(tag_row.id.clone(), payload.name);
+        }
+    }
+    map
 }
 
 /// Read + decrypt a document's blob from the snapshot object pool. The pooled file is
