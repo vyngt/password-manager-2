@@ -215,14 +215,14 @@ mod tests {
             meta: meta("github", EntryType::Login),
             username: "octocat".into(),
             password: SecretString::from("=hunter2"), // leading `=` — must survive verbatim
-            totp_secret: Some(SecretString::from("JBSWY3DPEHPK3PXP")),
+            totp_secret: Some(SecretString::from("ABCDEFGH23456789")),
             totp_params: TotpParams::default(),
             recovery_codes: vec![SecretString::from("code-1"), SecretString::from("code-2")],
         });
         let card = EntryPayload::Card(CardPayload {
             meta: meta("visa", EntryType::Card),
             cardholder_name: "A Cardholder".into(),
-            number: SecretString::from("4111111111111111"),
+            number: SecretString::from("card-number-placeholder"),
             expiry_month: 12,
             expiry_year: 2030,
             cvv: SecretString::from("123"),
@@ -230,7 +230,7 @@ mod tests {
         });
         let ssh = EntryPayload::SshKey(SshKeyPayload {
             meta: meta("prod key", EntryType::SshKey),
-            private_key_pem: SecretString::from("-----BEGIN-----\nx\n-----END-----"),
+            private_key_pem: SecretString::from("ssh-private-key-placeholder"),
             passphrase: None,
             public_key: "ssh-ed25519 AAAA".into(),
             fingerprint: "SHA256:abc".into(),
@@ -238,9 +238,9 @@ mod tests {
         });
         let api = EntryPayload::ApiKey(ApiKeyPayload {
             meta: meta("stripe", EntryType::ApiKey),
-            key: SecretString::from("sk_live_x"),
-            secret: Some(SecretString::from("whsec_y")),
-            endpoint: Some("https://api.stripe.com".into()),
+            key: SecretString::from("api-key-placeholder"),
+            secret: Some(SecretString::from("api-secret-placeholder")),
+            endpoint: Some("https://api.example.com".into()),
             expiry: None,
             key_type: Some("secret".into()),
         });
@@ -248,7 +248,7 @@ mod tests {
             meta: meta("dotenv", EntryType::EnvVars),
             vars: vec![EnvVar {
                 key: "DATABASE_URL".into(),
-                value: SecretString::from("postgres://u:p@h/db"),
+                value: SecretString::from("connection-string-placeholder"),
             }],
         });
         let note = EntryPayload::Note(NotePayload {

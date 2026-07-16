@@ -88,8 +88,13 @@ pub async fn export_entries(
         }
     };
 
-    // One vault-level audit row (entry_id = None): the user exported.
-    super::create_entry::append_audit(session, AuditAction::Exported, None).await?;
+    // One vault-level audit row (entry_id = None): the user exported. Best-effort
+    // AFTER the file is written — a failed audit must not report a successful export
+    // as failed (that would prompt a retry → a second plaintext export on disk).
+    // Mirrors `backup_vault`'s post-commit discipline.
+    if let Err(e) = super::create_entry::append_audit(session, AuditAction::Exported, None).await {
+        tracing::warn!(error = %e, "export written but the audit row could not be recorded");
+    }
     Ok(report)
 }
 

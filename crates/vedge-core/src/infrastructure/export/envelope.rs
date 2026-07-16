@@ -49,6 +49,15 @@ const ARGON2_P: u32 = 1;
 const SALT_LEN: usize = 16;
 const KEY_LEN: usize = 32;
 
+// Upper bounds on the self-describing Argon2 params. The header is
+// attacker-controlled (it is just a file), so `open` must refuse an absurd `m`
+// before handing it to Argon2 — a forged `m ≈ 4 TiB` would otherwise trigger a
+// giant allocation / OOM. Generous enough to admit any legitimate profile (the
+// default is 64 MiB; a hardened future one might be larger) but bounded.
+const MAX_ARGON2_M_KIB: u32 = 4 * 1024 * 1024; // 4 GiB
+const MAX_ARGON2_T: u32 = 64;
+const MAX_ARGON2_P: u32 = 64;
+
 // Fixed field offsets within the prefix (the AAD). Const arithmetic only.
 const OFF_MAGIC: usize = 0;
 const OFF_VERSION: usize = OFF_MAGIC + 8;
@@ -184,6 +193,13 @@ pub fn open(passphrase: &[u8], envelope: &[u8]) -> Result<Zeroizing<Vec<u8>>, Va
     let m = read_u32(prefix, OFF_M)?;
     let t = read_u32(prefix, OFF_T)?;
     let p = read_u32(prefix, OFF_P)?;
+    // Refuse absurd params before Argon2 tries to allocate `m` KiB (DoS on a
+    // forged header). `Params::new` enforces the lower bounds; these are the upper.
+    if m > MAX_ARGON2_M_KIB || t > MAX_ARGON2_T || p > MAX_ARGON2_P {
+        return Err(malformed(
+            "export header declares out-of-range KDF parameters",
+        ));
+    }
     let salt = prefix
         .get(OFF_SALT..PREFIX_LEN)
         .ok_or_else(|| malformed("header truncated"))?;
@@ -316,6 +332,20 @@ mod tests {
         sealed[0] = b'X'; // corrupt the magic
         assert!(matches!(
             open(b"pw", &sealed).unwrap_err(),
+            VaultError::ExportMalformed(_)
+        ));
+    }
+
+    /// A forged header declaring an absurd `m` is refused BEFORE Argon2 allocates
+    /// it (denial-of-service guard). Built by hand so the test never runs the huge KDF.
+    #[test]
+    fn refuses_out_of_range_kdf_params() {
+        let salt = [0u8; SALT_LEN];
+        let mut env = build_prefix(ENVELOPE_FORMAT_VERSION, MAX_ARGON2_M_KIB + 1, 3, 1, &salt);
+        env.extend_from_slice(&[0u8; NONCE_LEN]); // dummy nonce
+        env.extend_from_slice(&[0u8; 20]); // dummy ciphertext
+        assert!(matches!(
+            open(b"pw", &env).unwrap_err(),
             VaultError::ExportMalformed(_)
         ));
     }

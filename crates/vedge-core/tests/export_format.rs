@@ -45,14 +45,14 @@ fn all_ten_payloads() -> Vec<(EntryId, EntryPayload)> {
         meta: CommonMeta::new("github", EntryType::Login),
         username: "octocat".into(),
         password: SecretString::from("=hunter2"),
-        totp_secret: Some(SecretString::from("JBSWY3DPEHPK3PXP")),
+        totp_secret: Some(SecretString::from("ABCDEFGH23456789")),
         totp_params: TotpParams::default(),
         recovery_codes: vec![SecretString::from("rc-1"), SecretString::from("rc-2")],
     });
     let card = EntryPayload::Card(CardPayload {
         meta: CommonMeta::new("visa", EntryType::Card),
         cardholder_name: "A Cardholder".into(),
-        number: SecretString::from("4111111111111111"),
+        number: SecretString::from("card-number-placeholder"),
         expiry_month: 12,
         expiry_year: 2030,
         cvv: SecretString::from("123"),
@@ -60,7 +60,7 @@ fn all_ten_payloads() -> Vec<(EntryId, EntryPayload)> {
     });
     let ssh = EntryPayload::SshKey(SshKeyPayload {
         meta: CommonMeta::new("prod key", EntryType::SshKey),
-        private_key_pem: SecretString::from("-----BEGIN-----\nx\n-----END-----"),
+        private_key_pem: SecretString::from("ssh-private-key-placeholder"),
         passphrase: None,
         public_key: "ssh-ed25519 AAAA".into(),
         fingerprint: "SHA256:abc".into(),
@@ -68,9 +68,9 @@ fn all_ten_payloads() -> Vec<(EntryId, EntryPayload)> {
     });
     let api = EntryPayload::ApiKey(ApiKeyPayload {
         meta: CommonMeta::new("stripe", EntryType::ApiKey),
-        key: SecretString::from("sk_live_x"),
-        secret: Some(SecretString::from("whsec_y")),
-        endpoint: Some("https://api.stripe.com".into()),
+        key: SecretString::from("api-key-placeholder"),
+        secret: Some(SecretString::from("api-secret-placeholder")),
+        endpoint: Some("https://api.example.com".into()),
         expiry: None,
         key_type: Some("secret".into()),
     });
@@ -78,7 +78,7 @@ fn all_ten_payloads() -> Vec<(EntryId, EntryPayload)> {
         meta: CommonMeta::new("dotenv", EntryType::EnvVars),
         vars: vec![EnvVar {
             key: "DATABASE_URL".into(),
-            value: SecretString::from("postgres://u:p@h/db"),
+            value: SecretString::from("connection-string-placeholder"),
         }],
     });
     let note = EntryPayload::Note(NotePayload {
@@ -149,7 +149,11 @@ fn all_nine_types_plus_unknown_survive_the_full_envelope_round_trip() {
     let sealed = envelope::seal(b"a strong export passphrase", &tar).unwrap();
 
     // The envelope is opaque: no plaintext secret leaks into the ciphertext.
-    for needle in [b"=hunter2".as_slice(), b"4111111111111111", b"sk_live_x"] {
+    for needle in [
+        b"=hunter2".as_slice(),
+        b"card-number-placeholder",
+        b"api-key-placeholder",
+    ] {
         assert!(
             !sealed.windows(needle.len()).any(|w| w == needle),
             "a secret leaked into the sealed envelope"
