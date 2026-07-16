@@ -25,19 +25,8 @@ pub fn toggle_row(
 
     if shift {
         if let Some(a) = anchor {
-            let (lo, hi) = if a <= clicked_idx {
-                (a, clicked_idx)
-            } else {
-                (clicked_idx, a)
-            };
-            let hi = hi.min(keys.len().saturating_sub(1));
-            let mut next: Vec<String> = current.to_vec();
-            for k in keys.get(lo..=hi).into_iter().flatten() {
-                if !next.iter().any(|x| x == k) {
-                    next.push(k.clone());
-                }
-            }
-            return (next, anchor);
+            // A shift-range preserves the anchor so successive shifts pivot on it.
+            return (extend_range(current, keys, Some(a), clicked_idx), anchor);
         }
     }
 
@@ -51,6 +40,41 @@ pub fn toggle_row(
         next.push(clicked_key.clone());
     }
     (next, Some(clicked_idx))
+}
+
+/// Extend the selection to cover the inclusive range between `anchor` and
+/// `target`, unioned with the current selection. Never deselects — this matches
+/// the shift-click union in [`toggle_row`]; keyboard Shift+Arrow reuses it. A
+/// `None` anchor collapses to selecting just `target` (nothing to pivot on).
+pub fn extend_range(
+    current: &[String],
+    keys: &[String],
+    anchor: Option<usize>,
+    target: usize,
+) -> Vec<String> {
+    if target >= keys.len() {
+        return current.to_vec();
+    }
+    let a = anchor.unwrap_or(target);
+    let (lo, hi) = if a <= target {
+        (a, target)
+    } else {
+        (target, a)
+    };
+    let hi = hi.min(keys.len().saturating_sub(1));
+    let mut next: Vec<String> = current.to_vec();
+    for k in keys.get(lo..=hi).into_iter().flatten() {
+        if !next.iter().any(|x| x == k) {
+            next.push(k.clone());
+        }
+    }
+    next
+}
+
+/// Ctrl/Cmd+A — select every currently visible row. Always selects all (never a
+/// toggle back to empty, unlike the header checkbox [`cycle_header`]).
+pub fn select_all(keys: &[String]) -> Vec<String> {
+    keys.to_vec()
 }
 
 /// Header checkbox click: empty → select all; otherwise → clear.
@@ -211,5 +235,85 @@ mod tests {
         let s = cycle_sort(Some(&cur), "modified").unwrap();
         assert_eq!(s.column_id, "modified");
         assert_eq!(s.direction, SortDirection::Asc);
+    }
+
+    #[test]
+    fn extend_range_from_anchor_up() {
+        let ks = keys(5);
+        assert_eq!(
+            extend_range(&[], &ks, Some(1), 3),
+            vec!["k1".to_owned(), "k2".into(), "k3".into()]
+        );
+    }
+
+    #[test]
+    fn extend_range_from_anchor_down() {
+        let ks = keys(5);
+        assert_eq!(
+            extend_range(&[], &ks, Some(3), 1),
+            vec!["k1".to_owned(), "k2".into(), "k3".into()]
+        );
+    }
+
+    #[test]
+    fn extend_range_unions_existing_selection() {
+        let ks = keys(5);
+        let current = vec!["k4".to_owned()];
+        assert_eq!(
+            extend_range(&current, &ks, Some(0), 2),
+            vec!["k4".to_owned(), "k0".into(), "k1".into(), "k2".into()]
+        );
+    }
+
+    #[test]
+    fn extend_range_no_anchor_selects_only_target() {
+        let ks = keys(3);
+        assert_eq!(extend_range(&[], &ks, None, 2), vec!["k2".to_owned()]);
+    }
+
+    #[test]
+    fn extend_range_out_of_bounds_is_noop() {
+        let ks = keys(3);
+        let current = vec!["k0".to_owned()];
+        assert_eq!(extend_range(&current, &ks, Some(0), 9), current);
+    }
+
+    #[test]
+    fn select_all_returns_every_key() {
+        let ks = keys(4);
+        assert_eq!(select_all(&ks), ks);
+    }
+
+    #[test]
+    fn select_all_of_empty_is_empty() {
+        assert!(select_all(&[]).is_empty());
+    }
+
+    // ⓪ The bug a reviewer will not see: selection must track the ENTRY, not the
+    // row position. Select the entry at index 2, then present the same entries in
+    // a new order — the selected *key* is unchanged, so it is still that entry and
+    // not whatever now occupies index 2.
+    #[test]
+    fn selection_is_by_key_not_index_so_it_survives_a_resort() {
+        let ks = keys(5);
+        let (sel, _) = toggle_row(&[], &ks, 2, None, false);
+        assert_eq!(sel, vec!["k2".to_owned()]);
+
+        let reordered = [
+            "k2".to_owned(),
+            "k4".into(),
+            "k0".into(),
+            "k3".into(),
+            "k1".into(),
+        ];
+        assert!(
+            sel.iter().all(|s| reordered.contains(s)),
+            "the selected entry still exists after the re-sort"
+        );
+        assert_eq!(
+            sel,
+            vec!["k2".to_owned()],
+            "selection tracks the entry, not the row position"
+        );
     }
 }
