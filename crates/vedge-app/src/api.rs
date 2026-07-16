@@ -29,6 +29,7 @@ pub mod emergency_kit;
 pub mod entry;
 pub mod export;
 pub mod health;
+pub mod import;
 pub mod maintenance;
 pub mod recovery;
 pub mod registry;

@@ -308,3 +308,30 @@ fn create_vault_io_decodes() {
     assert_eq!(back.secret_key_display, "A3-ABCDE-FGHIJ");
     assert!(back.keychain_stored);
 }
+
+/// `ImportPreviewRow` (slice 5.3b) — the derivatives-only import preview. Proves
+/// `has_password` (the 4.2 door) and the optional status fields survive the real
+/// wasm codec, and that no secret rides along.
+#[wasm_bindgen_test]
+fn import_preview_row_decodes() {
+    let row = ImportPreviewRow {
+        row_id: 3,
+        entry_type: "login".into(),
+        name: "GitHub".into(),
+        username: Some("octocat".into()),
+        url: Some("https://github.com".into()),
+        tags: vec!["work".into()],
+        has_password: true,
+        status: "warning".into(),
+        status_message: Some("shares the domain github.com with another row".into()),
+        status_line: None,
+        duplicate_of: Some(1),
+    };
+    let back = shell_to_frontend(&row);
+    assert_eq!(back.row_id, 3);
+    assert_eq!(back.entry_type, "login");
+    assert!(back.has_password);
+    assert_eq!(back.status, "warning");
+    assert_eq!(back.duplicate_of, Some(1));
+    assert_eq!(back.username.as_deref(), Some("octocat"));
+}

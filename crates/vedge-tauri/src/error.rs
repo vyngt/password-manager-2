@@ -162,6 +162,9 @@ impl From<VaultError> for CommandError {
             // `DecryptionFailed` (above), not one of these.
             | VaultError::ExportUnsupportedFormat(_)
             | VaultError::ExportMalformed(_)
+            // No import staged for this session — a programmatic/state guard
+            // (the GUI always begins an import before committing).
+            | VaultError::ImportNotStarted
             // A breach lookup failure is normally degraded inside `scan_health`
             // (surfaced as `breach_check_failed`); this mapping is defensive only.
             | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),

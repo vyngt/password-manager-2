@@ -53,6 +53,11 @@ pub use application::vault::use_cases::{
     revert_to_snapshot_in_session, run_maintenance, scan_health, search_entries, set_favorite,
     set_sort_order, set_tags, soft_delete_entry, update_entry,
 };
+// Import entries (slice 5.3b).
+pub use application::vault::use_cases::{
+    ImportAction, ImportFailure, ImportPreviewRow, ImportReport, ImportSource, RowAction,
+    RowStatus, begin_import, cancel_import, commit_import,
+};
 pub use domain::vault::emergency_kit::EmergencyKitContent;
 pub use domain::vault::entities::{AuditAction, AuditEvent, AuditPage, AuditQuery};
 pub use domain::vault::health::{
