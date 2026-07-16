@@ -26,25 +26,35 @@
 //! never the secret. The commit happens entirely here in Rust.
 
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 use secrecy::ExposeSecret;
 use tracing::instrument;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
+use crate::application::vault::ports::crypto::CryptoProvider;
+use crate::application::vault::ports::repository::VaultRepository;
 use crate::application::vault::session::VaultSession;
 use crate::domain::export::dto::{
     EXPORT_FORMAT_VERSION, ExportBundle, ExportEntry, ExportLogin, ExportMeta, ExportTotpParams,
 };
 use crate::domain::export::mapping::{
     ImportedDocument, ImportedEntry, common_meta_from_export, export_entry_type, export_to_payload,
+    payload_to_export,
 };
-use crate::domain::shared::{EntryId, TagId, now};
-use crate::domain::vault::aad::entry_aad;
+use crate::domain::shared::{EntryId, StorageError, TagId, now};
+use crate::domain::vault::aad::{blob_aad, entry_aad, tag_aad};
+use crate::domain::vault::crypto_constants::{DEK_LEN, NONCE_LEN};
 use crate::domain::vault::entities::{AuditAction, EntryRow};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::IndexEntry;
-use crate::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType};
+use crate::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, TagPayload};
 use crate::infrastructure::export::{archive, csv, envelope};
+use crate::infrastructure::snapshot::manifest::{
+    SNAPSHOT_VAULT_FILE, SnapshotManifest, verify_hash_prefix,
+};
+use crate::infrastructure::snapshot::store;
+use crate::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
 
 use super::create_entry::{CreateEntryInput, append_audit, create_entry};
 use super::document_ops::{ImportDocumentInput, import_document};
@@ -321,6 +331,222 @@ fn csv_login_to_export(row_id: u32, login: &csv::CsvLogin) -> ExportEntry {
         totp_params: ExportTotpParams::default(),
         recovery_codes: Vec::new(),
     })
+}
+
+// ---------------------------------------------------------------------------
+// begin_snapshot_import — the tweezers (slice 5.3c): a local snapshot as a source.
+// ---------------------------------------------------------------------------
+
+/// Begin an import sourced from one of this vault's local snapshots — recover a
+/// deleted entry without reverting the whole vault (the tweezers, Decision 🟢).
+///
+/// Reads the snapshot's `vault.vdb` with the CURRENT session KEK — the rewrap on every
+/// credential change (5.2.1 ⑬) keeps every non-stale snapshot's DEKs wrapped under it, so
+/// an unlocked session already holds the key. Each entry is mapped into the permanent
+/// export DTO and staged through the SAME model [`begin_import`] uses, so `commit_import`
+/// re-creates each pick under a **fresh ULID + fresh DEK** in the live vault — nothing is
+/// replaced and no re-key is undone; a wrong pick is one entry, not a vault.
+///
+/// A **stale** snapshot (its `verify_hash_prefix` no longer matches the live vault — a
+/// failed rewrap ⑬) is refused with [`VaultError::SnapshotStale`], never opened silently.
+///
+/// Unlike [`begin_import`] this is async (it opens the snapshot DB), so it is a separate
+/// entry point rather than an [`ImportSource`] arm; `commit_import`/`cancel_import` are shared.
+#[instrument(skip_all, fields(vault_id = %session.vault_id(), snapshot_id = %snapshot_id))]
+pub async fn begin_snapshot_import<'a>(
+    session: &'a mut VaultSession,
+    snapshot_id: &str,
+) -> Result<&'a [ImportPreviewRow], VaultError> {
+    let staging = build_snapshot_staging(session, snapshot_id).await?;
+    session.import = Some(staging);
+    Ok(session.import.as_ref().map_or(&[], ImportSession::preview))
+}
+
+async fn build_snapshot_staging(
+    session: &VaultSession,
+    snapshot_id: &str,
+) -> Result<ImportSession, VaultError> {
+    // 1. Resolve the (untrusted) id against this vault's store + read its manifest.
+    let snapshots_dir = session.vault_id().snapshots_dir();
+    let dir = store::resolve_snapshot_dir(&snapshots_dir, snapshot_id)?;
+    let manifest = store::read_manifest(&dir)?;
+
+    // 2. Stale guard FIRST — a snapshot whose verify_hash_prefix differs from the live
+    //    vault failed a rewrap (⑬); its DEKs are under an older KEK this session cannot
+    //    unwrap. Refuse loudly (Decision: never a silent skip).
+    if manifest.verify_hash_prefix != verify_hash_prefix(&session.config.verify_hash) {
+        return Err(VaultError::SnapshotStale);
+    }
+
+    // 3. Read the snapshot DB WITHOUT mutating it: copy vault.vdb into a tempdir and
+    //    open+migrate the COPY. vault.vdb is ciphertext (blobs live in the object pool,
+    //    not in it), so no plaintext touches disk (②); the tempdir auto-deletes on drop.
+    let tmp = tempfile::tempdir()
+        .map_err(|e| VaultError::Storage(StorageError::Io(format!("snapshot tempdir: {e}"))))?;
+    let tmp_vault = tmp.path().join(SNAPSHOT_VAULT_FILE);
+    std::fs::copy(dir.join(SNAPSHOT_VAULT_FILE), &tmp_vault)
+        .map_err(|e| VaultError::Storage(StorageError::Io(format!("copy snapshot vault: {e}"))))?;
+    let db = VaultDbConnection::open(&tmp_vault).await?;
+    let repo = SqliteVaultRepository::new(db.handle());
+
+    let result = read_snapshot_entries(session, &repo, &manifest, &snapshots_dir).await;
+
+    // Release the DB handle BEFORE the tempdir cleanup (Windows won't remove an open file).
+    // Best-effort: the read already succeeded, and the copy is a throwaway.
+    drop(repo);
+    db.close().await.ok();
+    let (entries, blobs) = result?;
+
+    stage_from_entries(entries, blobs)
+}
+
+/// Decrypt every active entry (+ its document plaintext) of an opened snapshot repo into
+/// the export DTO, using the live session's KEK. A decrypt failure that slips past the
+/// prefix guard is surfaced as `SnapshotStale` (belt-and-braces — never a silent skip).
+async fn read_snapshot_entries(
+    session: &VaultSession,
+    repo: &SqliteVaultRepository,
+    manifest: &SnapshotManifest,
+    snapshots_dir: &Path,
+) -> Result<(Vec<ExportEntry>, Vec<(String, Zeroizing<Vec<u8>>)>), VaultError> {
+    // The snapshot's own tag id → name table (decrypted under the live KEK).
+    let mut tag_names_by_id: HashMap<TagId, String> = HashMap::new();
+    for tag_row in repo.all_tags().await? {
+        let aad = tag_aad(&tag_row.id)?;
+        let plaintext = session
+            .crypto
+            .decrypt_tag(
+                session.kek.expose(),
+                &tag_row.nonce,
+                &tag_row.ciphertext,
+                &aad,
+            )
+            .map_err(snapshot_kek_error)?;
+        let payload: TagPayload = serde_json::from_slice(&plaintext)
+            .map_err(|e| VaultError::MalformedPayload(format!("snapshot tag payload: {e}")))?;
+        tag_names_by_id.insert(tag_row.id.clone(), payload.name);
+    }
+
+    let rows = repo.all_entries().await?;
+    let mut entries: Vec<ExportEntry> = Vec::with_capacity(rows.len());
+    let mut blobs: Vec<(String, Zeroizing<Vec<u8>>)> = Vec::new();
+    for row in &rows {
+        if row.is_trashed {
+            continue; // recover LIVE entries only — trash has its own restore (3.6)
+        }
+        let dek = session
+            .crypto
+            .unwrap_dek(&row.dek_wrapped, session.kek.expose())
+            .map_err(snapshot_kek_error)?;
+        let payload = super::refs::decrypt_row_with_dek(session.crypto.as_ref(), &dek, row)
+            .map_err(snapshot_kek_error)?;
+
+        if let EntryPayload::Document(doc) = &payload {
+            if let Some(bytes) = read_snapshot_blob(
+                manifest,
+                snapshots_dir,
+                &row.id,
+                session.crypto.as_ref(),
+                &dek,
+                &doc.blob_nonce,
+            )? {
+                blobs.push((row.id.as_str().to_owned(), bytes));
+            }
+        }
+
+        let tag_names = payload
+            .meta()
+            .tag_ids
+            .iter()
+            .filter_map(|tid| tag_names_by_id.get(tid).cloned())
+            .collect();
+        entries.push(payload_to_export(&row.id, &payload, tag_names));
+    }
+    Ok((entries, blobs))
+}
+
+/// Read + decrypt a document's blob from the snapshot object pool. The pooled file is
+/// `[24-byte nonce][ciphertext + tag]` (the same on-disk shape as a live blob); split the
+/// nonce, verify it matches the payload's `blob_nonce` (the binding authority), and decrypt
+/// under the entry DEK + `blob_aad`. `None` when the manifest records no object for this
+/// entry (a document with no blob — tolerated, not fatal).
+fn read_snapshot_blob(
+    manifest: &SnapshotManifest,
+    snapshots_dir: &Path,
+    entry_id: &EntryId,
+    crypto: &dyn CryptoProvider,
+    dek: &[u8; DEK_LEN],
+    blob_nonce: &[u8; NONCE_LEN],
+) -> Result<Option<Zeroizing<Vec<u8>>>, VaultError> {
+    let Some(obj) = manifest
+        .objects
+        .iter()
+        .find(|o| o.entry_id == entry_id.as_str())
+    else {
+        return Ok(None);
+    };
+    let path = store::object_path(snapshots_dir, &obj.blake3);
+    let bytes = std::fs::read(&path)
+        .map_err(|e| VaultError::Storage(StorageError::Io(format!("read snapshot object: {e}"))))?;
+    // Split [nonce || ciphertext]; a too-short object is indistinguishable from tampering.
+    let disk_nonce = bytes.get(..NONCE_LEN).ok_or(VaultError::DecryptionFailed)?;
+    let ciphertext = bytes.get(NONCE_LEN..).ok_or(VaultError::DecryptionFailed)?;
+    if disk_nonce != blob_nonce.as_slice() {
+        return Err(VaultError::DecryptionFailed);
+    }
+    let aad = blob_aad(entry_id)?;
+    let plaintext = crypto.decrypt_entry(dek, blob_nonce, ciphertext, &aad)?;
+    Ok(Some(plaintext))
+}
+
+/// Build the staging session (preview + serialized bundle) from a ready list of
+/// `ExportEntry` + document plaintexts — the shared tail of the snapshot source. Every entry
+/// is committable (1:1 `row_id` ↔ bundle index); a child whose parent folder is absent from
+/// the batch is badged "will import flat" (④), and near-duplicates get the advisory hint (②).
+fn stage_from_entries(
+    entries: Vec<ExportEntry>,
+    blobs: Vec<(String, Zeroizing<Vec<u8>>)>,
+) -> Result<ImportSession, VaultError> {
+    let folder_ids: HashSet<String> = entries
+        .iter()
+        .filter(|e| matches!(e, ExportEntry::Folder(_)))
+        .filter_map(|e| e.id().map(str::to_owned))
+        .collect();
+
+    let mut preview = Vec::with_capacity(entries.len());
+    let mut entry_of = Vec::with_capacity(entries.len());
+    for (i, entry) in entries.iter().enumerate() {
+        let row_id = u32::try_from(i).unwrap_or(u32::MAX);
+        let mut r = preview_row(row_id, entry);
+        if let Some(fid) = source_folder_id(entry) {
+            if !folder_ids.contains(fid) {
+                r.status = flat_folder_warning();
+            }
+        }
+        preview.push(r);
+        entry_of.push(Some(row_id));
+    }
+
+    apply_dedup(&mut preview);
+    let bundle_json = Zeroizing::new(
+        serde_json::to_vec(&ExportBundle::new(entries))
+            .map_err(|e| VaultError::MalformedPayload(format!("snapshot bundle: {e}")))?,
+    );
+    Ok(ImportSession {
+        bundle_json,
+        blobs,
+        preview,
+        entry_of,
+    })
+}
+
+/// A wrong/stale KEK makes AEAD decryption fail; surface that as `SnapshotStale` so the
+/// shell can ask for the snapshot's own password rather than reporting generic corruption.
+fn snapshot_kek_error(err: VaultError) -> VaultError {
+    match err {
+        VaultError::DecryptionFailed => VaultError::SnapshotStale,
+        other => other,
+    }
 }
 
 // ---------------------------------------------------------------------------

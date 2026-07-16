@@ -192,6 +192,16 @@ pub enum VaultError {
     #[error("no import is in progress for this session")]
     ImportNotStarted,
 
+    /// A snapshot whose `verify_hash_prefix` no longer matches the live vault: a
+    /// credential change since it was taken failed to rewrap it (⑬), so its DEKs are
+    /// under an older KEK this session cannot unwrap. Recovering entries from it (the
+    /// tweezers) needs the password of its own moment — surfaced, never a silent skip
+    /// (slice 5.3c).
+    #[error(
+        "this snapshot predates a credential change; recovering from it needs its original password"
+    )]
+    SnapshotStale,
+
     // --- screen lock (slice 4.5b) ---
     #[error("screen-lock state is unavailable on this device")]
     ScreenLockUnavailable,

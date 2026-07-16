@@ -147,19 +147,12 @@ impl UnlockVault {
         drop(kek_zeroizing);
 
         // ---- 6. Build VaultIndex --------------------------------------------
-        let mut index = VaultIndex::new();
-
-        let tag_rows = repo.all_tags().await?;
-        for tag_row in tag_rows {
-            let meta = self.decrypt_tag_row(&tag_row, kek.expose())?;
-            index.insert_tag(meta);
-        }
-
-        let entry_rows = repo.all_entries().await?;
-        for row in entry_rows {
-            let entry = self.decrypt_entry_row(&row, kek.expose())?;
-            index.insert_entry(entry);
-        }
+        // Password path: a decrypt failure here is genuine corruption (the
+        // constant-time verify_hash compare above already validated the password),
+        // so it passes through unchanged.
+        let index = self
+            .build_index(repo.as_ref(), kek.expose(), std::convert::identity)
+            .await?;
 
         // ---- 7. Audit + update last_unlocked_at -----------------------------
         let when = now();
@@ -262,23 +255,9 @@ impl UnlockVault {
         // ---- 6. Build VaultIndex (also validates the KEK) -------------------
         // A wrong/stale KEK can't decrypt any row; the first AEAD failure is remapped
         // to `WrongCredentials` so the shell treats it exactly like a bad password.
-        let mut index = VaultIndex::new();
-
-        let tag_rows = repo.all_tags().await?;
-        for tag_row in tag_rows {
-            let meta = self
-                .decrypt_tag_row(&tag_row, kek.expose())
-                .map_err(kek_validation_error)?;
-            index.insert_tag(meta);
-        }
-
-        let entry_rows = repo.all_entries().await?;
-        for row in entry_rows {
-            let entry = self
-                .decrypt_entry_row(&row, kek.expose())
-                .map_err(kek_validation_error)?;
-            index.insert_entry(entry);
-        }
+        let index = self
+            .build_index(repo.as_ref(), kek.expose(), kek_validation_error)
+            .await?;
 
         // ---- 7. Audit (optional) + update last_unlocked_at ------------------
         let when = now();
@@ -316,6 +295,40 @@ impl UnlockVault {
         );
         session.rollback_warning = rollback_warning;
         Ok(session)
+    }
+
+    /// Build a fresh [`VaultIndex`] by decrypting every tag + entry row under `kek`.
+    ///
+    /// The single copy of the unlock O(n) loop, shared by the password path
+    /// ([`execute`](Self::execute)) and the keyless path
+    /// ([`open_with_kek`](Self::open_with_kek)). The two differ **only** in
+    /// `remap_err`: the password path passes [`std::convert::identity`] (a decrypt
+    /// failure is genuine corruption — the password was already verified against
+    /// `verify_hash`), and the keyless path passes [`kek_validation_error`] (a
+    /// decrypt failure means a wrong/stale KEK → `WrongCredentials`). Per-row DEKs
+    /// live only inside `decrypt_entry_row` and zeroize there. Folded from the two
+    /// verbatim copies in slice 5.3c.
+    async fn build_index(
+        &self,
+        repo: &dyn VaultRepository,
+        kek: &[u8; KEK_LEN],
+        remap_err: fn(VaultError) -> VaultError,
+    ) -> Result<VaultIndex, VaultError> {
+        let mut index = VaultIndex::new();
+
+        let tag_rows = repo.all_tags().await?;
+        for tag_row in tag_rows {
+            let meta = self.decrypt_tag_row(&tag_row, kek).map_err(remap_err)?;
+            index.insert_tag(meta);
+        }
+
+        let entry_rows = repo.all_entries().await?;
+        for row in entry_rows {
+            let entry = self.decrypt_entry_row(&row, kek).map_err(remap_err)?;
+            index.insert_entry(entry);
+        }
+
+        Ok(index)
     }
 
     /// Decrypt one entry row → `IndexEntry` projection. DEK + plaintext are
