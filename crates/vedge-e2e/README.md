@@ -125,8 +125,9 @@ Controls are located by **stable `data-testid`** attributes (kebab-case, semanti
 This keeps the suite **locale-independent** — a copy edit or a locale switch never
 breaks it. Form **inputs** keep their DOM `id`s (`ef-*`, `vault-search`,
 `vault-path`, `master-password`, `folder-new`, `gen-bulk-count`), used via
-`fill_id`. A few structural hooks are reused directly: `tr[data-entry-row]` /
-`tr[data-entry-id]` (rows), `[role='option']` (+ `[data-value=…]` for a specific
+`fill_id`. A few structural hooks are reused directly: `tr[data-testid=<entry-id>]`
+(entry rows — since 5.3.1b the vault table is a `DataTable` whose `row_testid` hook
+carries the id), `[role='option']` (+ `[data-value=…]` for a specific
 Select option), `[role='combobox']` (a Select trigger), `div[role='dialog']`.
 When adding a scenario, tag the new control with `data-testid` at its call site
 (`attr:data-testid="…"` spreads onto `vedge-ui` `Button`/`IconButton`/`SidebarItem`)

@@ -210,9 +210,10 @@ pub async fn add_note(s: &Session, name: &str, content: &str) -> Result<()> {
     Ok(())
 }
 
-/// Click an entry row (opens the detail drawer). Uses the `data-entry-id` hook.
+/// Click an entry row (opens the detail drawer). Uses the DataTable `row_testid`
+/// hook, which carries the entry id on each body row (since slice 5.3.1b).
 pub async fn open_entry(s: &Session, id: &str) -> Result<()> {
-    let by = By::Css(format!("tr[data-entry-id='{id}']"));
+    let by = By::Css(format!("tr[data-testid='{id}']"));
     s.wait_for(by, Duration::from_secs(5))
         .await
         .with_context(|| format!("entry row {id}"))?
