@@ -379,6 +379,11 @@ pub fn VaultTable(
                 on_row_click=Callback::new(move |r: VaultRow| on_select.run(r.entry))
                 reorder_enabled=reorder_enabled
                 on_row_reorder=on_reorder
+                // Entries are always draggable onto the folder tree (which reads
+                // the row key = entry id off `text/plain`) — restoring the
+                // drag-to-folder the pre-DataTable table had in every sort. Only
+                // Manual sort (`reorder_enabled`) makes the table a drop target.
+                row_draggable=Signal::stored(true)
                 empty_message=empty_label
             />
         </div>

@@ -643,7 +643,9 @@ fn DragReorderSection() -> impl IntoView {
         <Section title="Drag reorder (row-drag hook)">
             <div class="flex items-center gap-3 text-xs text-text-secondary">
                 <span>
-                    "Drag a row onto another to reorder. The hook carries the stable row key, not the index."
+                    "Drag a row onto another to reorder. The hook carries the stable row key, not the index. "
+                    "(A separate `row_draggable` prop makes rows draggable onto targets outside the table — "
+                    "e.g. a folder tree — writing the row key to `text/plain`, without making the table a drop target.)"
                 </span>
                 <Button
                     variant=Variant::Secondary
