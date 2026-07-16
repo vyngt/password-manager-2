@@ -125,6 +125,20 @@
     cursor: pointer;
   }
 
+  /* Row drag-reorder (opt-in via `reorder_enabled`) */
+  .data-table__row--draggable {
+    cursor: grab;
+  }
+
+  .data-table__row--draggable:active {
+    cursor: grabbing;
+  }
+
+  /* Drop-indicator: an inset top line so it survives border-collapse. */
+  .data-table__row--drag-over {
+    box-shadow: inset 0 2px 0 0 var(--color-primary);
+  }
+
   .data-table tbody tr:focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: -2px;

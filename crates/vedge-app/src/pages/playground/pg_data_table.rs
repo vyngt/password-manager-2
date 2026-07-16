@@ -88,6 +88,7 @@ pub fn DataTablePage() -> impl IntoView {
             <ColumnTypesSection />
             <SelectableSection />
             <RowClickVsSelectionSection />
+            <DragReorderSection />
             <LoadingSection />
             <EmptySection />
             <KitchenSinkSection />
@@ -598,6 +599,77 @@ fn EmptySection() -> impl IntoView {
     }
 }
 
+// ---- Drag reorder ----
+#[component]
+fn DragReorderSection() -> impl IntoView {
+    let order = RwSignal::new(sample_entries());
+    let enabled = RwSignal::new(true);
+
+    // Moved row lands immediately before the drop target. The hook hands us the
+    // stable row *keys*, so this is index-free — a re-sort could never mis-target.
+    let on_reorder = Callback::new(move |(moved, target): (String, String)| {
+        order.update(|v| {
+            let Some(from) = v.iter().position(|e| e.id == moved) else {
+                return;
+            };
+            let item = v.remove(from);
+            let insert_at = v.iter().position(|e| e.id == target).unwrap_or(v.len());
+            v.insert(insert_at, item);
+        });
+    });
+
+    let columns = vec![
+        ColumnDef {
+            id: "name",
+            header: "Name (drag a row onto another)".into(),
+            col_type: ColumnType::Text,
+            sortable: false,
+            width: ColumnWidth::Flexible,
+            align: Align::Start,
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.name.to_owned())),
+        },
+        ColumnDef {
+            id: "category",
+            header: "Category".into(),
+            col_type: ColumnType::Text,
+            sortable: false,
+            width: ColumnWidth::Fixed(140),
+            align: Align::Start,
+            cell: cell_fn(|e: &Entry| CellValue::Text(e.category.to_owned())),
+        },
+    ];
+
+    view! {
+        <Section title="Drag reorder (row-drag hook)">
+            <div class="flex items-center gap-3 text-xs text-text-secondary">
+                <span>
+                    "Drag a row onto another to reorder. The hook carries the stable row key, not the index."
+                </span>
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    on:click=move |_| enabled.update(|v| *v = !*v)
+                >
+                    {move || if enabled.get() { "Disable dragging" } else { "Enable dragging" }}
+                </Button>
+            </div>
+            <div class="text-xs text-text-tertiary">
+                "Order: "
+                {move || order.get().iter().map(|e| e.name).collect::<Vec<_>>().join(" · ")}
+            </div>
+            <DataTable
+                columns=columns
+                rows=Signal::derive(move || order.get())
+                row_key=string_fn(|e: &Entry| e.id.to_owned())
+                reorder_enabled=Signal::derive(move || enabled.get())
+                on_row_reorder=on_reorder
+                row_testid=string_fn(|e: &Entry| format!("dt-drag-{}", e.id))
+                empty_message="No entries"
+            />
+        </Section>
+    }
+}
+
 // ---- Kitchen sink ----
 #[component]
 fn KitchenSinkSection() -> impl IntoView {
@@ -706,7 +778,10 @@ fn KitchenSinkSection() -> impl IntoView {
     view! {
         <Section title="Kitchen sink">
             <p class="text-xs text-text-tertiary">
-                "Sortable headers + multi-select checkboxes + row click (navigate) + badge column + action column. Keyboard: Tab in, Arrow ↑/↓ to move, Space to toggle, Shift+Space for range, Enter to navigate, Escape to clear."
+                "Sortable headers + multi-select checkboxes + row click (navigate) + badge column + action column. Keyboard: Tab in, Arrow ↑/↓ to move, Space to toggle, Shift+Space or Shift+↑/↓ for range, Ctrl/Cmd+A to select all, Enter to navigate, Escape to clear."
+            </p>
+            <p class="text-xs text-text-tertiary">
+                "⓪ Selection is keyed by entry id, not row position: select a few rows, then click a sort header — the same entries stay selected, not the same positions."
             </p>
             <div class="flex items-center gap-4 text-xs text-text-secondary">
                 <span>
@@ -752,6 +827,7 @@ fn KitchenSinkSection() -> impl IntoView {
                 select_all_label="Select all entries"
                 deselect_all_label="Deselect all entries"
                 row_select_label=string_fn(|e: &Entry| format!("Select {}", e.name))
+                row_testid=string_fn(|e: &Entry| format!("dt-row-{}", e.id))
                 empty_message="No entries"
                 empty_action=move || {
                     view! {

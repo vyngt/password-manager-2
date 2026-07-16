@@ -1,4 +1,6 @@
-use super::logic::{HeaderCheckState, cycle_header, cycle_sort, header_state, toggle_row};
+use super::logic::{
+    HeaderCheckState, cycle_header, cycle_sort, extend_range, header_state, select_all, toggle_row,
+};
 use super::types::{CellValue, ColumnDef, ColumnType, ColumnWidth, SortState, StringFn};
 use crate::components::form::checkbox::Checkbox;
 use crate::components::foundation::badge::Badge;
@@ -26,6 +28,16 @@ pub fn DataTable<T>(
     #[prop(into, default = None)] row_select_label: Option<StringFn<T>>,
     #[prop(optional, into)] empty_action: ViewFn,
     #[prop(into, default = None)] on_row_click: Option<Callback<T>>,
+    /// Fires `(moved_key, target_key)` when a row is dropped onto another — both
+    /// are stable `row_key`s (never indices). Dragging is gated by `reorder_enabled`.
+    #[prop(into, default = None)]
+    on_row_reorder: Option<Callback<(String, String)>>,
+    /// Gates row dragging. When false, rows are not draggable and drops are ignored.
+    #[prop(into, default = Signal::stored(false))]
+    reorder_enabled: Signal<bool>,
+    /// Optional per-row `data-testid` value (e.g. an e2e hook), computed from the row.
+    #[prop(into, default = None)]
+    row_testid: Option<StringFn<T>>,
     #[prop(optional, default = "")] class: &'static str,
 ) -> impl IntoView
 where
@@ -38,7 +50,11 @@ where
     let columns_len = columns_sv.with_value(std::vec::Vec::len);
     let row_key_sv = StoredValue::new(row_key);
     let row_select_label_sv = StoredValue::new(row_select_label);
+    let row_testid_sv = StoredValue::new(row_testid);
     let empty_action_sv = StoredValue::new(empty_action);
+
+    // Which row currently shows the drag drop-indicator (index into visible order).
+    let drag_over_idx = RwSignal::new(None::<usize>);
 
     let total_cols: u32 = (columns_len + usize::from(selectable)) as u32;
 
@@ -120,6 +136,19 @@ where
         fire_selection(new_sel);
     };
 
+    // Keyboard Shift+Arrow range-extend: pivots on the anchor (seeded from the
+    // row the key was pressed on if none exists yet), unions toward `to`.
+    let dispatch_extend = move |from: usize, to: usize| {
+        let keys = row_keys.get();
+        if to >= keys.len() {
+            return;
+        }
+        let anchor = anchor_idx.get().unwrap_or(from);
+        let new_sel = extend_range(&selected_rows.get(), &keys, Some(anchor), to);
+        anchor_idx.set(Some(anchor));
+        fire_selection(new_sel);
+    };
+
     // ---- Render <colgroup> ----
     let colgroup_view = move || {
         let mut pieces: Vec<AnyView> = Vec::with_capacity(columns_len + 1);
@@ -185,6 +214,9 @@ where
             .map(|(idx, row)| {
                 let row_key_str = row_key_sv.with_value(|f| f(&row));
                 let key_for_sel = row_key_str.clone();
+                let key_drag_start = row_key_str.clone();
+                let key_drop = row_key_str.clone();
+                let row_testid_val = row_testid_sv.with_value(|opt| opt.as_ref().map(|f| f(&row)));
                 let is_selected = Signal::derive(move || {
                     selected_rows.with(|sel| sel.iter().any(|s| s == &key_for_sel))
                 });
@@ -193,6 +225,12 @@ where
                     let mut c = String::from("data-table__row");
                     if has_row_click {
                         c.push_str(" data-table__row--clickable");
+                    }
+                    if reorder_enabled.get() {
+                        c.push_str(" data-table__row--draggable");
+                    }
+                    if drag_over_idx.get() == Some(idx) {
+                        c.push_str(" data-table__row--drag-over");
                     }
                     c
                 });
@@ -279,13 +317,27 @@ where
                             ev.prevent_default();
                             if len > 0 {
                                 let next = (idx + 1).min(len - 1);
+                                if selectable && ev.shift_key() {
+                                    dispatch_extend(idx, next);
+                                }
                                 focus_idx.set(Some(next));
                             }
                         }
                         "ArrowUp" => {
                             ev.prevent_default();
                             if idx > 0 {
-                                focus_idx.set(Some(idx - 1));
+                                let prev = idx - 1;
+                                if selectable && ev.shift_key() {
+                                    dispatch_extend(idx, prev);
+                                }
+                                focus_idx.set(Some(prev));
+                            }
+                        }
+                        "a" | "A" => {
+                            if selectable && (ev.ctrl_key() || ev.meta_key()) {
+                                ev.prevent_default();
+                                anchor_idx.set(None);
+                                fire_selection(select_all(&row_keys.get()));
                             }
                         }
                         "Home" => {
@@ -321,15 +373,69 @@ where
                     }
                 };
 
+                let on_dragstart = move |ev: web_sys::DragEvent| {
+                    if !reorder_enabled.get_untracked() {
+                        return;
+                    }
+                    if let Some(dt) = ev.data_transfer() {
+                        let _ = dt.set_data("text/plain", &key_drag_start);
+                    }
+                };
+                let on_dragover = move |ev: web_sys::DragEvent| {
+                    if reorder_enabled.get_untracked() {
+                        ev.prevent_default();
+                    }
+                };
+                let on_dragenter = move |ev: web_sys::DragEvent| {
+                    if reorder_enabled.get_untracked() {
+                        ev.prevent_default();
+                        drag_over_idx.set(Some(idx));
+                    }
+                };
+                let on_dragleave = move |_: web_sys::DragEvent| {
+                    drag_over_idx.update(|d| {
+                        if *d == Some(idx) {
+                            *d = None;
+                        }
+                    });
+                };
+                let on_drop = move |ev: web_sys::DragEvent| {
+                    ev.prevent_default();
+                    drag_over_idx.set(None);
+                    if !reorder_enabled.get_untracked() {
+                        return;
+                    }
+                    let Some(cb) = on_row_reorder else {
+                        return;
+                    };
+                    let Some(moved) = ev
+                        .data_transfer()
+                        .and_then(|dt| dt.get_data("text/plain").ok())
+                        .filter(|s| !s.is_empty())
+                    else {
+                        return;
+                    };
+                    if moved != key_drop {
+                        cb.run((moved, key_drop.clone()));
+                    }
+                };
+
                 view! {
                     <tr
                         node_ref=tr_ref
                         class=tr_class
+                        data-testid=row_testid_val
+                        draggable=move || reorder_enabled.get().then_some("true")
                         aria-selected=move || is_selected.get().then_some("true")
                         aria-rowindex=(idx + 1).to_string()
                         tabindex=tr_tabindex
                         on:click=on_click
                         on:keydown=on_keydown
+                        on:dragstart=on_dragstart
+                        on:dragover=on_dragover
+                        on:dragenter=on_dragenter
+                        on:dragleave=on_dragleave
+                        on:drop=on_drop
                     >
                         {checkbox_cell}
                         {cells_view}
