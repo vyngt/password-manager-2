@@ -24,7 +24,7 @@ use crate::features::vault::ui_state::VaultUiState;
 use crate::features::vault::vault_create_form::VaultCreateForm;
 use crate::features::vault::vault_detail::VaultDetail;
 use crate::features::vault::vault_filters::{
-    Filters, SortKey, TagMatch, VaultFilters, filter_and_sort, reorder_within,
+    FilterChips, Filters, SortKey, TagMatch, VaultFilters, filter_and_sort, reorder_within,
 };
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::{t, t_string, use_i18n};
@@ -903,6 +903,7 @@ pub fn VaultPage() -> impl IntoView {
                         search_query=search_query
                         entry_type=entry_type
                         tag_ids=tag_ids
+                        tag_match=tag_match
                         favorites_only=favorites_only
                         sort=sort
                         tags=Signal::derive(move || tags.get())
@@ -953,6 +954,19 @@ pub fn VaultPage() -> impl IntoView {
                     </Show>
                 </Show>
             </div>
+
+            // Active-facet chips + Clear all + the result count (② presentation only).
+            <FilterChips
+                entry_type=entry_type
+                tag_ids=tag_ids
+                tag_match=tag_match
+                favorites_only=favorites_only
+                tags=Signal::derive(move || tags.get())
+                shown=Signal::derive(move || visible.get().len())
+                total=Signal::derive(move || {
+                    items.get().iter().filter(|e| e.entry_type != EntryTypeDto::Folder).count()
+                })
+            />
 
             <TagManager
                 open=manage_tags_open

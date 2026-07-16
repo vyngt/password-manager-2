@@ -11,16 +11,24 @@
 use crate::features::vault::entry_form::{type_from_key, type_to_key};
 use crate::features::vault::entry_view::type_label_i18n;
 use crate::features::vault::folder_tree::{FolderScope, scope_matches};
+use crate::features::vault::tag_assign::toggle_tag;
 use crate::features::vault::timestamps::ts_millis;
 use crate::features::vault::vault_search::VaultSearch;
 use crate::i18n::{t, t_string, use_i18n};
+use icondata as i;
 use leptos::prelude::*;
+use leptos_icons::Icon;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use vedge_ipc::{EntryTypeDto, IndexEntryDto, TagMetaDto};
+use vedge_ui::components::feedback::popover::{Popover, PopoverPlacement};
+use vedge_ui::components::foundation::badge::Badge;
+use vedge_ui::components::segmented_control::{SegmentOption, SegmentedControl};
 use vedge_ui::components::select::{Select, SelectItem};
 use vedge_ui::components::toggle::Toggle;
+use vedge_ui::components::{Button, IconButton};
+use vedge_ui::primitives::tokens::{BadgeSize, BadgeVariant, Size, Variant};
 
 /// Whether a multi-tag filter broadens (any) or narrows (all). Default `Any`
 /// (OR): adding a tag shows *more*, never silently less. Persisted via
@@ -335,100 +343,238 @@ fn sort_from_key(k: &str) -> SortKey {
     }
 }
 
-/// The filter/sort toolbar: search box + type / tag / sort dropdowns + a
-/// favorites toggle. Each control is bound to a page-owned `RwSignal`; the
-/// derived list reacts in `vault.rs`. (Active vs. Trash is now a sidebar folder,
-/// not a filter here — slice 3.6.)
+/// The filter toolbar: a prominent search box, a **Filter** button (with an
+/// active-facet count `Badge`) that opens a popover of facets — type, multi-select
+/// tag pills with an any/all toggle, and favourites — plus the sort `Select` (which
+/// moves into the table headers in d2b). Active facets show as removable chips via
+/// [`FilterChips`], mounted separately by the page.
 #[component]
 pub fn VaultFilters(
     search_query: RwSignal<String>,
     entry_type: RwSignal<Option<EntryTypeDto>>,
-    /// Selected tag ids. This transitional toolbar Select is single-select (writes
-    /// a 0-or-1-element vec); the multi-select popover replaces it in d2.
     tag_ids: RwSignal<Vec<String>>,
+    tag_match: RwSignal<TagMatch>,
     favorites_only: RwSignal<bool>,
     sort: RwSignal<SortKey>,
     #[prop(into)] tags: Signal<Vec<TagMetaDto>>,
 ) -> impl IntoView {
     let i18n = use_i18n();
+    let popover_open = RwSignal::new(false);
+    let trigger_ref = NodeRef::<leptos::html::Div>::new();
+    let anchor = Signal::derive(move || {
+        trigger_ref
+            .get()
+            .map(|el| -> web_sys::HtmlElement { el.into() })
+    });
+    let close = Callback::new(move |()| popover_open.set(false));
+
+    // How many facets are active — drives the button's count badge.
+    let active_count = move || {
+        usize::from(entry_type.get().is_some())
+            + usize::from(!tag_ids.with(Vec::is_empty))
+            + usize::from(favorites_only.get())
+    };
 
     view! {
-        <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
+        <div class="flex-1 flex items-center gap-2 min-w-0">
             <VaultSearch search_query=search_query />
 
-            // Type facet. `options` is a reactive `Signal` (not a `{move||}`
-            // remount wrapper) so a locale change relocalizes the labels in
-            // place — the Select keeps its open/highlight/type-ahead state
-            // (slice 4.9a P4).
-            <div class="w-40 shrink-0">
-                <Select
-                    options=Signal::derive(move || {
-                        let mut options = vec![
-                            SelectItem::option(
-                                "",
-                                t_string!(i18n, vault.filter_all_types).to_owned(),
-                            ),
-                        ];
-                        options
-                            .extend(
-                                filterable_types()
-                                    .iter()
-                                    .map(|ty| SelectItem::option(
-                                        type_to_key(ty),
-                                        type_label_i18n(i18n, ty),
-                                    )),
-                            );
-                        options
-                    })
-                    value=Signal::derive(move || {
-                        entry_type.get().as_ref().map_or("", type_to_key).to_owned()
-                    })
-                    placeholder=Signal::derive(move || {
-                        t_string!(i18n, vault.filter_type).to_owned()
-                    })
-                    aria_label=Signal::derive(move || {
-                        t_string!(i18n, vault.filter_type_aria).to_owned()
-                    })
-                    on_change=Callback::new(move |key: String| {
-                        entry_type
-                            .set(if key.is_empty() { None } else { Some(type_from_key(&key)) });
-                    })
-                />
+            // Filter button — opens the facet popover, badged with the active count.
+            <div node_ref=trigger_ref class="shrink-0">
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    class="whitespace-nowrap gap-1.5"
+                    attr:data-testid="vault-filter"
+                    on:click=move |_: web_sys::MouseEvent| popover_open.update(|v| *v = !*v)
+                >
+                    <Icon attr:aria-hidden="true" icon=i::FaFilterSolid />
+                    {move || t!(i18n, vault.filter_button)}
+                    {move || {
+                        let n = active_count();
+                        (n > 0)
+                            .then(|| {
+                                view! {
+                                    <Badge variant=BadgeVariant::Info size=BadgeSize::Sm>
+                                        {n.to_string()}
+                                    </Badge>
+                                }
+                            })
+                    }}
+                </Button>
             </div>
 
-            // Tag facet — reactive `options` relocalizes the "all tags" label and
-            // rebuilds when the tag list changes, both without remounting.
-            <div class="w-40 shrink-0">
-                <Select
-                    options=Signal::derive(move || {
-                        let mut options = vec![
-                            SelectItem::option(
-                                "",
-                                t_string!(i18n, vault.filter_all_tags).to_owned(),
-                            ),
-                        ];
-                        options
-                            .extend(
-                                tags.get().into_iter().map(|t| SelectItem::option(t.id, t.name)),
-                            );
-                        options
-                    })
-                    value=Signal::derive(move || {
-                        tag_ids.with(|v| v.first().cloned().unwrap_or_default())
-                    })
-                    placeholder=Signal::derive(move || {
-                        t_string!(i18n, vault.filter_tag).to_owned()
-                    })
-                    aria_label=Signal::derive(move || {
-                        t_string!(i18n, vault.filter_tag_aria).to_owned()
-                    })
-                    on_change=Callback::new(move |id: String| {
-                        tag_ids.set(if id.is_empty() { Vec::new() } else { vec![id] });
-                    })
-                />
-            </div>
+            <Popover
+                open=Signal::derive(move || popover_open.get())
+                on_close=close
+                anchor=anchor
+                placement=PopoverPlacement::BottomStart
+            >
+                <div
+                    class="flex flex-col gap-4 p-4 w-72"
+                    role="group"
+                    aria-label=move || t_string!(i18n, vault.filter_popover_aria).to_owned()
+                >
+                    // Type facet.
+                    <div class="flex flex-col gap-1">
+                        <span class="text-foreground/50 text-xs uppercase tracking-wider">
+                            {move || t!(i18n, vault.filter_type)}
+                        </span>
+                        <Select
+                            options=Signal::derive(move || {
+                                let mut options = vec![
+                                    SelectItem::option(
+                                        "",
+                                        t_string!(i18n, vault.filter_all_types).to_owned(),
+                                    ),
+                                ];
+                                options
+                                    .extend(
+                                        filterable_types()
+                                            .iter()
+                                            .map(|ty| SelectItem::option(
+                                                type_to_key(ty),
+                                                type_label_i18n(i18n, ty),
+                                            )),
+                                    );
+                                options
+                            })
+                            value=Signal::derive(move || {
+                                entry_type.get().as_ref().map_or("", type_to_key).to_owned()
+                            })
+                            placeholder=Signal::derive(move || {
+                                t_string!(i18n, vault.filter_type).to_owned()
+                            })
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.filter_type_aria).to_owned()
+                            })
+                            on_change=Callback::new(move |key: String| {
+                                entry_type
+                                    .set(
+                                        if key.is_empty() {
+                                            None
+                                        } else {
+                                            Some(type_from_key(&key))
+                                        },
+                                    );
+                            })
+                        />
+                    </div>
 
-            // Sort key — reactive `options` relocalizes the sort labels in place.
+                    // Tags facet — multi-select pills + an any/all toggle (shown once
+                    // two or more are picked, when the combine mode actually matters).
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between gap-2 min-h-6">
+                            <span class="text-foreground/50 text-xs uppercase tracking-wider">
+                                {move || t!(i18n, vault.filter_tags_heading)}
+                            </span>
+                            {move || {
+                                (tag_ids.with(|v| v.len() >= 2))
+                                    .then(|| {
+                                        view! {
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-foreground/50 text-xs">
+                                                    {move || t!(i18n, vault.tag_match_label)}
+                                                </span>
+                                                <SegmentedControl
+                                                    options=vec![
+                                                        SegmentOption::text(
+                                                            "any",
+                                                            Signal::derive(move || {
+                                                                t_string!(i18n, vault.tag_match_any).to_owned()
+                                                            }),
+                                                        ),
+                                                        SegmentOption::text(
+                                                            "all",
+                                                            Signal::derive(move || {
+                                                                t_string!(i18n, vault.tag_match_all).to_owned()
+                                                            }),
+                                                        ),
+                                                    ]
+                                                    value=Signal::derive(move || {
+                                                        match tag_match.get() {
+                                                            TagMatch::Any => "any",
+                                                            TagMatch::All => "all",
+                                                        }
+                                                            .to_owned()
+                                                    })
+                                                    size=Size::Sm
+                                                    on_change=Callback::new(move |v: String| {
+                                                        tag_match
+                                                            .set(
+                                                                if v == "all" { TagMatch::All } else { TagMatch::Any },
+                                                            );
+                                                    })
+                                                    aria_label=Signal::derive(move || {
+                                                        t_string!(i18n, vault.tag_match_aria).to_owned()
+                                                    })
+                                                />
+                                            </div>
+                                        }
+                                    })
+                            }}
+                        </div>
+                        <Show
+                            when=move || !tags.get().is_empty()
+                            fallback=move || {
+                                view! {
+                                    <span class="text-foreground/40 text-xs">
+                                        {move || t!(i18n, vault.filter_all_tags)}
+                                    </span>
+                                }
+                            }
+                        >
+                            <div class="flex flex-wrap gap-1.5">
+                                {move || {
+                                    tags.get()
+                                        .into_iter()
+                                        .map(|tag| {
+                                            let id = tag.id;
+                                            let name = tag.name;
+                                            let cls_id = id.clone();
+                                            let aria_id = id.clone();
+                                            view! {
+                                                <button
+                                                    type="button"
+                                                    class=move || {
+                                                        if tag_ids.with(|v| v.contains(&cls_id)) {
+                                                            "inline-flex items-center rounded-full border px-2.5 py-1 text-xs transition-colors border-primary bg-primary/10 text-primary"
+                                                        } else {
+                                                            "inline-flex items-center rounded-full border px-2.5 py-1 text-xs transition-colors border-border text-foreground/70 hover:border-primary/60"
+                                                        }
+                                                    }
+                                                    aria-pressed=move || {
+                                                        tag_ids.with(|v| v.contains(&aria_id)).then_some("true")
+                                                    }
+                                                    on:click=move |_: web_sys::MouseEvent| {
+                                                        tag_ids.update(|v| *v = toggle_tag(v, &id));
+                                                    }
+                                                >
+                                                    {name}
+                                                </button>
+                                            }
+                                        })
+                                        .collect_view()
+                                }}
+                            </div>
+                        </Show>
+                    </div>
+
+                    // Favourites-only.
+                    <div class="flex items-center gap-2 text-sm text-foreground/70">
+                        <Toggle
+                            checked=Signal::derive(move || favorites_only.get())
+                            on_change=Callback::new(move |v: bool| favorites_only.set(v))
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, vault.filter_favorites).to_owned()
+                            })
+                        />
+                        <span>{move || t!(i18n, vault.filter_favorites)}</span>
+                    </div>
+                </div>
+            </Popover>
+
+            // Sort key — transitional Select; moves into the table headers in d2b.
             <div class="w-40 shrink-0">
                 <Select
                     options=Signal::derive(move || {
@@ -455,20 +601,134 @@ pub fn VaultFilters(
                     on_change=Callback::new(move |v: String| sort.set(sort_from_key(&v)))
                 />
             </div>
+        </div>
+    }
+}
 
-            // Favorites-only. Toggle carries the aria-label; the visible text is
-            // an adjacent span (nesting a <label> inside the Toggle's own label
-            // would be invalid).
-            <div class="flex items-center gap-2 text-sm text-foreground/70 whitespace-nowrap shrink-0">
-                <Toggle
-                    checked=Signal::derive(move || favorites_only.get())
-                    on_change=Callback::new(move |v: bool| favorites_only.set(v))
-                    aria_label=Signal::derive(move || {
-                        t_string!(i18n, vault.filter_favorites).to_owned()
+/// One removable filter chip: a label + an ✕ that clears the facet.
+#[component]
+fn FacetChip(text: String, remove_label: String, on_remove: Callback<()>) -> impl IntoView {
+    view! {
+        <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5">
+            <span class="truncate max-w-[16rem]">{text}</span>
+            <IconButton
+                variant=Variant::Ghost
+                size=Size::Xs
+                class="hover:text-danger"
+                aria_label=remove_label
+                on:click=move |_: web_sys::MouseEvent| on_remove.run(())
+            >
+                <Icon attr:aria-hidden="true" icon=i::FaXmarkSolid />
+            </IconButton>
+        </span>
+    }
+}
+
+/// Active-facet chips + **Clear all** + the result count (`12 of 247 entries`).
+/// Each chip removes only its facet; Clear all resets the facets but **not** the
+/// search. The Tags chip states the any/all semantics (`work or personal`), never
+/// a bare count (⑦). Mounted by the page as a row under the toolbar.
+#[component]
+pub fn FilterChips(
+    entry_type: RwSignal<Option<EntryTypeDto>>,
+    tag_ids: RwSignal<Vec<String>>,
+    tag_match: RwSignal<TagMatch>,
+    favorites_only: RwSignal<bool>,
+    #[prop(into)] tags: Signal<Vec<TagMetaDto>>,
+    /// Rows currently shown (after filtering).
+    #[prop(into)]
+    shown: Signal<usize>,
+    /// Total listable rows in the current source (the denominator).
+    #[prop(into)]
+    total: Signal<usize>,
+) -> impl IntoView {
+    let i18n = use_i18n();
+    let any_active =
+        move || entry_type.get().is_some() || !tag_ids.with(Vec::is_empty) || favorites_only.get();
+
+    // Resolve the selected tag ids to names, joined by the any/all connector, so
+    // the chip reads "work or personal" — the semantics, not a count.
+    let tags_chip_text = move || {
+        let selected = tag_ids.get();
+        let names: Vec<String> = selected
+            .iter()
+            .filter_map(|id| {
+                tags.with(|cat| cat.iter().find(|t| &t.id == id).map(|t| t.name.clone()))
+            })
+            .collect();
+        let conj = if matches!(tag_match.get(), TagMatch::All) {
+            t_string!(i18n, vault.filter_conj_and).to_owned()
+        } else {
+            t_string!(i18n, vault.filter_conj_or).to_owned()
+        };
+        names.join(&format!(" {conj} "))
+    };
+
+    view! {
+        <div class="flex items-center flex-wrap gap-2 text-xs" data-testid="filter-chips">
+            {move || {
+                entry_type
+                    .get()
+                    .map(|ty| {
+                        let label = type_label_i18n(i18n, &ty);
+                        let remove = t_string!(i18n, vault.chip_remove).to_owned();
+                        view! {
+                            <FacetChip
+                                text=label
+                                remove_label=remove
+                                on_remove=Callback::new(move |()| entry_type.set(None))
+                            />
+                        }
                     })
-                />
-                <span>{move || t!(i18n, vault.filter_favorites)}</span>
-            </div>
+            }}
+            {move || {
+                (!tag_ids.with(Vec::is_empty))
+                    .then(|| {
+                        let remove = t_string!(i18n, vault.chip_remove).to_owned();
+                        view! {
+                            <FacetChip
+                                text=tags_chip_text()
+                                remove_label=remove
+                                on_remove=Callback::new(move |()| tag_ids.set(Vec::new()))
+                            />
+                        }
+                    })
+            }}
+            {move || {
+                favorites_only
+                    .get()
+                    .then(|| {
+                        let label = t_string!(i18n, vault.chip_favorites).to_owned();
+                        let remove = t_string!(i18n, vault.chip_remove).to_owned();
+                        view! {
+                            <FacetChip
+                                text=label
+                                remove_label=remove
+                                on_remove=Callback::new(move |()| favorites_only.set(false))
+                            />
+                        }
+                    })
+            }}
+            <Show when=any_active>
+                <button
+                    type="button"
+                    class="text-foreground/60 hover:text-foreground underline underline-offset-2"
+                    data-testid="filter-clear-all"
+                    on:click=move |_: web_sys::MouseEvent| {
+                        entry_type.set(None);
+                        tag_ids.set(Vec::new());
+                        favorites_only.set(false);
+                    }
+                >
+                    {move || t!(i18n, vault.filter_clear_all)}
+                </button>
+            </Show>
+            <span class="ml-auto text-foreground/50 whitespace-nowrap">
+                {move || {
+                    let (shown, total) = (shown.get(), total.get());
+                    t!(i18n, vault.filter_result_count, shown = shown, total = total)
+                }}
+            </span>
         </div>
     }
 }
