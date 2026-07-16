@@ -3,6 +3,7 @@ pub mod biometric_setting;
 pub mod emergency_kit_setting;
 pub mod export_panel;
 pub mod generator_prefs;
+pub mod import_panel;
 pub mod maintenance_panel;
 pub mod security_prefs;
 pub mod theme_editor;

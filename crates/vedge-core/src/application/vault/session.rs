@@ -28,6 +28,7 @@ use crate::application::vault::ports::blob_store::BlobStore;
 use crate::application::vault::ports::clipboard::ClipboardProvider;
 use crate::application::vault::ports::crypto::CryptoProvider;
 use crate::application::vault::ports::repository::VaultRepository;
+use crate::application::vault::use_cases::import_entries::ImportSession;
 use crate::domain::shared::{EntryId, VaultId};
 use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::entities::VaultConfig;
@@ -65,6 +66,12 @@ pub struct VaultSession {
     /// (slice 5.2c). Non-secret, advisory: the shell reads it once right after unlock
     /// to raise a warning toast. Never blocks unlock.
     pub(crate) rollback_warning: Option<i64>,
+
+    /// An in-progress import staging its decrypted rows in RAM (slice 5.3b).
+    /// `ZeroizeOnDrop`, capacity-bounded, and **bound to this session's lifetime**:
+    /// lock / TTL / cancel drops it and zeroizes the staged secrets. `None` until
+    /// `begin_import` runs.
+    pub(crate) import: Option<ImportSession>,
 }
 
 impl VaultSession {
@@ -92,6 +99,7 @@ impl VaultSession {
             clipboard,
             revealed_totp: HashSet::new(),
             rollback_warning: None,
+            import: None,
         }
     }
 

@@ -30,6 +30,7 @@ pub mod envelope;
 pub mod error;
 pub mod export;
 pub mod health;
+pub mod import;
 pub mod misc;
 pub mod settings;
 pub mod snapshot;
@@ -58,6 +59,7 @@ pub use health::{
     AgeConfidenceDto, FindingDto, FindingKindDto, HealthReportDto, HealthScanInputDto,
     HealthSummaryDto, SecretFieldDto, SeverityDto, SkipReasonDto, SkippedDto,
 };
+pub use import::{ImportActionDto, ImportFailureDto, ImportPreviewRow, ImportReportDto};
 pub use misc::{
     ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, ExportedDocumentDto,
     FieldSelectorDto, MaintenanceReportDto, UnlockResultDto, UnlockVaultInputDto,

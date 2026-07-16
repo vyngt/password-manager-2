@@ -12,6 +12,7 @@ pub mod export_emergency_kit;
 pub mod export_entries;
 pub mod get_entry;
 pub mod hard_delete_entry;
+pub mod import_entries;
 pub mod inspect_backup;
 pub mod list_audit;
 pub mod lock_vault;
@@ -54,6 +55,10 @@ pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
 pub use export_entries::{ExportEntriesInput, ExportFormat, ExportReport, export_entries};
 pub use get_entry::{GetEntryInput, get_entry};
 pub use hard_delete_entry::hard_delete_entry;
+pub use import_entries::{
+    ImportAction, ImportFailure, ImportPreviewRow, ImportReport, ImportSession, ImportSource,
+    RowAction, RowStatus, begin_import, cancel_import, commit_import,
+};
 pub use inspect_backup::{BackupPreview, InspectBackupInput, TargetStateKind, inspect_backup};
 pub use list_audit::{AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, list_audit};
 pub use lock_vault::{close_session_db, lock_vault, record_lock};

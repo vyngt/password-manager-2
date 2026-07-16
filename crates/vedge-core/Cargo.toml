@@ -57,9 +57,15 @@ blake3 = "1"
 tempfile = "3"
 # Export/import entries (slice 5.3): `csv` (BurntSushi) — the frozen logins-only CSV
 # adapter. Streams, tolerant RFC 4180, carries `Position` on errors for row-level
-# preview badges. Dual-licensed Unlicense/MIT. (`url`/`psl` for import duplicate
-# detection are deferred to 5.3b, where that code lives.)
+# preview badges. Dual-licensed Unlicense/MIT.
 csv = "1"
+# Import duplicate detection (slice 5.3b): `url` (WHATWG) normalizes the comparison
+# key to scheme+host (drop default ports, keep subdomain) so a false merge can't
+# collapse two real accounts; `psl` (compile-time Public Suffix List, IDN/punycode
+# aware) yields the eTLD+1 "shares domain" hint. Both advisory — the preview never
+# auto-merges (research note ②). MIT/Apache-2.0.
+url = "2"
+psl = "2"
 
 [dependencies.sea-orm]
 version = "1.1.20"
