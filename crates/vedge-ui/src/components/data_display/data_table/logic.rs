@@ -299,7 +299,7 @@ mod tests {
         let (sel, _) = toggle_row(&[], &ks, 2, None, false);
         assert_eq!(sel, vec!["k2".to_owned()]);
 
-        let reordered = vec![
+        let reordered = [
             "k2".to_owned(),
             "k4".into(),
             "k0".into(),
