@@ -25,6 +25,7 @@ pub mod export;
 pub mod health;
 pub mod import;
 pub mod misc;
+pub mod secret_update;
 pub mod settings;
 pub mod snapshot;
 pub mod tag;

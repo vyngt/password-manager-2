@@ -92,8 +92,11 @@ pub fn EntryHistory(
         target.set(None);
     });
 
-    // Reveal (or toggle off) a version's primary secret. `history_id = None`
-    // reveals the live entry via `get_entry`; a snapshot via `get_history_value`.
+    // Reveal (or toggle off) a version's primary secret (slice 5.4). Sealed
+    // secrets no longer ride on `get_(history_)value`, so a FieldSelector-backed
+    // primary (Login/Card/ApiKey) is fetched via the audited `reveal_field` /
+    // `reveal_history_field`; a Note (whose content is NOT sealed) still comes
+    // back on the payload fetch. `history_id = None` targets the live entry.
     let do_reveal = move |version: u32, history_id: Option<String>| {
         if revealed.get_untracked().map(|(v, _)| v) == Some(version) {
             revealed.set(None);
@@ -104,18 +107,28 @@ pub fn EntryHistory(
         };
         let vault_path = active.path.get_untracked().unwrap_or_default();
         let id = entry.id;
+        let ty = entry.entry_type;
         let err_prefix = t_string!(i18n, vault.err_reveal).to_owned();
         spawn_local(async move {
-            let result = match history_id {
-                Some(hid) => api::entry::get_history_value(&vault_path, &id, &hid).await,
-                None => api::entry::get_entry(&vault_path, &id).await,
+            let result: Result<Option<String>, _> = if let Some(field) = primary_copy_field(&ty) {
+                match history_id {
+                    Some(hid) => {
+                        api::entry::reveal_history_field(&vault_path, &id, &hid, field).await
+                    }
+                    None => api::entry::reveal_field(&vault_path, &id, field).await,
+                }
+                .map(Some)
+            } else {
+                // Note: content is not sealed — it rides on the payload fetch.
+                let payload = match history_id {
+                    Some(hid) => api::entry::get_history_value(&vault_path, &id, &hid).await,
+                    None => api::entry::get_entry(&vault_path, &id).await,
+                };
+                payload.map(|p| note_content(&p))
             };
             match result {
-                Ok(payload) => {
-                    if let Some(secret) = primary_secret(&payload) {
-                        revealed.set(Some((version, secret)));
-                    }
-                }
+                Ok(Some(secret)) => revealed.set(Some((version, secret))),
+                Ok(None) => {}
                 Err(e) => show_error(format!("{err_prefix}{e}")),
             }
         });
@@ -479,17 +492,13 @@ fn rel_label(i18n: I18nContext<Locale>, changed_at: &str) -> String {
     }
 }
 
-/// The version's primary revealable secret value (for the reveal display).
-fn primary_secret(payload: &PayloadDto) -> Option<String> {
+/// A Note's content (the only sealed-family payload whose value still crosses on
+/// `get_(history_)value` — it is the entry's substance, not credential material).
+/// Every other revealable secret comes back via `reveal_(history_)field`.
+fn note_content(payload: &PayloadDto) -> Option<String> {
     match payload {
-        PayloadDto::Login(p) => Some(p.password.clone()),
-        PayloadDto::Card(p) => Some(p.number.clone()),
-        PayloadDto::ApiKey(p) => Some(p.key.clone()),
-        PayloadDto::SshKey(p) => Some(p.private_key_pem.clone()),
         PayloadDto::Note(p) => Some(p.content.clone()),
-        PayloadDto::EnvVars(p) => p.vars.first().map(|v| v.value.clone()),
-        PayloadDto::Identity(p) => p.national_id.clone(),
-        PayloadDto::Document(_) | PayloadDto::Folder(_) => None,
+        _ => None,
     }
 }
 
@@ -504,18 +513,14 @@ fn primary_copy_field(entry_type: &EntryTypeDto) -> Option<FieldSelectorDto> {
     }
 }
 
-/// Whether a type carries a revealable secret (gates the reveal action).
+/// Whether a type's primary secret can be revealed in history (gates the reveal
+/// action). After sealing (slice 5.4) that is the FieldSelector-backed primaries
+/// (Login/Card/ApiKey) plus Note (unsealed content). `SshKey` / `Identity` /
+/// `EnvVars` history reveal is DEFERRED — their primary field isn't a
+/// `FieldSelector` yet;
+/// their values are still copyable where a `FieldSelector` exists.
 fn has_secret(entry_type: &EntryTypeDto) -> bool {
-    matches!(
-        entry_type,
-        EntryTypeDto::Login
-            | EntryTypeDto::Card
-            | EntryTypeDto::ApiKey
-            | EntryTypeDto::SshKey
-            | EntryTypeDto::Note
-            | EntryTypeDto::EnvVars
-            | EntryTypeDto::Identity
-    )
+    primary_copy_field(entry_type).is_some() || matches!(entry_type, EntryTypeDto::Note)
 }
 
 /// A human label for a changed-field key. Common content fields reuse existing

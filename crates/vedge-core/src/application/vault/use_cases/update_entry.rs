@@ -23,19 +23,36 @@ use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::health;
 use crate::domain::vault::index::IndexEntry;
 use crate::domain::vault::payloads::EntryPayload;
-use crate::domain::vault::totp::TotpUpdate;
+use crate::domain::vault::secret_update::{SecretUpdates, resolve_secrets};
 
 use super::entry_history::HISTORY_MAX_VERSIONS;
 
 pub struct UpdateEntryInput {
     pub entry_id: EntryId,
-    /// Complete replacement payload. Callers own the merge logic (read the
-    /// current payload, mutate, pass back).
+    /// Complete replacement payload — but with **placeholder** sealed-secret
+    /// fields. Callers own the merge logic (read the current payload, mutate,
+    /// pass back).
     pub payload: EntryPayload,
-    /// TOTP enrolment intent (Login only). Since the seed no longer crosses to
-    /// WASM (the 4.2 door), `Unchanged` (the default) carries the stored seed
-    /// forward — resolved here, the one place with access to decrypt it.
-    pub totp: TotpUpdate,
+    /// Sealed-secret intents (slice 5.4). Since the plaintext no longer crosses
+    /// to WASM, `Unchanged` (the default) carries the stored secret forward —
+    /// resolved here, the one place with access to decrypt the old entry.
+    /// Generalizes the 4.2 TOTP sentinel to every credential field.
+    pub secrets: SecretUpdates,
+}
+
+impl UpdateEntryInput {
+    /// For internal callers (restore-from-history, tests) that already hold a
+    /// COMPLETE decrypted `payload`: `Set` every sealed field from it, so the
+    /// update writes exactly the given payload's values.
+    #[must_use]
+    pub fn full(entry_id: EntryId, payload: EntryPayload) -> Self {
+        let secrets = SecretUpdates::set_all(&payload);
+        Self {
+            entry_id,
+            payload,
+            secrets,
+        }
+    }
 }
 
 #[instrument(skip_all, fields(entry_id = %input.entry_id))]
@@ -74,20 +91,13 @@ pub async fn update_entry(
     let old = super::refs::decrypt_row_with_dek(session.crypto.as_ref(), &dek, &existing)?;
     let when = now();
 
-    // Resolve the TOTP enrolment intent for Login payloads. `Set`/`Clear`
-    // enrol/remove; `Unchanged` carries the stored seed forward from `old`.
+    // Resolve every sealed-secret intent against the decrypted `old` entry
+    // (slice 5.4). `Set`/`Clear` apply the explicit intent; `Unchanged` carries
+    // the stored secret forward — the safe failure mode that keeps an edit which
+    // never touched a field (the plaintext no longer crosses to WASM) from
+    // wiping it. This replaces 4.2's Login-only TOTP block, generalized.
     let mut new_payload = input.payload;
-    if let EntryPayload::Login(login) = &mut new_payload {
-        match input.totp {
-            TotpUpdate::Set(secret) => login.totp_secret = Some(secret),
-            TotpUpdate::Clear => login.totp_secret = None,
-            TotpUpdate::Unchanged => {
-                if let EntryPayload::Login(old_login) = &old {
-                    login.totp_secret.clone_from(&old_login.totp_secret);
-                }
-            }
-        }
-    }
+    resolve_secrets(&mut new_payload, input.secrets, Some(&old))?;
 
     // Stamp secret age: bump only when a secret-bearing field actually changed;
     // otherwise carry the prior stamp forward, so editing a non-secret field

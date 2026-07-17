@@ -138,6 +138,31 @@ pub async fn copy_field(
     .await
 }
 
+/// Reveal one secret field's plaintext to the renderer (slice 5.4) — the audited,
+/// on-demand relaxation of "no plaintext in WASM". The backend audits
+/// `SecretRevealed`. Only fields the backend `FieldSelector` supports.
+pub async fn reveal_field(
+    vault_path: &str,
+    entry_id: &str,
+    field: FieldSelectorDto,
+) -> Result<String, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        field: FieldSelectorDto,
+    }
+    call(
+        "reveal_field",
+        &Args {
+            vault_path,
+            entry_id,
+            field,
+        },
+    )
+    .await
+}
+
 pub async fn move_entry(
     vault_path: &str,
     entry_id: &str,
@@ -302,6 +327,33 @@ pub async fn copy_history_field(
             history_id,
             field,
             clear_after_secs,
+        },
+    )
+    .await
+}
+
+/// Reveal one field of a prior version to the renderer (slice 5.4) — the history
+/// twin of [`reveal_field`]. Audits `SecretRevealed`.
+pub async fn reveal_history_field(
+    vault_path: &str,
+    entry_id: &str,
+    history_id: &str,
+    field: FieldSelectorDto,
+) -> Result<String, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        history_id: &'a str,
+        field: FieldSelectorDto,
+    }
+    call(
+        "reveal_history_field",
+        &Args {
+            vault_path,
+            entry_id,
+            history_id,
+            field,
         },
     )
     .await

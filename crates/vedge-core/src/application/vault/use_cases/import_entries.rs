@@ -922,6 +922,8 @@ async fn commit_one(
     let source_id = export_meta.id.clone();
     match export_to_payload(entry, meta) {
         ImportedEntry::Standard(payload) => {
+            // A complete, decrypted payload — create takes it directly (no sealed
+            // intents to resolve on the create path).
             let out = create_entry(session, CreateEntryInput { payload }).await?;
             Ok(out.entry_id)
         }

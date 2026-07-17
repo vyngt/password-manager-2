@@ -26,7 +26,6 @@ use vedge_core::domain::vault::payloads::{
     ApiKeyPayload, CardPayload, CommonMeta, EntryPayload, EntryType, IdentityPayload, LoginPayload,
     NotePayload, SshKeyPayload,
 };
-use vedge_core::domain::vault::totp::TotpUpdate;
 use vedge_core::infrastructure::breach::MemoryBreachChecker;
 use vedge_core::{
     AgeConfidence, AuditAction, AuditQuery, CreateEntryInput, FindingKind, GetEntryInput,
@@ -355,11 +354,7 @@ async fn secret_changed_at_carried_forward_on_metadata_edit() {
     // the stamp forward.
     update_entry(
         &mut session,
-        UpdateEntryInput {
-            entry_id: id.clone(),
-            payload: login("GitHub-renamed", "alice", "hunter2"),
-            totp: TotpUpdate::Unchanged,
-        },
+        UpdateEntryInput::full(id.clone(), login("GitHub-renamed", "alice", "hunter2")),
     )
     .await
     .unwrap();
@@ -376,11 +371,10 @@ async fn secret_changed_at_bumped_when_secret_differs() {
     let t0 = stamp_of(&mut session, &login_id).await.unwrap();
     update_entry(
         &mut session,
-        UpdateEntryInput {
-            entry_id: login_id.clone(),
-            payload: login("GitHub", "alice", "a-different-password"),
-            totp: TotpUpdate::Unchanged,
-        },
+        UpdateEntryInput::full(
+            login_id.clone(),
+            login("GitHub", "alice", "a-different-password"),
+        ),
     )
     .await
     .unwrap();
@@ -392,11 +386,10 @@ async fn secret_changed_at_bumped_when_secret_differs() {
     let c0 = stamp_of(&mut session, &card_id).await.unwrap();
     update_entry(
         &mut session,
-        UpdateEntryInput {
-            entry_id: card_id.clone(),
-            payload: card("Visa", "4111111111111111", "222", None),
-            totp: TotpUpdate::Unchanged,
-        },
+        UpdateEntryInput::full(
+            card_id.clone(),
+            card("Visa", "4111111111111111", "222", None),
+        ),
     )
     .await
     .unwrap();

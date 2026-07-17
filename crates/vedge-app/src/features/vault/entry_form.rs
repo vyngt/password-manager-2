@@ -18,9 +18,10 @@ use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use vedge_generator::{RandomConfig, generate_random};
 use vedge_ipc::{
-    AddressDto, ApiKeyPayloadDto, CardPayloadDto, CommonMetaDto, EntryTypeDto, EnvVarDto,
-    EnvVarsPayloadDto, FolderPayloadDto, IdentityPayloadDto, LoginPayloadDto, NotePayloadDto,
-    PayloadDto, SshKeyPayloadDto, TotpAlgorithmDto, TotpUpdateDto,
+    AddressDto, ApiKeyPayloadDto, CardPayloadDto, CommonMetaDto, EntryTypeDto, EnvVarUpdateDto,
+    EnvVarsPayloadDto, FieldSelectorDto, FolderPayloadDto, IdentityPayloadDto, LoginPayloadDto,
+    NotePayloadDto, PayloadDto, SecretListUpdateDto, SecretUpdateDto, SshKeyPayloadDto,
+    TotpAlgorithmDto, TotpUpdateDto,
 };
 use vedge_ui::components::Button;
 use vedge_ui::components::IconButton;
@@ -97,9 +98,20 @@ pub enum EntryFormError {
 }
 
 /// A flat, host-testable snapshot of an entry form.
+// A flat form snapshot legitimately carries many independent bool toggles
+// (editing + per-optional-secret presence flags + favorite/totp); grouping them
+// into sub-structs would obscure, not clarify, this DTO-like model.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntryFormData {
     pub entry_type: EntryTypeDto,
+
+    /// True when this form was seeded from an EXISTING entry (`from_payload`),
+    /// false for a fresh create (`new`). Sealed secrets (slice 5.4) no longer
+    /// cross on `get_entry`, so an editing form starts with EMPTY secret fields;
+    /// `editing` tells `to_payload` that an untouched (empty) required field means
+    /// "keep the stored secret" (`Unchanged`) rather than "set it empty".
+    pub editing: bool,
 
     // Common meta.
     pub name: String,
@@ -107,6 +119,8 @@ pub struct EntryFormData {
 
     // Login.
     pub username: String,
+    /// Sealed secret. Empty on an editing form until the user types (Set) or
+    /// clicks Reveal (fills it → Set of the same value, harmless).
     pub password: String,
     // TOTP (slice 4.2 door): the seed never round-trips through the form. The
     // form tracks the *presence* + params + an enrolment *intent*; the stored
@@ -124,10 +138,14 @@ pub struct EntryFormData {
     pub card_expiry: String,
     pub cvv: String,
     pub pin: String,
+    /// Optional-secret presence: a stored pin exists (drives the placeholder +
+    /// Reveal button). `false` on create and when the entry has no pin.
+    pub has_pin: bool,
 
     // SshKey.
     pub ssh_private_key: String,
     pub ssh_passphrase: String,
+    pub has_passphrase: bool,
     pub ssh_public_key: String,
     pub ssh_fingerprint: String,
     pub ssh_key_type: String,
@@ -135,12 +153,15 @@ pub struct EntryFormData {
     // ApiKey.
     pub api_key: String,
     pub api_secret: String,
+    pub has_secret: bool,
     pub api_endpoint: String,
     pub api_expiry: String,
     pub api_key_type: String,
 
-    // EnvVars.
-    pub env_vars: Vec<(String, String)>,
+    // EnvVars. `(key, value, had_stored_value)` — after sealing, an editing form
+    // loads each row's key with an EMPTY value + `had_stored_value = true`, so an
+    // untouched value carries forward (`Unchanged`). New rows start `false`.
+    pub env_vars: Vec<(String, String, bool)>,
 
     // Note.
     pub note_content: String,
@@ -158,9 +179,12 @@ pub struct EntryFormData {
     pub addr_country: String,
     pub date_of_birth: String,
     pub national_id: String,
+    pub has_national_id: bool,
 
-    // Carry-through (not UI-edited, preserved across an edit round-trip).
-    pub recovery_codes: Vec<String>,
+    // Carry-through. Recovery codes have NO editor and (after sealing) their
+    // values never cross — so the form only knows the COUNT and always sends
+    // `Unchanged`; `update_entry` carries the stored codes forward.
+    pub recovery_codes_count: u32,
     pub favicon_url: Option<String>,
     pub tag_ids: Vec<String>,
     pub folder_id: Option<String>,
@@ -187,6 +211,7 @@ impl EntryFormData {
     pub fn new(entry_type: EntryTypeDto) -> Self {
         Self {
             entry_type,
+            editing: false,
             name: String::new(),
             url: String::new(),
             username: String::new(),
@@ -201,13 +226,16 @@ impl EntryFormData {
             card_expiry: String::new(),
             cvv: String::new(),
             pin: String::new(),
+            has_pin: false,
             ssh_private_key: String::new(),
             ssh_passphrase: String::new(),
+            has_passphrase: false,
             ssh_public_key: String::new(),
             ssh_fingerprint: String::new(),
             ssh_key_type: String::new(),
             api_key: String::new(),
             api_secret: String::new(),
+            has_secret: false,
             api_endpoint: String::new(),
             api_expiry: String::new(),
             api_key_type: String::new(),
@@ -225,7 +253,8 @@ impl EntryFormData {
             addr_country: String::new(),
             date_of_birth: String::new(),
             national_id: String::new(),
-            recovery_codes: Vec::new(),
+            has_national_id: false,
+            recovery_codes_count: 0,
             favicon_url: None,
             tag_ids: Vec::new(),
             folder_id: None,
@@ -287,42 +316,48 @@ impl EntryFormData {
             return Err(EntryFormError::NameRequired);
         }
         let meta = self.meta();
+        let editing = self.editing;
         let payload = match self.entry_type {
             EntryTypeDto::Login => PayloadDto::Login(LoginPayloadDto {
                 meta,
                 username: self.username.clone(),
-                password: self.password.clone(),
+                password: required_intent(&self.password, editing),
                 has_totp: self.has_totp,
                 totp_algorithm: self.totp_algorithm,
                 totp_digits: self.totp_digits,
                 totp_period: self.totp_period,
                 totp: self.totp_intent.clone(),
-                recovery_codes: self.recovery_codes.clone(),
+                // No editor for recovery codes: always carry the stored list forward.
+                recovery_codes: SecretListUpdateDto::Unchanged,
+                recovery_codes_count: self.recovery_codes_count,
             }),
             EntryTypeDto::Card => {
                 let (expiry_month, expiry_year) = parse_card_expiry(&self.card_expiry)?;
                 PayloadDto::Card(CardPayloadDto {
                     meta,
                     cardholder_name: self.cardholder_name.clone(),
-                    number: self.card_number.clone(),
+                    number: required_intent(&self.card_number, editing),
                     expiry_month,
                     expiry_year,
-                    cvv: self.cvv.clone(),
-                    pin: non_empty(&self.pin),
+                    cvv: required_intent(&self.cvv, editing),
+                    pin: optional_intent(&self.pin, self.has_pin),
+                    has_pin: self.has_pin,
                 })
             }
             EntryTypeDto::SshKey => PayloadDto::SshKey(SshKeyPayloadDto {
                 meta,
-                private_key_pem: self.ssh_private_key.clone(),
-                passphrase: non_empty(&self.ssh_passphrase),
+                private_key_pem: required_intent(&self.ssh_private_key, editing),
+                passphrase: optional_intent(&self.ssh_passphrase, self.has_passphrase),
+                has_passphrase: self.has_passphrase,
                 public_key: self.ssh_public_key.clone(),
                 fingerprint: self.ssh_fingerprint.clone(),
                 key_type: self.ssh_key_type.clone(),
             }),
             EntryTypeDto::ApiKey => PayloadDto::ApiKey(ApiKeyPayloadDto {
                 meta,
-                key: self.api_key.clone(),
-                secret: non_empty(&self.api_secret),
+                key: required_intent(&self.api_key, editing),
+                secret: optional_intent(&self.api_secret, self.has_secret),
+                has_secret: self.has_secret,
                 endpoint: non_empty(&self.api_endpoint),
                 expiry: non_empty(&self.api_expiry),
                 key_type: non_empty(&self.api_key_type),
@@ -332,10 +367,10 @@ impl EntryFormData {
                 vars: self
                     .env_vars
                     .iter()
-                    .filter(|(k, _)| !k.trim().is_empty())
-                    .map(|(k, v)| EnvVarDto {
+                    .filter(|(k, _, _)| !k.trim().is_empty())
+                    .map(|(k, v, had_value)| EnvVarUpdateDto {
                         key: k.clone(),
-                        value: v.clone(),
+                        value: env_value_intent(v, *had_value),
                     })
                     .collect(),
             }),
@@ -351,7 +386,8 @@ impl EntryFormData {
                 phone: non_empty(&self.phone),
                 address: self.address(),
                 date_of_birth: non_empty(&self.date_of_birth),
-                national_id: non_empty(&self.national_id),
+                national_id: optional_intent(&self.national_id, self.has_national_id),
+                has_national_id: self.has_national_id,
             }),
             EntryTypeDto::Folder => PayloadDto::Folder(FolderPayloadDto { meta }),
             EntryTypeDto::Document | EntryTypeDto::Unknown(_) => {
@@ -387,6 +423,7 @@ impl EntryFormData {
     pub fn from_payload(payload: &PayloadDto) -> Self {
         let (entry_type, meta) = (payload_entry_type(payload), payload_meta(payload));
         let mut d = Self::new(entry_type);
+        d.editing = true;
         d.name = meta.name.clone();
         d.url = meta.url.clone().unwrap_or_default();
         d.favicon_url = meta.favicon_url.clone();
@@ -398,48 +435,50 @@ impl EntryFormData {
         d.icon = meta.icon.clone();
         d.sort_order = meta.sort_order;
 
+        // Sealed secrets (slice 5.4) are ABSENT from the DTO — the form starts with
+        // empty secret fields + presence flags; an untouched field carries the
+        // stored secret forward via `Unchanged` in `to_payload`.
         match payload {
             PayloadDto::Login(p) => {
                 d.username = p.username.clone();
-                d.password = p.password.clone();
-                // Door: the seed is absent from the DTO. Track presence + params;
-                // an untouched form keeps the stored seed via `Unchanged`.
+                // password stays empty (sealed).
                 d.has_totp = p.has_totp;
                 d.totp_algorithm = p.totp_algorithm;
                 d.totp_digits = p.totp_digits;
                 d.totp_period = p.totp_period;
                 d.totp_intent = TotpUpdateDto::Unchanged;
-                d.recovery_codes = p.recovery_codes.clone();
+                d.recovery_codes_count = p.recovery_codes_count;
             }
             PayloadDto::Card(p) => {
                 d.cardholder_name = p.cardholder_name.clone();
-                d.card_number = p.number.clone();
                 d.card_expiry = format!("{:02}/{:02}", p.expiry_month, p.expiry_year % 100);
-                d.cvv = p.cvv.clone();
-                d.pin = p.pin.clone().unwrap_or_default();
+                // number / cvv stay empty (sealed, required); pin sealed (optional).
+                d.has_pin = p.has_pin;
             }
             PayloadDto::SshKey(p) => {
-                d.ssh_private_key = p.private_key_pem.clone();
-                d.ssh_passphrase = p.passphrase.clone().unwrap_or_default();
+                // private_key / passphrase stay empty (sealed).
+                d.has_passphrase = p.has_passphrase;
                 d.ssh_public_key = p.public_key.clone();
                 d.ssh_fingerprint = p.fingerprint.clone();
                 d.ssh_key_type = p.key_type.clone();
             }
             PayloadDto::ApiKey(p) => {
-                d.api_key = p.key.clone();
-                d.api_secret = p.secret.clone().unwrap_or_default();
+                // key / secret stay empty (sealed).
+                d.has_secret = p.has_secret;
                 d.api_endpoint = p.endpoint.clone().unwrap_or_default();
                 d.api_expiry = p.expiry.clone().unwrap_or_default();
                 d.api_key_type = p.key_type.clone().unwrap_or_default();
             }
             PayloadDto::EnvVars(p) => {
+                // Keys cross (the schema); values are sealed → empty + had_value.
                 d.env_vars = p
                     .vars
                     .iter()
-                    .map(|v| (v.key.clone(), v.value.clone()))
+                    .map(|v| (v.key.clone(), String::new(), true))
                     .collect();
             }
             PayloadDto::Note(p) => {
+                // Note.content is NOT sealed — it crosses.
                 d.note_content = p.content.clone();
             }
             PayloadDto::Identity(p) => {
@@ -456,7 +495,8 @@ impl EntryFormData {
                     d.addr_country = a.country.clone();
                 }
                 d.date_of_birth = p.date_of_birth.clone().unwrap_or_default();
-                d.national_id = p.national_id.clone().unwrap_or_default();
+                // national_id stays empty (sealed).
+                d.has_national_id = p.has_national_id;
             }
             PayloadDto::Document(p) => {
                 d.doc_filename = p.filename.clone();
@@ -475,6 +515,44 @@ fn non_empty(s: &str) -> Option<String> {
         None
     } else {
         Some(s.to_owned())
+    }
+}
+
+/// Intent for a REQUIRED sealed field (password, card number/cvv, ssh private
+/// key, api key). A non-empty value is a `Set`; an empty field on an EDITING
+/// form means "keep the stored secret" (`Unchanged`) — the safe failure mode
+/// (slice 5.4). On create (`!editing`) an empty required field is `Set("")` (the
+/// form's own required-field validation guards genuinely-empty submissions).
+fn required_intent(value: &str, editing: bool) -> SecretUpdateDto {
+    if value.is_empty() && editing {
+        SecretUpdateDto::Unchanged
+    } else {
+        SecretUpdateDto::Set(value.to_owned())
+    }
+}
+
+/// Intent for an OPTIONAL sealed field (pin, passphrase, api secret,
+/// `national_id`). Non-empty → `Set`; empty with a stored value → keep it
+/// (`Unchanged`); empty with none stored → `Clear` (⇒ `None`).
+fn optional_intent(value: &str, has_stored: bool) -> SecretUpdateDto {
+    if !value.is_empty() {
+        SecretUpdateDto::Set(value.to_owned())
+    } else if has_stored {
+        SecretUpdateDto::Unchanged
+    } else {
+        SecretUpdateDto::Clear
+    }
+}
+
+/// Intent for one env-var row's value. Non-empty → `Set`; empty with a stored
+/// value (an untouched existing row) → `Unchanged`; empty new row → `Set("")`.
+/// (Renaming a key requires re-entering its value — the sealed value can't
+/// follow a rename, or the resolver would reject the now-unknown key.)
+fn env_value_intent(value: &str, had_value: bool) -> SecretUpdateDto {
+    if value.is_empty() && had_value {
+        SecretUpdateDto::Unchanged
+    } else {
+        SecretUpdateDto::Set(value.to_owned())
     }
 }
 
@@ -565,7 +643,10 @@ macro_rules! text_field {
     }};
 }
 
-/// A masked (password-style) input with a reveal/hide toggle.
+/// A masked (password-style) input with a reveal/hide toggle. When the form is
+/// EDITING an existing entry the field starts empty (the secret is sealed —
+/// slice 5.4), so the placeholder says "Unchanged — type to replace" instead of
+/// a fake `••••` value. On create it shows the field's normal placeholder.
 macro_rules! secret_field {
     ($data:expr, $i18n:expr, $id:literal, $field:ident, $key:ident) => {{
         let data = $data;
@@ -574,7 +655,13 @@ macro_rules! secret_field {
             <Input
                 id=$id
                 input_type="password"
-                placeholder=Signal::derive(move || t_string!(i18n, vault.$key).to_string())
+                placeholder=Signal::derive(move || {
+                    if data.with(|d| d.editing) {
+                        t_string!(i18n, vault.form_sealed_placeholder).to_string()
+                    } else {
+                        t_string!(i18n, vault.$key).to_string()
+                    }
+                })
                 value=Signal::derive(move || data.with(|d| d.$field.clone()))
                 on_input=Callback::new(move |v: String| data.update(|d| d.$field = v))
                 reveal_label=Signal::derive(move || t_string!(i18n, vault.reveal).to_string())
@@ -582,6 +669,56 @@ macro_rules! secret_field {
             />
         }
     }};
+}
+
+/// Context for the per-field Reveal button (slice 5.4). The edit flow
+/// (`vault_detail`) provides it with the (reactive) vault path + entry id; it is
+/// ABSENT on the create form (nothing is stored to reveal). A Reveal button
+/// renders only when this context is present.
+#[derive(Clone, Copy)]
+pub struct RevealCtx {
+    pub vault_path: Signal<String>,
+    pub entry_id: Signal<String>,
+}
+
+/// A per-field "Reveal" `IconButton` (slice 5.4): fetches the stored secret via
+/// the audited `reveal_field` and fills the form field — the "let me check it
+/// before I change it" flow that sealing the door otherwise removes. Renders
+/// nothing on the create form (no [`RevealCtx`]). Only fields the backend
+/// `FieldSelector` supports get one (password, card number/cvv, api key).
+#[component]
+fn RevealButton(field: FieldSelectorDto, on_reveal: Callback<String>) -> impl IntoView {
+    let i18n = use_i18n();
+    let Some(ctx) = use_context::<RevealCtx>() else {
+        return ().into_any();
+    };
+    let reveal = move |_: web_sys::MouseEvent| {
+        let vault_path = ctx.vault_path.get_untracked();
+        let entry_id = ctx.entry_id.get_untracked();
+        let field = field.clone();
+        if entry_id.is_empty() {
+            return;
+        }
+        spawn_local(async move {
+            if let Ok(value) = api::entry::reveal_field(&vault_path, &entry_id, field).await {
+                on_reveal.run(value);
+            }
+        });
+    };
+    view! {
+        <IconButton
+            variant=Variant::Ghost
+            size=Size::Sm
+            attr:data-testid="reveal-field"
+            aria_label=Signal::derive(move || t_string!(i18n, vault.reveal).to_owned())
+            on:click=reveal
+        >
+            <span aria-hidden="true">
+                <Icon icon=i::FaKeySolid />
+            </span>
+        </IconButton>
+    }
+    .into_any()
 }
 
 /// TOTP enrolment field (slice 4.2 door). The seed never round-trips through the
@@ -714,8 +851,11 @@ fn TotpEnrolField(data: RwSignal<EntryFormData>) -> impl IntoView {
 /// The SSH private key (PEM) field: a roomy `col-span-2` multi-line monospace
 /// textarea with a reveal toggle — unlike the single-line masked `secret_field!`,
 /// a PEM block needs several lines. Masking is display-only
-/// (`-webkit-text-security` via `.textarea--masked`); the plaintext already lives
-/// in the model (loaded by a `get_entry` reveal), so the toggle never re-fetches.
+/// (`-webkit-text-security` via `.textarea--masked`). After sealing (slice 5.4)
+/// the key no longer crosses on `get_entry`, so an editing form starts EMPTY with
+/// the "unchanged — type to replace" placeholder; leaving it empty preserves the
+/// stored key (`Unchanged`). (No Reveal button: the private key isn't a
+/// `FieldSelector` field — deferred.)
 #[component]
 fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
     let i18n = use_i18n();
@@ -758,7 +898,11 @@ fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
                 class="font-jetbrains-mono"
                 masked=Signal::derive(move || !revealed.get())
                 placeholder=Signal::derive(move || {
-                    t_string!(i18n, vault.field_private_key).to_owned()
+                    if data.with(|d| d.editing) {
+                        t_string!(i18n, vault.form_sealed_placeholder).to_owned()
+                    } else {
+                        t_string!(i18n, vault.field_private_key).to_owned()
+                    }
                 })
                 value=Signal::derive(move || data.with(|d| d.ssh_private_key.clone()))
                 on_change=Callback::new(move |v: String| data.update(|d| d.ssh_private_key = v))
@@ -799,6 +943,10 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
             <div class="flex-1">
                 {secret_field!(data, i18n, "ef-password", password, form_password)}
             </div>
+            <RevealButton
+                field=FieldSelectorDto::Password
+                on_reveal=Callback::new(move |v: String| data.update(|d| d.password = v))
+            />
             <IconButton
                 variant=Variant::Ghost
                 size=Size::Sm
@@ -984,7 +1132,8 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
     let count = Memo::new(move |_| data.with(|d| d.env_vars.len()));
 
     let add_row = move |_: web_sys::MouseEvent| {
-        data.update(|d| d.env_vars.push((String::new(), String::new())));
+        // A new row has no stored value → its value intent is `Set`, not carry.
+        data.update(|d| d.env_vars.push((String::new(), String::new(), false)));
     };
 
     view! {
@@ -1061,7 +1210,10 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
 #[cfg(test)]
 mod tests {
     use super::{EntryFormData, EntryFormError};
-    use vedge_ipc::{EntryTypeDto, PayloadDto, TotpAlgorithmDto, TotpUpdateDto};
+    use vedge_ipc::{
+        CommonMetaDto, EntryTypeDto, LoginPayloadDto, PayloadDto, SecretListUpdateDto,
+        SecretUpdateDto, TotpAlgorithmDto, TotpUpdateDto,
+    };
 
     fn base(ty: EntryTypeDto) -> EntryFormData {
         let mut d = EntryFormData::new(ty);
@@ -1076,7 +1228,7 @@ mod tests {
     }
 
     #[test]
-    fn to_payload_login_empty_optionals_are_none() {
+    fn to_payload_login_sends_set_password_on_create_and_unchanged_recovery() {
         let mut d = base(EntryTypeDto::Login);
         d.username = "alice".into();
         d.password = "pw".into();
@@ -1086,11 +1238,50 @@ mod tests {
         assert_eq!(p.username, "alice");
         assert!(!p.has_totp);
         assert!(matches!(p.totp, TotpUpdateDto::Unchanged));
-        assert!(p.recovery_codes.is_empty());
+        // Create → a typed password is a `Set`.
+        assert!(matches!(p.password, SecretUpdateDto::Set(ref s) if s == "pw"));
+        // Recovery codes have no editor → always carried forward.
+        assert!(matches!(p.recovery_codes, SecretListUpdateDto::Unchanged));
     }
 
     #[test]
-    fn to_payload_card_parses_expiry() {
+    fn editing_untouched_secret_stays_unchanged_but_typed_is_set() {
+        // 🔴 Spec #5 at the form layer: an editing form with an EMPTY (untouched)
+        // required secret sends `Unchanged` (keep the stored secret), never a
+        // fake value; typing sends `Set`.
+        let mut d = base(EntryTypeDto::Login);
+        d.editing = true;
+        d.username = "alice".into();
+        // password left empty → Unchanged.
+        let PayloadDto::Login(p) = d.to_payload().unwrap() else {
+            panic!("login");
+        };
+        assert!(matches!(p.password, SecretUpdateDto::Unchanged));
+
+        d.password = "hunter3".into();
+        let PayloadDto::Login(p) = d.to_payload().unwrap() else {
+            panic!("login");
+        };
+        assert!(matches!(p.password, SecretUpdateDto::Set(ref s) if s == "hunter3"));
+    }
+
+    #[test]
+    fn editing_optional_secret_empty_with_stored_stays_unchanged() {
+        let mut d = base(EntryTypeDto::Card);
+        d.editing = true;
+        d.card_number = "4111".into();
+        d.card_expiry = "12/30".into();
+        d.cvv = "123".into();
+        d.has_pin = true; // a stored pin exists
+        // pin left empty on an editing form → keep it.
+        let PayloadDto::Card(p) = d.to_payload().unwrap() else {
+            panic!("card");
+        };
+        assert!(matches!(p.pin, SecretUpdateDto::Unchanged));
+    }
+
+    #[test]
+    fn to_payload_card_parses_expiry_and_clears_absent_optional() {
         let mut d = base(EntryTypeDto::Card);
         d.card_number = "4111".into();
         d.card_expiry = "12/30".into();
@@ -1100,7 +1291,8 @@ mod tests {
         };
         assert_eq!(p.expiry_month, 12);
         assert_eq!(p.expiry_year, 2030);
-        assert!(p.pin.is_none());
+        // Create, empty pin, none stored → Clear (⇒ None).
+        assert!(matches!(p.pin, SecretUpdateDto::Clear));
     }
 
     #[test]
@@ -1117,58 +1309,83 @@ mod tests {
     }
 
     #[test]
-    fn to_payload_env_vars_drops_blank_keys() {
+    fn to_payload_env_vars_drops_blank_keys_and_sets_values() {
         let mut d = base(EntryTypeDto::EnvVars);
-        d.env_vars = vec![("DB".into(), "x".into()), ("  ".into(), "orphan".into())];
+        d.env_vars = vec![
+            ("DB".into(), "x".into(), false),
+            ("  ".into(), "orphan".into(), false),
+        ];
         let PayloadDto::EnvVars(p) = d.to_payload().unwrap() else {
             panic!("env");
         };
         assert_eq!(p.vars.len(), 1);
         assert_eq!(p.vars[0].key, "DB");
+        assert!(matches!(p.vars[0].value, SecretUpdateDto::Set(ref s) if s == "x"));
     }
 
+    /// After sealing, `from_payload` no longer receives secrets: it leaves the
+    /// secret fields EMPTY, flips `editing`, and records the presence flags.
     #[test]
-    fn from_payload_roundtrip_login() {
-        let mut d = base(EntryTypeDto::Login);
-        d.url = "https://example.com".into();
-        d.username = "alice".into();
-        d.password = "s3cret".into();
-        // Door: the form carries presence + params + an `Unchanged` intent, not
-        // the seed. `Unchanged` is the only intent that round-trips (the outbound
-        // DTO always sends `Unchanged`; a `Set`/`Clear` is a one-way action).
-        d.has_totp = true;
-        d.totp_algorithm = TotpAlgorithmDto::Sha256;
-        d.totp_digits = 8;
-        d.totp_period = 60;
-        d.recovery_codes = vec!["r1".into()];
-        let round = EntryFormData::from_payload(&d.to_payload().unwrap());
-        assert_eq!(round, d);
+    fn from_payload_seals_secrets_and_records_presence() {
+        let dto = PayloadDto::Login(LoginPayloadDto {
+            meta: CommonMetaDto {
+                name: "gh".into(),
+                entry_type: EntryTypeDto::Login,
+                url: Some("https://example.com".into()),
+                favicon_url: None,
+                tag_ids: vec![],
+                folder_id: None,
+                is_favorite: false,
+                notes: None,
+                color: None,
+                icon: None,
+                sort_order: 0,
+            },
+            username: "alice".into(),
+            password: SecretUpdateDto::Unchanged,
+            has_totp: true,
+            totp_algorithm: TotpAlgorithmDto::Sha256,
+            totp_digits: 8,
+            totp_period: 60,
+            totp: TotpUpdateDto::Unchanged,
+            recovery_codes: SecretListUpdateDto::Unchanged,
+            recovery_codes_count: 3,
+        });
+        let d = EntryFormData::from_payload(&dto);
+        assert!(d.editing, "seeded from an existing entry");
+        assert_eq!(d.username, "alice");
+        assert!(d.password.is_empty(), "the sealed password does not cross");
+        assert_eq!(d.url, "https://example.com");
+        assert!(d.has_totp);
+        assert_eq!(d.totp_digits, 8);
+        assert_eq!(d.recovery_codes_count, 3);
     }
 
+    /// Non-secret fields still round-trip through the form; secrets are sealed.
     #[test]
-    fn from_payload_roundtrip_identity_with_address() {
-        let mut d = base(EntryTypeDto::Identity);
-        d.first_name = "Alice".into();
-        d.last_name = "A".into();
-        d.email = "a@b.co".into();
-        d.addr_line1 = "1 St".into();
-        d.addr_city = "Town".into();
-        d.addr_postal_code = "90001".into();
-        d.addr_country = "US".into();
-        d.national_id = "ID-1".into();
-        let round = EntryFormData::from_payload(&d.to_payload().unwrap());
-        assert_eq!(round, d);
-    }
-
-    #[test]
-    fn from_payload_roundtrip_card() {
+    fn from_payload_roundtrips_nonsecret_fields() {
         let mut d = base(EntryTypeDto::Card);
         d.cardholder_name = "Alice A".into();
-        d.card_number = "4111111111111111".into();
         d.card_expiry = "12/30".into();
+        // Seed secrets so to_payload produces Set intents (create direction)...
+        d.card_number = "4111".into();
         d.cvv = "123".into();
-        d.pin = "4321".into();
-        let round = EntryFormData::from_payload(&d.to_payload().unwrap());
-        assert_eq!(round, d);
+        // ...but from_payload reads a SEALED DTO, so build one via the outbound shape:
+        let sealed = PayloadDto::Card(match d.to_payload().unwrap() {
+            PayloadDto::Card(mut c) => {
+                // Simulate the sealed outbound door: intents become Unchanged.
+                c.number = SecretUpdateDto::Unchanged;
+                c.cvv = SecretUpdateDto::Unchanged;
+                c.pin = SecretUpdateDto::Unchanged;
+                c
+            }
+            _ => panic!("expected card"),
+        });
+        let round = EntryFormData::from_payload(&sealed);
+        assert_eq!(round.cardholder_name, "Alice A");
+        assert_eq!(round.card_expiry, "12/30");
+        assert!(round.card_number.is_empty(), "number is sealed");
+        assert!(round.cvv.is_empty(), "cvv is sealed");
+        assert!(round.editing);
     }
 }

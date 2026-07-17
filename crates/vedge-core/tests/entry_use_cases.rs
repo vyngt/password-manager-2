@@ -10,19 +10,20 @@
 mod common;
 
 use common::{Harness, build_unlock};
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    CreateEntryInput, UnlockVaultInput, UpdateEntryInput, create_entry, hard_delete_entry,
-    restore_entry, soft_delete_entry, update_entry,
+    CreateEntryInput, GetEntryInput, UnlockVaultInput, UpdateEntryInput, create_entry, get_entry,
+    hard_delete_entry, restore_entry, soft_delete_entry, update_entry,
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{
     CommonMeta, EntryPayload, EntryType, FolderPayload, LoginPayload, NotePayload,
 };
+use vedge_core::{SecretListUpdate, SecretUpdate, SecretUpdates, TotpUpdate};
 
 async fn unlock(h: &Harness) -> VaultSession {
     build_unlock(h)
@@ -80,6 +81,64 @@ async fn create_then_index_reflects() {
 }
 
 #[tokio::test]
+async fn edit_name_only_does_not_change_the_password() {
+    // Spec #5 — the one a user notices. Simulate a sealed edit-form save where the
+    // form changed only the NAME: the password field is an empty placeholder and
+    // the intent is Unchanged. The password must survive; the ciphertext rotates.
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login_payload("gh", "hunter2"),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+    let v1 = h.repo.get_entry(&id).await.unwrap();
+
+    update_entry(
+        &mut session,
+        UpdateEntryInput {
+            entry_id: id.clone(),
+            payload: login_payload("gh-renamed", ""), // placeholder password
+            secrets: SecretUpdates::Login {
+                password: SecretUpdate::Unchanged,
+                recovery_codes: SecretListUpdate::Unchanged,
+                totp: TotpUpdate::Unchanged,
+            },
+        },
+    )
+    .await
+    .unwrap();
+
+    // The ciphertext rotated (fresh nonce + bumped version)...
+    let v2 = h.repo.get_entry(&id).await.unwrap();
+    assert!(v2.version > v1.version);
+    assert_ne!(v1.nonce, v2.nonce, "a fresh nonce on every write");
+
+    // ...but the decrypted password is unchanged, and the name DID change.
+    let payload = get_entry(
+        &mut session,
+        GetEntryInput {
+            entry_id: id.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    let EntryPayload::Login(l) = payload else {
+        panic!("expected Login")
+    };
+    assert_eq!(
+        l.password.expose_secret(),
+        "hunter2",
+        "the password survives a name-only edit"
+    );
+    assert_eq!(l.meta.name, "gh-renamed");
+}
+
+#[tokio::test]
 async fn update_bumps_version_and_refreshes_nonce() {
     let h = Harness::fresh().await;
     let mut session = unlock(&h).await;
@@ -98,11 +157,7 @@ async fn update_bumps_version_and_refreshes_nonce() {
 
     update_entry(
         &mut session,
-        UpdateEntryInput {
-            entry_id: id.clone(),
-            payload: login_payload("gh", "pw2"),
-            totp: vedge_core::TotpUpdate::Unchanged,
-        },
+        UpdateEntryInput::full(id.clone(), login_payload("gh", "pw2")),
     )
     .await
     .unwrap();
@@ -211,11 +266,7 @@ async fn update_rejects_nonexistent_entry() {
     let mut session = unlock(&h).await;
     let err = update_entry(
         &mut session,
-        UpdateEntryInput {
-            entry_id: EntryId::new(),
-            payload: login_payload("gh", "pw"),
-            totp: vedge_core::TotpUpdate::Unchanged,
-        },
+        UpdateEntryInput::full(EntryId::new(), login_payload("gh", "pw")),
     )
     .await
     .unwrap_err();

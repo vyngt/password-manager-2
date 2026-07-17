@@ -27,7 +27,6 @@ use crate::domain::vault::crypto_constants::{DEK_LEN, NONCE_LEN};
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
-use crate::domain::vault::totp::TotpUpdate;
 
 use super::copy_field::FieldSelector;
 
@@ -241,21 +240,11 @@ pub async fn restore_from_history(
     // via the payload alone). A restore must revert to the *snapshot's* TOTP, not
     // carry the current one forward, so translate the snapshot seed into an
     // explicit `Set`/`Clear` intent.
-    let totp = match &payload {
-        EntryPayload::Login(l) => l
-            .totp_secret
-            .as_ref()
-            .map_or(TotpUpdate::Clear, |s| TotpUpdate::Set(s.clone())),
-        _ => TotpUpdate::Unchanged,
-    };
-
+    // The snapshot payload holds the real (decrypted) secrets — write exactly the
+    // snapshot's values (slice 5.4): `full` derives `Set`-everything intents.
     super::update_entry::update_entry(
         session,
-        super::update_entry::UpdateEntryInput {
-            entry_id: entry_id.clone(),
-            payload,
-            totp,
-        },
+        super::update_entry::UpdateEntryInput::full(entry_id.clone(), payload),
     )
     .await
 }

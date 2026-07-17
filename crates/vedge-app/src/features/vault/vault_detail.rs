@@ -6,7 +6,7 @@
 //! path), seeds the shared [`EntryForm`], and saves through
 //! `api::entry::update_entry`; `on_saved` pings the parent to refresh.
 
-use super::entry_form::{EntryFormData, EntryFormError};
+use super::entry_form::{EntryFormData, EntryFormError, RevealCtx};
 use super::entry_form_body::EntryFormBody;
 use super::entry_view::{human_size, short_date, type_label_i18n};
 use super::folder_tree::{FolderNode, folder_display_name, folder_icon_from_key, folder_style};
@@ -103,6 +103,14 @@ pub fn VaultDetail(
     let entry_id = StoredValue::new(entry.id.clone());
     let fav_id = entry.id.clone();
     let is_fav = entry.is_favorite;
+
+    // Context for the edit form's per-field Reveal buttons (slice 5.4): the vault
+    // path + this entry's id, so `reveal_field` can fetch a sealed secret on
+    // demand. Only provided around the EDIT surface — the create form has none.
+    let reveal_ctx = RevealCtx {
+        vault_path: Signal::derive(move || active.path.get().unwrap_or_default()),
+        entry_id: Signal::derive(move || entry_id.get_value()),
+    };
     let entry_for_move = entry.clone();
     // Trashed detail (tombstone) actions: Restore by id, Delete-permanently by
     // entry (opens the named confirm). `is_trashed` is constant for this mount.
@@ -611,14 +619,16 @@ pub fn VaultDetail(
                 </DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <EntryFormBody
-                    data=form
-                    folders=folders
-                    exclude_id=move_exclude.get_value()
-                    saving=saving
-                    on_save=do_save
-                    on_cancel=do_cancel
-                />
+                <leptos::context::Provider value=reveal_ctx>
+                    <EntryFormBody
+                        data=form
+                        folders=folders
+                        exclude_id=move_exclude.get_value()
+                        saving=saving
+                        on_save=do_save
+                        on_cancel=do_cancel
+                    />
+                </leptos::context::Provider>
             </DialogBody>
         </Dialog>
     }

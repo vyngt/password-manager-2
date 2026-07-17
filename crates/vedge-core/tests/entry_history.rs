@@ -65,13 +65,10 @@ async fn create_login(session: &mut VaultSession, name: &str, pw: &str) -> Entry
 }
 
 async fn update_login(session: &mut VaultSession, id: &EntryId, pw: &str) {
+    // A complete payload with the new password → `full` derives Set-everything.
     update_entry(
         session,
-        UpdateEntryInput {
-            entry_id: id.clone(),
-            payload: login("GitHub", pw),
-            totp: vedge_core::TotpUpdate::Unchanged,
-        },
+        UpdateEntryInput::full(id.clone(), login("GitHub", pw)),
     )
     .await
     .unwrap();

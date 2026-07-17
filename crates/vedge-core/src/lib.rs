@@ -68,5 +68,8 @@ pub use domain::vault::health::{
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
 pub use domain::vault::otpauth::{TotpEnrolment, parse_totp_input};
 pub use domain::vault::recovery::{RECOVERY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
+pub use domain::vault::secret_update::{
+    EnvVarUpdate, SecretListUpdate, SecretUpdate, SecretUpdates, resolve_secrets,
+};
 pub use domain::vault::totp::{TotpAlgorithm, TotpCode, TotpParams, TotpUpdate};
 pub use infrastructure::snapshot::manifest::{SnapshotManifest, SnapshotReason};
