@@ -3,32 +3,58 @@
     <head>
         <meta charset="utf-8" />
         <script>
-            // e2e console-clean seam (slice 2.9.2). Buffers console.warn /
-            // console.error into a bounded ring so the WebDriver harness
-            // (crates/vedge-e2e) can assert the app produced no Leptos
-            // "outside a reactive tracking context" warnings. Installed before
-            // the WASM module below so boot-time warnings are captured too.
-            // Inert in production: it only appends to an array and forwards to
-            // the original console method.
+            // e2e console-clean seam (slice 2.9.2, broadened 5.3.1d). Buffers
+            // console.warn / console.error PLUS uncaught exceptions and rejected
+            // promises into a bounded ring so the WebDriver harness
+            // (crates/vedge-e2e) can assert the app produced no Leptos "outside a
+            // reactive tracking context" warning AND no runtime fault (a wasm
+            // panic surfaces as `Uncaught RuntimeError: unreachable`; a glue fault
+            // as an `Uncaught TypeError` — neither goes through console.*).
+            // Installed before the WASM module below so boot-time faults are
+            // captured too. Inert in production: it only appends to an array and
+            // forwards to the original console method.
             (function () {
                 var CAP = 200;
                 var buf = (window.__vedge_warnings = []);
+                function record(level, text) {
+                    try {
+                        buf.push({ level: level, text: String(text) });
+                        if (buf.length > CAP) buf.shift();
+                    } catch (_) {}
+                }
                 ["warn", "error"].forEach(function (level) {
                     var orig = console[level]
                         ? console[level].bind(console)
                         : function () {};
                     console[level] = function () {
                         try {
-                            var text = Array.prototype.map
-                                .call(arguments, function (a) {
-                                    return String(a);
-                                })
-                                .join(" ");
-                            buf.push({ level: level, text: text });
-                            if (buf.length > CAP) buf.shift();
+                            record(
+                                level,
+                                Array.prototype.map
+                                    .call(arguments, function (a) {
+                                        return String(a);
+                                    })
+                                    .join(" "),
+                            );
                         } catch (_) {}
                         return orig.apply(console, arguments);
                     };
+                });
+                // Bubble-phase `error` sees uncaught script exceptions (incl. wasm
+                // traps re-thrown by wasm-bindgen) but NOT resource-load errors
+                // (those don't bubble to window), so this won't false-positive on
+                // a missing asset. Rejections cover a `.catch`-less async fault.
+                window.addEventListener("error", function (e) {
+                    if (e && (e.message || e.error)) {
+                        record("uncaught", e.message || e.error);
+                    }
+                });
+                window.addEventListener("unhandledrejection", function (e) {
+                    var r = e && e.reason;
+                    record(
+                        "rejection",
+                        (r && (r.stack || r.message)) || r || "unhandledrejection",
+                    );
                 });
             })();
         </script>

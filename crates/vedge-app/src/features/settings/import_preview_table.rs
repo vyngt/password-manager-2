@@ -15,6 +15,7 @@ use std::collections::HashMap;
 
 use leptos::prelude::*;
 use vedge_ipc::ImportPreviewRow;
+use vedge_ui::components::Checkbox;
 
 /// The preview grid, driven by the caller's `preview` + `picked` signals. Renders
 /// nothing while `preview` is empty. `testid` sets the table's `data-testid` so each
@@ -39,6 +40,7 @@ pub fn ImportPreviewTable(
                                 let is_error = r.status == "error";
                                 let ty = r.entry_type;
                                 let name = r.name;
+                                let name_aria = name.clone();
                                 let username = r.username.unwrap_or_default();
                                 let has_pw = r.has_password;
                                 let dup = r.duplicate_of;
@@ -49,17 +51,16 @@ pub fn ImportPreviewTable(
                                 view! {
                                     <tr class="border-b border-border/50">
                                         <td class="py-1 pr-2 align-top">
-                                            <input
-                                                type="checkbox"
-                                                prop:checked=checked
+                                            <Checkbox
+                                                checked=Signal::derive(checked)
                                                 disabled=is_error
-                                                on:change:target=move |ev| {
-                                                    let c = ev.target().checked();
+                                                on_change=Callback::new(move |c: bool| {
                                                     picked
                                                         .update(|m| {
                                                             m.insert(rid, c);
                                                         });
-                                                }
+                                                })
+                                                aria_label=name_aria
                                             />
                                         </td>
                                         <td class="py-1 pr-2 align-top text-text-secondary">
