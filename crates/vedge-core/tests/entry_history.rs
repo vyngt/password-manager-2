@@ -21,9 +21,10 @@ use vedge_core::application::vault::ports::{
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    ChangePasswordInput, CreateEntryInput, UnlockVaultInput, UpdateEntryInput, change_password,
-    create_entry, get_history_value, hard_delete_entry, list_history, lock_vault,
-    restore_from_history, update_entry,
+    ChangePasswordInput, CreateEntryInput, FieldSelector, RevealHistoryFieldInput,
+    UnlockVaultInput, UpdateEntryInput, change_password, create_entry, get_history_value,
+    hard_delete_entry, list_history, lock_vault, restore_from_history, reveal_history_field,
+    update_entry,
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::entities::AuditAction;
@@ -149,6 +150,40 @@ async fn get_history_value_reveals_and_audits() {
         events
             .iter()
             .any(|e| matches!(e.action, AuditAction::Viewed) && e.entry_id.as_ref() == Some(&id))
+    );
+}
+
+#[tokio::test]
+async fn reveal_history_field_returns_old_value_and_audits_secret_revealed() {
+    // The history twin of reveal_field (slice 5.4): a single old field is returned
+    // to the renderer and audited as an EXTRACTION (SecretRevealed), not a browse.
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, "correct horse battery staple").await;
+    let id = create_login(&mut session, "GitHub", "secret1").await;
+    update_login(&mut session, &id, "secret2").await;
+
+    let rows = list_history(&session, &id).await.unwrap();
+    let hid = rows[1].history_id.clone().unwrap();
+
+    let value = reveal_history_field(
+        &session,
+        RevealHistoryFieldInput {
+            entry_id: id.clone(),
+            history_id: hid,
+            field: FieldSelector::Password,
+        },
+        0,
+    )
+    .await
+    .unwrap();
+    assert_eq!(value.as_str(), "secret1");
+
+    let events = h.repo.recent_audit(50).await.unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| e.action == AuditAction::SecretRevealed && e.entry_id.as_ref() == Some(&id)),
+        "reveal_history_field audits SecretRevealed"
     );
 }
 
