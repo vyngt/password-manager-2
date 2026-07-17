@@ -318,35 +318,10 @@ fn filterable_types() -> [EntryTypeDto; 8] {
     ]
 }
 
-/// Stable `Select` option value for a [`SortKey`].
-fn sort_to_key(s: SortKey) -> &'static str {
-    // The transitional toolbar Select can't express a direction; it maps each
-    // column to its default. (d2 moves sort into the headers, which do carry a
-    // direction, and drops this Select.)
-    match s {
-        SortKey::Name(_) => "name",
-        SortKey::Url(_) => "url",
-        SortKey::Updated(_) => "updated",
-        SortKey::RecentlyUsed => "used",
-        SortKey::Custom => "manual",
-    }
-}
-
-/// Inverse of [`sort_to_key`]; unrecognized keys fall back to `Name(Asc)`.
-fn sort_from_key(k: &str) -> SortKey {
-    match k {
-        "url" => SortKey::Url(SortDir::Asc),
-        "updated" => SortKey::Updated(SortDir::Desc),
-        "used" => SortKey::RecentlyUsed,
-        "manual" => SortKey::Custom,
-        _ => SortKey::Name(SortDir::Asc),
-    }
-}
-
-/// The filter toolbar: a prominent search box, a **Filter** button (with an
+/// The filter toolbar: a prominent search box + a **Filter** button (with an
 /// active-facet count `Badge`) that opens a popover of facets — type, multi-select
-/// tag pills with an any/all toggle, and favourites — plus the sort `Select` (which
-/// moves into the table headers in d2b). Active facets show as removable chips via
+/// tag pills with an any/all toggle, and favourites. Sort lives in the table
+/// headers + the `⋯` menu (not here). Active facets show as removable chips via
 /// [`FilterChips`], mounted separately by the page.
 #[component]
 pub fn VaultFilters(
@@ -355,7 +330,6 @@ pub fn VaultFilters(
     tag_ids: RwSignal<Vec<String>>,
     tag_match: RwSignal<TagMatch>,
     favorites_only: RwSignal<bool>,
-    sort: RwSignal<SortKey>,
     #[prop(into)] tags: Signal<Vec<TagMetaDto>>,
 ) -> impl IntoView {
     let i18n = use_i18n();
@@ -573,34 +547,6 @@ pub fn VaultFilters(
                     </div>
                 </div>
             </Popover>
-
-            // Sort key — transitional Select; moves into the table headers in d2b.
-            <div class="w-40 shrink-0">
-                <Select
-                    options=Signal::derive(move || {
-                        vec![
-                            SelectItem::option("name", t_string!(i18n, vault.sort_name).to_owned()),
-                            SelectItem::option(
-                                "updated",
-                                t_string!(i18n, vault.sort_updated).to_owned(),
-                            ),
-                            SelectItem::option("used", t_string!(i18n, vault.sort_used).to_owned()),
-                            SelectItem::option(
-                                "manual",
-                                t_string!(i18n, vault.sort_manual).to_owned(),
-                            ),
-                        ]
-                    })
-                    value=Signal::derive(move || sort_to_key(sort.get()).to_owned())
-                    placeholder=Signal::derive(move || {
-                        t_string!(i18n, vault.sort_label).to_owned()
-                    })
-                    aria_label=Signal::derive(move || {
-                        t_string!(i18n, vault.sort_aria).to_owned()
-                    })
-                    on_change=Callback::new(move |v: String| sort.set(sort_from_key(&v)))
-                />
-            </div>
         </div>
     }
 }

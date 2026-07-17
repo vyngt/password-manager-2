@@ -9,7 +9,8 @@
 //! interactive cells (favourite + the action cluster) capture the page's
 //! `Callback`s directly, which is sound: Leptos `Callback` is `Send + Sync`.
 
-use super::entry_view::{short_date, type_label_i18n};
+use super::entry_view::{short_date, type_icon, type_label_i18n};
+use super::vault_filters::{SortDir, SortKey};
 use crate::i18n::{Locale, t_string, use_i18n};
 use leptos::either::Either;
 use leptos::prelude::*;
@@ -17,10 +18,10 @@ use leptos_i18n::I18nContext;
 use std::collections::HashMap;
 use vedge_ipc::{IndexEntryDto, TagMetaDto};
 use vedge_ui::components::data_display::{
-    CellValue, ColumnDef, ColumnType, ColumnWidth, DataTable, cell_fn, string_fn,
+    CellValue, ColumnDef, ColumnType, ColumnWidth, DataTable, SortState, cell_fn, string_fn,
 };
 use vedge_ui::components::icon_button::IconButton;
-use vedge_ui::primitives::tokens::{Align, Size, Variant};
+use vedge_ui::primitives::tokens::{Align, Size, SortDirection, Variant};
 
 use icondata as i;
 use leptos_icons::Icon;
@@ -35,6 +36,8 @@ struct VaultRow {
     name: String,
     url: String,
     type_label: String,
+    /// Entry-type glyph shown in the Name cell (Type is no longer its own column).
+    type_icon: icondata::Icon,
     updated: String,
     is_favorite: bool,
     favorite_aria: String,
@@ -69,6 +72,7 @@ fn build_row(
         name: e.name.clone(),
         url: e.url.clone().unwrap_or_default(),
         type_label: type_label_i18n(i18n, &e.entry_type),
+        type_icon: type_icon(&e.entry_type),
         updated: short_date(&e.updated_at),
         is_favorite: e.is_favorite,
         favorite_aria: if e.is_favorite {
@@ -127,6 +131,10 @@ pub fn VaultTable(
     /// Fires the new selection set (ULIDs) whenever the selection changes.
     #[prop(into, default = None)]
     on_selection_change: Option<Callback<Vec<String>>>,
+    /// The active sort. Column sorts (Name/Url/Updated) drive the header
+    /// `aria-sort`; the modes (RecentlyUsed/Custom) mark no header. Clicking a
+    /// sortable header updates it (a 2-state Asc/Desc cycle).
+    sort: RwSignal<SortKey>,
 ) -> impl IntoView {
     let i18n = use_i18n();
     // Mount-time snapshot (see the prop doc): `DataTable::selectable` is a static
@@ -187,64 +195,75 @@ pub fn VaultTable(
                 )
             }),
         },
-        // Name + tag chips.
+        // Name — a type glyph (tooltip = type label; ⑨ frees the Type column) + the
+        // name. Sortable via the header.
         ColumnDef {
             id: "name",
             header: Signal::derive(move || t_string!(i18n, vault.col_name).to_owned()).into(),
             col_type: ColumnType::Custom,
-            sortable: false,
+            sortable: true,
             width: ColumnWidth::Flexible,
             align: Align::Start,
             cell: cell_fn(|r: &VaultRow| {
                 let name = r.name.clone();
                 let title = r.name.clone();
-                let chips = r.chips.clone();
+                let icon = r.type_icon;
+                let type_title = r.type_label.clone();
                 CellValue::View(
                     view! {
-                        <div class="flex flex-col gap-1 min-w-0">
-                            <span class="block max-w-[16rem] truncate" title=title>
-                                {name}
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="shrink-0 text-foreground/40" title=type_title>
+                                <Icon attr:aria-hidden="true" icon=icon />
                             </span>
-                            <div class="flex flex-wrap gap-1">
-                                {chips
-                                    .into_iter()
-                                    .map(|(nm, color)| {
-                                        let style = color
-                                            .map(|c| format!("color:{c}"))
-                                            .unwrap_or_default();
-                                        view! {
-                                            <span
-                                                class="inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] px-1.5 py-0.5"
-                                                style=style
-                                            >
-                                                {nm}
-                                            </span>
-                                        }
-                                    })
-                                    .collect_view()}
-                            </div>
+                            <span class="block truncate" title=title>{name}</span>
                         </div>
                     }
                     .into_any(),
                 )
             }),
         },
-        // Type — pre-resolved label.
+        // Tags — resolved chips. **Not sortable** (⑨): a multi-value field has no
+        // natural order, and "first tag alphabetically" is a stable-looking lie.
         ColumnDef {
-            id: "type",
-            header: Signal::derive(move || t_string!(i18n, vault.col_type).to_owned()).into(),
-            col_type: ColumnType::Text,
+            id: "tags",
+            header: Signal::derive(move || t_string!(i18n, vault.col_tags).to_owned()).into(),
+            col_type: ColumnType::Custom,
             sortable: false,
-            width: ColumnWidth::Fixed(140),
+            width: ColumnWidth::MinMax(120, 220),
             align: Align::Start,
-            cell: cell_fn(|r: &VaultRow| CellValue::Text(r.type_label.clone())),
+            cell: cell_fn(|r: &VaultRow| {
+                let chips = r.chips.clone();
+                CellValue::View(
+                    view! {
+                        <div class="flex flex-wrap gap-1">
+                            {chips
+                                .into_iter()
+                                .map(|(nm, color)| {
+                                    let style = color
+                                        .map(|c| format!("color:{c}"))
+                                        .unwrap_or_default();
+                                    view! {
+                                        <span
+                                            class="inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] px-1.5 py-0.5"
+                                            style=style
+                                        >
+                                            {nm}
+                                        </span>
+                                    }
+                                })
+                                .collect_view()}
+                        </div>
+                    }
+                    .into_any(),
+                )
+            }),
         },
-        // Url — mono, truncated, with a title tooltip for the full value.
+        // Url — mono, truncated, with a title tooltip for the full value. Sortable.
         ColumnDef {
             id: "url",
             header: Signal::derive(move || t_string!(i18n, vault.col_url).to_owned()).into(),
             col_type: ColumnType::Custom,
-            sortable: false,
+            sortable: true,
             width: ColumnWidth::MinMax(120, 240),
             align: Align::Start,
             cell: cell_fn(|r: &VaultRow| {
@@ -263,12 +282,12 @@ pub fn VaultTable(
                 )
             }),
         },
-        // Updated — pre-resolved short date.
+        // Updated — pre-resolved short date. Sortable.
         ColumnDef {
             id: "updated",
             header: Signal::derive(move || t_string!(i18n, vault.col_updated).to_owned()).into(),
             col_type: ColumnType::Date,
-            sortable: false,
+            sortable: true,
             width: ColumnWidth::Fixed(120),
             align: Align::End,
             cell: cell_fn(|r: &VaultRow| CellValue::Text(r.updated.clone())),
@@ -376,6 +395,10 @@ pub fn VaultTable(
                     t_string!(i18n, vault.deselect_all_aria).to_owned()
                 })
                 row_select_label=string_fn(|r: &VaultRow| r.select_aria.clone())
+                sort=Signal::derive(move || to_sort_state(sort.get()))
+                on_sort_change=Callback::new(move |next: Option<SortState>| {
+                    sort.set(from_sort_state(next, sort.get_untracked()));
+                })
                 on_row_click=Callback::new(move |r: VaultRow| on_select.run(r.entry))
                 reorder_enabled=reorder_enabled
                 on_row_reorder=on_reorder
@@ -387,5 +410,94 @@ pub fn VaultTable(
                 empty_message=empty_label
             />
         </div>
+    }
+}
+
+/// Map the page's [`SortKey`] to a `DataTable` header sort state. The two *modes*
+/// (`RecentlyUsed`, `Custom`) have no sortable column, so **no header** is marked.
+fn to_sort_state(sk: SortKey) -> Option<SortState> {
+    let (column_id, dir) = match sk {
+        SortKey::Name(d) => ("name", d),
+        SortKey::Url(d) => ("url", d),
+        SortKey::Updated(d) => ("updated", d),
+        SortKey::RecentlyUsed | SortKey::Custom => return None,
+    };
+    Some(SortState {
+        column_id: column_id.to_owned(),
+        direction: match dir {
+            SortDir::Asc => SortDirection::Asc,
+            SortDir::Desc => SortDirection::Desc,
+        },
+    })
+}
+
+/// Map a header click back to a [`SortKey`]. `DataTable` cycles a column
+/// Asc→Desc→None; we keep a **2-state Asc/Desc** cycle by treating the `None` step
+/// as "return to Asc of the currently-sorted column" (a mode is left untouched, so
+/// clicking a header out of a mode starts a fresh column sort).
+fn from_sort_state(next: Option<SortState>, current: SortKey) -> SortKey {
+    match next {
+        Some(st) => {
+            let d = match st.direction {
+                SortDirection::Asc => SortDir::Asc,
+                SortDirection::Desc => SortDir::Desc,
+            };
+            match st.column_id.as_str() {
+                "url" => SortKey::Url(d),
+                "updated" => SortKey::Updated(d),
+                _ => SortKey::Name(d),
+            }
+        }
+        None => match current {
+            SortKey::Name(_) => SortKey::Name(SortDir::Asc),
+            SortKey::Url(_) => SortKey::Url(SortDir::Asc),
+            SortKey::Updated(_) => SortKey::Updated(SortDir::Asc),
+            other => other,
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{from_sort_state, to_sort_state};
+    use crate::features::vault::vault_filters::{SortDir, SortKey};
+    use vedge_ui::components::data_display::SortState;
+    use vedge_ui::primitives::tokens::SortDirection;
+
+    #[test]
+    fn column_sorts_map_to_a_header_state_modes_do_not() {
+        assert_eq!(
+            to_sort_state(SortKey::Url(SortDir::Desc)),
+            Some(SortState {
+                column_id: "url".into(),
+                direction: SortDirection::Desc,
+            })
+        );
+        assert!(to_sort_state(SortKey::RecentlyUsed).is_none());
+        assert!(to_sort_state(SortKey::Custom).is_none());
+    }
+
+    #[test]
+    fn header_click_is_a_two_state_asc_desc_cycle() {
+        // Asc → Desc (Some), Desc → None → back to Asc (never leaves the column).
+        let asc = SortKey::Updated(SortDir::Asc);
+        let desc = from_sort_state(to_sort_state(SortKey::Updated(SortDir::Desc)), asc);
+        assert_eq!(desc, SortKey::Updated(SortDir::Desc));
+        let back = from_sort_state(None, SortKey::Updated(SortDir::Desc));
+        assert_eq!(back, SortKey::Updated(SortDir::Asc));
+    }
+
+    #[test]
+    fn clicking_a_header_out_of_a_mode_starts_a_fresh_column_sort() {
+        let st = SortState {
+            column_id: "name".into(),
+            direction: SortDirection::Asc,
+        };
+        assert_eq!(
+            from_sort_state(Some(st), SortKey::RecentlyUsed),
+            SortKey::Name(SortDir::Asc)
+        );
+        // A `None` while in a mode leaves the mode untouched.
+        assert_eq!(from_sort_state(None, SortKey::Custom), SortKey::Custom);
     }
 }

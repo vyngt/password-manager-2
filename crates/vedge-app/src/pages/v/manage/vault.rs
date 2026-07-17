@@ -28,13 +28,19 @@ use crate::features::vault::vault_filters::{
 };
 use crate::features::vault::vault_table::VaultTable;
 use crate::i18n::{t, t_string, use_i18n};
+use icondata as i;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos_icons::Icon;
 use std::collections::{HashMap, HashSet};
 use vedge_ipc::{EntryTypeDto, FieldSelectorDto, IndexEntryDto, TagMetaDto};
+use vedge_ui::components::feedback::dropdown_menu::{
+    DropdownMenu, MenuEntry, MenuItem, MenuItemVariant, MenuSection,
+};
+use vedge_ui::components::feedback::popover::PopoverPlacement;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::components::{Button, Spinner};
+use vedge_ui::components::{Button, IconButton, Spinner};
 use vedge_ui::primitives::tokens::{Size, ToastVariant, Variant};
 
 #[component]
@@ -905,7 +911,6 @@ pub fn VaultPage() -> impl IntoView {
                         tag_ids=tag_ids
                         tag_match=tag_match
                         favorites_only=favorites_only
-                        sort=sort
                         tags=Signal::derive(move || tags.get())
                     />
                     <Button
@@ -931,14 +936,113 @@ pub fn VaultPage() -> impl IntoView {
                     >
                         {move || t!(i18n, vault.attach_document)}
                     </Button>
-                    <Button
-                        variant=Variant::Secondary
-                        size=Size::Sm
-                        class="whitespace-nowrap"
-                        on:click=move |_| manage_tags_open.set(true)
-                    >
-                        {move || t!(i18n, vault.tag_manage)}
-                    </Button>
+                    // Sort-mode chip (⑩): RecentlyUsed / Custom render here — no
+                    // header carries `aria-sort` in a mode — with ✕ back to Name.
+                    <Show when=move || {
+                        matches!(sort.get(), SortKey::RecentlyUsed | SortKey::Custom)
+                    }>
+                        <span
+                            class="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-xs px-2 py-0.5 shrink-0"
+                            data-testid="sort-mode-chip"
+                        >
+                            {move || match sort.get() {
+                                SortKey::Custom => t_string!(i18n, vault.sort_manual).to_owned(),
+                                _ => t_string!(i18n, vault.sort_used).to_owned(),
+                            }}
+                            <IconButton
+                                variant=Variant::Ghost
+                                size=Size::Xs
+                                class="hover:text-danger"
+                                aria_label=Signal::derive(move || {
+                                    t_string!(i18n, vault.sort_mode_clear).to_owned()
+                                })
+                                on:click=move |_: web_sys::MouseEvent| sort.set(SortKey::default())
+                            >
+                                <Icon attr:aria-hidden="true" icon=i::FaXmarkSolid />
+                            </IconButton>
+                        </span>
+                    </Show>
+
+                    // ⋯ overflow — sort modes + Manage tags (Import/Export join in d3).
+                    // Rebuilt on scope change so Custom is offered only in a folder (⑪).
+                    {move || {
+                        let in_folder = matches!(current_scope.get(), FolderScope::Folder(_));
+                        let mut sort_items = vec![
+                            MenuEntry::Item(MenuItem {
+                                id: "sort-recent".into(),
+                                label: t_string!(i18n, vault.sort_used).to_owned(),
+                                variant: MenuItemVariant::Default,
+                                icon: None,
+                                shortcut: None,
+                                on_click: Some(
+                                    Callback::new(move |()| sort.set(SortKey::RecentlyUsed)),
+                                ),
+                                href: None,
+                            }),
+                        ];
+                        if in_folder {
+                            sort_items
+                                .push(
+                                    MenuEntry::Item(MenuItem {
+                                        id: "sort-custom".into(),
+                                        label: t_string!(i18n, vault.sort_manual).to_owned(),
+                                        variant: MenuItemVariant::Default,
+                                        icon: None,
+                                        shortcut: None,
+                                        on_click: Some(
+                                            Callback::new(move |()| sort.set(SortKey::Custom)),
+                                        ),
+                                        href: None,
+                                    }),
+                                );
+                        }
+                        let items = vec![
+                            MenuSection {
+                                label: Some(t_string!(i18n, vault.sort_label).to_owned()),
+                                items: sort_items,
+                            },
+                            MenuSection {
+                                label: None,
+                                items: vec![
+                                    MenuEntry::Item(MenuItem {
+                                        id: "manage-tags".into(),
+                                        label: t_string!(i18n, vault.tag_manage).to_owned(),
+                                        variant: MenuItemVariant::Default,
+                                        icon: None,
+                                        shortcut: None,
+                                        on_click: Some(
+                                            Callback::new(move |()| manage_tags_open.set(true)),
+                                        ),
+                                        href: None,
+                                    }),
+                                ],
+                            },
+                        ];
+                        view! {
+                            <DropdownMenu
+                                trigger=Box::new(move || {
+                                    view! {
+                                        <IconButton
+                                            variant=Variant::Ghost
+                                            size=Size::Sm
+                                            attr:data-testid="vault-more"
+                                            aria_label=Signal::derive(move || {
+                                                t_string!(i18n, vault.more_actions).to_owned()
+                                            })
+                                        >
+                                            <Icon attr:aria-hidden="true" icon=i::FaEllipsisSolid />
+                                        </IconButton>
+                                    }
+                                        .into_any()
+                                })
+                                items=items
+                                placement=PopoverPlacement::BottomEnd
+                                aria_label=Signal::derive(move || {
+                                    t_string!(i18n, vault.more_actions).to_owned()
+                                })
+                            />
+                        }
+                    }}
                     // Empty-trash — only in Trash view, and only when there's something
                     // to empty (an empty list shows the "Trash is empty" state instead).
                     <Show when=move || trashed_view.get() && !items.get().is_empty()>
@@ -1078,6 +1182,7 @@ pub fn VaultPage() -> impl IntoView {
                         selectable=Signal::derive(move || !trashed_view.get())
                         selected_rows=selected
                         on_selection_change=Callback::new(move |ids: Vec<String>| selected.set(ids))
+                        sort=sort
                     />
                 </Show>
                 {move || {
