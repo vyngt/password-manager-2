@@ -13,11 +13,12 @@
 
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use vedge_ui::components::Button;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
-use vedge_ui::primitives::tokens::{DialogSize, ToastVariant, Variant};
+use vedge_ui::components::radio_group::{RadioGroup, RadioOption};
+use vedge_ui::components::{Button, Checkbox, Input};
+use vedge_ui::primitives::tokens::{DialogSize, Orientation, ToastVariant, Variant};
 
 use crate::api;
 use crate::api::dialog::{DialogFilter, SaveDialogOptions};
@@ -149,34 +150,62 @@ pub fn ExportDialog(
                         <span class="text-foreground/50 text-xs uppercase tracking-wider">
                             {move || t!(i18n, vault.export_scope_heading)}
                         </span>
-                        <div role="radiogroup" class="flex flex-col gap-1">
-                            <Show when=move || !selected.get().is_empty()>
-                                <ScopeRow
-                                    this=ExportScope::Selection
-                                    scope=scope
-                                    label=Signal::derive(move || {
-                                        t_string!(i18n, vault.export_scope_selection).to_owned()
+                        // Built in a reactive closure so the labels track the locale
+                        // (relocalize on switch) AND the live counts. The modal freezes
+                        // the underlying set, so the options are stable while it is open.
+                        {move || {
+                            let mut options = Vec::new();
+                            if !selected.get().is_empty() {
+                                options
+                                    .push(
+                                        RadioOption::new(
+                                            "selection",
+                                            format!(
+                                                "{} ({})",
+                                                t_string!(i18n, vault.export_scope_selection),
+                                                selected.get().len(),
+                                            ),
+                                        ),
+                                    );
+                            }
+                            options
+                                .push(
+                                    RadioOption::new(
+                                        "filter",
+                                        format!(
+                                            "{} ({})",
+                                            t_string!(i18n, vault.export_scope_filter),
+                                            filtered.get().len(),
+                                        ),
+                                    ),
+                                );
+                            options
+                                .push(
+                                    RadioOption::new(
+                                        "all",
+                                        format!(
+                                            "{} ({})",
+                                            t_string!(i18n, vault.export_scope_all),
+                                            total.get(),
+                                        ),
+                                    ),
+                                );
+                            view! {
+                                <RadioGroup
+                                    options=options
+                                    orientation=Orientation::Vertical
+                                    value=Signal::derive(move || {
+                                        scope_to_str(scope.get()).to_owned()
                                     })
-                                    count=Signal::derive(move || selected.get().len())
+                                    on_change=Callback::new(move |v: String| {
+                                        scope.set(scope_from_str(&v));
+                                    })
+                                    aria_label=Signal::derive(move || {
+                                        t_string!(i18n, vault.export_scope_heading).to_owned()
+                                    })
                                 />
-                            </Show>
-                            <ScopeRow
-                                this=ExportScope::Filter
-                                scope=scope
-                                label=Signal::derive(move || {
-                                    t_string!(i18n, vault.export_scope_filter).to_owned()
-                                })
-                                count=Signal::derive(move || filtered.get().len())
-                            />
-                            <ScopeRow
-                                this=ExportScope::All
-                                scope=scope
-                                label=Signal::derive(move || {
-                                    t_string!(i18n, vault.export_scope_all).to_owned()
-                                })
-                                count=total
-                            />
-                        </div>
+                            }
+                        }}
                     </div>
 
                     // ---- 🔴 ⑧ the honest warning, always on ----
@@ -185,12 +214,14 @@ pub fn ExportDialog(
                     </div>
 
                     // ---- Format ----
-                    <label class="flex items-start gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
+                    <div class="flex items-start gap-2">
+                        <Checkbox
+                            checked=Signal::derive(move || encrypted.get())
+                            on_change=Callback::new(move |v: bool| encrypted.set(v))
+                            aria_label=Signal::derive(move || {
+                                t_string!(i18n, settings.export_encrypt_label).to_owned()
+                            })
                             class="mt-0.5"
-                            prop:checked=move || encrypted.get()
-                            on:change:target=move |ev| encrypted.set(ev.target().checked())
                         />
                         <span>
                             <span class="text-sm font-medium text-text-primary">
@@ -200,7 +231,7 @@ pub fn ExportDialog(
                                 {move || t!(i18n, settings.export_encrypt_desc)}
                             </span>
                         </span>
-                    </label>
+                    </div>
                     <Show
                         when=move || encrypted.get()
                         fallback=move || {
@@ -212,30 +243,38 @@ pub fn ExportDialog(
                                     >
                                         {move || t!(i18n, settings.export_csv_warning)}
                                     </div>
-                                    <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            prop:checked=move || spreadsheet_safe.get()
-                                            on:change:target=move |ev| {
-                                                spreadsheet_safe.set(ev.target().checked());
-                                            }
+                                    <div class="flex items-center gap-2 text-xs text-text-secondary">
+                                        <Checkbox
+                                            checked=Signal::derive(move || spreadsheet_safe.get())
+                                            on_change=Callback::new(move |v: bool| {
+                                                spreadsheet_safe.set(v);
+                                            })
+                                            aria_label=Signal::derive(move || {
+                                                t_string!(i18n, settings.export_spreadsheet_safe).to_owned()
+                                            })
                                         />
                                         {move || t!(i18n, settings.export_spreadsheet_safe)}
-                                    </label>
+                                    </div>
                                 </div>
                             }
                         }
                     >
                         <div class="pl-6">
-                            <input
-                                type="password"
-                                class="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-text-primary"
-                                placeholder=move || {
+                            <Input
+                                id="export-passphrase"
+                                input_type="password"
+                                placeholder=Signal::derive(move || {
                                     t_string!(i18n, settings.export_passphrase_placeholder)
-                                }
-                                prop:value=move || passphrase.get()
-                                on:input:target=move |ev| passphrase.set(ev.target().value())
-                                data-testid="export-passphrase"
+                                        .to_owned()
+                                })
+                                value=Signal::derive(move || passphrase.get())
+                                on_input=Callback::new(move |v: String| passphrase.set(v))
+                                reveal_label=Signal::derive(move || {
+                                    t_string!(i18n, onboarding.show_password).to_owned()
+                                })
+                                hide_label=Signal::derive(move || {
+                                    t_string!(i18n, onboarding.hide_password).to_owned()
+                                })
                             />
                         </div>
                     </Show>
@@ -271,24 +310,19 @@ pub fn ExportDialog(
     }
 }
 
-/// One scope radio row: a native radio + label + count.
-#[component]
-fn ScopeRow(
-    this: ExportScope,
-    scope: RwSignal<ExportScope>,
-    #[prop(into)] label: Signal<String>,
-    #[prop(into)] count: Signal<usize>,
-) -> impl IntoView {
-    view! {
-        <label class="flex items-center gap-2 text-sm cursor-pointer py-0.5">
-            <input
-                type="radio"
-                name="export-scope"
-                prop:checked=move || scope.get() == this
-                on:change=move |_: web_sys::Event| scope.set(this)
-            />
-            <span class="text-text-primary">{move || label.get()}</span>
-            <span class="text-foreground/50">"(" {move || count.get()} ")"</span>
-        </label>
+/// `ExportScope` <-> the `RadioGroup`'s `String` option value.
+fn scope_to_str(s: ExportScope) -> &'static str {
+    match s {
+        ExportScope::Selection => "selection",
+        ExportScope::Filter => "filter",
+        ExportScope::All => "all",
+    }
+}
+
+fn scope_from_str(s: &str) -> ExportScope {
+    match s {
+        "selection" => ExportScope::Selection,
+        "filter" => ExportScope::Filter,
+        _ => ExportScope::All,
     }
 }

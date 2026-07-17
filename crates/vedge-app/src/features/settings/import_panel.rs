@@ -14,9 +14,9 @@ use std::collections::HashMap;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ipc::{ImportActionDto, ImportPreviewRow, ImportReportDto};
-use vedge_ui::components::Button;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::components::{Button, Checkbox, Input};
 use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 
 use crate::api;
@@ -171,12 +171,14 @@ pub fn ImportPanel(
 
         // ---- Source: encrypted toggle ----
         <div class="py-3.5 border-b border-border space-y-2">
-            <label class="flex items-start gap-2 cursor-pointer">
-                <input
-                    type="checkbox"
+            <div class="flex items-start gap-2">
+                <Checkbox
+                    checked=Signal::derive(move || encrypted.get())
+                    on_change=Callback::new(move |v: bool| encrypted.set(v))
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, settings.import_source_encrypted).to_owned()
+                    })
                     class="mt-0.5"
-                    prop:checked=move || encrypted.get()
-                    on:change:target=move |ev| encrypted.set(ev.target().checked())
                 />
                 <span>
                     <span class="text-sm font-medium text-text-primary">
@@ -186,31 +188,44 @@ pub fn ImportPanel(
                         {move || t!(i18n, settings.import_source_csv)}
                     </span>
                 </span>
-            </label>
+            </div>
 
             // Passphrase (encrypted source only).
             <Show when=move || encrypted.get() fallback=|| ()>
                 <div class="pl-6">
-                    <input
-                        type="password"
-                        class="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-text-primary"
-                        placeholder=move || t_string!(i18n, settings.import_passphrase_placeholder)
-                        prop:value=move || passphrase.get()
-                        on:input:target=move |ev| passphrase.set(ev.target().value())
-                        data-testid="import-passphrase"
+                    <Input
+                        id="import-passphrase"
+                        input_type="password"
+                        placeholder=Signal::derive(move || {
+                            t_string!(i18n, settings.import_passphrase_placeholder).to_owned()
+                        })
+                        value=Signal::derive(move || passphrase.get())
+                        on_input=Callback::new(move |v: String| passphrase.set(v))
+                        reveal_label=Signal::derive(move || {
+                            t_string!(i18n, onboarding.show_password).to_owned()
+                        })
+                        hide_label=Signal::derive(move || {
+                            t_string!(i18n, onboarding.hide_password).to_owned()
+                        })
                     />
                 </div>
             </Show>
 
             // File picker (path is pasteable, or Browse).
             <div class="pl-6 flex items-center gap-2">
-                <input
-                    type="text"
-                    class="flex-1 rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-text-primary"
-                    placeholder=move || t_string!(i18n, settings.import_file_hint)
-                    prop:value=move || src_path.get()
-                    on:input:target=move |ev| src_path.set(ev.target().value())
-                    data-testid="import-path"
+                <Input
+                    id="import-path"
+                    input_type="text"
+                    class="flex-1"
+                    spellcheck="false"
+                    placeholder=Signal::derive(move || {
+                        t_string!(i18n, settings.import_file_hint).to_owned()
+                    })
+                    value=Signal::derive(move || src_path.get())
+                    on_input=Callback::new(move |v: String| src_path.set(v))
+                    aria_label=Signal::derive(move || {
+                        t_string!(i18n, settings.import_file_hint).to_owned()
+                    })
                 />
                 <Button variant=Variant::Secondary on:click=move |_: web_sys::MouseEvent| browse()>
                     {move || t!(i18n, settings.import_browse)}
