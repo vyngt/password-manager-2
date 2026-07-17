@@ -25,6 +25,12 @@ pub fn field_selector_from_dto(v: FieldSelectorDto) -> FieldSelector {
         FieldSelectorDto::Cvv => FieldSelector::Cvv,
         FieldSelectorDto::ApiKey => FieldSelector::ApiKey,
         FieldSelectorDto::EnvVar(k) => FieldSelector::EnvVar(k),
+        FieldSelectorDto::Pin => FieldSelector::Pin,
+        FieldSelectorDto::PrivateKey => FieldSelector::PrivateKey,
+        FieldSelectorDto::Passphrase => FieldSelector::Passphrase,
+        FieldSelectorDto::ApiSecret => FieldSelector::ApiSecret,
+        FieldSelectorDto::NationalId => FieldSelector::NationalId,
+        FieldSelectorDto::RecoveryCode(i) => FieldSelector::RecoveryCode(i),
         FieldSelectorDto::Custom(k) => FieldSelector::Custom(k),
     }
 }

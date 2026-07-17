@@ -15,6 +15,13 @@ pub enum FieldSelectorDto {
     Cvv,
     ApiKey,
     EnvVar(String),
+    // ---- 5.4.1 (Complete the Reveal Door) ----
+    Pin,
+    PrivateKey,
+    Passphrase,
+    ApiSecret,
+    NationalId,
+    RecoveryCode(u32),
     Custom(String),
 }
 

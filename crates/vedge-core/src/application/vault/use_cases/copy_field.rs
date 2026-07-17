@@ -30,7 +30,16 @@ use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
 use crate::domain::vault::totp;
 
-/// Which field of the decrypted entry to copy.
+/// Which field of the decrypted entry to copy or reveal.
+///
+/// Both `copy_field` and [`reveal_field`](super::reveal_field) dispatch on this
+/// single enum through [`extract_field`], so every arm serves both doors. Adding
+/// a variant here is only half the job — the value is unreachable until
+/// [`extract_field`] gains a matching arm. The
+/// `every_sealed_field_has_a_working_selector` guard test (below) is what forces
+/// that second half: it walks every sealed payload field (the same enumeration
+/// `resolve_secrets` destructures with no `..`) and fails loudly if a selector
+/// does not resolve.
 #[derive(Debug, Clone)]
 pub enum FieldSelector {
     Password,
@@ -40,6 +49,21 @@ pub enum FieldSelector {
     Cvv,
     ApiKey,
     EnvVar(String),
+    // ---- 5.4.1 (Complete the Reveal Door) ----
+    /// Card PIN (optional secret).
+    Pin,
+    /// SSH private key (multi-line PEM).
+    PrivateKey,
+    /// SSH key passphrase (optional secret).
+    Passphrase,
+    /// API secret — **not** `Secret`: the sibling [`ApiKey`](Self::ApiKey) arm
+    /// already names this entry type's other credential.
+    ApiSecret,
+    /// Identity national ID (optional secret).
+    NationalId,
+    /// One recovery code by zero-based index. Out-of-range is an error, never an
+    /// empty string. (The whole list is fetched via `reveal_recovery_codes`.)
+    RecoveryCode(u32),
     /// Reserved for future extensibility — always errors today.
     Custom(String),
 }
@@ -170,6 +194,12 @@ const fn field_name(f: &FieldSelector) -> &'static str {
         FieldSelector::Cvv => "cvv",
         FieldSelector::ApiKey => "api_key",
         FieldSelector::EnvVar(_) => "env_var",
+        FieldSelector::Pin => "pin",
+        FieldSelector::PrivateKey => "private_key",
+        FieldSelector::Passphrase => "passphrase",
+        FieldSelector::ApiSecret => "api_secret",
+        FieldSelector::NationalId => "national_id",
+        FieldSelector::RecoveryCode(_) => "recovery_code",
         FieldSelector::Custom(_) => "custom",
     }
 }
@@ -212,6 +242,45 @@ pub(super) fn extract_field(
                 .ok_or(VaultError::FieldNotApplicable)?;
             Ok(Zeroizing::new(found.value.expose_secret().to_owned()))
         }
+        // ---- 5.4.1 (Complete the Reveal Door) — close the write-only gap ----
+        (EntryPayload::Card(p), FieldSelector::Pin) => {
+            let Some(pin) = p.pin.as_ref() else {
+                return Err(VaultError::FieldNotApplicable);
+            };
+            Ok(Zeroizing::new(pin.expose_secret().to_owned()))
+        }
+        (EntryPayload::SshKey(p), FieldSelector::PrivateKey) => {
+            // Multi-line PEM — the plaintext (newlines included) crosses byte-exact.
+            Ok(Zeroizing::new(p.private_key_pem.expose_secret().to_owned()))
+        }
+        (EntryPayload::SshKey(p), FieldSelector::Passphrase) => {
+            let Some(pass) = p.passphrase.as_ref() else {
+                return Err(VaultError::FieldNotApplicable);
+            };
+            Ok(Zeroizing::new(pass.expose_secret().to_owned()))
+        }
+        (EntryPayload::ApiKey(p), FieldSelector::ApiSecret) => {
+            let Some(secret) = p.secret.as_ref() else {
+                return Err(VaultError::FieldNotApplicable);
+            };
+            Ok(Zeroizing::new(secret.expose_secret().to_owned()))
+        }
+        (EntryPayload::Identity(p), FieldSelector::NationalId) => {
+            let Some(nid) = p.national_id.as_ref() else {
+                return Err(VaultError::FieldNotApplicable);
+            };
+            Ok(Zeroizing::new(nid.expose_secret().to_owned()))
+        }
+        (EntryPayload::Login(p), FieldSelector::RecoveryCode(i)) => {
+            // Indexed access — out of range is `FieldNotApplicable`, never an
+            // empty string (a blank code is one a user writes down).
+            let idx = usize::try_from(*i).map_err(|_| VaultError::FieldNotApplicable)?;
+            let code = p
+                .recovery_codes
+                .get(idx)
+                .ok_or(VaultError::FieldNotApplicable)?;
+            Ok(Zeroizing::new(code.expose_secret().to_owned()))
+        }
         _ => Err(VaultError::FieldNotApplicable),
     }
 }
@@ -228,6 +297,16 @@ mod tests {
     use super::place_text_on_clipboard;
     use crate::application::vault::ports::clipboard::ClipboardProvider;
     use crate::infrastructure::clipboard::MemoryClipboardProvider;
+
+    use secrecy::{ExposeSecret, SecretString};
+
+    use super::{FieldSelector, extract_field, field_name};
+    use crate::domain::vault::errors::VaultError;
+    use crate::domain::vault::payloads::{
+        ApiKeyPayload, CardPayload, CommonMeta, EntryPayload, EntryType, EnvVar, EnvVarsPayload,
+        IdentityPayload, LoginPayload, SshKeyPayload,
+    };
+    use crate::domain::vault::totp::TotpParams;
 
     /// The generic copy path writes the secret through the injected
     /// `ClipboardProvider` (the same port `ArboardClipboardProvider` hardens),
@@ -267,5 +346,334 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
         assert_eq!(cb.peek(), None, "the clear timer should have fired");
+    }
+
+    // ---- 5.4.1: the reveal-door guard + per-arm coverage --------------------
+
+    fn expose(s: &SecretString) -> String {
+        s.expose_secret().to_owned()
+    }
+
+    // Test vectors are deliberately short, low-entropy, non-credential-shaped
+    // markers (and avoid the literal `-----BEGIN … PRIVATE KEY-----` header) so
+    // GitGuardian's Generic-Password / Private-Key detectors do not flag the PR.
+    // `hunter2` is the repo's proven-safe password vector.
+    fn login_full() -> EntryPayload {
+        EntryPayload::Login(LoginPayload {
+            meta: CommonMeta::new("gh", EntryType::Login),
+            username: "alice".into(),
+            password: SecretString::from("hunter2"),
+            totp_secret: None,
+            totp_params: TotpParams::default(),
+            recovery_codes: vec![
+                SecretString::from("rc-0"),
+                SecretString::from("rc-1"),
+                SecretString::from("rc-2"),
+            ],
+        })
+    }
+
+    fn card_full() -> EntryPayload {
+        EntryPayload::Card(CardPayload {
+            meta: CommonMeta::new("visa", EntryType::Card),
+            cardholder_name: "A B".into(),
+            number: SecretString::from("num-0000"),
+            expiry_month: 4,
+            expiry_year: 2031,
+            cvv: SecretString::from("cvv-000"),
+            pin: Some(SecretString::from("pin-0000")),
+        })
+    }
+
+    fn ssh_full() -> EntryPayload {
+        EntryPayload::SshKey(SshKeyPayload {
+            meta: CommonMeta::new("box", EntryType::SshKey),
+            private_key_pem: SecretString::from(
+                "-----BEGIN-----\nkey-line-1\nkey-line-2\n-----END-----",
+            ),
+            passphrase: Some(SecretString::from("phrase-xyz")),
+            public_key: "ssh-ed25519 AAA".into(),
+            fingerprint: "SHA256:xx".into(),
+            key_type: "ed25519".into(),
+        })
+    }
+
+    fn apikey_full() -> EntryPayload {
+        EntryPayload::ApiKey(ApiKeyPayload {
+            meta: CommonMeta::new("stripe", EntryType::ApiKey),
+            key: SecretString::from("apikey-one"),
+            secret: Some(SecretString::from("apikey-two")),
+            endpoint: None,
+            expiry: None,
+            key_type: None,
+        })
+    }
+
+    fn envvars_full() -> EntryPayload {
+        EntryPayload::EnvVars(EnvVarsPayload {
+            meta: CommonMeta::new("env", EntryType::EnvVars),
+            vars: vec![
+                EnvVar {
+                    key: "A".into(),
+                    value: SecretString::from("env-a-val"),
+                },
+                EnvVar {
+                    key: "B".into(),
+                    value: SecretString::from("env-b-val"),
+                },
+            ],
+        })
+    }
+
+    fn identity_full() -> EntryPayload {
+        EntryPayload::Identity(IdentityPayload {
+            meta: CommonMeta::new("me", EntryType::Identity),
+            first_name: "A".into(),
+            last_name: "B".into(),
+            email: "a@b.c".into(),
+            phone: None,
+            address: None,
+            date_of_birth: None,
+            national_id: Some(SecretString::from("natid-xyz")),
+        })
+    }
+
+    /// Every sealed secret field of `payload`, paired with the `FieldSelector`
+    /// that MUST extract it. Each variant is destructured with **no `..`**, so
+    /// adding a field to any payload struct breaks THIS match at compile time —
+    /// the same discipline `resolve_secrets` uses. That is what keeps the seal,
+    /// the resolver, and the reveal door on one enumeration: a new sealed field
+    /// cannot land without a human deciding its selector here.
+    fn sealed_fields(payload: &EntryPayload) -> Vec<(FieldSelector, String)> {
+        match payload {
+            EntryPayload::Login(LoginPayload {
+                meta: _,
+                username: _,
+                password,
+                // TOTP is reachable via `TotpCode` (a generated code, not the
+                // seed) + `reveal_totp`; it is not a direct-extract sealed field.
+                totp_secret: _,
+                totp_params: _,
+                recovery_codes,
+            }) => {
+                let mut out = vec![(FieldSelector::Password, expose(password))];
+                for (i, code) in recovery_codes.iter().enumerate() {
+                    let idx = u32::try_from(i).expect("recovery-code index fits u32");
+                    out.push((FieldSelector::RecoveryCode(idx), expose(code)));
+                }
+                out
+            }
+            EntryPayload::Card(CardPayload {
+                meta: _,
+                cardholder_name: _,
+                number,
+                expiry_month: _,
+                expiry_year: _,
+                cvv,
+                pin,
+            }) => {
+                let mut out = vec![
+                    (FieldSelector::CardNumber, expose(number)),
+                    (FieldSelector::Cvv, expose(cvv)),
+                ];
+                if let Some(pin) = pin {
+                    out.push((FieldSelector::Pin, expose(pin)));
+                }
+                out
+            }
+            EntryPayload::SshKey(SshKeyPayload {
+                meta: _,
+                private_key_pem,
+                passphrase,
+                public_key: _,
+                fingerprint: _,
+                key_type: _,
+            }) => {
+                let mut out = vec![(FieldSelector::PrivateKey, expose(private_key_pem))];
+                if let Some(p) = passphrase {
+                    out.push((FieldSelector::Passphrase, expose(p)));
+                }
+                out
+            }
+            EntryPayload::ApiKey(ApiKeyPayload {
+                meta: _,
+                key,
+                secret,
+                endpoint: _,
+                expiry: _,
+                key_type: _,
+            }) => {
+                let mut out = vec![(FieldSelector::ApiKey, expose(key))];
+                if let Some(s) = secret {
+                    out.push((FieldSelector::ApiSecret, expose(s)));
+                }
+                out
+            }
+            EntryPayload::EnvVars(EnvVarsPayload { meta: _, vars }) => vars
+                .iter()
+                .map(|v| (FieldSelector::EnvVar(v.key.clone()), expose(&v.value)))
+                .collect(),
+            EntryPayload::Identity(IdentityPayload {
+                meta: _,
+                first_name: _,
+                last_name: _,
+                email: _,
+                phone: _,
+                address: _,
+                date_of_birth: _,
+                national_id,
+            }) => national_id
+                .as_ref()
+                .map(|n| vec![(FieldSelector::NationalId, expose(n))])
+                .unwrap_or_default(),
+            // No sealed secrets. `Note.content` crosses plainly on `get_entry`
+            // (it is the entry's substance, not credential material) — it is NOT
+            // write-only, so it needs no selector.
+            EntryPayload::Note(_)
+            | EntryPayload::Document(_)
+            | EntryPayload::Folder(_)
+            | EntryPayload::Unknown(_) => Vec::new(),
+        }
+    }
+
+    /// 🔴 5.4.1 ③ — THE GUARD. Every sealed secret field must be reachable
+    /// through a `FieldSelector` arm. This is the deliverable: it makes the
+    /// write-only class impossible to reintroduce. `sealed_fields` enumerates the
+    /// seal with a no-`..` match; this test proves the door covers all of it.
+    /// Adding a sealed field without an `extract_field` arm fails here, loudly,
+    /// naming the field.
+    #[test]
+    fn every_sealed_field_has_a_working_selector() {
+        let payloads = [
+            login_full(),
+            card_full(),
+            ssh_full(),
+            apikey_full(),
+            envvars_full(),
+            identity_full(),
+        ];
+
+        let mut unreachable: Vec<String> = Vec::new();
+        for payload in &payloads {
+            let fields = sealed_fields(payload);
+            assert!(
+                !fields.is_empty(),
+                "a payload variant with sealed secrets enumerated none — the guard is blind"
+            );
+            for (selector, expected) in fields {
+                match extract_field(payload, &selector, 0) {
+                    Ok(got) if *got == expected => {}
+                    Ok(got) => unreachable.push(format!(
+                        "{}: selector {selector:?} returned {:?}, expected {expected:?}",
+                        field_name(&selector),
+                        &*got
+                    )),
+                    Err(e) => unreachable.push(format!(
+                        "{}: selector {selector:?} is write-only ({e:?})",
+                        field_name(&selector)
+                    )),
+                }
+            }
+        }
+
+        assert!(
+            unreachable.is_empty(),
+            "sealed fields with no working reveal-door arm ({}):\n{}",
+            unreachable.len(),
+            unreachable.join("\n")
+        );
+    }
+
+    #[test]
+    fn new_arms_extract_their_secrets() {
+        assert_eq!(
+            &*extract_field(&card_full(), &FieldSelector::Pin, 0).unwrap(),
+            "pin-0000"
+        );
+        assert_eq!(
+            &*extract_field(&ssh_full(), &FieldSelector::Passphrase, 0).unwrap(),
+            "phrase-xyz"
+        );
+        assert_eq!(
+            &*extract_field(&apikey_full(), &FieldSelector::ApiSecret, 0).unwrap(),
+            "apikey-two"
+        );
+        assert_eq!(
+            &*extract_field(&identity_full(), &FieldSelector::NationalId, 0).unwrap(),
+            "natid-xyz"
+        );
+    }
+
+    /// 🔴 ④'s hazard: the SSH private key is multi-line PEM. Reveal must preserve
+    /// `-----BEGIN`, the interior newlines, and `-----END` byte-exact.
+    #[test]
+    fn private_key_round_trips_multiline_pem_byte_exact() {
+        // A PEM-shaped multi-line block WITHOUT the literal `PRIVATE KEY` header
+        // (GitGuardian would flag that): the property under test is that the
+        // `-----BEGIN`/`-----END` markers and the interior newlines survive
+        // byte-exact, not the specific key type.
+        let pem = "-----BEGIN VEDGE TEST BLOCK-----\nline-a\nline-b\nline-c\n-----END VEDGE TEST BLOCK-----";
+        let ssh = EntryPayload::SshKey(SshKeyPayload {
+            meta: CommonMeta::new("box", EntryType::SshKey),
+            private_key_pem: SecretString::from(pem),
+            passphrase: None,
+            public_key: "pk".into(),
+            fingerprint: "fp".into(),
+            key_type: "ed25519".into(),
+        });
+        let got = extract_field(&ssh, &FieldSelector::PrivateKey, 0).unwrap();
+        assert_eq!(
+            &*got, pem,
+            "PEM newlines / BEGIN / END must survive byte-exact"
+        );
+    }
+
+    /// 🔴 ② — a recovery code by index; out-of-range ERRORS, never returns "".
+    #[test]
+    fn recovery_code_by_index_and_out_of_range_errors() {
+        let login = login_full(); // three codes
+        assert_eq!(
+            &*extract_field(&login, &FieldSelector::RecoveryCode(0), 0).unwrap(),
+            "rc-0"
+        );
+        assert_eq!(
+            &*extract_field(&login, &FieldSelector::RecoveryCode(2), 0).unwrap(),
+            "rc-2"
+        );
+        assert!(matches!(
+            extract_field(&login, &FieldSelector::RecoveryCode(3), 0),
+            Err(VaultError::FieldNotApplicable)
+        ));
+        assert!(matches!(
+            extract_field(&login, &FieldSelector::RecoveryCode(99), 0),
+            Err(VaultError::FieldNotApplicable)
+        ));
+    }
+
+    /// An absent optional secret is `FieldNotApplicable`, never an empty string.
+    #[test]
+    fn optional_secret_absent_is_not_applicable() {
+        let card = EntryPayload::Card(CardPayload {
+            meta: CommonMeta::new("visa", EntryType::Card),
+            cardholder_name: "n".into(),
+            number: SecretString::from("num-0000"),
+            expiry_month: 1,
+            expiry_year: 2030,
+            cvv: SecretString::from("cvv-000"),
+            pin: None,
+        });
+        assert!(matches!(
+            extract_field(&card, &FieldSelector::Pin, 0),
+            Err(VaultError::FieldNotApplicable)
+        ));
+    }
+
+    /// The reserved `Custom` arm stays reserved.
+    #[test]
+    fn custom_selector_still_errors() {
+        assert!(matches!(
+            extract_field(&login_full(), &FieldSelector::Custom("x".into()), 0),
+            Err(VaultError::FieldNotApplicable)
+        ));
     }
 }

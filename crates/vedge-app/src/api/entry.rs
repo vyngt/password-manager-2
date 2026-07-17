@@ -163,6 +163,27 @@ pub async fn reveal_field(
     .await
 }
 
+/// Reveal a Login's whole recovery-code list (slice 5.4.1). Audited as a single
+/// `SecretRevealed` row; per-code copy uses `copy_field` with `RecoveryCode(i)`.
+pub async fn reveal_recovery_codes(
+    vault_path: &str,
+    entry_id: &str,
+) -> Result<Vec<String>, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+    }
+    call(
+        "reveal_recovery_codes",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
+}
+
 pub async fn move_entry(
     vault_path: &str,
     entry_id: &str,

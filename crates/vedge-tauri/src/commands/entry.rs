@@ -25,13 +25,14 @@ use tracing::instrument;
 use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
     CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, RevealFieldInput,
-    RevealHistoryFieldInput, UpdateEntryInput, copy_field as copy_field_core,
-    copy_history_field as copy_history_field_core, create_entry as create_entry_core,
-    get_entry as get_entry_core, get_history_value as get_history_value_core,
-    hard_delete_entry as hard_delete_entry_core, list_history as list_history_core,
-    move_entry as move_entry_core, resolve_secrets, restore_entry as restore_entry_core,
-    restore_from_history as restore_from_history_core, reveal_field as reveal_field_core,
-    reveal_history_field as reveal_history_field_core, set_favorite as set_favorite_core,
+    RevealHistoryFieldInput, RevealRecoveryCodesInput, UpdateEntryInput,
+    copy_field as copy_field_core, copy_history_field as copy_history_field_core,
+    create_entry as create_entry_core, get_entry as get_entry_core,
+    get_history_value as get_history_value_core, hard_delete_entry as hard_delete_entry_core,
+    list_history as list_history_core, move_entry as move_entry_core, resolve_secrets,
+    restore_entry as restore_entry_core, restore_from_history as restore_from_history_core,
+    reveal_field as reveal_field_core, reveal_history_field as reveal_history_field_core,
+    reveal_recovery_codes as reveal_recovery_codes_core, set_favorite as set_favorite_core,
     set_sort_order as set_sort_order_core, set_tags as set_tags_core,
     soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
 };
@@ -240,6 +241,32 @@ pub async fn reveal_field(
     )
     .await?;
     Ok((*value).clone())
+}
+
+/// Reveal a Login's whole recovery-code list (slice 5.4.1 ②).
+///
+/// The list crosses to WASM together and is audited as a **single**
+/// `SecretRevealed` row — you read recovery codes to print them, not one at a
+/// time. Per-code copy uses `copy_field` with `FieldSelector::RecoveryCode(i)`.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn reveal_recovery_codes(
+    vault_path: String,
+    entry_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<String>, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let codes = reveal_recovery_codes_core(
+        &mut guard,
+        RevealRecoveryCodesInput {
+            entry_id: entry_id_from_str(&entry_id),
+        },
+    )
+    .await?;
+    Ok(codes.into_iter().map(|c| (*c).clone()).collect())
 }
 
 /// `folder_id = None` moves the entry to the root. Matches the use case's

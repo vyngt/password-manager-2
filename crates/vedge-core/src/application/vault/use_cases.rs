@@ -73,7 +73,9 @@ pub use queries::{
 pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
-pub use reveal_field::{RevealFieldInput, reveal_field};
+pub use reveal_field::{
+    RevealFieldInput, RevealRecoveryCodesInput, reveal_field, reveal_recovery_codes,
+};
 pub use reveal_totp::reveal_totp;
 pub use revert_to_snapshot::{
     RevertReport, RevertToSnapshotInput, SeamlessRevertOutcome, revert_to_snapshot,

@@ -101,6 +101,7 @@ pub fn run() {
             commands::entry::hard_delete_entry,
             commands::entry::copy_field,
             commands::entry::reveal_field,
+            commands::entry::reveal_recovery_codes,
             commands::clipboard::copy_text,
             commands::entry::move_entry,
             commands::entry::set_favorite,
