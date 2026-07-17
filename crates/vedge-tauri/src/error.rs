@@ -168,6 +168,12 @@ impl From<VaultError> for CommandError {
             // A stale snapshot as a tweezers source (5.3c): its message IS the honest
             // "recover with its original password" copy, surfaced to the snapshots page.
             | VaultError::SnapshotStale
+            // Sealed-secret intent violations (slice 5.4): a required credential can't
+            // be cleared, and env-var rows must have unique keys / a value to carry.
+            // The domain enforces these; the GUI never submits them.
+            | VaultError::RequiredSecretCleared(_)
+            | VaultError::DuplicateEnvVarKey(_)
+            | VaultError::EnvVarUnchangedWithoutStored(_)
             // A breach lookup failure is normally degraded inside `scan_health`
             // (surfaced as `breach_check_failed`); this mapping is defensive only.
             | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),

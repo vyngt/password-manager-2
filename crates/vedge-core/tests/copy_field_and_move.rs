@@ -18,10 +18,12 @@ use vedge_core::TotpParams;
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    CopyFieldInput, CreateEntryInput, FieldSelector, UnlockVaultInput, copy_field, create_entry,
-    move_entry, set_favorite, set_sort_order, set_tags,
+    CopyFieldInput, CreateEntryInput, FieldSelector, GetEntryInput, RevealFieldInput,
+    UnlockVaultInput, copy_field, create_entry, get_entry, move_entry, reveal_field, set_favorite,
+    set_sort_order, set_tags,
 };
 use vedge_core::domain::shared::{EntryId, TagId};
+use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{
     CommonMeta, EntryPayload, EntryType, FolderPayload, LoginPayload, NotePayload,
@@ -169,6 +171,150 @@ async fn clipboard_clears_after_delay() {
     // unpaused; we sleep a bit beyond the configured clear delay.
     tokio::time::sleep(Duration::from_millis(1250)).await;
     assert_eq!(h.clipboard.peek(), None);
+}
+
+// ---- reveal_field (slice 5.4) — the audited twin of copy_field ----
+
+#[tokio::test]
+async fn reveal_password_returns_the_value() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("gh", "hunter2", None),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+
+    let value = reveal_field(
+        &mut session,
+        RevealFieldInput::new(id, FieldSelector::Password),
+        0,
+    )
+    .await
+    .unwrap();
+    assert_eq!(value.as_str(), "hunter2");
+    // reveal RETURNS the value; it does not touch the clipboard (unlike copy_field).
+    assert_eq!(h.clipboard.peek(), None);
+}
+
+#[tokio::test]
+async fn reveal_wrong_field_for_type_errors() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: EntryPayload::Note(NotePayload {
+                meta: CommonMeta::new("note", EntryType::Note),
+                content: SecretString::from("body"),
+            }),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+
+    let err = reveal_field(
+        &mut session,
+        RevealFieldInput::new(id, FieldSelector::Password),
+        0,
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, VaultError::FieldNotApplicable));
+}
+
+#[tokio::test]
+async fn reveal_field_audits_secret_revealed_every_call_no_dedup() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("gh", "hunter2", None),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+
+    // Two reveals of the same field in one session → TWO audit rows. Unlike
+    // TotpRevealed (per-session dedup), every field reveal is a deliberate act.
+    reveal_field(
+        &mut session,
+        RevealFieldInput::new(id.clone(), FieldSelector::Password),
+        0,
+    )
+    .await
+    .unwrap();
+    reveal_field(
+        &mut session,
+        RevealFieldInput::new(id.clone(), FieldSelector::Password),
+        0,
+    )
+    .await
+    .unwrap();
+
+    let events = h.repo.recent_audit(50).await.unwrap();
+    let revealed = events
+        .iter()
+        .filter(|e| e.action == AuditAction::SecretRevealed && e.entry_id.as_ref() == Some(&id))
+        .count();
+    assert_eq!(revealed, 2, "each reveal audits SecretRevealed, no dedup");
+}
+
+#[tokio::test]
+async fn audit_distinguishes_browse_from_extraction() {
+    // Slice 5.4 ③: get_entry (browse) → Viewed; copy_field / reveal_field
+    // (extraction) → SecretRevealed. Before 5.4 both said Viewed.
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("gh", "hunter2", None),
+        },
+    )
+    .await
+    .unwrap()
+    .entry_id;
+
+    get_entry(
+        &mut session,
+        GetEntryInput {
+            entry_id: id.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    let mut cp = CopyFieldInput::new(id.clone(), FieldSelector::Password);
+    cp.clear_after_secs = 9999;
+    copy_field(&mut session, cp, 0).await.unwrap();
+    reveal_field(
+        &mut session,
+        RevealFieldInput::new(id.clone(), FieldSelector::Password),
+        0,
+    )
+    .await
+    .unwrap();
+
+    let events = h.repo.recent_audit(50).await.unwrap();
+    let count = |a: AuditAction| {
+        events
+            .iter()
+            .filter(|e| e.action == a && e.entry_id.as_ref() == Some(&id))
+            .count()
+    };
+    assert_eq!(count(AuditAction::Viewed), 1, "get_entry browses → Viewed");
+    assert_eq!(
+        count(AuditAction::SecretRevealed),
+        2,
+        "copy_field + reveal_field extract → SecretRevealed"
+    );
 }
 
 #[tokio::test]

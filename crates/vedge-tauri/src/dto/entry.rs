@@ -1,23 +1,26 @@
 //! Entry DTO conversion layer (wire types from `vedge_ipc`).
 
 pub use vedge_ipc::{
-    AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarDto, EnvVarsPayloadDto,
-    FolderPayloadDto, HistoryEntryDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto,
-    NotePayloadDto, PayloadDto, SshKeyPayloadDto,
+    AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarUpdateDto,
+    EnvVarsPayloadDto, FolderPayloadDto, HistoryEntryDto, IdentityPayloadDto, IndexEntryDto,
+    LoginPayloadDto, NotePayloadDto, PayloadDto, SshKeyPayloadDto,
 };
 
 use secrecy::{ExposeSecret, SecretString};
-use vedge_ipc::TotpUpdateDto;
+use vedge_ipc::{SecretListUpdateDto, SecretUpdateDto, TotpUpdateDto};
 
-use crate::dto::totp::{totp_algorithm_to_dto, totp_params_from_dto};
+use crate::dto::secret_update::{
+    env_var_update_from_dto, secret_list_update_from_dto, secret_update_from_dto,
+};
+use crate::dto::totp::{totp_algorithm_to_dto, totp_params_from_dto, totp_update_from_dto};
 
-use vedge_core::HistoryVersion;
 use vedge_core::domain::shared::{EntryId, TagId};
 use vedge_core::domain::vault::index::IndexEntry;
 use vedge_core::domain::vault::payloads::{
-    Address, ApiKeyPayload, CardPayload, DocumentPayload, EntryPayload, EntryType, EnvVar,
-    EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload, NotePayload, SshKeyPayload,
+    Address, ApiKeyPayload, CardPayload, DocumentPayload, EntryPayload, EntryType, EnvVarsPayload,
+    FolderPayload, IdentityPayload, LoginPayload, NotePayload, SshKeyPayload,
 };
+use vedge_core::{HistoryVersion, SecretUpdates};
 
 use crate::dto::common::{
     b64_decode_fixed, b64_encode, common_meta_from_dto, common_meta_to_dto, entry_type_to_dto,
@@ -87,123 +90,134 @@ pub fn address_from_dto(a: AddressDto) -> Address {
     }
 }
 
-// ---- EnvVar ------------------------------------------------------------------
-
-fn env_var_from_dto(v: EnvVarDto) -> EnvVar {
-    EnvVar {
-        key: v.key,
-        value: SecretString::from(v.value),
-    }
-}
-
-fn env_var_to_dto(v: &EnvVar) -> EnvVarDto {
-    EnvVarDto {
-        key: v.key.clone(),
-        value: v.value.expose_secret().to_owned(),
-    }
-}
-
 // ---- Payload round-trip ------------------------------------------------------
 
-/// Convert a write-side DTO into a domain `EntryPayload`, forcing
-/// `meta.entry_type` to match the variant so a buggy frontend can't smuggle
-/// a mismatched pair.
+/// Convert a write-side DTO into a domain `EntryPayload` + intents (slice 5.4).
+///
+/// The payload's sealed-secret fields are **placeholders**; the real intents ride
+/// in the parallel [`SecretUpdates`]. Forces `meta.entry_type` to match the
+/// variant so a buggy frontend can't smuggle a mismatched pair.
+///
+/// The placeholders (empty `SecretString` / `None` / empty `Vec`) are ALWAYS
+/// overwritten by `resolve_secrets` in `create_entry`/`update_entry` — or the
+/// write is rejected — so they never reach `to_encryptable_json`. `Note.content`
+/// and the non-`national_id` Identity fields are not sealed and carry real values.
 #[allow(clippy::too_many_lines)]
-pub fn payload_from_dto(dto: PayloadDto) -> Result<EntryPayload, CommandError> {
+pub fn payload_from_dto(dto: PayloadDto) -> Result<(EntryPayload, SecretUpdates), CommandError> {
     Ok(match dto {
         PayloadDto::Login(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::Login;
-            // The seed crosses only as an enrolment intent (the door). `Set`
-            // enrols it now (create + the resolved value on update); the
-            // `Unchanged` carry-forward is handled by `update_entry`. Params
-            // cross freely — form-editable metadata.
-            let totp_secret = match &d.totp {
-                TotpUpdateDto::Set(s) => Some(SecretString::from(s.clone())),
-                TotpUpdateDto::Unchanged | TotpUpdateDto::Clear => None,
+            let secrets = SecretUpdates::Login {
+                password: secret_update_from_dto(d.password),
+                recovery_codes: secret_list_update_from_dto(d.recovery_codes),
+                totp: totp_update_from_dto(&d.totp),
             };
-            EntryPayload::Login(LoginPayload {
+            let payload = EntryPayload::Login(LoginPayload {
                 meta,
                 username: d.username,
-                password: SecretString::from(d.password),
-                totp_secret,
+                password: placeholder_secret(),
+                totp_secret: None,
                 totp_params: totp_params_from_dto(d.totp_algorithm, d.totp_digits, d.totp_period),
-                recovery_codes: d
-                    .recovery_codes
-                    .into_iter()
-                    .map(SecretString::from)
-                    .collect(),
-            })
+                recovery_codes: Vec::new(),
+            });
+            (payload, secrets)
         }
         PayloadDto::Card(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::Card;
-            EntryPayload::Card(CardPayload {
+            let secrets = SecretUpdates::Card {
+                number: secret_update_from_dto(d.number),
+                cvv: secret_update_from_dto(d.cvv),
+                pin: secret_update_from_dto(d.pin),
+            };
+            let payload = EntryPayload::Card(CardPayload {
                 meta,
                 cardholder_name: d.cardholder_name,
-                number: SecretString::from(d.number),
+                number: placeholder_secret(),
                 expiry_month: d.expiry_month,
                 expiry_year: d.expiry_year,
-                cvv: SecretString::from(d.cvv),
-                pin: d.pin.map(SecretString::from),
-            })
+                cvv: placeholder_secret(),
+                pin: None,
+            });
+            (payload, secrets)
         }
         PayloadDto::SshKey(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::SshKey;
-            EntryPayload::SshKey(SshKeyPayload {
+            let secrets = SecretUpdates::SshKey {
+                private_key_pem: secret_update_from_dto(d.private_key_pem),
+                passphrase: secret_update_from_dto(d.passphrase),
+            };
+            let payload = EntryPayload::SshKey(SshKeyPayload {
                 meta,
-                private_key_pem: SecretString::from(d.private_key_pem),
-                passphrase: d.passphrase.map(SecretString::from),
+                private_key_pem: placeholder_secret(),
+                passphrase: None,
                 public_key: d.public_key,
                 fingerprint: d.fingerprint,
                 key_type: d.key_type,
-            })
+            });
+            (payload, secrets)
         }
         PayloadDto::ApiKey(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::ApiKey;
-            EntryPayload::ApiKey(ApiKeyPayload {
+            let secrets = SecretUpdates::ApiKey {
+                key: secret_update_from_dto(d.key),
+                secret: secret_update_from_dto(d.secret),
+            };
+            let payload = EntryPayload::ApiKey(ApiKeyPayload {
                 meta,
-                key: SecretString::from(d.key),
-                secret: d.secret.map(SecretString::from),
+                key: placeholder_secret(),
+                secret: None,
                 endpoint: d.endpoint,
                 expiry: d.expiry,
                 key_type: d.key_type,
-            })
+            });
+            (payload, secrets)
         }
         PayloadDto::EnvVars(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::EnvVars;
-            EntryPayload::EnvVars(EnvVarsPayload {
+            let secrets = SecretUpdates::EnvVars {
+                vars: d.vars.into_iter().map(env_var_update_from_dto).collect(),
+            };
+            let payload = EntryPayload::EnvVars(EnvVarsPayload {
                 meta,
-                vars: d.vars.into_iter().map(env_var_from_dto).collect(),
-            })
+                vars: Vec::new(),
+            });
+            (payload, secrets)
         }
         PayloadDto::Note(d) => {
+            // Note.content is NOT sealed — it is the entry's whole substance.
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::Note;
-            EntryPayload::Note(NotePayload {
+            let payload = EntryPayload::Note(NotePayload {
                 meta,
                 content: SecretString::from(d.content),
-            })
+            });
+            (payload, SecretUpdates::Note)
         }
         PayloadDto::Document(d) => {
             let blob_nonce = b64_decode_fixed::<24>(&d.blob_nonce_b64)?;
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::Document;
-            EntryPayload::Document(DocumentPayload {
+            let payload = EntryPayload::Document(DocumentPayload {
                 meta,
                 filename: d.filename,
                 mime_type: d.mime_type,
                 size_bytes: d.size_bytes,
                 blob_nonce,
-            })
+            });
+            (payload, SecretUpdates::Document)
         }
         PayloadDto::Identity(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::Identity;
-            EntryPayload::Identity(IdentityPayload {
+            let secrets = SecretUpdates::Identity {
+                national_id: secret_update_from_dto(d.national_id),
+            };
+            let payload = EntryPayload::Identity(IdentityPayload {
                 meta,
                 first_name: d.first_name,
                 last_name: d.last_name,
@@ -211,68 +225,93 @@ pub fn payload_from_dto(dto: PayloadDto) -> Result<EntryPayload, CommandError> {
                 phone: d.phone,
                 address: d.address.map(address_from_dto),
                 date_of_birth: d.date_of_birth,
-                national_id: d.national_id.map(SecretString::from),
-            })
+                national_id: None,
+            });
+            (payload, secrets)
         }
         PayloadDto::Folder(d) => {
             let mut meta = common_meta_from_dto(d.meta);
             meta.entry_type = EntryType::Folder;
-            EntryPayload::Folder(FolderPayload { meta })
+            (
+                EntryPayload::Folder(FolderPayload { meta }),
+                SecretUpdates::Folder,
+            )
         }
     })
 }
 
-/// Build a DTO from a domain payload. Returns `Invalid` for `Unknown`
-/// variants — no stable wire-shape for unrecognized entry types.
+/// Empty placeholder for a sealed secret field, overwritten by `resolve_secrets`
+/// before encryption (or the write is rejected). Never persisted.
+fn placeholder_secret() -> SecretString {
+    SecretString::from(String::new())
+}
+
+/// Build a DTO from a domain payload — the **sealed** outbound door (slice 5.4).
+///
+/// Every sealed-secret field crosses as `SecretUpdateDto::Unchanged` (never the
+/// plaintext); optional secrets add a `has_*` presence flag and collections a
+/// count/keys. `Note.content` and the non-`national_id` Identity fields are not
+/// credential material and keep crossing. Returns `Invalid` for `Unknown`.
 pub fn payload_to_dto(p: &EntryPayload) -> Result<PayloadDto, CommandError> {
     Ok(match p {
         EntryPayload::Login(x) => PayloadDto::Login(LoginPayloadDto {
             meta: common_meta_to_dto(&x.meta),
             username: x.username.clone(),
-            password: x.password.expose_secret().to_owned(),
-            // The seed does NOT cross the door — only its presence + params.
+            // Sealed — the password does NOT cross the door.
+            password: SecretUpdateDto::Unchanged,
+            // The seed does NOT cross either — only its presence + params.
             has_totp: x.totp_secret.is_some(),
             totp_algorithm: totp_algorithm_to_dto(x.totp_params.algorithm),
             totp_digits: x.totp_params.digits,
             totp_period: x.totp_params.period,
             totp: TotpUpdateDto::Unchanged,
-            recovery_codes: x
-                .recovery_codes
-                .iter()
-                .map(|s| s.expose_secret().to_owned())
-                .collect(),
+            // Sealed — values do not cross; the count does.
+            recovery_codes: SecretListUpdateDto::Unchanged,
+            recovery_codes_count: u32::try_from(x.recovery_codes.len()).unwrap_or(u32::MAX),
         }),
         EntryPayload::Card(x) => PayloadDto::Card(CardPayloadDto {
             meta: common_meta_to_dto(&x.meta),
             cardholder_name: x.cardholder_name.clone(),
-            number: x.number.expose_secret().to_owned(),
+            number: SecretUpdateDto::Unchanged,
             expiry_month: x.expiry_month,
             expiry_year: x.expiry_year,
-            cvv: x.cvv.expose_secret().to_owned(),
-            pin: x.pin.as_ref().map(|s| s.expose_secret().to_owned()),
+            cvv: SecretUpdateDto::Unchanged,
+            pin: SecretUpdateDto::Unchanged,
+            has_pin: x.pin.is_some(),
         }),
         EntryPayload::SshKey(x) => PayloadDto::SshKey(SshKeyPayloadDto {
             meta: common_meta_to_dto(&x.meta),
-            private_key_pem: x.private_key_pem.expose_secret().to_owned(),
-            passphrase: x.passphrase.as_ref().map(|s| s.expose_secret().to_owned()),
+            private_key_pem: SecretUpdateDto::Unchanged,
+            passphrase: SecretUpdateDto::Unchanged,
+            has_passphrase: x.passphrase.is_some(),
             public_key: x.public_key.clone(),
             fingerprint: x.fingerprint.clone(),
             key_type: x.key_type.clone(),
         }),
         EntryPayload::ApiKey(x) => PayloadDto::ApiKey(ApiKeyPayloadDto {
             meta: common_meta_to_dto(&x.meta),
-            key: x.key.expose_secret().to_owned(),
-            secret: x.secret.as_ref().map(|s| s.expose_secret().to_owned()),
+            key: SecretUpdateDto::Unchanged,
+            secret: SecretUpdateDto::Unchanged,
+            has_secret: x.secret.is_some(),
             endpoint: x.endpoint.clone(),
             expiry: x.expiry.clone(),
             key_type: x.key_type.clone(),
         }),
         EntryPayload::EnvVars(x) => PayloadDto::EnvVars(EnvVarsPayloadDto {
             meta: common_meta_to_dto(&x.meta),
-            vars: x.vars.iter().map(env_var_to_dto).collect(),
+            // Keys cross (the schema); each value is sealed as `Unchanged`.
+            vars: x
+                .vars
+                .iter()
+                .map(|v| EnvVarUpdateDto {
+                    key: v.key.clone(),
+                    value: SecretUpdateDto::Unchanged,
+                })
+                .collect(),
         }),
         EntryPayload::Note(x) => PayloadDto::Note(NotePayloadDto {
             meta: common_meta_to_dto(&x.meta),
+            // Not sealed — the note body is the entry's substance.
             content: x.content.expose_secret().to_owned(),
         }),
         EntryPayload::Document(x) => PayloadDto::Document(DocumentPayloadDto {
@@ -290,7 +329,9 @@ pub fn payload_to_dto(p: &EntryPayload) -> Result<PayloadDto, CommandError> {
             phone: x.phone.clone(),
             address: x.address.as_ref().map(address_to_dto),
             date_of_birth: x.date_of_birth.clone(),
-            national_id: x.national_id.as_ref().map(|s| s.expose_secret().to_owned()),
+            // Sealed — the only credential-material Identity field.
+            national_id: SecretUpdateDto::Unchanged,
+            has_national_id: x.national_id.is_some(),
         }),
         EntryPayload::Folder(x) => PayloadDto::Folder(FolderPayloadDto {
             meta: common_meta_to_dto(&x.meta),
@@ -321,44 +362,238 @@ mod tests {
 
     use super::*;
     use crate::dto::common::CommonMetaDto;
-    use vedge_core::domain::vault::payloads::CommonMeta;
+    use vedge_core::domain::vault::payloads::{CommonMeta, EnvVar};
+    use vedge_core::resolve_secrets;
     use vedge_ipc::EntryTypeDto;
 
     fn minimal_meta(ty: EntryType) -> CommonMeta {
         CommonMeta::new("demo", ty)
     }
 
+    /// The outbound DTO, serialized — the exact bytes that cross to WASM.
+    fn json_of(p: &EntryPayload) -> String {
+        serde_json::to_string(&payload_to_dto(p).unwrap()).unwrap()
+    }
+
+    fn meta_dto(ty: EntryTypeDto) -> CommonMetaDto {
+        CommonMetaDto {
+            name: "demo".into(),
+            entry_type: ty,
+            url: None,
+            favicon_url: None,
+            tag_ids: vec![],
+            folder_id: None,
+            is_favorite: false,
+            notes: None,
+            color: None,
+            icon: None,
+            sort_order: 0,
+        }
+    }
+
+    // ---- The per-field door (slice 5.4): no secret crosses on payload_to_dto ----
+    // The acceptance bar: serialize each payload DTO and assert every secret
+    // string appears NOWHERE in the JSON. Sentinels are distinctive so a stray
+    // key would fail the `contains` check.
+
     #[test]
-    fn login_round_trips_but_totp_seed_stays_behind_the_door() {
+    fn login_seals_password_recovery_and_totp_seed() {
         let p = EntryPayload::Login(LoginPayload {
             meta: minimal_meta(EntryType::Login),
             username: "alice".into(),
-            password: SecretString::from("hunter2"),
-            totp_secret: Some(SecretString::from("JBSWY3DPEHPK3PXP")),
+            password: SecretString::from("SEKRIT-pw"),
+            totp_secret: Some(SecretString::from("SEKRITSEED")),
             totp_params: vedge_core::TotpParams::default(),
-            recovery_codes: vec![SecretString::from("code-1")],
+            recovery_codes: vec![
+                SecretString::from("SEKRIT-rc-1"),
+                SecretString::from("SEKRIT-rc-2"),
+            ],
         });
-        let dto = payload_to_dto(&p).unwrap();
-        // Outbound: presence flag set, seed absent.
-        let PayloadDto::Login(d) = &dto else {
+        let json = json_of(&p);
+        assert!(!json.contains("SEKRIT-pw"), "password must not cross");
+        assert!(!json.contains("SEKRITSEED"), "totp seed must not cross");
+        assert!(!json.contains("SEKRIT-rc"), "recovery codes must not cross");
+        assert!(json.contains("alice"), "username (non-secret) crosses");
+
+        let PayloadDto::Login(d) = payload_to_dto(&p).unwrap() else {
             panic!("wrong variant")
         };
         assert!(d.has_totp);
+        assert_eq!(d.recovery_codes_count, 2, "a count crosses, not the codes");
+        assert!(matches!(d.password, SecretUpdateDto::Unchanged));
+        assert!(matches!(d.recovery_codes, SecretListUpdateDto::Unchanged));
+    }
 
-        // A plain `from_dto` (intent defaults to `Unchanged`) does NOT restore
-        // the seed — that is `update_entry`'s carry-forward job, not the
-        // converter's. The password still round-trips normally.
-        let back = payload_from_dto(dto).unwrap();
-        let EntryPayload::Login(b) = back else {
+    #[test]
+    fn card_seals_number_cvv_pin() {
+        let p = EntryPayload::Card(CardPayload {
+            meta: minimal_meta(EntryType::Card),
+            cardholder_name: "Alice A".into(),
+            number: SecretString::from("SEKRIT-4111"),
+            expiry_month: 12,
+            expiry_year: 2030,
+            cvv: SecretString::from("SEKRIT-cvv"),
+            pin: Some(SecretString::from("SEKRIT-pin")),
+        });
+        let json = json_of(&p);
+        for s in ["SEKRIT-4111", "SEKRIT-cvv", "SEKRIT-pin"] {
+            assert!(!json.contains(s), "{s} must not cross");
+        }
+        assert!(json.contains("Alice A"), "cardholder name crosses");
+        let PayloadDto::Card(d) = payload_to_dto(&p).unwrap() else {
             panic!("wrong variant")
         };
-        assert_eq!(b.username, "alice");
-        assert_eq!(b.password.expose_secret(), "hunter2");
+        assert!(d.has_pin);
+    }
+
+    #[test]
+    fn ssh_seals_private_key_and_passphrase() {
+        let p = EntryPayload::SshKey(SshKeyPayload {
+            meta: minimal_meta(EntryType::SshKey),
+            private_key_pem: SecretString::from("SEKRIT-BEGIN-KEY"),
+            passphrase: Some(SecretString::from("SEKRIT-pp")),
+            public_key: "ssh-ed25519 AAAA".into(),
+            fingerprint: "SHA256:abc".into(),
+            key_type: "ed25519".into(),
+        });
+        let json = json_of(&p);
         assert!(
-            b.totp_secret.is_none(),
-            "the seed must not survive the door"
+            !json.contains("SEKRIT-BEGIN-KEY"),
+            "private key must not cross"
         );
-        assert_eq!(b.recovery_codes[0].expose_secret(), "code-1");
+        assert!(!json.contains("SEKRIT-pp"), "passphrase must not cross");
+        assert!(json.contains("ssh-ed25519 AAAA"), "public key crosses");
+        let PayloadDto::SshKey(d) = payload_to_dto(&p).unwrap() else {
+            panic!("wrong variant")
+        };
+        assert!(d.has_passphrase);
+    }
+
+    #[test]
+    fn api_key_seals_key_and_secret() {
+        let p = EntryPayload::ApiKey(ApiKeyPayload {
+            meta: minimal_meta(EntryType::ApiKey),
+            key: SecretString::from("SEKRIT-sk"),
+            secret: Some(SecretString::from("SEKRIT-shh")),
+            endpoint: Some("https://api".into()),
+            expiry: None,
+            key_type: Some("bearer".into()),
+        });
+        let json = json_of(&p);
+        assert!(!json.contains("SEKRIT-sk"), "key must not cross");
+        assert!(!json.contains("SEKRIT-shh"), "secret must not cross");
+        assert!(json.contains("https://api"), "endpoint crosses");
+        let PayloadDto::ApiKey(d) = payload_to_dto(&p).unwrap() else {
+            panic!("wrong variant")
+        };
+        assert!(d.has_secret);
+    }
+
+    #[test]
+    fn env_vars_seal_values_but_keep_keys() {
+        let p = EntryPayload::EnvVars(EnvVarsPayload {
+            meta: minimal_meta(EntryType::EnvVars),
+            vars: vec![
+                EnvVar {
+                    key: "DB_URL".into(),
+                    value: SecretString::from("SEKRIT-db"),
+                },
+                EnvVar {
+                    key: "TOKEN".into(),
+                    value: SecretString::from("SEKRIT-tok"),
+                },
+            ],
+        });
+        let json = json_of(&p);
+        assert!(
+            json.contains("DB_URL") && json.contains("TOKEN"),
+            "keys are the schema — they cross"
+        );
+        assert!(
+            !json.contains("SEKRIT-db") && !json.contains("SEKRIT-tok"),
+            "values do not cross"
+        );
+    }
+
+    #[test]
+    fn note_content_and_identity_pii_still_cross_only_national_id_sealed() {
+        // Note.content is the entry's whole substance — NOT sealed (①'s guard).
+        let note = EntryPayload::Note(NotePayload {
+            meta: minimal_meta(EntryType::Note),
+            content: SecretString::from("MY-NOTE-BODY"),
+        });
+        assert!(json_of(&note).contains("MY-NOTE-BODY"), "note body crosses");
+
+        // Identity PII crosses; only national_id is credential material.
+        let ident = EntryPayload::Identity(IdentityPayload {
+            meta: minimal_meta(EntryType::Identity),
+            first_name: "Alice".into(),
+            last_name: "Anderson".into(),
+            email: "alice@example.com".into(),
+            phone: Some("+1".into()),
+            address: None,
+            date_of_birth: Some("1990-01-01".into()),
+            national_id: Some(SecretString::from("SEKRIT-nid")),
+        });
+        let json = json_of(&ident);
+        assert!(
+            json.contains("Alice") && json.contains("alice@example.com"),
+            "identity PII crosses (not credential material)"
+        );
+        assert!(!json.contains("SEKRIT-nid"), "national_id is sealed");
+        let PayloadDto::Identity(d) = payload_to_dto(&ident).unwrap() else {
+            panic!("wrong variant")
+        };
+        assert!(d.has_national_id);
+    }
+
+    // ---- Inbound: intents resolve into values ----
+
+    #[test]
+    fn inbound_set_materializes_the_value_on_create() {
+        // A create DTO carries `Set`/`Clear` intents; `payload_from_dto` gives
+        // placeholders + intents; `resolve_secrets(None)` fills them.
+        let dto = PayloadDto::Card(CardPayloadDto {
+            meta: meta_dto(EntryTypeDto::Card),
+            cardholder_name: "A".into(),
+            number: SecretUpdateDto::Set("4111".into()),
+            expiry_month: 1,
+            expiry_year: 2030,
+            cvv: SecretUpdateDto::Set("123".into()),
+            pin: SecretUpdateDto::Clear,
+            has_pin: false,
+        });
+        let (mut payload, secrets) = payload_from_dto(dto).unwrap();
+        resolve_secrets(&mut payload, secrets, None).unwrap();
+        let EntryPayload::Card(c) = payload else {
+            panic!("wrong variant")
+        };
+        assert_eq!(c.number.expose_secret(), "4111");
+        assert_eq!(c.cvv.expose_secret(), "123");
+        assert!(c.pin.is_none(), "Clear on an optional → None");
+    }
+
+    #[test]
+    fn inbound_unchanged_carries_the_original_across_the_seal() {
+        // The full loop: a real payload → sealed DTO (all `Unchanged`) →
+        // placeholders → resolve against the ORIGINAL restores every secret.
+        let orig = EntryPayload::Card(CardPayload {
+            meta: minimal_meta(EntryType::Card),
+            cardholder_name: "A".into(),
+            number: SecretString::from("4111"),
+            expiry_month: 1,
+            expiry_year: 2030,
+            cvv: SecretString::from("123"),
+            pin: Some(SecretString::from("9999")),
+        });
+        let (mut payload, secrets) = payload_from_dto(payload_to_dto(&orig).unwrap()).unwrap();
+        resolve_secrets(&mut payload, secrets, Some(&orig)).unwrap();
+        let EntryPayload::Card(c) = payload else {
+            panic!("wrong variant")
+        };
+        assert_eq!(c.number.expose_secret(), "4111");
+        assert_eq!(c.cvv.expose_secret(), "123");
+        assert_eq!(c.pin.unwrap().expose_secret(), "9999");
     }
 
     #[test]
@@ -371,8 +606,7 @@ mod tests {
             size_bytes: 12_345,
             blob_nonce: nonce,
         });
-        let dto = payload_to_dto(&p).unwrap();
-        let back = payload_from_dto(dto).unwrap();
+        let (back, _) = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
         let EntryPayload::Document(b) = back else {
             panic!("wrong variant")
         };
@@ -382,156 +616,24 @@ mod tests {
     }
 
     #[test]
-    fn card_round_trips_through_dto() {
-        let p = EntryPayload::Card(CardPayload {
-            meta: minimal_meta(EntryType::Card),
-            cardholder_name: "Alice A".into(),
-            number: SecretString::from("4111111111111111"),
-            expiry_month: 12,
-            expiry_year: 2030,
-            cvv: SecretString::from("123"),
-            pin: Some(SecretString::from("4321")),
-        });
-        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
-        let EntryPayload::Card(b) = back else {
-            panic!("wrong variant")
-        };
-        assert_eq!(b.cardholder_name, "Alice A");
-        assert_eq!(b.number.expose_secret(), "4111111111111111");
-        assert_eq!(b.expiry_month, 12);
-        assert_eq!(b.expiry_year, 2030);
-        assert_eq!(b.cvv.expose_secret(), "123");
-        assert_eq!(b.pin.unwrap().expose_secret(), "4321");
-    }
-
-    #[test]
-    fn ssh_key_round_trips_through_dto() {
-        let p = EntryPayload::SshKey(SshKeyPayload {
-            meta: minimal_meta(EntryType::SshKey),
-            private_key_pem: SecretString::from("-----BEGIN KEY-----"),
-            passphrase: Some(SecretString::from("pp")),
-            public_key: "ssh-ed25519 AAAA".into(),
-            fingerprint: "SHA256:abc".into(),
-            key_type: "ed25519".into(),
-        });
-        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
-        let EntryPayload::SshKey(b) = back else {
-            panic!("wrong variant")
-        };
-        assert_eq!(b.private_key_pem.expose_secret(), "-----BEGIN KEY-----");
-        assert_eq!(b.passphrase.unwrap().expose_secret(), "pp");
-        assert_eq!(b.public_key, "ssh-ed25519 AAAA");
-        assert_eq!(b.fingerprint, "SHA256:abc");
-        assert_eq!(b.key_type, "ed25519");
-    }
-
-    #[test]
-    fn api_key_round_trips_through_dto() {
-        let p = EntryPayload::ApiKey(ApiKeyPayload {
-            meta: minimal_meta(EntryType::ApiKey),
-            key: SecretString::from("sk-123"),
-            secret: Some(SecretString::from("shh")),
-            endpoint: Some("https://api".into()),
-            expiry: None,
-            key_type: Some("bearer".into()),
-        });
-        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
-        let EntryPayload::ApiKey(b) = back else {
-            panic!("wrong variant")
-        };
-        assert_eq!(b.key.expose_secret(), "sk-123");
-        assert_eq!(b.secret.unwrap().expose_secret(), "shh");
-        assert_eq!(b.endpoint.as_deref(), Some("https://api"));
-        assert!(b.expiry.is_none());
-        assert_eq!(b.key_type.as_deref(), Some("bearer"));
-    }
-
-    #[test]
-    fn env_vars_round_trips_through_dto() {
-        let p = EntryPayload::EnvVars(EnvVarsPayload {
-            meta: minimal_meta(EntryType::EnvVars),
-            vars: vec![
-                EnvVar {
-                    key: "DB_URL".into(),
-                    value: SecretString::from("postgres://"),
-                },
-                EnvVar {
-                    key: "TOKEN".into(),
-                    value: SecretString::from("abc"),
-                },
-            ],
-        });
-        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
-        let EntryPayload::EnvVars(b) = back else {
-            panic!("wrong variant")
-        };
-        assert_eq!(b.vars.len(), 2);
-        assert_eq!(b.vars[0].key, "DB_URL");
-        assert_eq!(b.vars[0].value.expose_secret(), "postgres://");
-        assert_eq!(b.vars[1].key, "TOKEN");
-    }
-
-    #[test]
-    fn identity_round_trips_through_dto() {
-        let p = EntryPayload::Identity(IdentityPayload {
-            meta: minimal_meta(EntryType::Identity),
-            first_name: "Alice".into(),
-            last_name: "Anderson".into(),
-            email: "alice@example.com".into(),
-            phone: Some("+1".into()),
-            address: Some(Address {
-                line1: "1 St".into(),
-                line2: None,
-                city: "Town".into(),
-                state: Some("CA".into()),
-                postal_code: "90001".into(),
-                country: "US".into(),
-            }),
-            date_of_birth: Some("1990-01-01".into()),
-            national_id: Some(SecretString::from("ID-1")),
-        });
-        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
-        let EntryPayload::Identity(b) = back else {
-            panic!("wrong variant")
-        };
-        assert_eq!(b.first_name, "Alice");
-        assert_eq!(b.email, "alice@example.com");
-        let addr = b.address.unwrap();
-        assert_eq!(addr.city, "Town");
-        assert_eq!(addr.country, "US");
-        assert_eq!(b.national_id.unwrap().expose_secret(), "ID-1");
-    }
-
-    #[test]
     fn folder_round_trips_through_dto() {
         let p = EntryPayload::Folder(FolderPayload {
             meta: minimal_meta(EntryType::Folder),
         });
-        let back = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
+        let (back, _) = payload_from_dto(payload_to_dto(&p).unwrap()).unwrap();
         assert!(matches!(back, EntryPayload::Folder(_)));
         assert_eq!(back.meta().entry_type, EntryType::Folder);
     }
 
     #[test]
     fn payload_dto_forces_entry_type_match() {
-        let wrong_meta = CommonMetaDto {
-            name: "x".into(),
-            entry_type: EntryTypeDto::Login, // wrong
-            url: None,
-            favicon_url: None,
-            tag_ids: vec![],
-            folder_id: None,
-            is_favorite: false,
-            notes: None,
-            color: None,
-            icon: None,
-            sort_order: 0,
-        };
+        let mut wrong_meta = meta_dto(EntryTypeDto::Login); // wrong
+        wrong_meta.name = "x".into();
         let dto = PayloadDto::Note(NotePayloadDto {
             meta: wrong_meta,
             content: "body".into(),
         });
-        let back = payload_from_dto(dto).unwrap();
+        let (back, _) = payload_from_dto(dto).unwrap();
         assert_eq!(back.meta().entry_type, EntryType::Note);
     }
 

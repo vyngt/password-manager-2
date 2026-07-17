@@ -18,6 +18,7 @@
 //!   plaintext crosses to WASM.
 
 use tracing::instrument;
+use zeroize::Zeroizing;
 
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{EntryId, Timestamp};
@@ -26,7 +27,6 @@ use crate::domain::vault::crypto_constants::{DEK_LEN, NONCE_LEN};
 use crate::domain::vault::entities::AuditAction;
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::payloads::EntryPayload;
-use crate::domain::vault::totp::TotpUpdate;
 
 use super::copy_field::FieldSelector;
 
@@ -173,9 +173,44 @@ pub async fn copy_history_field(
     )?;
     drop(payload);
 
-    // A secret was exposed to the clipboard — audit as `Viewed`.
-    super::create_entry::append_audit(session, AuditAction::Viewed, Some(&input.entry_id)).await?;
+    // A secret's plaintext was extracted to the clipboard — audit `SecretRevealed`
+    // (slice 5.4), distinguishing extraction from a metadata-only `Viewed`.
+    super::create_entry::append_audit(session, AuditAction::SecretRevealed, Some(&input.entry_id))
+        .await?;
     Ok(())
+}
+
+/// Input for [`reveal_history_field`].
+#[derive(Debug)]
+pub struct RevealHistoryFieldInput {
+    pub entry_id: EntryId,
+    pub history_id: String,
+    pub field: FieldSelector,
+}
+
+/// Reveal a single field of a prior version to the renderer (slice 5.4).
+///
+/// The history twin of [`reveal_field`](super::reveal_field), and the reveal
+/// counterpart of [`copy_history_field`]: decrypt the snapshot, return ONE
+/// field's plaintext, and audit `SecretRevealed`. No `accessed_at` bump — a
+/// prior version was inspected, not the current one (matching
+/// [`get_history_value`]). Audited unconditionally, no dedup.
+#[instrument(skip_all, fields(entry_id = %input.entry_id, history_id = %input.history_id))]
+pub async fn reveal_history_field(
+    session: &VaultSession,
+    input: RevealHistoryFieldInput,
+    now: u64,
+) -> Result<Zeroizing<String>, VaultError> {
+    if !session.index.entries.contains_key(&input.entry_id) {
+        return Err(VaultError::EntryNotFound(input.entry_id.clone()));
+    }
+    let payload = decrypt_snapshot(session, &input.entry_id, &input.history_id).await?;
+    let value = super::copy_field::extract_field(&payload, &input.field, now)?;
+    drop(payload);
+
+    super::create_entry::append_audit(session, AuditAction::SecretRevealed, Some(&input.entry_id))
+        .await?;
+    Ok(value)
 }
 
 /// Set the entry back to a prior version.
@@ -205,21 +240,11 @@ pub async fn restore_from_history(
     // via the payload alone). A restore must revert to the *snapshot's* TOTP, not
     // carry the current one forward, so translate the snapshot seed into an
     // explicit `Set`/`Clear` intent.
-    let totp = match &payload {
-        EntryPayload::Login(l) => l
-            .totp_secret
-            .as_ref()
-            .map_or(TotpUpdate::Clear, |s| TotpUpdate::Set(s.clone())),
-        _ => TotpUpdate::Unchanged,
-    };
-
+    // The snapshot payload holds the real (decrypted) secrets — write exactly the
+    // snapshot's values (slice 5.4): `full` derives `Set`-everything intents.
     super::update_entry::update_entry(
         session,
-        super::update_entry::UpdateEntryInput {
-            entry_id: entry_id.clone(),
-            payload,
-            totp,
-        },
+        super::update_entry::UpdateEntryInput::full(entry_id.clone(), payload),
     )
     .await
 }

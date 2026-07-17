@@ -24,15 +24,16 @@ use tracing::instrument;
 
 use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
-    CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, TotpUpdate,
-    UpdateEntryInput, copy_field as copy_field_core, copy_history_field as copy_history_field_core,
-    create_entry as create_entry_core, get_entry as get_entry_core,
-    get_history_value as get_history_value_core, hard_delete_entry as hard_delete_entry_core,
-    list_history as list_history_core, move_entry as move_entry_core,
-    restore_entry as restore_entry_core, restore_from_history as restore_from_history_core,
-    set_favorite as set_favorite_core, set_sort_order as set_sort_order_core,
-    set_tags as set_tags_core, soft_delete_entry as soft_delete_entry_core,
-    update_entry as update_entry_core,
+    CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, RevealFieldInput,
+    RevealHistoryFieldInput, UpdateEntryInput, copy_field as copy_field_core,
+    copy_history_field as copy_history_field_core, create_entry as create_entry_core,
+    get_entry as get_entry_core, get_history_value as get_history_value_core,
+    hard_delete_entry as hard_delete_entry_core, list_history as list_history_core,
+    move_entry as move_entry_core, resolve_secrets, restore_entry as restore_entry_core,
+    restore_from_history as restore_from_history_core, reveal_field as reveal_field_core,
+    reveal_history_field as reveal_history_field_core, set_favorite as set_favorite_core,
+    set_sort_order as set_sort_order_core, set_tags as set_tags_core,
+    soft_delete_entry as soft_delete_entry_core, update_entry as update_entry_core,
 };
 
 use crate::dto::entry::{
@@ -40,7 +41,6 @@ use crate::dto::entry::{
     payload_to_dto, tag_id_from_str,
 };
 use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
-use crate::dto::totp::totp_update_from_dto;
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -67,7 +67,11 @@ pub async fn create_entry(
     let handle = state.get_session(&vault_id)?;
     let mut guard = handle.lock().await;
 
-    let domain_payload = payload_from_dto(payload)?;
+    // Create has no prior entry, so sealed-secret intents resolve with `old =
+    // None` (required fields must be `Set`) into a complete payload right here —
+    // core then takes a fully-materialized payload (slice 5.4).
+    let (mut domain_payload, secrets) = payload_from_dto(payload)?;
+    resolve_secrets(&mut domain_payload, secrets, None)?;
     let out = create_entry_core(
         &mut guard,
         CreateEntryInput {
@@ -91,19 +95,16 @@ pub async fn update_entry(
     let mut guard = handle.lock().await;
 
     let id = entry_id_from_str(&entry_id);
-    // Extract the TOTP enrolment intent before the DTO is consumed. `Unchanged`
-    // (the default) makes `update_entry` carry the stored seed forward.
-    let totp = match &payload {
-        PayloadDto::Login(d) => totp_update_from_dto(&d.totp),
-        _ => TotpUpdate::Unchanged,
-    };
-    let domain_payload = payload_from_dto(payload)?;
+    // Split the DTO into a placeholder payload + the sealed-secret intents; the
+    // core resolves them against the decrypted old entry (`Unchanged` carries the
+    // stored secret forward — slice 5.4).
+    let (domain_payload, secrets) = payload_from_dto(payload)?;
     update_entry_core(
         &mut guard,
         UpdateEntryInput {
             entry_id: id,
             payload: domain_payload,
-            totp,
+            secrets,
         },
     )
     .await?;
@@ -210,6 +211,35 @@ pub async fn copy_field(
     )
     .await?;
     Ok(())
+}
+
+/// Reveal one secret field's plaintext to the renderer (slice 5.4).
+///
+/// The sanctioned, audited, on-demand relaxation of "no plaintext in WASM" — the
+/// twin of `copy_field`, but the value is RETURNED (it crosses to WASM) instead
+/// of going to the clipboard. Audits `SecretRevealed`, no dedup.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn reveal_field(
+    vault_path: String,
+    entry_id: String,
+    field: FieldSelectorDto,
+    state: tauri::State<'_, AppState>,
+) -> Result<String, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let value = reveal_field_core(
+        &mut guard,
+        RevealFieldInput {
+            entry_id: entry_id_from_str(&entry_id),
+            field: field_selector_from_dto(field),
+        },
+        host_now(),
+    )
+    .await?;
+    Ok((*value).clone())
 }
 
 /// `folder_id = None` moves the entry to the root. Matches the use case's
@@ -367,6 +397,35 @@ pub async fn copy_history_field(
     )
     .await?;
     Ok(())
+}
+
+/// Reveal one field of a prior version to the renderer (slice 5.4) — the history
+/// twin of `reveal_field`. Returns the plaintext (it crosses to WASM on an
+/// explicit click); audits `SecretRevealed`.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id, history_id = %history_id))]
+pub async fn reveal_history_field(
+    vault_path: String,
+    entry_id: String,
+    history_id: String,
+    field: FieldSelectorDto,
+    state: tauri::State<'_, AppState>,
+) -> Result<String, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let guard = handle.lock().await;
+
+    let value = reveal_history_field_core(
+        &guard,
+        RevealHistoryFieldInput {
+            entry_id: entry_id_from_str(&entry_id),
+            history_id,
+            field: field_selector_from_dto(field),
+        },
+        host_now(),
+    )
+    .await?;
+    Ok((*value).clone())
 }
 
 /// Restore an entry to a prior version. Server-side re-encrypt (snapshots the

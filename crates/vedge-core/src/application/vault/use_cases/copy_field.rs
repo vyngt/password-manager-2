@@ -91,10 +91,12 @@ pub async fn copy_field(
     // Drop decrypted secrets before auditing.
     drop(payload);
 
-    // 4. Update accessed_at + audit (side-effects after crypto work is done).
+    // 4. Update accessed_at + audit (side-effects after crypto work is done). A
+    //    secret's plaintext was extracted to the clipboard — audit `SecretRevealed`
+    //    (slice 5.4), the action that distinguishes extraction from `Viewed`.
     let when = now();
     session.repo.update_accessed_at(&row.id, when).await?;
-    super::create_entry::append_audit(session, AuditAction::Viewed, Some(&row.id)).await?;
+    super::create_entry::append_audit(session, AuditAction::SecretRevealed, Some(&row.id)).await?;
 
     if let Some(entry) = session.index.entries.get(&row.id).cloned() {
         let mut updated = entry;
@@ -172,7 +174,11 @@ const fn field_name(f: &FieldSelector) -> &'static str {
     }
 }
 
-fn extract_field(
+/// Extract one secret field's plaintext from a decrypted payload into a
+/// zeroizing buffer. Shared by [`copy_field`] (→ clipboard) and
+/// [`reveal_field`](super::reveal_field) (→ renderer): one decrypt-and-select
+/// code path, two sinks.
+pub(super) fn extract_field(
     payload: &EntryPayload,
     field: &FieldSelector,
     now: u64,

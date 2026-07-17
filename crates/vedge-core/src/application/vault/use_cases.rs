@@ -23,6 +23,7 @@ pub mod recover_vault;
 pub mod refs;
 pub mod replace_vault;
 pub mod restore_entry;
+pub mod reveal_field;
 pub mod reveal_totp;
 pub mod revert_to_snapshot;
 pub mod rewrap_snapshots;
@@ -48,8 +49,9 @@ pub use document_ops::{
     DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, export_document, import_document,
 };
 pub use entry_history::{
-    CopyHistoryFieldInput, HISTORY_MAX_VERSIONS, HistoryVersion, changed_fields,
-    copy_history_field, get_history_value, list_history, restore_from_history,
+    CopyHistoryFieldInput, HISTORY_MAX_VERSIONS, HistoryVersion, RevealHistoryFieldInput,
+    changed_fields, copy_history_field, get_history_value, list_history, restore_from_history,
+    reveal_history_field,
 };
 pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
 pub use export_entries::{ExportEntriesInput, ExportFormat, ExportReport, export_entries};
@@ -71,6 +73,7 @@ pub use queries::{
 pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
+pub use reveal_field::{RevealFieldInput, reveal_field};
 pub use reveal_totp::reveal_totp;
 pub use revert_to_snapshot::{
     RevertReport, RevertToSnapshotInput, SeamlessRevertOutcome, revert_to_snapshot,

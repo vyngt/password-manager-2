@@ -23,7 +23,19 @@ use vedge_core::application::vault::use_cases::{
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
-use vedge_core::{AuditAction, AuditQuery, TotpParams, TotpUpdate};
+use vedge_core::{
+    AuditAction, AuditQuery, SecretListUpdate, SecretUpdate, SecretUpdates, TotpParams, TotpUpdate,
+};
+
+/// A Login secrets bundle that carries password + recovery codes forward and
+/// applies `totp` — the shape a real edit-form save produces (slice 5.4).
+const fn login_secrets(totp: TotpUpdate) -> SecretUpdates {
+    SecretUpdates::Login {
+        password: SecretUpdate::Unchanged,
+        recovery_codes: SecretListUpdate::Unchanged,
+        totp,
+    }
+}
 
 /// RFC 4648 Base32 test secret ("Hello!\xDE\xAD\xBE\xEF").
 const SECRET: &str = "JBSWY3DPEHPK3PXP";
@@ -118,7 +130,7 @@ async fn reveal_totp_re_audits_after_update() {
         UpdateEntryInput {
             entry_id: id.clone(),
             payload: login("gh-renamed", None),
-            totp: TotpUpdate::Unchanged,
+            secrets: login_secrets(TotpUpdate::Unchanged),
         },
     )
     .await
@@ -191,7 +203,7 @@ async fn update_entry_unchanged_preserves_totp() {
         UpdateEntryInput {
             entry_id: id.clone(),
             payload: login("gh-renamed", None),
-            totp: TotpUpdate::Unchanged,
+            secrets: login_secrets(TotpUpdate::Unchanged),
         },
     )
     .await
@@ -216,7 +228,7 @@ async fn update_entry_set_and_clear_totp() {
         UpdateEntryInput {
             entry_id: id.clone(),
             payload: login("gh", None),
-            totp: TotpUpdate::Set(SecretString::from(SECRET)),
+            secrets: login_secrets(TotpUpdate::Set(SecretString::from(SECRET))),
         },
     )
     .await
@@ -232,7 +244,7 @@ async fn update_entry_set_and_clear_totp() {
         UpdateEntryInput {
             entry_id: id.clone(),
             payload: login("gh", None),
-            totp: TotpUpdate::Clear,
+            secrets: login_secrets(TotpUpdate::Clear),
         },
     )
     .await

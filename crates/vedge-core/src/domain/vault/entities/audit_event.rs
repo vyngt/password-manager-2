@@ -47,13 +47,20 @@ pub enum AuditAction {
     /// old-backup restore, or an attacker swapping in an old snapshot). Advisory
     /// only: recorded here and surfaced as a warning; it never blocks unlock. Slice 5.2c.
     RollbackDetected,
+    /// A secret field's plaintext was EXTRACTED — copied to the clipboard
+    /// (`copy_field` / `copy_history_field`) or revealed to the renderer
+    /// (`reveal_field` / `reveal_history_field`). Slice 5.4. DISTINCT from
+    /// `Viewed`, which after 5.4 means a metadata/browse read that carries NO
+    /// secret. NOT deduped (unlike `TotpRevealed`): every extraction is a
+    /// deliberate act, so each one is logged.
+    SecretRevealed,
 }
 
 impl AuditAction {
     /// Every variant, in enum order. The single source of truth for exhaustive
     /// coverage checks — the DTO wire-format test and the app's audit-filter
     /// array both derive from this, so a new variant can't silently vanish.
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::Unlocked,
         Self::Locked,
         Self::Created,
@@ -74,6 +81,7 @@ impl AuditAction {
         Self::BackupCreated,
         Self::BackupRestored,
         Self::RollbackDetected,
+        Self::SecretRevealed,
     ];
 
     #[must_use]
@@ -99,6 +107,7 @@ impl AuditAction {
             Self::BackupCreated => "BackupCreated",
             Self::BackupRestored => "BackupRestored",
             Self::RollbackDetected => "RollbackDetected",
+            Self::SecretRevealed => "SecretRevealed",
         }
     }
 
@@ -125,6 +134,7 @@ impl AuditAction {
             "BackupCreated" => Self::BackupCreated,
             "BackupRestored" => Self::BackupRestored,
             "RollbackDetected" => Self::RollbackDetected,
+            "SecretRevealed" => Self::SecretRevealed,
             _ => return None,
         })
     }
