@@ -25,6 +25,17 @@ pub enum FieldSelectorDto {
     Custom(String),
 }
 
+// ---- EnvExportFormatDto ------------------------------------------------------
+
+/// Which shape the env-var **set** copy/reveal produces (slice 5.4.1 ⑥). Carries
+/// no data, so a plain C-like enum (unlike the adjacently-tagged
+/// [`FieldSelectorDto`]).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum EnvExportFormatDto {
+    DotEnv,
+    Json,
+}
+
 // ---- MaintenanceReportDto ----------------------------------------------------
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

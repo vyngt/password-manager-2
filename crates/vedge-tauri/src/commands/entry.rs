@@ -24,13 +24,14 @@ use tracing::instrument;
 
 use vedge_core::domain::shared::{EntryId, TagId, VaultId};
 use vedge_core::{
-    CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput, RevealFieldInput,
-    RevealHistoryFieldInput, RevealRecoveryCodesInput, UpdateEntryInput,
-    copy_field as copy_field_core, copy_history_field as copy_history_field_core,
-    create_entry as create_entry_core, get_entry as get_entry_core,
-    get_history_value as get_history_value_core, hard_delete_entry as hard_delete_entry_core,
-    list_history as list_history_core, move_entry as move_entry_core, resolve_secrets,
-    restore_entry as restore_entry_core, restore_from_history as restore_from_history_core,
+    CopyEnvVarsInput, CopyFieldInput, CopyHistoryFieldInput, CreateEntryInput, GetEntryInput,
+    RevealEnvVarsInput, RevealFieldInput, RevealHistoryFieldInput, RevealRecoveryCodesInput,
+    UpdateEntryInput, copy_env_vars as copy_env_vars_core, copy_field as copy_field_core,
+    copy_history_field as copy_history_field_core, create_entry as create_entry_core,
+    get_entry as get_entry_core, get_history_value as get_history_value_core,
+    hard_delete_entry as hard_delete_entry_core, list_history as list_history_core,
+    move_entry as move_entry_core, resolve_secrets, restore_entry as restore_entry_core,
+    restore_from_history as restore_from_history_core, reveal_env_vars as reveal_env_vars_core,
     reveal_field as reveal_field_core, reveal_history_field as reveal_history_field_core,
     reveal_recovery_codes as reveal_recovery_codes_core, set_favorite as set_favorite_core,
     set_sort_order as set_sort_order_core, set_tags as set_tags_core,
@@ -41,7 +42,9 @@ use crate::dto::entry::{
     HistoryEntryDto, PayloadDto, entry_id_from_str, history_to_dto, payload_from_dto,
     payload_to_dto, tag_id_from_str,
 };
-use crate::dto::misc::{FieldSelectorDto, field_selector_from_dto};
+use crate::dto::misc::{
+    EnvExportFormatDto, FieldSelectorDto, env_export_format_from_dto, field_selector_from_dto,
+};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -267,6 +270,63 @@ pub async fn reveal_recovery_codes(
     )
     .await?;
     Ok(codes.into_iter().map(|c| (*c).clone()).collect())
+}
+
+/// Copy an `EnvVars` entry's whole set to the clipboard, `.env` or JSON.
+///
+/// Slice 5.4.1 ⑥. Formatted SERVER-SIDE and placed on the OS clipboard directly —
+/// the plaintext never crosses to WASM. One `SecretRevealed` audit row.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn copy_env_vars(
+    vault_path: String,
+    entry_id: String,
+    format: EnvExportFormatDto,
+    clear_after_secs: Option<u32>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    copy_env_vars_core(
+        &mut guard,
+        CopyEnvVarsInput {
+            entry_id: entry_id_from_str(&entry_id),
+            format: env_export_format_from_dto(format),
+            clear_after_secs: clear_after_secs.unwrap_or(30),
+        },
+    )
+    .await?;
+    Ok(())
+}
+
+/// Reveal an `EnvVars` entry's whole set to the renderer, `.env` or JSON.
+///
+/// Slice 5.4.1 ⑥. A `.env` value containing a newline errors
+/// (`EnvValueNotDotEnvSafe`) so the UI can point at JSON. One `SecretRevealed`
+/// audit row.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path, entry_id = %entry_id))]
+pub async fn reveal_env_vars(
+    vault_path: String,
+    entry_id: String,
+    format: EnvExportFormatDto,
+    state: tauri::State<'_, AppState>,
+) -> Result<String, CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    let handle = state.get_session(&vault_id)?;
+    let mut guard = handle.lock().await;
+
+    let text = reveal_env_vars_core(
+        &mut guard,
+        RevealEnvVarsInput {
+            entry_id: entry_id_from_str(&entry_id),
+            format: env_export_format_from_dto(format),
+        },
+    )
+    .await?;
+    Ok((*text).clone())
 }
 
 /// `folder_id = None` moves the entry to the root. Matches the use case's

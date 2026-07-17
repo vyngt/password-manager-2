@@ -102,6 +102,8 @@ pub fn run() {
             commands::entry::copy_field,
             commands::entry::reveal_field,
             commands::entry::reveal_recovery_codes,
+            commands::entry::copy_env_vars,
+            commands::entry::reveal_env_vars,
             commands::clipboard::copy_text,
             commands::entry::move_entry,
             commands::entry::set_favorite,

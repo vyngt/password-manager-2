@@ -178,6 +178,45 @@ pub async fn add_login(s: &Session, name: &str, user: &str, pass: &str) -> Resul
     Ok(())
 }
 
+/// Create an SSH-key entry via the UI (slice 5.4.1). Switches the type picker to
+/// `SshKey`, fills the multi-line private key (a `Textarea`) plus the plain
+/// public-key / fingerprint / key-type fields, and saves. `private_key` may
+/// contain newlines — the reveal must give them back byte-exact.
+pub async fn add_ssh_key(s: &Session, name: &str, private_key: &str) -> Result<()> {
+    s.click_testid("vault-new-entry")
+        .await
+        .context("open add form for ssh key")?;
+    s.wait_for(
+        By::Css("[data-testid='entry-type-select'] [role='combobox']".to_string()),
+        Duration::from_secs(5),
+    )
+    .await
+    .context("open entry-type picker")?
+    .click()
+    .await
+    .context("click type picker")?;
+    s.wait_for(
+        By::Css(
+            "[data-testid='entry-type-select'] [role='option'][data-value='SshKey']".to_string(),
+        ),
+        Duration::from_secs(5),
+    )
+    .await
+    .context("SshKey option")?
+    .click()
+    .await
+    .context("select SshKey type")?;
+    s.fill_id("ef-name", name).await?;
+    s.fill_id("ef-ssh-priv", private_key).await?;
+    s.fill_id("ef-ssh-pub", "ssh-ed25519 AAAAtest").await?;
+    s.fill_id("ef-ssh-fp", "SHA256:test").await?;
+    s.fill_id("ef-ssh-kt", "ed25519").await?;
+    s.click_testid("entry-save")
+        .await
+        .with_context(|| format!("save ssh key {name}"))?;
+    Ok(())
+}
+
 pub async fn add_note(s: &Session, name: &str, content: &str) -> Result<()> {
     s.click_testid("vault-new-entry")
         .await

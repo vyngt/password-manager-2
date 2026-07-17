@@ -280,3 +280,11 @@ export_scope_all: "Tất cả mục"
 export_menu_all: "Xuất tất cả…"
 import_menu: "Nhập…"
 bulk_export: "Xuất…"
+# Reveal door (slice 5.4.1)
+recovery_codes_title: "Mã khôi phục"
+env_set_menu: "Sao chép hoặc hiện toàn bộ tập"
+env_copy_dotenv: "Sao chép dạng .env (KEY='value')"
+env_copy_json: 'Sao chép dạng JSON ({"KEY":"value"})'
+env_reveal_dotenv: "Hiện dạng .env"
+env_reveal_json: "Hiện dạng JSON"
+env_revealed_title: "Tập đã hiện"

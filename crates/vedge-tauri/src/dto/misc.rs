@@ -1,13 +1,15 @@
 //! Misc DTO conversion layer.
 
 pub use vedge_ipc::{
-    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, ExportedDocumentDto,
-    FieldSelectorDto, MaintenanceReportDto, UnlockResultDto, UnlockVaultInputDto,
+    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, EnvExportFormatDto,
+    ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, UnlockResultDto,
+    UnlockVaultInputDto,
 };
 
 use vedge_core::MaintenanceReport;
 use vedge_core::application::vault::use_cases::FieldSelector;
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
+use vedge_core::domain::vault::env_export::EnvExportFormat;
 use zeroize::Zeroizing;
 
 use crate::dto::common::b64_decode_fixed;
@@ -32,6 +34,16 @@ pub fn field_selector_from_dto(v: FieldSelectorDto) -> FieldSelector {
         FieldSelectorDto::NationalId => FieldSelector::NationalId,
         FieldSelectorDto::RecoveryCode(i) => FieldSelector::RecoveryCode(i),
         FieldSelectorDto::Custom(k) => FieldSelector::Custom(k),
+    }
+}
+
+// ---- EnvExportFormatDto → EnvExportFormat ------------------------------------
+
+#[must_use]
+pub const fn env_export_format_from_dto(v: EnvExportFormatDto) -> EnvExportFormat {
+    match v {
+        EnvExportFormatDto::DotEnv => EnvExportFormat::DotEnv,
+        EnvExportFormatDto::Json => EnvExportFormat::Json,
     }
 }
 
