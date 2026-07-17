@@ -1,5 +1,6 @@
 use crate::primitives::text_prop::TextProp;
 use crate::primitives::tokens::DialogSize;
+use crate::utils::event::key_of;
 use leptos::prelude::*;
 use std::cell::Cell;
 use std::time::Duration;
@@ -180,7 +181,7 @@ pub fn Dialog(
                             }
                         }
                         on:keydown=move |ev: web_sys::KeyboardEvent| {
-                            match ev.key().as_str() {
+                            match key_of(&ev).as_str() {
                                 "Escape" if closeable => {
                                     ev.prevent_default();
                                     on_close.run(());

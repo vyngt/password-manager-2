@@ -41,6 +41,11 @@ pub enum ExportFormat {
 pub struct ExportEntriesInput {
     pub dest: PathBuf,
     pub format: ExportFormat,
+    /// Optional subset of entry IDs to export (the caller's selection / filter
+    /// scope). `None` exports every active entry. A supplied subset is always
+    /// **intersected with the active set**, so a trashed or stale id can never be
+    /// exported through this path.
+    pub ids: Option<Vec<EntryId>>,
 }
 
 /// Non-secret result for the shell.
@@ -71,13 +76,26 @@ pub async fn export_entries(
     session: &VaultSession,
     input: ExportEntriesInput,
 ) -> Result<ExportReport, VaultError> {
-    // Snapshot the active (non-trashed) entry IDs from the index up front.
-    let ids: Vec<EntryId> = session
+    // Snapshot the active (non-trashed) entry IDs from the index up front. A
+    // caller-supplied subset (a selection / filter scope) is intersected with the
+    // active set — never trusted to widen it — so a trashed or stale id can't leak.
+    let all_active: Vec<EntryId> = session
         .index
         .all_active()
         .iter()
         .map(|e| e.id.clone())
         .collect();
+    let ids: Vec<EntryId> = match input.ids {
+        Some(subset) => {
+            let active: std::collections::HashSet<&str> =
+                all_active.iter().map(EntryId::as_str).collect();
+            subset
+                .into_iter()
+                .filter(|id| active.contains(id.as_str()))
+                .collect()
+        }
+        None => all_active,
+    };
 
     let report = match input.format {
         ExportFormat::Encrypted { passphrase } => {

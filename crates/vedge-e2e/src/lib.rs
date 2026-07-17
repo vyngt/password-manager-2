@@ -348,38 +348,66 @@ impl Session {
             .unwrap_or_default())
     }
 
-    /// Fail if the app logged any Leptos "outside a reactive tracking context"
-    /// warning — the recurring i18n-in-`spawn_local` footgun.
+    /// Fail if the app logged anything indicating a runtime fault:
+    /// - a Leptos "outside a reactive tracking context" warning (the recurring
+    ///   i18n-in-`spawn_local` footgun), or
+    /// - an **uncaught exception** — a wasm panic surfacing as
+    ///   `Uncaught RuntimeError: unreachable`, or a wasm-bindgen glue fault as an
+    ///   `Uncaught TypeError` (both captured as `uncaught:` by `index.html`), or
+    /// - an **unhandled promise rejection** (`rejection:`).
+    ///
+    /// The last two are what let 5.3.1d's `Popover`-disposed and keyless-keydown
+    /// panics reach the manual smoke: they never touch `console.*`, so a guard
+    /// that only greps the reactive-context warning was blind to them. `unreachable`
+    /// / `panicked` are also matched directly, in case a panic ever arrives via
+    /// `console.error` instead of the `error` event.
     pub async fn assert_console_clean(&self) -> Result<()> {
         let bad: Vec<String> = self
             .console_messages()
             .await?
             .into_iter()
-            .filter(|m| m.contains("outside a reactive tracking context"))
+            .filter(|m| {
+                m.contains("outside a reactive tracking context")
+                    || m.starts_with("uncaught:")
+                    || m.starts_with("rejection:")
+                    || m.contains("unreachable")
+                    || m.contains("panicked")
+            })
             .collect();
         if !bad.is_empty() {
-            bail!("reactive-context warning(s) detected:\n{}", bad.join("\n"));
+            bail!("console fault(s) detected:\n{}", bad.join("\n"));
         }
         Ok(())
     }
 
-    /// Prove the guard is live (not vacuous): inject a warning, confirm it was
-    /// captured, then clear the buffer.
+    /// Prove the guard is live (not vacuous): inject BOTH a `console.warn` and a
+    /// synthetic uncaught `error` event, confirm each was captured, then clear the
+    /// buffer. The error path is the one that catches a wasm panic / glue fault
+    /// (which never touches `console.*`), so a broken listener there must fail
+    /// loudly rather than pass silently.
     pub async fn console_selftest(&self) -> Result<()> {
         const MARK: &str = "__vedge_e2e_selftest__";
         self.driver()
-            .execute(&format!("console.warn('{MARK}');"), vec![])
+            .execute(
+                &format!(
+                    "console.warn('{MARK}'); \
+                     window.dispatchEvent(new ErrorEvent('error', {{ message: '{MARK}-uncaught' }}));"
+                ),
+                vec![],
+            )
             .await
-            .context("inject self-test warning")?;
-        let seen = self
-            .console_messages()
-            .await?
+            .context("inject self-test warning + error event")?;
+        let msgs = self.console_messages().await?;
+        let warn_seen = msgs
             .iter()
-            .any(|m| m.contains(MARK));
-        if !seen {
+            .any(|m| m.starts_with("warn:") && m.contains(MARK));
+        let uncaught_seen = msgs
+            .iter()
+            .any(|m| m.starts_with("uncaught:") && m.contains(MARK));
+        if !warn_seen || !uncaught_seen {
             bail!(
-                "console-clean guard captured nothing — is the console buffer in \
-                 crates/vedge-app/index.html present in this build?"
+                "console guard captured incompletely (warn={warn_seen}, uncaught={uncaught_seen}) — \
+                 is the console buffer in crates/vedge-app/index.html present + broadened in this build?"
             );
         }
         self.clear_console().await

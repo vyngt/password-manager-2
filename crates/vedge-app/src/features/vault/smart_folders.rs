@@ -7,7 +7,7 @@
 //! Selecting a preset applies its filters to the toolbar signals (`vault.rs`).
 
 use super::folder_tree::FolderScope;
-use super::vault_filters::{Filters, SortKey};
+use super::vault_filters::{Filters, SavedSort, SortKey, TagMatch, saved_from};
 use crate::i18n::{t, t_string, use_i18n};
 use icondata as i;
 use leptos::prelude::*;
@@ -26,14 +26,21 @@ pub struct SmartFolder {
     pub query: String,
     #[serde(default)]
     pub entry_type: Option<EntryTypeDto>,
-    #[serde(default)]
+    /// Legacy single-tag field (pre-5.3.1d). **Read-only**: migrated into
+    /// `tag_ids` on load (see [`apply_preset`]) and never written back, so a
+    /// re-saved preset drops it. Kept only so old presets still resolve their tag.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tag_id: Option<String>,
+    #[serde(default)]
+    pub tag_ids: Vec<String>,
+    #[serde(default)]
+    pub tag_match: TagMatch,
     #[serde(default)]
     pub favorites_only: bool,
     #[serde(default)]
     pub scope: FolderScope,
     #[serde(default)]
-    pub sort: SortKey,
+    pub sort: SavedSort,
 }
 
 /// Capture the current toolbar state as a named preset (`id` supplied by the
@@ -45,10 +52,12 @@ pub fn capture_preset(id: String, name: String, filters: &Filters, sort: SortKey
         name,
         query: filters.query.clone(),
         entry_type: filters.entry_type.clone(),
-        tag_id: filters.tag_id.clone(),
+        tag_id: None, // new presets write only `tag_ids`
+        tag_ids: filters.tag_ids.clone(),
+        tag_match: filters.tag_match,
         favorites_only: filters.favorites_only,
         scope: filters.scope.clone(),
-        sort,
+        sort: saved_from(sort),
     }
 }
 
@@ -59,11 +68,18 @@ pub fn apply_preset(p: &SmartFolder) -> (Filters, SortKey) {
         Filters {
             query: p.query.clone(),
             entry_type: p.entry_type.clone(),
-            tag_id: p.tag_id.clone(),
+            // Migrate a legacy single `tag_id` into a one-element `tag_ids`; a
+            // preset saved after 5.3.1d already carries `tag_ids`.
+            tag_ids: if p.tag_ids.is_empty() {
+                p.tag_id.clone().into_iter().collect()
+            } else {
+                p.tag_ids.clone()
+            },
+            tag_match: p.tag_match,
             favorites_only: p.favorites_only,
             scope: p.scope.clone(),
         },
-        p.sort,
+        SortKey::from(p.sort),
     )
 }
 
@@ -275,12 +291,14 @@ pub fn SmartFolders(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::features::vault::vault_filters::SortDir;
 
     fn sample_filters() -> Filters {
         Filters {
             query: "aws".into(),
             entry_type: Some(EntryTypeDto::Login),
-            tag_id: Some("t1".into()),
+            tag_ids: vec!["t1".into(), "t2".into()],
+            tag_match: TagMatch::All,
             favorites_only: true,
             scope: FolderScope::Folder("f1".into()),
         }
@@ -293,25 +311,30 @@ mod tests {
             "id1".into(),
             "AWS logins".into(),
             &f,
-            SortKey::RecentlyUpdated,
+            SortKey::Updated(SortDir::Desc),
         );
         let (back, sort) = apply_preset(&preset);
         assert_eq!(back.query, f.query);
         assert_eq!(back.entry_type, f.entry_type);
-        assert_eq!(back.tag_id, f.tag_id);
+        assert_eq!(back.tag_ids, f.tag_ids);
+        assert_eq!(back.tag_match, f.tag_match);
         assert_eq!(back.favorites_only, f.favorites_only);
         assert_eq!(back.scope, f.scope);
-        assert_eq!(sort, SortKey::RecentlyUpdated);
+        assert_eq!(sort, SortKey::Updated(SortDir::Desc));
+        // A new preset writes only `tag_ids`, never the legacy `tag_id`.
+        assert!(preset.tag_id.is_none());
     }
 
     #[test]
     fn smart_folder_serde_round_trips() {
+        // Custom is coerced to Name(Asc) on capture (a preset can't be Custom, ⑪).
         let preset = capture_preset(
             "id1".into(),
             "AWS".into(),
             &sample_filters(),
-            SortKey::Manual,
+            SortKey::Custom,
         );
+        assert_eq!(preset.sort, SavedSort::Name(SortDir::Asc));
         let json = serde_json::to_string(&preset).unwrap();
         let back: SmartFolder = serde_json::from_str(&json).unwrap();
         assert_eq!(back, preset);
@@ -324,8 +347,26 @@ mod tests {
         let back: SmartFolder = serde_json::from_str(json).unwrap();
         assert_eq!(back.query, "");
         assert!(back.entry_type.is_none());
+        assert!(back.tag_ids.is_empty());
+        assert_eq!(back.tag_match, TagMatch::Any);
         assert!(!back.favorites_only);
         assert_eq!(back.scope, FolderScope::All);
-        assert_eq!(back.sort, SortKey::NameAsc);
+        assert_eq!(back.sort, SavedSort::Name(SortDir::Asc));
+    }
+
+    // 🔴 ⑧/⑪ (spec test #6d): a preset saved with the OLD shape — a single
+    // `tag_id` and the fieldless `"Manual"` sort — loads and *applies* as a
+    // one-element `tag_ids` and `Name(Asc)`. Nothing is silently dropped.
+    #[test]
+    fn old_shape_preset_migrates_on_load() {
+        let json = r#"{"id":"x","name":"Old","tag_id":"t1","sort":"Manual"}"#;
+        let back: SmartFolder = serde_json::from_str(json).unwrap();
+        // The legacy field is read; `tag_ids` is still empty until apply merges it.
+        assert_eq!(back.tag_id.as_deref(), Some("t1"));
+        assert_eq!(back.sort, SavedSort::Name(SortDir::Asc)); // "Manual" coerced
+
+        let (filters, sort) = apply_preset(&back);
+        assert_eq!(filters.tag_ids, vec!["t1".to_owned()]);
+        assert_eq!(sort, SortKey::Name(SortDir::Asc));
     }
 }

@@ -96,7 +96,6 @@ backup_health_snapshot: "Last local snapshot (not a backup):"
 # Settings at all — it lives on the launch screen (`unlock.ob_*`), because a vault you need to
 # replace is a vault you cannot unlock, and Settings requires an unlocked vault. That was H0.
 # --- 5.3a export entries ---
-export: "Export"
 export_title: "Export entries"
 export_desc: "Save a portable copy of this vault's entries to a file."
 # 🔴 Decision ⑧ — the honest warning. Never claim a file can be securely wiped.
@@ -114,7 +113,6 @@ export_report_title: "Last export"
 export_report_entries: "entries exported"
 
 # --- 5.3b import entries ---
-import: "Import"
 import_title: "Import entries"
 import_desc: "Bring entries in from a VEdge export or a CSV file. You review a preview before anything is added to this vault."
 import_source_encrypted: "This file is an encrypted VEdge export (.vedgex)"

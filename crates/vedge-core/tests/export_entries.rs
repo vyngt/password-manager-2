@@ -32,6 +32,7 @@ use vedge_core::infrastructure::export::{archive, csv, envelope};
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::unlock_vault::UnlockVaultInput;
+use vedge_core::domain::shared::EntryId;
 
 const PASSPHRASE: &str = "a strong export passphrase";
 
@@ -123,6 +124,7 @@ async fn encrypted_export_round_trips_all_entries_from_a_live_vault() {
             format: ExportFormat::Encrypted {
                 passphrase: Zeroizing::new(PASSPHRASE.to_owned()),
             },
+            ids: None,
         },
     )
     .await
@@ -201,6 +203,7 @@ async fn csv_export_is_logins_only_and_plaintext() {
             format: ExportFormat::Csv {
                 spreadsheet_safe: false,
             },
+            ids: None,
         },
     )
     .await
@@ -217,4 +220,67 @@ async fn csv_export_is_logins_only_and_plaintext() {
     assert_eq!(logins.len(), 3);
     let github = logins.iter().find(|l| l.name == "github").unwrap();
     assert_eq!(github.password.expose_secret(), "=hunter2");
+}
+
+// 🔴 The export-scope plumbing (5.3.1d): a caller-supplied subset exports only
+// those entries, and is always intersected with the active set so a stale/absent
+// id can never leak.
+#[tokio::test]
+async fn export_scopes_to_the_given_subset_intersected_with_active() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+
+    // Create three logins through the real write path, capturing their ids.
+    let mut ids: Vec<EntryId> = Vec::new();
+    for (n, u, p) in [("a", "ua", "pa"), ("b", "ub", "pb"), ("c", "uc", "pc")] {
+        let id = create_entry(
+            &mut session,
+            CreateEntryInput {
+                payload: login_payload(n, u, p),
+            },
+        )
+        .await
+        .unwrap()
+        .entry_id;
+        ids.push(id);
+    }
+
+    let out = tempfile::tempdir().unwrap();
+
+    // A two-id subset exports exactly two entries.
+    let report = export_entries(
+        &session,
+        ExportEntriesInput {
+            dest: out.path().join("subset.vedgex"),
+            format: ExportFormat::Encrypted {
+                passphrase: Zeroizing::new(PASSPHRASE.to_owned()),
+            },
+            ids: Some(vec![ids[0].clone(), ids[1].clone()]),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        report.entry_count, 2,
+        "only the selected subset is exported"
+    );
+
+    // A bogus id in the subset is dropped (intersected with the active set).
+    let bogus = EntryId::from_raw("01HV0000000000000000000009");
+    let report2 = export_entries(
+        &session,
+        ExportEntriesInput {
+            dest: out.path().join("subset2.vedgex"),
+            format: ExportFormat::Encrypted {
+                passphrase: Zeroizing::new(PASSPHRASE.to_owned()),
+            },
+            ids: Some(vec![ids[0].clone(), bogus]),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        report2.entry_count, 1,
+        "a stale/absent id is dropped, never exported"
+    );
 }

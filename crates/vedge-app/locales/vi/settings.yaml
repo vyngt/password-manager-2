@@ -91,7 +91,6 @@ backup_health_never: "Kho này chưa bao giờ được sao lưu. Ảnh chụp s
 backup_health_last: "Sao lưu lần cuối"
 backup_health_snapshot: "Ảnh chụp cục bộ gần nhất (không phải bản sao lưu):"
 # --- 5.3a export entries ---
-export: "Xuất"
 export_title: "Xuất các mục"
 export_desc: "Lưu một bản sao di động các mục của kho này ra tệp."
 export_warning: "Bản xuất chứa bí mật của bạn. Hãy giữ nó trên ổ đĩa được mã hóa và xóa khi dùng xong — một tệp không thể xóa sạch chắc chắn khỏi ổ đĩa hiện đại, và thư mục đồng bộ đám mây có thể giữ lại bản cũ."
@@ -108,7 +107,6 @@ export_report_title: "Lần xuất gần nhất"
 export_report_entries: "mục đã xuất"
 
 # --- 5.3b import entries ---
-import: "Nhập"
 import_title: "Nhập các mục"
 import_desc: "Đưa các mục vào từ một bản xuất VEdge hoặc tệp CSV. Bạn xem trước trước khi bất cứ gì được thêm vào kho này."
 import_source_encrypted: "Tệp này là bản xuất VEdge đã mã hóa (.vedgex)"

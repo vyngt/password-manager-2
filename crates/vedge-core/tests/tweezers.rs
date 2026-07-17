@@ -66,6 +66,7 @@ async fn export_to_bytes(session: &VaultSession) -> Vec<u8> {
             format: ExportFormat::Encrypted {
                 passphrase: Zeroizing::new(PASSPHRASE.to_owned()),
             },
+            ids: None,
         },
     )
     .await

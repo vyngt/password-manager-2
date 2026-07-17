@@ -73,7 +73,7 @@ pub fn union_tags(existing: &[String], add: &[String]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::vault::vault_filters::{Filters, SortKey, filter_and_sort};
+    use crate::features::vault::vault_filters::{Filters, SortDir, SortKey, filter_and_sort};
     use std::collections::HashMap;
     use vedge_ipc::{EntryTypeDto, IndexEntryDto};
 
@@ -123,7 +123,7 @@ mod tests {
             favorites_only: true,
             ..Default::default()
         };
-        let visible = filter_and_sort(&items, &f, &HashMap::new(), SortKey::NameAsc);
+        let visible = filter_and_sort(&items, &f, &HashMap::new(), SortKey::Name(SortDir::Asc));
         assert_eq!(visible.len(), 12, "the filter yields 12 rows");
 
         // Select-all selects exactly those 12 — NOT 247. The data-loss guard.
@@ -185,7 +185,7 @@ mod tests {
         );
         let tag_change = ViewIdentity::new(
             Filters {
-                tag_id: Some("t-work".into()),
+                tag_ids: vec!["t-work".into()],
                 ..Default::default()
             },
             false,
