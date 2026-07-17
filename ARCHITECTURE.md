@@ -149,15 +149,19 @@ The frontend never touches `vedge-core` directly. It calls typed `api::*` wrappe
 Command errors cross as a `{kind, message}` `ErrorEnvelope` — each `CommandError` variant has a stable
 `kind` string (the `envelope::kind::*` constants) the frontend matches structurally into `ApiError`,
 never by parsing `message` (e.g. `DocumentTooLarge` is its own kind, not a `contains("too large")`).
-Plaintext secrets stay backend-side wherever possible (e.g. copy-to-clipboard is a backend command with
-auto-clear); the one sanctioned, audited exception is the explicit "reveal" (`get_entry`). **The TOTP
-seed is held to a stricter rule (slice 4.2 — the "door"):** it flows WASM → core on enrolment only and
-**never** core → WASM — `get_entry` omits it (`LoginPayloadDto` carries a non-invertible `has_totp` flag,
-not the seed). The 6–8-digit **code** is a permitted derivative: short-lived, non-invertible to the
-seed, worthless once expired, produced server-side by the audited `reveal_totp`. Generalizing that seed
-rule to the other payload secrets (`password`, recovery codes, card `cvv`, SSH key) is **dispositioned to Phase 5** —
-generalize the 4.2 `TotpUpdate::{Unchanged, Set, Clear}` sentinel (see the Phase-5 backlog); it is the
-follow-up that would actually clean the renderer.
+Plaintext secrets stay backend-side. **`get_entry` returns NO secret** (slice 5.4 — the "door", generalized
+from the 4.2 TOTP seed to every credential field): each sealed field crosses as a non-invertible presence
+flag / count (`has_password`, `recovery_codes_count`, env-var keys), never its value. A secret's plaintext
+crosses to WASM **only** on an explicit, audited **reveal** (`reveal_field` / `reveal_history_field`), or is
+copied backend-side without crossing at all (`copy_field`, 3.2's auto-clear clipboard). The audit log
+distinguishes the two: a browse is `Viewed`; an extraction (copy or reveal) is `SecretRevealed`. Inbound,
+each sealed field carries a `SecretUpdate::{Unchanged, Set, Clear}` sentinel (the generalized 4.2
+`TotpUpdate`) — `Unchanged` (the serde default) carries the stored secret forward, so an edit that never
+touched a field cannot wipe it. **The TOTP code** stays a *permitted derivative*: short-lived,
+non-invertible to the seed, produced server-side by `reveal_totp`. **Residual risk (bounded, not removed):**
+a revealed secret lives in WASM memory for the duration of the reveal — the rule is *"only on demand, only
+audited,"* not *"never."* Two sealed-family exceptions keep crossing because they are the entry's substance,
+not credential material: `Note.content` and the non-`national_id` `Identity` fields.
 
 The egress rule extends to the **network** (slice 4.4 — the app's only outbound call): the opt-in
 HaveIBeenPwned breach check hashes a credential in **core**, sends **only** the uppercase 5-hex SHA-1

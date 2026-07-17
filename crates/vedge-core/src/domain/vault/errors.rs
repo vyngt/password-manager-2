@@ -202,6 +202,24 @@ pub enum VaultError {
     )]
     SnapshotStale,
 
+    // --- sealed secrets (slice 5.4 — the WASM-Secret Sentinel) ---
+    /// A required secret field (login password, card number/cvv, ssh private key,
+    /// api key) received `Clear`, or `Unchanged` on a create with nothing to carry
+    /// forward. A required credential can never be emptied — enforced in the use
+    /// case, not the form.
+    #[error("required secret field cannot be cleared: {0}")]
+    RequiredSecretCleared(&'static str),
+
+    /// Two inbound env-var rows share a key. Keys are the schema; they must be
+    /// unique.
+    #[error("duplicate env-var key: {0}")]
+    DuplicateEnvVarKey(String),
+
+    /// An env-var row carried `Unchanged` for a key with no stored value to carry
+    /// forward (a new key must `Set` its value).
+    #[error("env var '{0}' is unchanged but has no stored value")]
+    EnvVarUnchangedWithoutStored(String),
+
     // --- screen lock (slice 4.5b) ---
     #[error("screen-lock state is unavailable on this device")]
     ScreenLockUnavailable,

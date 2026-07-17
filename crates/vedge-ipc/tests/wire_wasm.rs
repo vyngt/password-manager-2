@@ -43,6 +43,8 @@ fn registered_vault_status_flatten_decodes() {
             sort_order: 7,
         },
         exists: true,
+        openable: true,
+        vault_uuid: Some("uuid-abc".into()),
     };
     let back = shell_to_frontend(&dto);
     assert_eq!(back.vault.id, "abc-123");
@@ -53,6 +55,8 @@ fn registered_vault_status_flatten_decodes() {
         Some("2026-07-05T12:00:00.000Z")
     );
     assert!(back.exists);
+    assert!(back.openable);
+    assert_eq!(back.vault_uuid.as_deref(), Some("uuid-abc"));
 }
 
 /// Also cover `sort_order == 0` and `last_opened: None` — flatten + integer-zero
@@ -68,11 +72,15 @@ fn registered_vault_status_zero_and_none() {
             sort_order: 0,
         },
         exists: false,
+        openable: false,
+        vault_uuid: None,
     };
     let back = shell_to_frontend(&dto);
     assert_eq!(back.vault.sort_order, 0);
     assert!(back.vault.last_opened.is_none());
     assert!(!back.exists);
+    assert!(!back.openable);
+    assert!(back.vault_uuid.is_none());
 }
 
 /// `IndexEntryDto` — the read-side projection with an `i32` (`cipher_suite`),
@@ -248,22 +256,28 @@ fn payload_login_adjacent_decodes() {
             sort_order: 0,
         },
         username: "alice".into(),
-        password: "s3cret".into(),
-        // The 4.2 door: the seed is absent; presence flag + params + intent cross.
+        // The 5.4 sealed door: sealed secrets cross as intents, never plaintext.
+        // Inbound the password is a `Set` intent; recovery codes cross only as a
+        // count; the seed is absent (presence flag + params cross).
+        password: SecretUpdateDto::Set("s3cret".into()),
         has_totp: true,
         totp_algorithm: TotpAlgorithmDto::Sha256,
         totp_digits: 8,
         totp_period: 60,
         totp: TotpUpdateDto::Unchanged,
-        recovery_codes: vec![],
+        recovery_codes: SecretListUpdateDto::Unchanged,
+        recovery_codes_count: 3,
     });
     match shell_to_frontend(&dto) {
         PayloadDto::Login(p) => {
             assert_eq!(p.meta.name, "GitHub");
             assert_eq!(p.meta.entry_type, EntryTypeDto::Login);
             assert_eq!(p.username, "alice");
-            assert_eq!(p.password, "s3cret");
             assert_eq!(p.meta.url.as_deref(), Some("https://github.com"));
+            // The sealed intents survive the real wasm codec (adjacently-tagged enums).
+            assert!(matches!(p.password, SecretUpdateDto::Set(ref s) if s == "s3cret"));
+            assert!(matches!(p.recovery_codes, SecretListUpdateDto::Unchanged));
+            assert_eq!(p.recovery_codes_count, 3);
             // Door + params survive the real wasm codec (int coercion + tagged enum).
             assert!(p.has_totp);
             assert_eq!(p.totp_algorithm, TotpAlgorithmDto::Sha256);

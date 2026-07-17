@@ -100,6 +100,7 @@ pub fn run() {
             commands::entry::restore_entry,
             commands::entry::hard_delete_entry,
             commands::entry::copy_field,
+            commands::entry::reveal_field,
             commands::clipboard::copy_text,
             commands::entry::move_entry,
             commands::entry::set_favorite,
@@ -109,6 +110,7 @@ pub fn run() {
             commands::entry::list_history,
             commands::entry::get_history_value,
             commands::entry::copy_history_field,
+            commands::entry::reveal_history_field,
             commands::entry::restore_history,
             // ---- TOTP (slice 4.2) ----
             commands::totp::reveal_totp,

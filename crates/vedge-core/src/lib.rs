@@ -40,18 +40,19 @@ pub use application::vault::use_cases::{
     DeleteVaultInput, DeleteVaultReport, ExportEmergencyKitInput, ExportEntriesInput, ExportFormat,
     ExportReport, FieldSelector, GetEntryInput, HistoryVersion, ImportDocumentInput,
     InspectBackupInput, MaintenanceReport, OpenBackupInput, OpenBackupReport, RecoverVaultInput,
-    RecoveryOutcome, ReplaceReport, ReplaceVaultInput, RevertReport, RevertToSnapshotInput,
-    SeamlessRevertOutcome, SnapshotReport, TargetStateKind, UnlockVault, UnlockVaultInput,
-    UpdateEntryInput, backup_status, backup_vault, change_password, close_session_db, copy_field,
-    copy_history_field, create_entry, create_snapshot, create_tag, delete_tag, delete_vault,
-    enroll_biometric, entries_by_domain, entries_by_folder, entries_by_tag, export_document,
-    export_emergency_kit, export_entries, get_entry, get_history_value, hard_delete_entry,
-    import_document, inspect_backup, list_active_entries, list_audit, list_history, list_tags,
-    list_trashed_entries, lock_vault, move_entry, normalize_tag_name, open_backup,
-    place_text_on_clipboard, record_lock, recover_vault, rename_tag, replace_vault_from_backup,
-    restore_entry, restore_from_history, reveal_totp, revert_to_snapshot,
-    revert_to_snapshot_in_session, run_maintenance, scan_health, search_entries, set_favorite,
-    set_sort_order, set_tags, soft_delete_entry, update_entry,
+    RecoveryOutcome, ReplaceReport, ReplaceVaultInput, RevealFieldInput, RevealHistoryFieldInput,
+    RevertReport, RevertToSnapshotInput, SeamlessRevertOutcome, SnapshotReport, TargetStateKind,
+    UnlockVault, UnlockVaultInput, UpdateEntryInput, backup_status, backup_vault, change_password,
+    close_session_db, copy_field, copy_history_field, create_entry, create_snapshot, create_tag,
+    delete_tag, delete_vault, enroll_biometric, entries_by_domain, entries_by_folder,
+    entries_by_tag, export_document, export_emergency_kit, export_entries, get_entry,
+    get_history_value, hard_delete_entry, import_document, inspect_backup, list_active_entries,
+    list_audit, list_history, list_tags, list_trashed_entries, lock_vault, move_entry,
+    normalize_tag_name, open_backup, place_text_on_clipboard, record_lock, recover_vault,
+    rename_tag, replace_vault_from_backup, restore_entry, restore_from_history, reveal_field,
+    reveal_history_field, reveal_totp, revert_to_snapshot, revert_to_snapshot_in_session,
+    run_maintenance, scan_health, search_entries, set_favorite, set_sort_order, set_tags,
+    soft_delete_entry, update_entry,
 };
 // Import entries (slice 5.3b) + the snapshot-source tweezers (slice 5.3c).
 pub use application::vault::use_cases::{
@@ -67,5 +68,8 @@ pub use domain::vault::health::{
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
 pub use domain::vault::otpauth::{TotpEnrolment, parse_totp_input};
 pub use domain::vault::recovery::{RECOVERY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
+pub use domain::vault::secret_update::{
+    EnvVarUpdate, SecretListUpdate, SecretUpdate, SecretUpdates, resolve_secrets,
+};
 pub use domain::vault::totp::{TotpAlgorithm, TotpCode, TotpParams, TotpUpdate};
 pub use infrastructure::snapshot::manifest::{SnapshotManifest, SnapshotReason};

@@ -1,17 +1,20 @@
 //! Entry wire types.
 //!
 //! - `IndexEntryDto` — read-side projection, non-secret only.
-//! - Per-variant payload DTOs (`LoginPayloadDto`, …) carry secrets as
-//!   `String` / `Vec<String>` on the wire.
+//! - Per-variant payload DTOs (`LoginPayloadDto`, …) are **bidirectional**: on
+//!   the outbound (reveal) direction the sealed-secret fields carry a presence
+//!   flag / count (the WASM-Secret Sentinel, slice 5.4); on the inbound
+//!   (create/update) direction they carry a [`SecretUpdateDto`] intent. The seed
+//!   / secret plaintext does **not** cross on `get_entry`.
 //! - `PayloadDto` is the adjacently-tagged write-side union.
 //!
-//! Secret fields stay plain `String` on the wire — zeroization is the
-//! domain layer's responsibility (vedge-tauri wraps them into
-//! `SecretString` during conversion).
+//! `Note.content` and the non-`national_id` `Identity` fields are the entry's
+//! substance (not credential material) and keep crossing plainly.
 
 use serde::{Deserialize, Serialize};
 
 use crate::common::{CommonMetaDto, EntryTypeDto};
+use crate::secret_update::{EnvVarUpdateDto, SecretListUpdateDto, SecretUpdateDto};
 use crate::totp::{TotpAlgorithmDto, TotpUpdateDto};
 
 // ---- IndexEntryDto -----------------------------------------------------------
@@ -75,21 +78,16 @@ pub struct AddressDto {
     pub country: String,
 }
 
-// ---- EnvVarDto ---------------------------------------------------------------
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvVarDto {
-    pub key: String,
-    pub value: String,
-}
-
 // ---- Per-variant payload DTOs -----------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoginPayloadDto {
     pub meta: CommonMetaDto,
     pub username: String,
-    pub password: String,
+    /// Sealed secret. Outbound: `Unchanged` (the plaintext does not cross the
+    /// door). Inbound: `Set`/`Clear`/`Unchanged` intent.
+    #[serde(default)]
+    pub password: SecretUpdateDto,
     /// Non-invertible presence flag — the seed itself does **not** cross to WASM
     /// (the 4.2 door). Drives the detail view (show TOTP?) and the edit form
     /// (add vs replace/remove).
@@ -105,8 +103,13 @@ pub struct LoginPayloadDto {
     /// Inbound enrolment intent; ignored on the outbound (reveal) direction.
     #[serde(default)]
     pub totp: TotpUpdateDto,
+    /// Sealed collection. Outbound: `Unchanged` (values do not cross); the count
+    /// crosses as [`recovery_codes_count`](Self::recovery_codes_count).
     #[serde(default)]
-    pub recovery_codes: Vec<String>,
+    pub recovery_codes: SecretListUpdateDto,
+    /// Outbound presence: how many recovery codes are stored (non-invertible).
+    #[serde(default)]
+    pub recovery_codes_count: u32,
 }
 
 const fn default_totp_digits() -> u8 {
@@ -121,20 +124,28 @@ const fn default_totp_period() -> u32 {
 pub struct CardPayloadDto {
     pub meta: CommonMetaDto,
     pub cardholder_name: String,
-    pub number: String,
+    #[serde(default)]
+    pub number: SecretUpdateDto,
     pub expiry_month: u8,
     pub expiry_year: u16,
-    pub cvv: String,
     #[serde(default)]
-    pub pin: Option<String>,
+    pub cvv: SecretUpdateDto,
+    /// Optional sealed secret. Outbound presence: [`has_pin`](Self::has_pin).
+    #[serde(default)]
+    pub pin: SecretUpdateDto,
+    #[serde(default)]
+    pub has_pin: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SshKeyPayloadDto {
     pub meta: CommonMetaDto,
-    pub private_key_pem: String,
     #[serde(default)]
-    pub passphrase: Option<String>,
+    pub private_key_pem: SecretUpdateDto,
+    #[serde(default)]
+    pub passphrase: SecretUpdateDto,
+    #[serde(default)]
+    pub has_passphrase: bool,
     pub public_key: String,
     pub fingerprint: String,
     pub key_type: String,
@@ -143,9 +154,12 @@ pub struct SshKeyPayloadDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiKeyPayloadDto {
     pub meta: CommonMetaDto,
-    pub key: String,
     #[serde(default)]
-    pub secret: Option<String>,
+    pub key: SecretUpdateDto,
+    #[serde(default)]
+    pub secret: SecretUpdateDto,
+    #[serde(default)]
+    pub has_secret: bool,
     #[serde(default)]
     pub endpoint: Option<String>,
     #[serde(default)]
@@ -157,8 +171,9 @@ pub struct ApiKeyPayloadDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnvVarsPayloadDto {
     pub meta: CommonMetaDto,
+    /// Keys cross plainly (the schema); each value is a sealed-secret intent.
     #[serde(default)]
-    pub vars: Vec<EnvVarDto>,
+    pub vars: Vec<EnvVarUpdateDto>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,8 +204,14 @@ pub struct IdentityPayloadDto {
     pub address: Option<AddressDto>,
     #[serde(default)]
     pub date_of_birth: Option<String>,
+    /// The only sealed Identity field (a government ID is credential material,
+    /// `SecretString`-wrapped domain-side). Outbound presence:
+    /// [`has_national_id`](Self::has_national_id). The other Identity fields are
+    /// PII, not credential material, and keep crossing plainly.
     #[serde(default)]
-    pub national_id: Option<String>,
+    pub national_id: SecretUpdateDto,
+    #[serde(default)]
+    pub has_national_id: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -222,6 +243,30 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use super::{HistoryEntryDto, LoginPayloadDto};
+    use crate::secret_update::{SecretListUpdateDto, SecretUpdateDto};
+    use crate::totp::TotpUpdateDto;
+
+    /// 🔴 Spec #3 — the safe failure mode. An update that never touches a sealed
+    /// field sends NO field, so it deserializes as `Unchanged`. Test the ABSENCE.
+    #[test]
+    fn absent_sealed_fields_default_to_unchanged() {
+        let dto: LoginPayloadDto = serde_json::from_value(serde_json::json!({
+            "meta": { "name": "gh", "entry_type": "Login" },
+            "username": "alice",
+        }))
+        .unwrap();
+        assert!(matches!(dto.password, SecretUpdateDto::Unchanged));
+        assert!(matches!(dto.recovery_codes, SecretListUpdateDto::Unchanged));
+        assert!(matches!(dto.totp, TotpUpdateDto::Unchanged));
+    }
+
+    #[test]
+    fn secret_update_set_round_trips() {
+        let json = serde_json::to_string(&SecretUpdateDto::Set("v".into())).unwrap();
+        assert_eq!(json, r#"{"kind":"Set","value":"v"}"#);
+        let back: SecretUpdateDto = serde_json::from_str(&json).unwrap();
+        assert!(matches!(back, SecretUpdateDto::Set(s) if s == "v"));
+    }
 
     /// The door's wire test: the outbound Login DTO exposes `has_totp` but never
     /// the raw seed. A stray `totp_secret` key would reopen it.
@@ -230,7 +275,6 @@ mod tests {
         let dto: LoginPayloadDto = serde_json::from_value(serde_json::json!({
             "meta": { "name": "gh", "entry_type": "Login" },
             "username": "alice",
-            "password": "pw",
             "has_totp": true,
             "totp_algorithm": "Sha1",
             "totp_digits": 6,

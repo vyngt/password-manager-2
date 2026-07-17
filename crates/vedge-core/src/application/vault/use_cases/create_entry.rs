@@ -25,6 +25,11 @@ use crate::domain::vault::payloads::EntryPayload;
 
 #[derive(Debug)]
 pub struct CreateEntryInput {
+    /// A COMPLETE payload with real secrets. Unlike `update_entry`, create has no
+    /// prior entry, so there is nothing to carry forward: sealed-secret intents
+    /// (slice 5.4) are resolved with `old = None` by the caller (the tauri create
+    /// command, or `SecretUpdates::set_all` for internal callers) *before* this
+    /// use case — so it always receives fully-materialized secrets.
     pub payload: EntryPayload,
 }
 

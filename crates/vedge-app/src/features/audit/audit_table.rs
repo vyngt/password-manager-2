@@ -73,6 +73,7 @@ pub fn action_label(i18n: I18nContext<Locale>, action: &str) -> String {
         "BackupCreated" => t_string!(i18n, audit.action_backup_created).to_owned(),
         "BackupRestored" => t_string!(i18n, audit.action_backup_restored).to_owned(),
         "RollbackDetected" => t_string!(i18n, audit.action_rollback_detected).to_owned(),
+        "SecretRevealed" => t_string!(i18n, audit.action_secret_revealed).to_owned(),
         other => other.to_owned(),
     }
 }

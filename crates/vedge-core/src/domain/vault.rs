@@ -9,6 +9,7 @@ pub mod kdf_params;
 pub mod otpauth;
 pub mod payloads;
 pub mod recovery;
+pub mod secret_update;
 pub mod totp;
 
 pub use aad::{blob_aad, entry_aad, tag_aad};
@@ -33,4 +34,7 @@ pub use payloads::{
     NotePayload, SshKeyPayload, TagPayload, UnknownPayload,
 };
 pub use recovery::{RECOVERY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
+pub use secret_update::{
+    EnvVarUpdate, SecretListUpdate, SecretUpdate, SecretUpdates, resolve_secrets,
+};
 pub use totp::{TotpAlgorithm, TotpCode, TotpParams, TotpUpdate};

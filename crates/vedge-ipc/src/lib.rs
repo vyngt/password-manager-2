@@ -32,6 +32,7 @@ pub mod export;
 pub mod health;
 pub mod import;
 pub mod misc;
+pub mod secret_update;
 pub mod settings;
 pub mod snapshot;
 pub mod tag;
@@ -48,7 +49,7 @@ pub use common::{
 };
 pub use emergency_kit::{EmergencyKitDto, RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
 pub use entry::{
-    AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarDto, EnvVarsPayloadDto,
+    AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarsPayloadDto,
     FolderPayloadDto, HistoryEntryDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto,
     NotePayloadDto, PayloadDto, SshKeyPayloadDto,
 };
@@ -64,6 +65,7 @@ pub use misc::{
     ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, ExportedDocumentDto,
     FieldSelectorDto, MaintenanceReportDto, UnlockResultDto, UnlockVaultInputDto,
 };
+pub use secret_update::{EnvVarUpdateDto, SecretListUpdateDto, SecretUpdateDto};
 pub use settings::{
     AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto,
     RegisteredVaultDto, RegisteredVaultStatusDto, ThemeDto, UpdateCustomThemeInputDto,
