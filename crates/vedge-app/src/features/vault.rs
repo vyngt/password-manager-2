@@ -7,6 +7,7 @@ pub mod entry_form;
 pub mod entry_form_body;
 pub mod entry_history;
 pub mod entry_view;
+pub mod export_dialog;
 pub mod folder_customize;
 pub mod folder_delete;
 pub mod folder_move;

@@ -4,6 +4,7 @@ use crate::features::vault::context::ActiveVault;
 use crate::features::vault::document_attach::DocumentAttach;
 use crate::features::vault::entry_form::EntryFormData;
 use crate::features::vault::entry_history::EntryHistory;
+use crate::features::vault::export_dialog::{ExportDialog, ExportScope};
 use crate::features::vault::folder_customize::FolderCustomize;
 use crate::features::vault::folder_delete::FolderDelete;
 use crate::features::vault::folder_move::FolderMove;
@@ -114,6 +115,8 @@ pub fn VaultPage() -> impl IntoView {
     let bulk_trash_open = RwSignal::new(false);
     let bulk_move_open = RwSignal::new(false);
     let bulk_tag_open = RwSignal::new(false);
+    // The three-scope export dialog (5.3.1d); the value is the default scope.
+    let export_open = RwSignal::new(Option::<ExportScope>::None);
     // Saved "smart folder" filter presets (per-vault, persisted in app_settings).
     let smart_folders = RwSignal::new(Vec::<SmartFolder>::new());
 
@@ -897,6 +900,9 @@ pub fn VaultPage() -> impl IntoView {
                         view! {
                             <SelectionBar
                                 count=Signal::derive(move || selected.get().len())
+                                on_export=Callback::new(move |()| {
+                                    export_open.set(Some(ExportScope::Selection));
+                                })
                                 on_tag=Callback::new(move |()| bulk_tag_open.set(true))
                                 on_move=Callback::new(move |()| bulk_move_open.set(true))
                                 on_trash=Callback::new(move |()| bulk_trash_open.set(true))
@@ -1004,6 +1010,19 @@ pub fn VaultPage() -> impl IntoView {
                             MenuSection {
                                 label: None,
                                 items: vec![
+                                    MenuEntry::Item(MenuItem {
+                                        id: "export-all".into(),
+                                        label: t_string!(i18n, vault.export_menu_all).to_owned(),
+                                        variant: MenuItemVariant::Default,
+                                        icon: None,
+                                        shortcut: None,
+                                        on_click: Some(
+                                            Callback::new(move |()| {
+                                                export_open.set(Some(ExportScope::All));
+                                            }),
+                                        ),
+                                        href: None,
+                                    }),
                                     MenuEntry::Item(MenuItem {
                                         id: "manage-tags".into(),
                                         label: t_string!(i18n, vault.tag_manage).to_owned(),
@@ -1113,6 +1132,18 @@ pub fn VaultPage() -> impl IntoView {
                 count=Signal::derive(move || selected.get().len())
                 tags=Signal::derive(move || tags.get())
                 on_apply=on_bulk_tag
+            />
+
+            // The three-scope export dialog (5.3.1d3): selection / filter / all.
+            <ExportDialog
+                open=export_open
+                selected=selected
+                filtered=Signal::derive(move || {
+                    visible.get().iter().map(|e| e.id.clone()).collect::<Vec<_>>()
+                })
+                total=Signal::derive(move || {
+                    items.get().iter().filter(|e| e.entry_type != EntryTypeDto::Folder).count()
+                })
             />
 
             <Show when=move || ui.show_create.get()>

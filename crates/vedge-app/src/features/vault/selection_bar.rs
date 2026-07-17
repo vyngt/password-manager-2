@@ -22,6 +22,8 @@ pub fn SelectionBar(
     /// How many entries are selected (drives the live count).
     #[prop(into)]
     count: Signal<usize>,
+    /// Open the three-scope export dialog (defaulting to the selection).
+    on_export: Callback<()>,
     /// Open the bulk add-tags dialog.
     on_tag: Callback<()>,
     /// Open the bulk move-to-folder dialog.
@@ -56,6 +58,15 @@ pub fn SelectionBar(
                 }}
             </span>
             <div class="flex items-center gap-2">
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    class="whitespace-nowrap"
+                    attr:data-testid="bulk-export"
+                    on:click=move |_| on_export.run(())
+                >
+                    {move || t!(i18n, vault.bulk_export)}
+                </Button>
                 <Button
                     variant=Variant::Secondary
                     size=Size::Sm
