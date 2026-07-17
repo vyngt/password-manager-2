@@ -26,7 +26,12 @@ use crate::features::vault::context::ActiveVault;
 use crate::i18n::{t, t_string, use_i18n};
 
 #[component]
-pub fn ImportPanel() -> impl IntoView {
+pub fn ImportPanel(
+    /// Fired after a successful commit (the vault surface refreshes its list;
+    /// Settings ▸ Backup has no list, so it passes nothing).
+    #[prop(into, default = None)]
+    on_imported: Option<Callback<()>>,
+) -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
     let toast = use_toast();
@@ -132,6 +137,10 @@ pub fn ImportPanel() -> impl IntoView {
                     report.set(Some(rep));
                     preview.set(Vec::new());
                     picked.set(HashMap::new());
+                    // Ping the host to refresh (the report stays visible behind it).
+                    if let Some(cb) = on_imported {
+                        cb.run(());
+                    }
                 }
                 Err(e) => show(format!("{err_prefix}{e}"), ToastVariant::Danger),
             }

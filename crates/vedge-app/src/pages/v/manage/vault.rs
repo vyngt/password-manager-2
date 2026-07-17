@@ -11,6 +11,7 @@ use crate::features::vault::folder_move::FolderMove;
 use crate::features::vault::folder_tree::{
     FolderBreadcrumb, FolderScope, FolderTree, build_folder_tree, subtree_contents,
 };
+use crate::features::vault::import_dialog::ImportDialog;
 use crate::features::vault::selection::{ViewIdentity, identity_changed, union_tags};
 use crate::features::vault::selection_bar::SelectionBar;
 use crate::features::vault::selection_dialogs::{
@@ -117,6 +118,8 @@ pub fn VaultPage() -> impl IntoView {
     let bulk_tag_open = RwSignal::new(false);
     // The three-scope export dialog (5.3.1d); the value is the default scope.
     let export_open = RwSignal::new(Option::<ExportScope>::None);
+    // The Import… dialog (5.3.1d ①), opened from the `⋯` menu.
+    let import_open = RwSignal::new(false);
     // Saved "smart folder" filter presets (per-vault, persisted in app_settings).
     let smart_folders = RwSignal::new(Vec::<SmartFolder>::new());
 
@@ -969,7 +972,8 @@ pub fn VaultPage() -> impl IntoView {
                         </span>
                     </Show>
 
-                    // ⋯ overflow — sort modes + Manage tags (Import/Export join in d3).
+                    // ⋯ overflow — sort modes + Import…/Export all… (relocated here
+                    // from Settings, ①) + Manage tags.
                     // Rebuilt on scope change so Custom is offered only in a folder (⑪).
                     {move || {
                         let in_folder = matches!(current_scope.get(), FolderScope::Folder(_));
@@ -1010,6 +1014,17 @@ pub fn VaultPage() -> impl IntoView {
                             MenuSection {
                                 label: None,
                                 items: vec![
+                                    MenuEntry::Item(MenuItem {
+                                        id: "import-open".into(),
+                                        label: t_string!(i18n, vault.import_menu).to_owned(),
+                                        variant: MenuItemVariant::Default,
+                                        icon: None,
+                                        shortcut: None,
+                                        on_click: Some(
+                                            Callback::new(move |()| import_open.set(true)),
+                                        ),
+                                        href: None,
+                                    }),
                                     MenuEntry::Item(MenuItem {
                                         id: "export-all".into(),
                                         label: t_string!(i18n, vault.export_menu_all).to_owned(),
@@ -1146,9 +1161,14 @@ pub fn VaultPage() -> impl IntoView {
                 })
             />
 
-            <Show when=move || ui.show_create.get()>
-                <VaultCreateForm show=ui.show_create on_created=on_created folders=folders />
-            </Show>
+            // The Import… dialog (5.3.1d ①) — the shared Settings panel, surfaced
+            // here from the `⋯` menu; refreshes the list on a successful commit.
+            <ImportDialog open=import_open on_imported=on_created />
+
+            // New-entry surface — the same roomy `Dialog` shell as edit (⑫). The
+            // Dialog owns its visibility via `open=show`, so it mounts here
+            // unconditionally (no `<Show>` gate).
+            <VaultCreateForm show=ui.show_create on_created=on_created folders=folders />
 
             <Show when=move || !trashed_view.get()>
                 <FolderBreadcrumb folders=folders scope=current_scope />

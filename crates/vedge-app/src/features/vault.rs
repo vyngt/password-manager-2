@@ -13,6 +13,7 @@ pub mod folder_delete;
 pub mod folder_move;
 pub mod folder_tree;
 pub mod home_path;
+pub mod import_dialog;
 pub mod password_strength;
 pub mod registry_filter;
 pub mod secret_display;

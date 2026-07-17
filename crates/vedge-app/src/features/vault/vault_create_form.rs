@@ -1,9 +1,10 @@
 //! Add-entry form. Hosts the shared [`EntryFormBody`] (type picker + fields +
-//! folder + footer) inline; on Save it builds the wire `PayloadDto` via
-//! `EntryFormData::to_payload` and persists it through the backend
-//! (`api::entry::create_entry`), then pings the parent to refresh via
-//! `on_created` (a `Callback<()>`). Width-capped so the 2-col form doesn't
-//! stretch full-monitor-wide.
+//! folder + footer) in the **same roomy `Dialog`** as the edit flow
+//! (`VaultDetail`, decision ⑫) — multi-field types (Identity/SSH/Card) get the
+//! full-width surface instead of a squeezed inline panel. On Save it builds the
+//! wire `PayloadDto` via `EntryFormData::to_payload` and persists it through the
+//! backend (`api::entry::create_entry`), then pings the parent to refresh via
+//! `on_created` (a `Callback<()>`). Scrim/Escape close = cancel.
 
 use crate::api;
 use crate::features::vault::context::ActiveVault;
@@ -16,7 +17,8 @@ use leptos::task::spawn_local;
 use vedge_ipc::EntryTypeDto;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::primitives::tokens::ToastVariant;
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::primitives::tokens::{DialogSize, ToastVariant};
 
 #[component]
 pub fn VaultCreateForm(
@@ -83,19 +85,25 @@ pub fn VaultCreateForm(
     });
 
     view! {
-        <div class="border border-border rounded-lg p-4 bg-primary-muted max-w-2xl">
-            <h3 class="text-sm font-semibold mb-3 text-text-secondary">
-                {move || t!(i18n, vault.create_title)}
-            </h3>
-
-            <EntryFormBody
-                data=data
-                folders=folders
-                show_type_picker=true
-                saving=submitting
-                on_save=do_save
-                on_cancel=do_cancel
-            />
-        </div>
+        <Dialog
+            open=Signal::derive(move || show.get())
+            on_close=do_cancel
+            size=DialogSize::Lg
+            close_label=Signal::derive(move || t_string!(i18n, vault.close).to_owned())
+        >
+            <DialogHeader>
+                <DialogTitle>{move || t!(i18n, vault.create_title)}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+                <EntryFormBody
+                    data=data
+                    folders=folders
+                    show_type_picker=true
+                    saving=submitting
+                    on_save=do_save
+                    on_cancel=do_cancel
+                />
+            </DialogBody>
+        </Dialog>
     }
 }
