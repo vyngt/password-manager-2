@@ -17,8 +17,6 @@
 use crate::features::settings::backup_panel::BackupPanel;
 use crate::features::settings::biometric_setting::BiometricSetting;
 use crate::features::settings::emergency_kit_setting::EmergencyKitSetting;
-use crate::features::settings::export_panel::ExportPanel;
-use crate::features::settings::import_panel::ImportPanel;
 use crate::features::settings::maintenance_panel::MaintenancePanel;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
@@ -284,18 +282,6 @@ pub fn SettingsPage() -> impl IntoView {
             id: "backup".to_owned(),
             label: Box::new(move || view! { {move || t!(i18n, settings.backup)} }.into_any()),
             panel: Arc::new(|| view! { <BackupPanel /> }.into_any()),
-            disabled: false,
-        },
-        Tab {
-            id: "export".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.export)} }.into_any()),
-            panel: Arc::new(|| view! { <ExportPanel /> }.into_any()),
-            disabled: false,
-        },
-        Tab {
-            id: "import".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.import)} }.into_any()),
-            panel: Arc::new(|| view! { <ImportPanel /> }.into_any()),
             disabled: false,
         },
     ];
