@@ -16,12 +16,15 @@ use crate::api::error::ApiError;
 /// `encrypted = true` seals an envelope with `passphrase` (all entry types);
 /// `encrypted = false` writes a **plaintext** logins-only CSV, with
 /// `spreadsheet_safe` apostrophe-prefixing formula-risky cells.
+/// `entry_ids = Some(..)` exports only that subset (the selection / filter scope,
+/// always intersected with the active set backend-side); `None` exports all.
 pub async fn export(
     vault_path: &str,
     dest_path: &str,
     encrypted: bool,
     passphrase: Option<&str>,
     spreadsheet_safe: bool,
+    entry_ids: Option<&[String]>,
 ) -> Result<ExportReportDto, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
@@ -30,6 +33,7 @@ pub async fn export(
         encrypted: bool,
         passphrase: Option<&'a str>,
         spreadsheet_safe: bool,
+        entry_ids: Option<&'a [String]>,
     }
     call(
         "export_entries",
@@ -39,6 +43,7 @@ pub async fn export(
             encrypted,
             passphrase,
             spreadsheet_safe,
+            entry_ids,
         },
     )
     .await

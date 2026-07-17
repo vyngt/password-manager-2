@@ -26,6 +26,7 @@ use zeroize::Zeroizing;
 use vedge_core::domain::shared::VaultId;
 use vedge_core::{ExportEntriesInput, ExportFormat, export_entries as export_entries_core};
 
+use crate::dto::entry::entry_id_from_str;
 use crate::dto::export::{ExportReportDto, export_report_to_dto};
 use crate::error::CommandError;
 use crate::state::AppState;
@@ -38,6 +39,8 @@ pub async fn export_entries(
     encrypted: bool,
     passphrase: Option<String>,
     spreadsheet_safe: bool,
+    // Optional subset of entry ids (the selection / filter scope). `None` = all.
+    entry_ids: Option<Vec<String>>,
     state: tauri::State<'_, AppState>,
 ) -> Result<ExportReportDto, CommandError> {
     let vault_id = VaultId::new(PathBuf::from(&vault_path));
@@ -60,6 +63,7 @@ pub async fn export_entries(
         ExportEntriesInput {
             dest: PathBuf::from(dest_path),
             format,
+            ids: entry_ids.map(|v| v.iter().map(|s| entry_id_from_str(s)).collect()),
         },
     )
     .await?;

@@ -74,7 +74,7 @@ pub fn ExportPanel() -> impl IntoView {
             match api::dialog::save(&opts).await {
                 Ok(Some(dest)) => {
                     let pass_ref = if enc { Some(pass.as_str()) } else { None };
-                    match api::export::export(&path, &dest, enc, pass_ref, safe).await {
+                    match api::export::export(&path, &dest, enc, pass_ref, safe, None).await {
                         Ok(report) => {
                             last.set(Some(report));
                             show(saved, ToastVariant::Success);
