@@ -1,3 +1,4 @@
+use crate::utils::event::key_of;
 use leptos::prelude::*;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -250,7 +251,7 @@ pub fn Popover(
         {
             let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(
                 move |ev: web_sys::KeyboardEvent| {
-                    if ev.key() == "Escape" {
+                    if key_of(&ev) == "Escape" {
                         ev.prevent_default();
                         on_close.run(());
                     }
@@ -310,8 +311,8 @@ pub fn Popover(
         }
     };
 
-    let ev_enter = enter_ver;
-    let ev_exit = exit_ver;
+    let ev_enter = Arc::clone(&enter_ver);
+    let ev_exit = Arc::clone(&exit_ver);
     Effect::new(move |prev: Option<bool>| {
         let now = open.get();
         let was = prev.unwrap_or(false);
@@ -370,7 +371,16 @@ pub fn Popover(
         now
     });
 
+    // 🔴 On disposal, bump BOTH version counters so any still-pending open/close
+    // `set_timeout` (scheduled in the Effect above) fails its `ev.load() != ticket`
+    // guard and returns *before* touching the now-disposed `StoredValue`s /
+    // `Callback`s — which would otherwise panic with `unreachable`. Repros when the
+    // popover is torn down mid-animation: e.g. the vault toolbar swapping to the
+    // selection bar (or the ⋯ menu's reactive rebuild) while a close timeout is in
+    // flight.
     on_cleanup(move || {
+        enter_ver.fetch_add(1, Ordering::Relaxed);
+        exit_ver.fetch_add(1, Ordering::Relaxed);
         detach_listeners();
     });
 
@@ -396,7 +406,7 @@ pub fn Popover(
                         format!("top: {}px; left: {}px; {}", pos_top.get(), pos_left.get(), mw)
                     }
                     on:keydown=move |ev: web_sys::KeyboardEvent| {
-                        if ev.key() == "Tab" {
+                        if key_of(&ev) == "Tab" {
                             handle_tab(&ev, panel_ref, on_close);
                         }
                     }
