@@ -141,6 +141,13 @@ impl VaultSession {
         self.rollback_warning
     }
 
+    /// Whether a Recovery Key is enrolled (slice 5.7) — a derivative bool for the Settings
+    /// row. The slot bytes themselves never leave core.
+    #[must_use]
+    pub const fn has_recovery_key(&self) -> bool {
+        self.config.recovery_slot.is_some()
+    }
+
     /// Explicit lock: consume the session and let `Drop` zeroize the KEK
     /// and `VaultIndex`. Semantically identical to letting the value go out of
     /// scope — provided as a named method so shell code reads obviously.

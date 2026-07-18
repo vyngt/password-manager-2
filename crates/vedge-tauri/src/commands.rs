@@ -31,6 +31,7 @@ pub mod health;
 pub mod import;
 pub mod maintenance;
 pub mod password;
+pub mod recovery;
 pub mod registry;
 pub mod secret_key;
 pub mod settings;
