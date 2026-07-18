@@ -1171,7 +1171,12 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                 </div>
             </For>
             <div>
-                <Button variant=Variant::Secondary size=Size::Sm on:click=add_row>
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    attr:data-testid="env-add-var"
+                    on:click=add_row
+                >
                     {move || t!(i18n, vault.add_var)}
                 </Button>
             </div>

@@ -15,6 +15,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use serde_json::{Value, json};
+use thirtyfour::By;
 
 use common::*;
 use vedge_e2e::{Session, TestEnv, app_binary};
@@ -165,6 +166,74 @@ async fn reveal_an_ssh_private_key_via_ui() -> Result<()> {
         .assert_console_clean()
         .await
         .context("console-clean after reveal")?;
+    session.close().await;
+    Ok(())
+}
+
+/// Slice 5.4.1 — the env-set `⋯` menu in the READ DRAWER. Opening the menu and
+/// clicking an item must NOT dismiss the drawer: the menu's `Popover` is portaled
+/// OUTSIDE the drawer subtree, so the drawer's click-outside handler has to ignore
+/// `.popover-panel` — otherwise a menu-item click reads as "outside" and closes
+/// the drawer before the reveal runs (the exact bug this guards). Also the first
+/// e2e that opens a `⋯` DropdownMenu (a coverage gap noted since 5.3.1d).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn reveal_env_set_via_drawer_menu() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+
+    let session = Session::launch(&env, &app).await.context("launch app")?;
+    session
+        .console_selftest()
+        .await
+        .context("console-clean guard self-test")?;
+
+    create_and_unlock(&session, &vault)
+        .await
+        .context("create + unlock via the wizard")?;
+    add_env_vars(&session, "prod-env", "MY_VAR", "val-123").await?;
+
+    let entries = list_entries(&session, &vault).await?;
+    let id = entry_id(&entries, "prod-env").context("find env entry id")?;
+
+    open_entry(&session, &id).await?;
+    // The value is not shown until an explicit reveal.
+    assert!(
+        !drawer_text(&session).await?.contains("val-123"),
+        "the env value must NOT be in the drawer before an explicit reveal"
+    );
+
+    // Open the ⋯ set menu, then click "Reveal as .env" — the 3rd focusable item
+    // (copy-.env=0, copy-JSON=1, [separator], reveal-.env=2).
+    session
+        .click_testid("env-set-menu")
+        .await
+        .context("drawer: open the env set menu")?;
+    session
+        .wait_for(
+            By::Css("[data-menu-idx='2']".to_string()),
+            Duration::from_secs(5),
+        )
+        .await
+        .context("reveal-as-.env menu item")?
+        .click()
+        .await
+        .context("click reveal-as-.env")?;
+
+    // 🔴 The drawer must STILL be open (the `.popover-panel` fix) and now show the
+    // formatted `.env` set (`MY_VAR='val-123'`).
+    wait_until(Duration::from_secs(5), || async {
+        let t = drawer_text(&session).await?;
+        Ok(t.contains("MY_VAR") && t.contains("val-123"))
+    })
+    .await
+    .context("Reveal-as-.env should show the set in the drawer without closing it")?;
+
+    session
+        .assert_console_clean()
+        .await
+        .context("console-clean after env reveal")?;
     session.close().await;
     Ok(())
 }

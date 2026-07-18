@@ -88,9 +88,14 @@ pub fn VaultDetail(
         };
         // Ignore clicks inside the drawer itself, on a table row (which switches the
         // selection), or inside any overlay opened from it (an edit/move/history
-        // dialog, or a toast) — those must not dismiss the drawer.
+        // dialog, a toast, or a PORTALED popover/dropdown-menu — the env-set `⋯`
+        // menu renders its `.popover-panel` at the document root, OUTSIDE the drawer
+        // subtree, so without this a menu-item click reads as "outside" and closes
+        // the drawer before the copy/reveal runs) — those must not dismiss the drawer.
         let ignore = target
-            .closest("[data-detail-drawer], [data-entry-row], .dialog-scrim, .toast-group")
+            .closest(
+                "[data-detail-drawer], [data-entry-row], .dialog-scrim, .toast-group, .popover-panel",
+            )
             .ok()
             .flatten()
             .is_some();

@@ -217,6 +217,44 @@ pub async fn add_ssh_key(s: &Session, name: &str, private_key: &str) -> Result<(
     Ok(())
 }
 
+/// Create an `EnvVars` entry via the UI (slice 5.4.1) with a single key/value
+/// row. Used by the drawer env-set-menu regression scenario.
+pub async fn add_env_vars(s: &Session, name: &str, key: &str, value: &str) -> Result<()> {
+    s.click_testid("vault-new-entry")
+        .await
+        .context("open add form for env vars")?;
+    s.wait_for(
+        By::Css("[data-testid='entry-type-select'] [role='combobox']".to_string()),
+        Duration::from_secs(5),
+    )
+    .await
+    .context("open entry-type picker")?
+    .click()
+    .await
+    .context("click type picker")?;
+    s.wait_for(
+        By::Css(
+            "[data-testid='entry-type-select'] [role='option'][data-value='EnvVars']".to_string(),
+        ),
+        Duration::from_secs(5),
+    )
+    .await
+    .context("EnvVars option")?
+    .click()
+    .await
+    .context("select EnvVars type")?;
+    s.fill_id("ef-name", name).await?;
+    s.click_testid("env-add-var")
+        .await
+        .context("add an env var row")?;
+    s.fill_id("ef-env-key", key).await?;
+    s.fill_id("ef-env-val", value).await?;
+    s.click_testid("entry-save")
+        .await
+        .with_context(|| format!("save env vars {name}"))?;
+    Ok(())
+}
+
 pub async fn add_note(s: &Session, name: &str, content: &str) -> Result<()> {
     s.click_testid("vault-new-entry")
         .await
