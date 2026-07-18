@@ -1,5 +1,6 @@
 pub mod backup_panel;
 pub mod biometric_setting;
+pub mod change_password_setting;
 pub mod emergency_kit_setting;
 pub mod generator_prefs;
 pub mod import_panel;

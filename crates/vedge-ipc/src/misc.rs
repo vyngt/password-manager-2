@@ -83,6 +83,9 @@ pub struct UnlockResultDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChangePasswordInputDto {
+    /// The current master password — re-verified against the live session's
+    /// `verify_hash` before any rewrap (slice 5.6 ④).
+    pub current_password: String,
     pub new_password: String,
     #[serde(default)]
     pub new_secret_key_b64: Option<String>,

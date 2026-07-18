@@ -16,7 +16,9 @@ use tracing::instrument;
 use zeroize::Zeroizing;
 
 use vedge_core::domain::shared::VaultId;
-use vedge_core::{ChangePasswordInput, change_password as change_password_core};
+use vedge_core::{
+    ChangePasswordInput, change_password as change_password_core, reauthenticate_master_password,
+};
 
 use crate::dto::misc::{ChangePasswordInputDto, decode_change_password_secret_key};
 use crate::error::CommandError;
@@ -45,6 +47,18 @@ pub async fn change_password(
     state.touch_deadline(&vault_id, ttl);
 
     let mut guard = handle.lock().await;
+
+    // Prove knowledge of the *current* password against the live session before the
+    // O(n) rewrap — an unlocked vault left open is exactly what this re-auth defends
+    // (slice 5.6 ④). A wrong password returns `WrongCredentials` and mutates nothing.
+    let current_password = Zeroizing::new(input.current_password.clone());
+    reauthenticate_master_password(
+        &guard,
+        Arc::clone(&state.kdf),
+        Arc::clone(&state.keychain),
+        current_password,
+    )
+    .await?;
 
     let new_secret_key = decode_change_password_secret_key(&input)?;
     let new_password = Zeroizing::new(input.new_password.clone());

@@ -31,6 +31,7 @@ pub mod export;
 pub mod health;
 pub mod import;
 pub mod maintenance;
+pub mod password;
 pub mod registry;
 pub mod secret_key;
 pub mod settings;
@@ -39,12 +40,3 @@ pub mod tag;
 pub mod totp;
 pub mod vault;
 pub mod window;
-
-// Wholly-parked subsystem kept ahead of its consumer — every wrapper is still unused, so a
-// single module allow is honest here; drop it the moment the first wrapper gets wired (then
-// switch to per-function).
-#[allow(
-    dead_code,
-    reason = "Phase 3 Change-Password settings flow (change_password) — no Phase 2 consumer yet"
-)]
-pub mod password;
