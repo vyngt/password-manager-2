@@ -68,12 +68,17 @@ fn decrypt_with_tampered_ciphertext_fails() {
 }
 
 #[test]
-fn tag_round_trip_under_kek() {
+fn legacy_tag_decrypts_under_kek() {
+    // A pre-5.6.0 tag was sealed directly under the KEK. `decrypt_legacy_tag` reads that
+    // shape; `encrypt_entry(kek, …)` reproduces the byte-identical legacy ciphertext (the
+    // retired `encrypt_tag` was the same AEAD helper).
     let p = provider();
     let (nonce, ct) = p
-        .encrypt_tag(&kek_a(), b"{\"name\":\"aws\"}", b"tag-aad")
+        .encrypt_entry(&kek_a(), b"{\"name\":\"aws\"}", b"tag-aad")
         .unwrap();
-    let pt = p.decrypt_tag(&kek_a(), &nonce, &ct, b"tag-aad").unwrap();
+    let pt = p
+        .decrypt_legacy_tag(&kek_a(), &nonce, &ct, b"tag-aad")
+        .unwrap();
     assert_eq!(&*pt, b"{\"name\":\"aws\"}");
 }
 

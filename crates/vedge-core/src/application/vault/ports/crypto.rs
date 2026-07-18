@@ -40,16 +40,13 @@ pub trait CryptoProvider: Send + Sync {
         aad: &[u8],
     ) -> Result<Zeroizing<Vec<u8>>, VaultError>;
 
-    /// Encrypt a tag payload under the vault's KEK (no per-row DEK for tags).
-    fn encrypt_tag(
-        &self,
-        kek: &[u8; KEK_LEN],
-        payload: &[u8],
-        aad: &[u8],
-    ) -> Result<(Nonce, Vec<u8>), VaultError>;
-
-    /// Decrypt a tag ciphertext.
-    fn decrypt_tag(
+    /// Decrypt a LEGACY tag ciphertext sealed directly under the KEK (pre-5.6.0, when
+    /// tags had no per-row DEK). This is the ONLY surviving operation that uses the KEK
+    /// as an AEAD key, and it is deliberately READ-only — there is **no** encrypt twin, so
+    /// no write path can seal a tag (or anything) under the KEK again. Since 5.6.0 tags
+    /// carry a per-row DEK (like entries); this exists solely to read rows not yet migrated
+    /// (see `use_cases::tag_crypto::open_tag_row`).
+    fn decrypt_legacy_tag(
         &self,
         kek: &[u8; KEK_LEN],
         nonce: &[u8; NONCE_LEN],

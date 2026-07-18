@@ -59,15 +59,20 @@ pub trait VaultRepository: Send + Sync {
 
     /// Atomic re-wrap during `ChangePassword`.
     ///
-    /// Updates every listed entry's `dek_wrapped` **and** the vault config
-    /// (which carries the new `verify_hash` / `kdf_params` /
-    /// `last_unlocked_at`) as a single transaction. If any step fails the
-    /// whole batch rolls back, so the vault never lands in a "half the
-    /// DEKs are under the new KEK, the other half under the old KEK"
-    /// state — which would be unrecoverable by either password.
+    /// Updates every listed entry's `dek_wrapped`, every listed **tag** row (its
+    /// `nonce` / `ciphertext` / `dek_wrapped` — a re-wrapped DEK leaves the
+    /// ciphertext unchanged, a migrated legacy tag replaces all three), **and** the
+    /// vault config (which carries the new `verify_hash` / `kdf_params` /
+    /// `last_unlocked_at`) as a single transaction. If any step fails the whole batch
+    /// rolls back, so the vault never lands in a "half the keys are under the new KEK,
+    /// the other half under the old KEK" state — which would be unrecoverable by either
+    /// password. 🔴 Tags were added here in slice 5.6.0: they used to be sealed directly
+    /// under the KEK and were silently skipped, which bricked any tagged vault on a
+    /// password change (and every snapshot, since `rewrap_snapshots` funnels through here).
     async fn rewrap_all_deks(
         &self,
         updates: &[(EntryId, [u8; 40])],
+        tag_updates: &[TagRow],
         new_config: &VaultConfig,
     ) -> Result<(), VaultError>;
 

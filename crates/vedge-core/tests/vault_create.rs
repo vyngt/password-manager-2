@@ -201,7 +201,7 @@ async fn config_fields_are_correct() {
     let config = repo.load_config().await.unwrap();
     assert_eq!(config.magic, "VEDG");
     assert_eq!(config.id, "default");
-    assert_eq!(config.schema_version, 1);
+    assert_eq!(config.schema_version, 2); // slice 5.6.0: new vaults are born v2 (tag DEKs)
     assert_eq!(config.preferred_cipher_suite, 1);
     assert_eq!(config.kdf_params, fast_kdf_params());
     assert!(config.last_unlocked_at.is_some());

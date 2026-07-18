@@ -69,6 +69,7 @@ fn sample_tag(id: &TagId) -> TagRow {
         id: id.clone(),
         nonce: [4u8; 24],
         ciphertext: vec![0xCD; 48],
+        dek_wrapped: Some([7u8; 40]),
         created_at: now(),
         updated_at: now(),
     }
@@ -196,13 +197,19 @@ async fn tags_crud_round_trip() {
 
     let fetched = repo.get_tag(&id).await.unwrap();
     assert_eq!(fetched.nonce, [4u8; 24]);
+    assert_eq!(fetched.dek_wrapped, Some([7u8; 40]));
 
+    // B1 guard (slice 5.6.0): `update_tag` MUST persist `dek_wrapped` — the at-unlock
+    // migration writes a fresh DEK through this path, and dropping it would strand a
+    // DEK-encrypted row with a NULL DEK (unreadable by either path = a re-brick).
     let mut updated = fetched.clone();
     updated.ciphertext = vec![0xFF; 8];
+    updated.dek_wrapped = Some([9u8; 40]);
     updated.updated_at = now();
     repo.update_tag(&updated).await.unwrap();
     let fetched = repo.get_tag(&id).await.unwrap();
     assert_eq!(fetched.ciphertext, vec![0xFF; 8]);
+    assert_eq!(fetched.dek_wrapped, Some([9u8; 40]));
 
     let all = repo.all_tags().await.unwrap();
     assert_eq!(all.len(), 1);
@@ -334,7 +341,7 @@ async fn commit_counter_bumps_on_content_writes_only() {
 
     // ---- rewrap_all_deks (the ONE transactional write; bump rides its txn) ----
     let cfg = repo.load_config().await.unwrap();
-    repo.rewrap_all_deks(&[], &cfg).await.unwrap();
+    repo.rewrap_all_deks(&[], &[], &cfg).await.unwrap();
     n += 1;
     assert_eq!(commit_counter(&repo).await, n, "rewrap_all_deks");
 
