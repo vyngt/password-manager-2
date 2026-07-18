@@ -293,7 +293,7 @@ async fn a_stale_snapshot_falls_back_to_needs_unlock_not_a_failure() {
 /// 🔴 Test 7 — the HEALTHY counterpart to test 6, and the "change master password, then revert"
 /// path: after a password change re-wraps the snapshot to KEK₂, reverting to it OPENS cleanly
 /// under the new session KEK (`Reverted`, not `NeedsUnlock`) — not corrupt. Guards the
-/// change_password → rewrap_snapshots → revert chain (incl. slice 5.7's slot-nulling in the
+/// `change_password` → `rewrap_snapshots` → revert chain (incl. slice 5.7's slot-nulling in the
 /// snapshot copy).
 #[tokio::test]
 async fn revert_after_change_password_opens_the_rewrapped_snapshot() {
