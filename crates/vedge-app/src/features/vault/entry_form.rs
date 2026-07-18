@@ -19,9 +19,9 @@ use leptos_icons::Icon;
 use vedge_generator::{RandomConfig, generate_random};
 use vedge_ipc::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, CommonMetaDto, EntryTypeDto, EnvVarUpdateDto,
-    EnvVarsPayloadDto, FieldSelectorDto, FolderPayloadDto, IdentityPayloadDto, LoginPayloadDto,
-    NotePayloadDto, PayloadDto, SecretListUpdateDto, SecretUpdateDto, SshKeyPayloadDto,
-    TotpAlgorithmDto, TotpUpdateDto,
+    EnvVarsPayloadDto, FolderPayloadDto, IdentityPayloadDto, LoginPayloadDto, NotePayloadDto,
+    PayloadDto, SecretListUpdateDto, SecretUpdateDto, SshKeyPayloadDto, TotpAlgorithmDto,
+    TotpUpdateDto,
 };
 use vedge_ui::components::Button;
 use vedge_ui::components::IconButton;
@@ -30,6 +30,7 @@ use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, D
 use vedge_ui::components::form::date_picker::{
     DatePicker, DatePickerValue, DatePickerVariant, YearMonth,
 };
+use vedge_ui::components::form::form_field::FormField;
 use vedge_ui::components::form::textarea::Textarea;
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
@@ -627,98 +628,55 @@ fn payload_meta(p: &PayloadDto) -> &CommonMetaDto {
 
 // --- field-rendering macros (keep the per-type arms DRY) ---------------------
 
-/// A plain text input bound to a `String` field of the form data.
+/// A plain text input bound to a `String` field of the form data, wrapped in a
+/// `FormField` so it has a visible `<label for=id>` (slice 5.4.1 ⑤ — the label
+/// used to be the placeholder). No placeholder: the label carries the name.
 macro_rules! text_field {
     ($data:expr, $i18n:expr, $id:literal, $field:ident, $key:ident) => {{
         let data = $data;
         let i18n = $i18n;
         view! {
-            <Input
-                id=$id
-                placeholder=Signal::derive(move || t_string!(i18n, vault.$key).to_string())
-                value=Signal::derive(move || data.with(|d| d.$field.clone()))
-                on_input=Callback::new(move |v: String| data.update(|d| d.$field = v))
-            />
+            <FormField id=$id label=Signal::derive(move || t_string!(i18n, vault.$key).to_owned())>
+                <Input
+                    id=$id
+                    value=Signal::derive(move || data.with(|d| d.$field.clone()))
+                    on_input=Callback::new(move |v: String| data.update(|d| d.$field = v))
+                />
+            </FormField>
         }
     }};
 }
 
-/// A masked (password-style) input with a reveal/hide toggle. When the form is
-/// EDITING an existing entry the field starts empty (the secret is sealed —
-/// slice 5.4), so the placeholder says "Unchanged — type to replace" instead of
-/// a fake `••••` value. On create it shows the field's normal placeholder.
+/// A masked (password-style) input with a reveal/hide mask toggle, wrapped in a
+/// `FormField` (⑤). When EDITING, the field starts empty (the secret is sealed —
+/// slice 5.4), so the placeholder says "Unchanged — type to replace"; on create
+/// there is no placeholder (the label carries the name). The edit form is inputs
+/// only — reading a stored secret (reveal-to-view / copy) lives in the read
+/// drawer, so there is no per-field Reveal button here.
 macro_rules! secret_field {
     ($data:expr, $i18n:expr, $id:literal, $field:ident, $key:ident) => {{
         let data = $data;
         let i18n = $i18n;
         view! {
-            <Input
-                id=$id
-                input_type="password"
-                placeholder=Signal::derive(move || {
-                    if data.with(|d| d.editing) {
-                        t_string!(i18n, vault.form_sealed_placeholder).to_string()
-                    } else {
-                        t_string!(i18n, vault.$key).to_string()
-                    }
-                })
-                value=Signal::derive(move || data.with(|d| d.$field.clone()))
-                on_input=Callback::new(move |v: String| data.update(|d| d.$field = v))
-                reveal_label=Signal::derive(move || t_string!(i18n, vault.reveal).to_string())
-                hide_label=Signal::derive(move || t_string!(i18n, vault.hide).to_string())
-            />
+            <FormField id=$id label=Signal::derive(move || t_string!(i18n, vault.$key).to_owned())>
+                <Input
+                    id=$id
+                    input_type="password"
+                    placeholder=Signal::derive(move || {
+                        if data.with(|d| d.editing) {
+                            t_string!(i18n, vault.form_sealed_placeholder).to_owned()
+                        } else {
+                            String::new()
+                        }
+                    })
+                    value=Signal::derive(move || data.with(|d| d.$field.clone()))
+                    on_input=Callback::new(move |v: String| data.update(|d| d.$field = v))
+                    reveal_label=Signal::derive(move || t_string!(i18n, vault.reveal).to_owned())
+                    hide_label=Signal::derive(move || t_string!(i18n, vault.hide).to_owned())
+                />
+            </FormField>
         }
     }};
-}
-
-/// Context for the per-field Reveal button (slice 5.4). The edit flow
-/// (`vault_detail`) provides it with the (reactive) vault path + entry id; it is
-/// ABSENT on the create form (nothing is stored to reveal). A Reveal button
-/// renders only when this context is present.
-#[derive(Clone, Copy)]
-pub struct RevealCtx {
-    pub vault_path: Signal<String>,
-    pub entry_id: Signal<String>,
-}
-
-/// A per-field "Reveal" `IconButton` (slice 5.4): fetches the stored secret via
-/// the audited `reveal_field` and fills the form field — the "let me check it
-/// before I change it" flow that sealing the door otherwise removes. Renders
-/// nothing on the create form (no [`RevealCtx`]). Only fields the backend
-/// `FieldSelector` supports get one (password, card number/cvv, api key).
-#[component]
-fn RevealButton(field: FieldSelectorDto, on_reveal: Callback<String>) -> impl IntoView {
-    let i18n = use_i18n();
-    let Some(ctx) = use_context::<RevealCtx>() else {
-        return ().into_any();
-    };
-    let reveal = move |_: web_sys::MouseEvent| {
-        let vault_path = ctx.vault_path.get_untracked();
-        let entry_id = ctx.entry_id.get_untracked();
-        let field = field.clone();
-        if entry_id.is_empty() {
-            return;
-        }
-        spawn_local(async move {
-            if let Ok(value) = api::entry::reveal_field(&vault_path, &entry_id, field).await {
-                on_reveal.run(value);
-            }
-        });
-    };
-    view! {
-        <IconButton
-            variant=Variant::Ghost
-            size=Size::Sm
-            attr:data-testid="reveal-field"
-            aria_label=Signal::derive(move || t_string!(i18n, vault.reveal).to_owned())
-            on:click=reveal
-        >
-            <span aria-hidden="true">
-                <Icon icon=i::FaKeySolid />
-            </span>
-        </IconButton>
-    }
-    .into_any()
 }
 
 /// TOTP enrolment field (slice 4.2 door). The seed never round-trips through the
@@ -867,6 +825,8 @@ fn SshPrivateKeyField(data: RwSignal<EntryFormData>) -> impl IntoView {
                 <label for="ef-ssh-priv" class="text-xs text-foreground/60">
                     {move || t!(i18n, vault.field_private_key)}
                 </label>
+                // Mask toggle only — reading the stored key lives in the read
+                // drawer (reveal-to-view), not the edit form (which is inputs only).
                 <IconButton
                     variant=Variant::Ghost
                     size=Size::Sm
@@ -939,14 +899,12 @@ fn LoginPasswordField(data: RwSignal<EntryFormData>) -> impl IntoView {
     });
 
     view! {
-        <div class="col-span-2 flex items-center gap-2">
+        // `items-end`: `secret_field!` now renders a label row above the input
+        // (⑤), so the sibling buttons must align to the input, not the block.
+        <div class="col-span-2 flex items-end gap-2">
             <div class="flex-1">
                 {secret_field!(data, i18n, "ef-password", password, form_password)}
             </div>
-            <RevealButton
-                field=FieldSelectorDto::Password
-                on_reveal=Callback::new(move |v: String| data.update(|d| d.password = v))
-            />
             <IconButton
                 variant=Variant::Ghost
                 size=Size::Sm
@@ -1126,6 +1084,9 @@ pub fn EntryForm(data: RwSignal<EntryFormData>) -> impl IntoView {
 
 /// Editable key/value rows for an `EnvVars` entry. The structural `For` is
 /// driven by a `Memo` on the row count so per-field typing doesn't rebuild it.
+/// The fields are label-less, so a column header + per-input `aria_label` give
+/// them accessible names (⑤). Reading the stored set (copy/reveal as `.env` or
+/// JSON, slice 5.4.1 ⑥) lives in the read drawer, not this edit form.
 #[component]
 fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
     let i18n = use_i18n();
@@ -1138,11 +1099,22 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
 
     view! {
         <div class="flex flex-col gap-2">
+            // Column headers (⑤) — the inputs are label-less; the header plus a
+            // per-input `aria_label` give them accessible names. Reading the set
+            // (copy/reveal as .env/JSON) lives in the read drawer, not this form.
+            <div class="flex gap-2">
+                <span class="flex-1 text-xs text-foreground/60">
+                    {move || t!(i18n, vault.field_env_key)}
+                </span>
+                <span class="flex-1 text-xs text-foreground/60">
+                    {move || t!(i18n, vault.field_env_value)}
+                </span>
+            </div>
             <For each=move || 0..count.get() key=|i| *i let:i>
                 <div class="flex gap-2 items-center">
                     <Input
                         id="ef-env-key"
-                        placeholder=Signal::derive(move || {
+                        aria_label=Signal::derive(move || {
                             t_string!(i18n, vault.field_env_key).to_owned()
                         })
                         value=Signal::derive(move || {
@@ -1162,7 +1134,7 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                     <Input
                         id="ef-env-val"
                         input_type="password"
-                        placeholder=Signal::derive(move || {
+                        aria_label=Signal::derive(move || {
                             t_string!(i18n, vault.field_env_value).to_owned()
                         })
                         value=Signal::derive(move || {
@@ -1199,7 +1171,12 @@ fn EnvVarsFields(data: RwSignal<EntryFormData>) -> impl IntoView {
                 </div>
             </For>
             <div>
-                <Button variant=Variant::Secondary size=Size::Sm on:click=add_row>
+                <Button
+                    variant=Variant::Secondary
+                    size=Size::Sm
+                    attr:data-testid="env-add-var"
+                    on:click=add_row
+                >
                     {move || t!(i18n, vault.add_var)}
                 </Button>
             </div>

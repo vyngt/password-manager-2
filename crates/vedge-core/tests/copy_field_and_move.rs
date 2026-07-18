@@ -18,15 +18,18 @@ use vedge_core::TotpParams;
 use vedge_core::application::vault::ports::VaultRepository;
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    CopyFieldInput, CreateEntryInput, FieldSelector, GetEntryInput, RevealFieldInput,
-    UnlockVaultInput, copy_field, create_entry, get_entry, move_entry, reveal_field, set_favorite,
-    set_sort_order, set_tags,
+    CopyEnvVarsInput, CopyFieldInput, CreateEntryInput, FieldSelector, GetEntryInput,
+    RevealEnvVarsInput, RevealFieldInput, RevealRecoveryCodesInput, UnlockVaultInput,
+    copy_env_vars, copy_field, create_entry, get_entry, move_entry, reveal_env_vars, reveal_field,
+    reveal_recovery_codes, set_favorite, set_sort_order, set_tags,
 };
 use vedge_core::domain::shared::{EntryId, TagId};
 use vedge_core::domain::vault::entities::AuditAction;
+use vedge_core::domain::vault::env_export::EnvExportFormat;
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{
-    CommonMeta, EntryPayload, EntryType, FolderPayload, LoginPayload, NotePayload,
+    CommonMeta, EntryPayload, EntryType, EnvVar, EnvVarsPayload, FolderPayload, LoginPayload,
+    NotePayload, SshKeyPayload,
 };
 
 async fn unlock(h: &Harness) -> VaultSession {
@@ -315,6 +318,196 @@ async fn audit_distinguishes_browse_from_extraction() {
         2,
         "copy_field + reveal_field extract → SecretRevealed"
     );
+}
+
+// ---- 5.4.1: complete the reveal door — new arms + set copy/reveal ----
+
+fn login_with_codes(name: &str, pw: &str, codes: &[&str]) -> EntryPayload {
+    EntryPayload::Login(LoginPayload {
+        meta: CommonMeta::new(name, EntryType::Login),
+        username: "alice".into(),
+        password: SecretString::from(pw),
+        totp_secret: None,
+        totp_params: TotpParams::default(),
+        recovery_codes: codes.iter().map(|c| SecretString::from(*c)).collect(),
+    })
+}
+
+fn envvars(name: &str, pairs: &[(&str, &str)]) -> EntryPayload {
+    EntryPayload::EnvVars(EnvVarsPayload {
+        meta: CommonMeta::new(name, EntryType::EnvVars),
+        vars: pairs
+            .iter()
+            .map(|(k, v)| EnvVar {
+                key: (*k).to_owned(),
+                value: SecretString::from(*v),
+            })
+            .collect(),
+    })
+}
+
+async fn seed(session: &mut VaultSession, payload: EntryPayload) -> EntryId {
+    create_entry(session, CreateEntryInput { payload })
+        .await
+        .unwrap()
+        .entry_id
+}
+
+fn count_revealed(
+    events: &[vedge_core::domain::vault::entities::AuditEvent],
+    id: &EntryId,
+) -> usize {
+    events
+        .iter()
+        .filter(|e| e.action == AuditAction::SecretRevealed && e.entry_id.as_ref() == Some(id))
+        .count()
+}
+
+/// 🔴 ② — the whole recovery-code list crosses in one call, audited as ONE row.
+#[tokio::test]
+async fn reveal_recovery_codes_returns_all_and_audits_one_row() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = seed(
+        &mut session,
+        login_with_codes("gh", "hunter2", &["rc-0", "rc-1", "rc-2"]),
+    )
+    .await;
+
+    let codes = reveal_recovery_codes(&mut session, RevealRecoveryCodesInput::new(id.clone()))
+        .await
+        .unwrap();
+    let plain: Vec<&str> = codes.iter().map(|c| c.as_str()).collect();
+    assert_eq!(plain, vec!["rc-0", "rc-1", "rc-2"]);
+
+    let events = h.repo.recent_audit(50).await.unwrap();
+    assert_eq!(
+        count_revealed(&events, &id),
+        1,
+        "revealing the whole list audits exactly ONE row, not N"
+    );
+}
+
+#[tokio::test]
+async fn reveal_recovery_codes_on_non_login_errors() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = seed(
+        &mut session,
+        EntryPayload::Note(NotePayload {
+            meta: CommonMeta::new("n", EntryType::Note),
+            content: SecretString::from("body"),
+        }),
+    )
+    .await;
+    let err = reveal_recovery_codes(&mut session, RevealRecoveryCodesInput::new(id))
+        .await
+        .unwrap_err();
+    assert!(matches!(err, VaultError::FieldNotApplicable));
+}
+
+/// 🔴 The headline through a session: a sealed SSH private key is revealable,
+/// byte-exact (newlines intact), and audited.
+#[tokio::test]
+async fn reveal_ssh_private_key_returns_pem_and_audits() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let pem = "-----BEGIN VEDGE TEST BLOCK-----\nl1\nl2\n-----END VEDGE TEST BLOCK-----";
+    let id = seed(
+        &mut session,
+        EntryPayload::SshKey(SshKeyPayload {
+            meta: CommonMeta::new("box", EntryType::SshKey),
+            private_key_pem: SecretString::from(pem),
+            passphrase: None,
+            public_key: "pk".into(),
+            fingerprint: "fp".into(),
+            key_type: "ed25519".into(),
+        }),
+    )
+    .await;
+
+    let value = reveal_field(
+        &mut session,
+        RevealFieldInput::new(id.clone(), FieldSelector::PrivateKey),
+        0,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        value.as_str(),
+        pem,
+        "PEM crosses byte-exact, newlines intact"
+    );
+
+    let events = h.repo.recent_audit(50).await.unwrap();
+    assert_eq!(count_revealed(&events, &id), 1);
+}
+
+/// 🔴 ⑥ — copy the whole env set to the clipboard (`.env`), audited as ONE row.
+#[tokio::test]
+async fn copy_env_vars_dotenv_hits_clipboard_and_audits_one_row() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = seed(
+        &mut session,
+        envvars("env", &[("A", "one"), ("B", "t w o")]),
+    )
+    .await;
+
+    copy_env_vars(
+        &mut session,
+        CopyEnvVarsInput {
+            entry_id: id.clone(),
+            format: EnvExportFormat::DotEnv,
+            clear_after_secs: 9999,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(h.clipboard.peek().as_deref(), Some("A='one'\nB='t w o'"));
+
+    let events = h.repo.recent_audit(50).await.unwrap();
+    assert_eq!(
+        count_revealed(&events, &id),
+        1,
+        "copying the whole set audits exactly ONE row, not N"
+    );
+}
+
+/// ⑥ — reveal returns the blob (JSON lossless); a `.env` newline errors, never
+/// truncates; and reveal never touches the clipboard.
+#[tokio::test]
+async fn reveal_env_vars_json_returns_blob_and_dotenv_newline_errors() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = seed(&mut session, envvars("env", &[("CERT", "l1\nl2")])).await;
+
+    let json = reveal_env_vars(
+        &mut session,
+        RevealEnvVarsInput {
+            entry_id: id.clone(),
+            format: EnvExportFormat::Json,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(json.as_str(), r#"{"CERT":"l1\nl2"}"#);
+    assert_eq!(
+        h.clipboard.peek(),
+        None,
+        "reveal returns the blob; it does not touch the clipboard"
+    );
+
+    let err = reveal_env_vars(
+        &mut session,
+        RevealEnvVarsInput {
+            entry_id: id,
+            format: EnvExportFormat::DotEnv,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, VaultError::EnvValueNotDotEnvSafe { .. }));
 }
 
 #[tokio::test]

@@ -280,3 +280,13 @@ export_scope_all: "All entries"
 export_menu_all: "Export all…"
 import_menu: "Import…"
 bulk_export: "Export…"
+# Reveal door (slice 5.4.1)
+recovery_codes_title: "Recovery codes"
+env_set_menu: "Copy or reveal the whole set"
+env_copy_dotenv: "Copy as .env (KEY='value')"
+env_copy_json: 'Copy as JSON ({"KEY":"value"})'
+env_reveal_dotenv: "Reveal as .env"
+env_reveal_json: "Reveal as JSON"
+env_revealed_title: "Revealed set"
+secret_copy: "Copy"
+secret_not_set: "Not set"

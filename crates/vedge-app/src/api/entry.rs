@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 
-use vedge_ipc::{FieldSelectorDto, HistoryEntryDto, PayloadDto};
+use vedge_ipc::{EnvExportFormatDto, FieldSelectorDto, HistoryEntryDto, PayloadDto};
 
 use crate::api::call::{call, call_void};
 use crate::api::error::ApiError;
@@ -158,6 +158,79 @@ pub async fn reveal_field(
             vault_path,
             entry_id,
             field,
+        },
+    )
+    .await
+}
+
+/// Reveal a Login's whole recovery-code list (slice 5.4.1). Audited as a single
+/// `SecretRevealed` row; per-code copy uses `copy_field` with `RecoveryCode(i)`.
+pub async fn reveal_recovery_codes(
+    vault_path: &str,
+    entry_id: &str,
+) -> Result<Vec<String>, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+    }
+    call(
+        "reveal_recovery_codes",
+        &Args {
+            vault_path,
+            entry_id,
+        },
+    )
+    .await
+}
+
+/// Copy an `EnvVars` entry's whole set to the clipboard (`.env` or JSON, slice
+/// 5.4.1). Formatted server-side — the plaintext never crosses to WASM.
+pub async fn copy_env_vars(
+    vault_path: &str,
+    entry_id: &str,
+    format: EnvExportFormatDto,
+    clear_after_secs: Option<u32>,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        format: EnvExportFormatDto,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        clear_after_secs: Option<u32>,
+    }
+    call_void(
+        "copy_env_vars",
+        &Args {
+            vault_path,
+            entry_id,
+            format,
+            clear_after_secs,
+        },
+    )
+    .await
+}
+
+/// Reveal an `EnvVars` entry's whole set to the renderer (`.env` or JSON). A
+/// `.env` value with a newline errors — the caller offers JSON instead.
+pub async fn reveal_env_vars(
+    vault_path: &str,
+    entry_id: &str,
+    format: EnvExportFormatDto,
+) -> Result<String, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        entry_id: &'a str,
+        format: EnvExportFormatDto,
+    }
+    call(
+        "reveal_env_vars",
+        &Args {
+            vault_path,
+            entry_id,
+            format,
         },
     )
     .await

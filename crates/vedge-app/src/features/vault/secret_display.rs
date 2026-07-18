@@ -46,7 +46,11 @@ pub fn SecretDisplay(#[prop(into)] value: Signal<String>) -> impl IntoView {
 
     view! {
         <div class="flex items-center gap-2 rounded-md border border-border bg-primary-muted p-3">
-            <code class="flex-1 select-all break-all font-mono text-sm text-text-primary">
+            // `whitespace-pre-wrap` preserves newlines: a revealed multi-line PEM
+            // (SSH private key, slice 5.4.1) must render across lines, not collapse
+            // to one via the default `white-space: normal`. Harmless for the
+            // single-line Secret-Key string this also renders.
+            <code class="flex-1 select-all whitespace-pre-wrap break-all font-mono text-sm text-text-primary">
                 {move || value.get()}
             </code>
             <CopyButton value=value copy_with=copy_native />
