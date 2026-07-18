@@ -97,12 +97,31 @@ pub async fn change_password(
         updates.push((row.id, new_wrapped));
     }
 
-    // ---- 4. Atomic commit: all entries + config in one transaction ----------
+    // ---- 3b. Rewrap every tag's DEK under the new KEK (slice 5.6.0) ---------
+    // A successful unlock guarantees every live tag is DEK-sealed (the at-unlock
+    // migration ran), so this is normally an unwrap→rewrap; `rewrap_tag_row` also
+    // migrates a straggler NULL tag. Omitting tags here is what bricked tagged vaults.
+    let tags = session.repo.all_tags().await?;
+    let mut tag_updates: Vec<crate::domain::vault::entities::TagRow> =
+        Vec::with_capacity(tags.len());
+    for tag in &tags {
+        tag_updates.push(super::tag_crypto::rewrap_tag_row(
+            session.crypto.as_ref(),
+            tag,
+            &old_kek_z,
+            &new_kek_z,
+        )?);
+    }
+
+    // ---- 4. Atomic commit: entries + tags + config in one transaction ------
     let when = now();
     let mut new_config = session.config.clone();
     new_config.verify_hash = new_verify_hash;
     new_config.last_unlocked_at = Some(when);
-    session.repo.rewrap_all_deks(&updates, &new_config).await?;
+    session
+        .repo
+        .rewrap_all_deks(&updates, &tag_updates, &new_config)
+        .await?;
 
     // ---- 4b. Rewrap the local snapshot store (⑬) — AFTER the live vault commits ----------
     // A crash here leaves snapshots on the OLD password (which the user just typed), never a

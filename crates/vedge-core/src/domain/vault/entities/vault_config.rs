@@ -3,11 +3,14 @@ use crate::domain::vault::kdf_params::KdfParams;
 
 /// The vault schema version this build understands.
 ///
-/// Restore and import refuse a backup whose `schema_version` exceeds this — slice
-/// 5.2b is the first read of a field written but never used since Phase 1. Bump
-/// only when a migration introduces a breaking logical schema change (an additive
-/// nullable column, like `vault_uuid` in 4.6a, does not).
-pub const CURRENT_SCHEMA_VERSION: i32 = 1;
+/// Restore and import refuse a backup whose `schema_version` exceeds this, and unlock
+/// refuses a live vault above it (slice 5.6.0) — so an older build fails cleanly instead
+/// of mysteriously at decrypt time. Bump when a build produces at-rest data a prior build
+/// cannot read. Note the trigger is the DATA semantics, not the column: an additive nullable
+/// column alone does NOT bump (`vault_uuid` in 4.6a, `commit_counter` in 5.2c did not) — but
+/// 5.6.0's additive `tags.dek_wrapped` DOES, because a migrated tag's ciphertext moves from
+/// KEK-sealed to DEK-sealed and a v1 build would fail to decrypt it.
+pub const CURRENT_SCHEMA_VERSION: i32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VaultConfig {

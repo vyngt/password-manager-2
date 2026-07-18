@@ -87,16 +87,7 @@ impl CryptoProvider for XChaCha20CryptoProvider {
         aead_decrypt(dek, nonce, ciphertext, aad)
     }
 
-    fn encrypt_tag(
-        &self,
-        kek: &[u8; KEK_LEN],
-        payload: &[u8],
-        aad: &[u8],
-    ) -> Result<(Nonce, Vec<u8>), VaultError> {
-        aead_encrypt(kek, payload, aad)
-    }
-
-    fn decrypt_tag(
+    fn decrypt_legacy_tag(
         &self,
         kek: &[u8; KEK_LEN],
         nonce: &[u8; NONCE_LEN],

@@ -41,7 +41,7 @@ use vedge_core::application::vault::use_cases::{
     revert_to_snapshot,
 };
 use vedge_core::domain::shared::{EntryId, SNAPSHOTS_DIR, VAULT_FILE};
-use vedge_core::domain::vault::entities::AuditAction;
+use vedge_core::domain::vault::entities::{AuditAction, CURRENT_SCHEMA_VERSION};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
 use vedge_core::infrastructure::backup::archive;
@@ -516,7 +516,9 @@ async fn restore_refuses_a_uuid_mismatch() {
 #[tokio::test]
 async fn restore_refuses_a_newer_schema() {
     let dir = tempfile::tempdir().unwrap();
-    let archive_path = write_min_archive(dir.path(), BACKUP_FORMAT_VERSION, 2);
+    // A backup one schema version NEWER than this build understands — must be refused.
+    let newer = CURRENT_SCHEMA_VERSION + 1;
+    let archive_path = write_min_archive(dir.path(), BACKUP_FORMAT_VERSION, newer);
     let target_dir = tempfile::tempdir().unwrap();
     let factory = SqliteVaultRepositoryFactory::new();
     // The format/schema gates fire BEFORE the target is even looked at — so this refuses on
@@ -530,8 +532,8 @@ async fn restore_refuses_a_newer_schema() {
     .await
     .unwrap_err();
     assert!(
-        matches!(err, VaultError::UnsupportedSchemaVersion(2)),
-        "schema 2 > 1 → refuse, got {err:?}"
+        matches!(err, VaultError::UnsupportedSchemaVersion(v) if v == newer),
+        "a schema newer than CURRENT → refuse, got {err:?}"
     );
     assert_eq!(std::fs::read_dir(target_dir.path()).unwrap().count(), 0);
 }

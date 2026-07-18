@@ -24,6 +24,7 @@ use tracing::warn;
 
 use crate::application::vault::ports::crypto::CryptoProvider;
 use crate::application::vault::ports::repository::VaultRepository;
+use crate::application::vault::use_cases::tag_crypto::rewrap_tag_row;
 use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::errors::VaultError;
 use crate::infrastructure::snapshot::manifest::verify_hash_prefix;
@@ -72,8 +73,10 @@ pub async fn rewrap_snapshots(
 }
 
 /// Rewrap a single snapshot's `vault.vdb` in one transaction, then stamp its manifest's
-/// `verify_hash_prefix`. Any unwrap failure (an already-rewrapped or stale snapshot) aborts
-/// BEFORE the write, so a snapshot is never left half-rewrapped.
+/// `verify_hash_prefix`. Any unwrap failure — an entry DEK OR a tag (slice 5.6.0) that an
+/// already-rewrapped or stale snapshot cannot yield — aborts BEFORE the write, so a snapshot
+/// is never left half-rewrapped (which, for a tag, would re-brick it on revert: the revert
+/// reopen goes through `build_index`, which hard-fails on a tag it cannot decrypt).
 async fn rewrap_one(
     crypto: &dyn CryptoProvider,
     snap: &SnapshotEntry,
@@ -97,11 +100,22 @@ async fn rewrap_one(
         updates.push((row.id, new_wrapped));
     }
 
+    // Tags rewrap/migrate the same way (slice 5.6.0): a DEK-sealed snapshot tag re-wraps its
+    // DEK; a legacy (pre-5.6.0) snapshot tag is migrated — legacy-decrypt under `old_kek`
+    // (which succeeds precisely when the entry rewrap does) then re-seal under `new_kek`. A
+    // tag it genuinely cannot read aborts the WHOLE snapshot via `?` BEFORE any write, so
+    // `verify_hash` never advances past a skipped tag (the revert re-brick, B2).
+    let tag_rows = repo.all_tags().await?;
+    let mut tag_updates = Vec::with_capacity(tag_rows.len());
+    for tag in &tag_rows {
+        tag_updates.push(rewrap_tag_row(crypto, tag, old_kek, new_kek)?);
+    }
+
     let mut cfg = repo.load_config().await?;
     cfg.verify_hash = *new_verify_hash;
-    // One atomic transaction: every row's `dek_wrapped` + the new `verify_hash`. The object
-    // pool is NOT touched — DEK values are unchanged, only their KEK-wrapping.
-    repo.rewrap_all_deks(&updates, &cfg).await?;
+    // One atomic transaction: every entry DEK + every tag key + the new `verify_hash`. The
+    // object pool is NOT touched — DEK values are unchanged, only their KEK-wrapping.
+    repo.rewrap_all_deks(&updates, &tag_updates, &cfg).await?;
 
     drop(repo);
     // Close so the WAL is checkpointed into the snapshot's own `vault.vdb` (self-contained).

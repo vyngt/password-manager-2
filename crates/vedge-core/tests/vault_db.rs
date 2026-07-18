@@ -341,7 +341,7 @@ async fn commit_counter_bumps_on_content_writes_only() {
 
     // ---- rewrap_all_deks (the ONE transactional write; bump rides its txn) ----
     let cfg = repo.load_config().await.unwrap();
-    repo.rewrap_all_deks(&[], &cfg).await.unwrap();
+    repo.rewrap_all_deks(&[], &[], &cfg).await.unwrap();
     n += 1;
     assert_eq!(commit_counter(&repo).await, n, "rewrap_all_deks");
 

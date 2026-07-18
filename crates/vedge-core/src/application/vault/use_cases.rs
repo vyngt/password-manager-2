@@ -34,6 +34,7 @@ pub mod set_favorite;
 pub mod set_sort_order;
 pub mod set_tags;
 pub mod soft_delete_entry;
+pub mod tag_crypto;
 pub mod tag_ops;
 pub mod unlock_vault;
 pub mod update_entry;

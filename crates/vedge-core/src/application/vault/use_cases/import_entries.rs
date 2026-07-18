@@ -43,7 +43,7 @@ use crate::domain::export::mapping::{
     payload_to_export,
 };
 use crate::domain::shared::{EntryId, StorageError, TagId, now};
-use crate::domain::vault::aad::{blob_aad, entry_aad, tag_aad};
+use crate::domain::vault::aad::{blob_aad, entry_aad};
 use crate::domain::vault::crypto_constants::{DEK_LEN, NONCE_LEN};
 use crate::domain::vault::entities::{AuditAction, EntryRow};
 use crate::domain::vault::errors::VaultError;
@@ -452,12 +452,12 @@ async fn read_snapshot_entries(
 
 /// Resolve the snapshot's tag id → name table under the live KEK — **best-effort**.
 ///
-/// Tags are sealed directly under the KEK, and the ⑬ rewrap re-wraps only entry DEKs +
-/// `verify_hash`, NOT tag rows (see `rewrap_snapshots`). So a snapshot taken before a credential
-/// change carries tag rows under the OLD KEK even once its prefix reads "current". The ENTRIES
-/// still recover under the current KEK, so a tag table we cannot decrypt must NOT abort the whole
-/// recovery — it degrades to no tag names (the recovered entries simply lose their tags). Fixing
-/// the asymmetry at the source (rewrap tags too) is a `rewrap_snapshots` follow-up.
+/// Since 5.6.0 the ⑬ rewrap migrates/re-wraps tag DEKs too (see `rewrap_snapshots`), so a
+/// snapshot rewrapped after a credential change reads its tags under the current KEK via the
+/// dual-path `tag_crypto::open_tag_row`. Best-effort is kept as defence for a genuinely stale
+/// snapshot (e.g. hand-copied, never rewrapped): the ENTRIES still recover under the current KEK,
+/// so a tag table we cannot decrypt must NOT abort the whole recovery — it degrades to no tag
+/// names (the recovered entries simply lose their tags).
 async fn read_snapshot_tag_names(
     session: &VaultSession,
     repo: &SqliteVaultRepository,
@@ -467,18 +467,15 @@ async fn read_snapshot_tag_names(
         return map;
     };
     for tag_row in tag_rows {
-        let Ok(aad) = tag_aad(&tag_row.id) else {
-            continue;
-        };
-        let Ok(plaintext) = session.crypto.decrypt_tag(
+        // Dual-path read (5.6.0): a DEK-sealed snapshot tag unwraps its DEK; a legacy
+        // KEK-sealed one decrypts directly. A snapshot rewrapped by ⑬ carries DEK-sealed
+        // tags under the current KEK; only a genuinely stale (hand-copied, un-rewrapped)
+        // snapshot fails — and that still degrades to no tag names, never a refused recovery.
+        let Ok(plaintext) = super::tag_crypto::open_tag_row(
+            session.crypto.as_ref(),
             session.kek.expose(),
-            &tag_row.nonce,
-            &tag_row.ciphertext,
-            &aad,
+            &tag_row,
         ) else {
-            // All tags share the snapshot-moment KEK, so one failure means the whole table is
-            // under an old KEK (a pre-credential-change snapshot the rewrap didn't cover). Warn
-            // once and recover the entries WITHOUT tag names rather than refusing everything.
             tracing::warn!(
                 "snapshot tags predate a credential change and can't be resolved under the \
                  current KEK; recovering entries without their tag names"
