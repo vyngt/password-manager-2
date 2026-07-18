@@ -137,6 +137,12 @@ impl From<VaultError> for CommandError {
             | VaultError::FieldNotApplicable
             | VaultError::KeyDerivationFailed(_)
             | VaultError::InvalidSecretKey(_)
+            // Recovery Key (slice 5.7): a malformed `RK1-` kit, a recovery unlock
+            // on a vault with no slot, or a forced-reset called outside a fresh
+            // recovery unlock — all surfaced to the UI as `Invalid`-with-message.
+            | VaultError::InvalidRecoveryKey(_)
+            | VaultError::RecoveryNotConfigured
+            | VaultError::NoRecoveryResetPending
             | VaultError::InvalidTotpParams(_)
             | VaultError::HotpNotSupported
             | VaultError::TotpMigrationNotSupported

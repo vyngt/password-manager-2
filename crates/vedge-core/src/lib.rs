@@ -70,7 +70,8 @@ pub use domain::vault::health::{
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
 pub use domain::vault::otpauth::{TotpEnrolment, parse_totp_input};
 pub use domain::vault::secret_key::{
-    SECRET_KEY_FORMAT_PREFIX, format_secret_key, parse_secret_key,
+    RECOVERY_KEY_FORMAT_PREFIX, SECRET_KEY_FORMAT_PREFIX, format_recovery_key, format_secret_key,
+    parse_recovery_key, parse_secret_key,
 };
 pub use domain::vault::secret_update::{
     EnvVarUpdate, SecretListUpdate, SecretUpdate, SecretUpdates, resolve_secrets,
