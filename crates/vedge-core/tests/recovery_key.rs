@@ -36,18 +36,33 @@ use vedge_core::application::vault::ports::{
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password, create_entry,
-    create_snapshot, lock_vault,
+    ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password,
+    change_password_after_recovery, create_entry, create_snapshot, enroll_recovery_key, lock_vault,
+    revoke_recovery_key,
 };
 use vedge_core::domain::shared::SNAPSHOTS_DIR;
+use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
+use vedge_core::domain::vault::entities::{AuditAction, AuditQuery};
 use vedge_core::domain::vault::errors::VaultError;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
+use vedge_core::domain::vault::secret_key::parse_recovery_key;
 use vedge_core::infrastructure::snapshot::manifest::SnapshotReason;
 use vedge_core::infrastructure::snapshot::store;
 use vedge_core::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
 
 const PW: &str = "correct horse battery staple";
+const NEW_PW: &str = "a-brand-new-passphrase-9";
 const DUMMY_SLOT: [u8; 40] = [0x42; 40];
+
+fn kdf(h: &Harness) -> Arc<dyn KeyDerivationProvider> {
+    Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>
+}
+fn keychain(h: &Harness) -> Arc<dyn KeychainProvider> {
+    Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>
+}
+fn biometric(h: &Harness) -> Arc<dyn BiometricAuthenticator> {
+    Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>
+}
 
 async fn unlock(h: &Harness, pw: &str) -> Result<VaultSession, VaultError> {
     build_unlock(h)
@@ -94,6 +109,18 @@ async fn seed_one_entry(session: &mut VaultSession) {
     )
     .await
     .unwrap();
+}
+
+async fn count_action(h: &Harness, action: AuditAction) -> u64 {
+    h.repo
+        .query_audit(&AuditQuery {
+            actions: vec![action],
+            limit: 100,
+            ..Default::default()
+        })
+        .await
+        .unwrap()
+        .total
 }
 
 /// 🔴 ③ + C1 — a password change DELETES the recovery slot, atomically with the rewrap.
@@ -159,6 +186,169 @@ async fn a_snapshot_carries_no_live_recovery_slot() {
         snapshot_slot(&snap_dir).await.is_none(),
         "a rewrapped snapshot must stay slot-less (④ Fix B)"
     );
+}
+
+/// 🔴 #1 — THE FEATURE, end to end. Enroll → lock → recover with the `RK1-` key + the Secret
+/// Key → forced new password → the vault opens on the new password and the entry decrypts;
+/// the OLD password no longer works, and recovery is now off (the forced change nulled it).
+#[tokio::test]
+async fn recover_a_forgotten_password_end_to_end() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, PW).await.unwrap();
+    seed_one_entry(&mut session).await;
+
+    let display = enroll_recovery_key(&mut session, kdf(&h), keychain(&h))
+        .await
+        .unwrap()
+        .recovery_key_display;
+    assert!(display.starts_with("RK1-"), "got {display}");
+    lock_vault(session).await.unwrap();
+
+    // The password is forgotten. Recover with the two documents.
+    let recovery_key = parse_recovery_key(&display).unwrap();
+    let unlocker = build_unlock(&h);
+    let mut recovered = unlocker
+        .unlock_with_recovery_key(h.home.clone(), recovery_key, Zeroizing::new(h.secret_key))
+        .await
+        .expect("recovery unlock succeeds with the right kit + secret key");
+
+    // The forced new master password (no old-password reauth).
+    change_password_after_recovery(
+        &mut recovered,
+        kdf(&h),
+        keychain(&h),
+        biometric(&h),
+        Zeroizing::new(NEW_PW.to_owned()),
+    )
+    .await
+    .unwrap();
+    lock_vault(recovered).await.unwrap();
+
+    // The NEW password opens the vault and the entry survived.
+    let s = unlock(&h, NEW_PW)
+        .await
+        .expect("the new password opens the recovered vault");
+    assert_eq!(s.index().all_active().len(), 1);
+    lock_vault(s).await.unwrap();
+
+    // The OLD password no longer works, and recovery is off (re-enrol to turn it back on).
+    assert!(matches!(
+        unlock(&h, PW).await.unwrap_err(),
+        VaultError::WrongCredentials
+    ));
+    assert!(h.repo.load_config().await.unwrap().recovery_slot.is_none());
+
+    // The audit timeline records the enroll, the recovery unlock, and the forced change.
+    assert_eq!(count_action(&h, AuditAction::RecoveryKeyEnabled).await, 1);
+    assert_eq!(count_action(&h, AuditAction::RecoveryUsed).await, 1);
+    assert_eq!(count_action(&h, AuditAction::PasswordChanged).await, 1);
+}
+
+/// #9 — the two new audit actions land (and the `ACTION_NAMES` compile-tie stays green).
+#[tokio::test]
+async fn enroll_and_revoke_write_audit_rows() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, PW).await.unwrap();
+    enroll_recovery_key(&mut session, kdf(&h), keychain(&h))
+        .await
+        .unwrap();
+    revoke_recovery_key(&mut session).await.unwrap();
+    lock_vault(session).await.unwrap();
+
+    assert_eq!(count_action(&h, AuditAction::RecoveryKeyEnabled).await, 1);
+    assert_eq!(count_action(&h, AuditAction::RecoveryKeyRevoked).await, 1);
+}
+
+/// 🔴 #2 — the 2SKD binding: neither document alone opens the vault. A right Recovery Key with
+/// a WRONG Secret Key fails; a WRONG Recovery Key with the right Secret Key fails; both right
+/// succeeds. This is what makes the Recovery Key not a bearer credential.
+#[tokio::test]
+async fn recovery_needs_both_documents() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, PW).await.unwrap();
+    let display = enroll_recovery_key(&mut session, kdf(&h), keychain(&h))
+        .await
+        .unwrap()
+        .recovery_key_display;
+    lock_vault(session).await.unwrap();
+
+    let recovery_key = parse_recovery_key(&display).unwrap();
+    let unlocker = build_unlock(&h);
+
+    // Right Recovery Key, WRONG Secret Key → the AES-KW unwrap fails.
+    let e1 = unlocker
+        .unlock_with_recovery_key(
+            h.home.clone(),
+            recovery_key.clone(),
+            Zeroizing::new([0x11u8; SECRET_KEY_LEN]),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(e1, VaultError::WrongCredentials), "got {e1:?}");
+
+    // WRONG Recovery Key, right Secret Key → fails too.
+    let e2 = unlocker
+        .unlock_with_recovery_key(
+            h.home.clone(),
+            Zeroizing::new([0x99u8; 32]),
+            Zeroizing::new(h.secret_key),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(e2, VaultError::WrongCredentials), "got {e2:?}");
+
+    // Both documents → opens.
+    let s = unlocker
+        .unlock_with_recovery_key(h.home.clone(), recovery_key, Zeroizing::new(h.secret_key))
+        .await
+        .expect("both documents open the vault");
+    lock_vault(s).await.unwrap();
+}
+
+/// 🔴 C2 — the no-reauth forced change is gated to a session freshly opened by recovery. A
+/// NORMAL unlock has no pending reset, so `change_password_after_recovery` is refused — a
+/// walk-up attacker at an unlocked vault cannot change the password without the old one.
+#[tokio::test]
+async fn forced_change_is_refused_on_a_normal_session() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, PW).await.unwrap();
+    let e = change_password_after_recovery(
+        &mut session,
+        kdf(&h),
+        keychain(&h),
+        biometric(&h),
+        Zeroizing::new(NEW_PW.to_owned()),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(e, VaultError::NoRecoveryResetPending),
+        "a normal session must not allow a no-reauth password change; got {e:?}"
+    );
+    lock_vault(session).await.unwrap();
+}
+
+/// Enroll → recovery-not-configured after revoke: `revoke_recovery_key` clears the slot, so a
+/// later recovery unlock is refused (`RecoveryNotConfigured`), not a brick.
+#[tokio::test]
+async fn revoke_turns_recovery_off() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, PW).await.unwrap();
+    let display = enroll_recovery_key(&mut session, kdf(&h), keychain(&h))
+        .await
+        .unwrap()
+        .recovery_key_display;
+    revoke_recovery_key(&mut session).await.unwrap();
+    lock_vault(session).await.unwrap();
+
+    assert!(h.repo.load_config().await.unwrap().recovery_slot.is_none());
+
+    let recovery_key = parse_recovery_key(&display).unwrap();
+    let e = build_unlock(&h)
+        .unlock_with_recovery_key(h.home.clone(), recovery_key, Zeroizing::new(h.secret_key))
+        .await
+        .unwrap_err();
+    assert!(matches!(e, VaultError::RecoveryNotConfigured), "got {e:?}");
 }
 
 /// Read a snapshot's own `vault.vdb` `recovery_slot` directly.

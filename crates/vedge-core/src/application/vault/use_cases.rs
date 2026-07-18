@@ -1,12 +1,14 @@
 pub mod backup_vault;
 pub mod biometric;
 pub mod change_password;
+pub mod change_password_after_recovery;
 pub mod copy_field;
 pub mod create_entry;
 pub mod create_snapshot;
 pub mod create_vault;
 pub mod delete_vault;
 pub mod document_ops;
+pub mod enroll_recovery_key;
 pub mod entry_history;
 pub mod env_vars;
 pub mod export_emergency_kit;
@@ -27,6 +29,7 @@ pub mod restore_entry;
 pub mod reveal_field;
 pub mod reveal_totp;
 pub mod revert_to_snapshot;
+pub mod revoke_recovery_key;
 pub mod rewrap_snapshots;
 pub mod run_maintenance;
 pub mod scan_health;
@@ -43,6 +46,7 @@ pub mod update_entry;
 pub use backup_vault::{BackupReport, BackupStatus, BackupVaultInput, backup_status, backup_vault};
 pub use biometric::enroll_biometric;
 pub use change_password::{ChangePasswordInput, change_password};
+pub use change_password_after_recovery::change_password_after_recovery;
 pub use copy_field::{CopyFieldInput, FieldSelector, copy_field, place_text_on_clipboard};
 pub use create_entry::{CreateEntryInput, CreateEntryOutput, create_entry};
 pub use create_snapshot::{SnapshotReport, create_snapshot};
@@ -51,6 +55,7 @@ pub use delete_vault::{DeleteVaultInput, DeleteVaultReport, delete_vault};
 pub use document_ops::{
     DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, export_document, import_document,
 };
+pub use enroll_recovery_key::{EnrollRecoveryOutcome, enroll_recovery_key};
 pub use entry_history::{
     CopyHistoryFieldInput, HISTORY_MAX_VERSIONS, HistoryVersion, RevealHistoryFieldInput,
     changed_fields, copy_history_field, get_history_value, list_history, restore_from_history,
@@ -85,6 +90,7 @@ pub use revert_to_snapshot::{
     RevertReport, RevertToSnapshotInput, SeamlessRevertOutcome, revert_to_snapshot,
     revert_to_snapshot_in_session,
 };
+pub use revoke_recovery_key::revoke_recovery_key;
 pub use run_maintenance::{MaintenanceReport, run_maintenance};
 pub use scan_health::scan_health;
 pub use set_favorite::set_favorite;

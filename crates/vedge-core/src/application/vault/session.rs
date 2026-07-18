@@ -22,7 +22,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::application::vault::ports::blob_store::BlobStore;
 use crate::application::vault::ports::clipboard::ClipboardProvider;
@@ -30,7 +30,7 @@ use crate::application::vault::ports::crypto::CryptoProvider;
 use crate::application::vault::ports::repository::VaultRepository;
 use crate::application::vault::use_cases::import_entries::ImportSession;
 use crate::domain::shared::{EntryId, VaultId};
-use crate::domain::vault::crypto_constants::KEK_LEN;
+use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
 use crate::domain::vault::entities::VaultConfig;
 use crate::domain::vault::index::VaultIndex;
 use crate::infrastructure::crypto::secret_mem::SecretMem;
@@ -72,6 +72,16 @@ pub struct VaultSession {
     /// lock / TTL / cancel drops it and zeroizes the staged secrets. `None` until
     /// `begin_import` runs.
     pub(crate) import: Option<ImportSession>,
+
+    /// One-shot capability for the forced post-recovery password change (slice 5.7).
+    /// Set ONLY by `unlock_with_recovery_key` to the Secret Key the user just typed;
+    /// `None` on every other unlock path. `change_password_after_recovery` `.take()`s it
+    /// (errors `NoRecoveryResetPending` if absent), which both (a) gates the no-reauth
+    /// password change to a session freshly opened by recovery, exactly once, and (b) feeds
+    /// the SK to the forced change explicitly so it works even if the keychain re-store
+    /// failed on a fresh device. Held in `Zeroizing`, so it self-zeroizes when consumed or
+    /// when the session drops on any lock/TTL/cancel path.
+    pub(crate) pending_recovery_reset: Option<Zeroizing<[u8; SECRET_KEY_LEN]>>,
 }
 
 impl VaultSession {
@@ -100,6 +110,7 @@ impl VaultSession {
             revealed_totp: HashSet::new(),
             rollback_warning: None,
             import: None,
+            pending_recovery_reset: None,
         }
     }
 
