@@ -20,6 +20,7 @@ pub mod lock_vault;
 pub mod move_entry;
 pub mod open_backup;
 pub mod queries;
+pub mod reauthenticate;
 pub mod refs;
 pub mod replace_vault;
 pub mod restore_entry;
@@ -73,6 +74,7 @@ pub use queries::{
     entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries, list_tags,
     list_trashed_entries, search_entries,
 };
+pub use reauthenticate::reauthenticate_master_password;
 pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
 pub use reveal_field::{

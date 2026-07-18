@@ -49,11 +49,12 @@ pub use application::vault::use_cases::{
     entries_by_folder, entries_by_tag, export_document, export_emergency_kit, export_entries,
     get_entry, get_history_value, hard_delete_entry, import_document, inspect_backup,
     list_active_entries, list_audit, list_history, list_tags, list_trashed_entries, lock_vault,
-    move_entry, normalize_tag_name, open_backup, place_text_on_clipboard, record_lock, rename_tag,
-    replace_vault_from_backup, restore_entry, restore_from_history, reveal_env_vars, reveal_field,
-    reveal_history_field, reveal_recovery_codes, reveal_totp, revert_to_snapshot,
-    revert_to_snapshot_in_session, run_maintenance, scan_health, search_entries, set_favorite,
-    set_sort_order, set_tags, soft_delete_entry, unlock_with_secret_key, update_entry,
+    move_entry, normalize_tag_name, open_backup, place_text_on_clipboard,
+    reauthenticate_master_password, record_lock, rename_tag, replace_vault_from_backup,
+    restore_entry, restore_from_history, reveal_env_vars, reveal_field, reveal_history_field,
+    reveal_recovery_codes, reveal_totp, revert_to_snapshot, revert_to_snapshot_in_session,
+    run_maintenance, scan_health, search_entries, set_favorite, set_sort_order, set_tags,
+    soft_delete_entry, unlock_with_secret_key, update_entry,
 };
 // Import entries (slice 5.3b) + the snapshot-source tweezers (slice 5.3c).
 pub use application::vault::use_cases::{
