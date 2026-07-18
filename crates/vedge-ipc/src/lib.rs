@@ -47,7 +47,7 @@ pub use common::{
     CommonMetaDto, EntryTypeDto, Timestamp, b64_decode, b64_decode_fixed, b64_encode,
     ts_from_string, ts_to_string,
 };
-pub use emergency_kit::{EmergencyKitDto, RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
+pub use emergency_kit::{EmergencyKitDto, SecretKeyUnlockOutcomeDto, UnlockWithSecretKeyInputDto};
 pub use entry::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarsPayloadDto,
     FolderPayloadDto, HistoryEntryDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto,

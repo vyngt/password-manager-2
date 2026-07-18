@@ -20,7 +20,6 @@ pub mod lock_vault;
 pub mod move_entry;
 pub mod open_backup;
 pub mod queries;
-pub mod recover_vault;
 pub mod refs;
 pub mod replace_vault;
 pub mod restore_entry;
@@ -37,6 +36,7 @@ pub mod soft_delete_entry;
 pub mod tag_crypto;
 pub mod tag_ops;
 pub mod unlock_vault;
+pub mod unlock_with_secret_key;
 pub mod update_entry;
 
 pub use backup_vault::{BackupReport, BackupStatus, BackupVaultInput, backup_status, backup_vault};
@@ -73,7 +73,6 @@ pub use queries::{
     entries_by_domain, entries_by_folder, entries_by_tag, list_active_entries, list_tags,
     list_trashed_entries, search_entries,
 };
-pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
 pub use reveal_field::{
@@ -92,4 +91,7 @@ pub use set_tags::set_tags;
 pub use soft_delete_entry::soft_delete_entry;
 pub use tag_ops::{create_tag, delete_tag, normalize_tag_name, rename_tag};
 pub use unlock_vault::{UnlockVault, UnlockVaultInput};
+pub use unlock_with_secret_key::{
+    SecretKeyUnlockOutcome, UnlockWithSecretKeyInput, unlock_with_secret_key,
+};
 pub use update_entry::{UpdateEntryInput, update_entry};

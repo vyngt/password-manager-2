@@ -25,7 +25,7 @@ use crate::domain::shared::now;
 use crate::domain::vault::emergency_kit::EmergencyKitContent;
 use crate::domain::vault::entities::{AuditAction, AuditEvent};
 use crate::domain::vault::errors::VaultError;
-use crate::domain::vault::recovery::format_secret_key;
+use crate::domain::vault::secret_key::format_secret_key;
 
 #[derive(Debug)]
 pub struct ExportEmergencyKitInput {

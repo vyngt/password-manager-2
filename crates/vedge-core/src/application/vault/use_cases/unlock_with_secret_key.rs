@@ -1,6 +1,8 @@
-//! `recover_vault` — unlock a vault using a typed Emergency Kit string
-//! instead of the keychain-stored Secret Key, then re-register the key in
-//! the OS keychain so subsequent unlocks work normally.
+//! `unlock_with_secret_key` — unlock a vault using a typed Emergency Kit string.
+//!
+//! Used when the keychain-stored Secret Key is missing; after a successful
+//! unlock it re-registers the key in the OS keychain so subsequent unlocks
+//! work normally.
 //!
 //! ## Why this wraps `UnlockVault`
 //!
@@ -15,7 +17,7 @@
 //!
 //! ## Return shape
 //!
-//! Returns [`RecoveryOutcome`] instead of plain `VaultSession` so the
+//! Returns [`SecretKeyUnlockOutcome`] instead of plain `VaultSession` so the
 //! shell can distinguish "keychain restored cleanly" from "unlock
 //! succeeded but keychain write failed" without forcing the user to
 //! re-enter the kit (Argon2id is ~500 ms — user-hostile to retry).
@@ -32,21 +34,21 @@ use crate::application::vault::use_cases::unlock_vault::{UnlockVault, UnlockVaul
 use crate::domain::shared::now;
 use crate::domain::vault::entities::{AuditAction, AuditEvent};
 use crate::domain::vault::errors::VaultError;
-use crate::domain::vault::recovery::parse_secret_key;
+use crate::domain::vault::secret_key::parse_secret_key;
 
 #[derive(Debug)]
-pub struct RecoverVaultInput {
+pub struct UnlockWithSecretKeyInput {
     pub vault_path: PathBuf,
     pub master_password: Zeroizing<String>,
     /// `A3-XXXXX-XXXXX-…` as typed by the user. Stripped and validated
     /// internally by [`parse_secret_key`].
-    pub recovery_key_display: String,
+    pub secret_key_display: String,
 }
 
 /// Successful recovery. The session is always valid; `keychain_restored`
 /// indicates whether the Secret Key was also successfully re-written to
 /// the OS keychain.
-pub struct RecoveryOutcome {
+pub struct SecretKeyUnlockOutcome {
     pub session: VaultSession,
     /// `true` if `keychain.store_secret_key` succeeded; `false` if the
     /// unlock worked but persisting the key did not. In the `false` case,
@@ -56,9 +58,9 @@ pub struct RecoveryOutcome {
     pub keychain_error: Option<String>,
 }
 
-impl std::fmt::Debug for RecoveryOutcome {
+impl std::fmt::Debug for SecretKeyUnlockOutcome {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RecoveryOutcome")
+        f.debug_struct("SecretKeyUnlockOutcome")
             .field("keychain_restored", &self.keychain_restored)
             .field("keychain_error", &self.keychain_error)
             .finish_non_exhaustive()
@@ -66,13 +68,13 @@ impl std::fmt::Debug for RecoveryOutcome {
 }
 
 #[instrument(skip_all, fields(vault_path = %input.vault_path.display()))]
-pub async fn recover_vault(
+pub async fn unlock_with_secret_key(
     unlock: &UnlockVault,
     keychain: Arc<dyn KeychainProvider>,
-    input: RecoverVaultInput,
-) -> Result<RecoveryOutcome, VaultError> {
+    input: UnlockWithSecretKeyInput,
+) -> Result<SecretKeyUnlockOutcome, VaultError> {
     // 1. Parse + checksum-verify before touching the KDF — saves ~500 ms on typos.
-    let secret_key = parse_secret_key(&input.recovery_key_display)?;
+    let secret_key = parse_secret_key(&input.secret_key_display)?;
 
     // Keep a copy for the post-unlock keychain write. The unlock path takes
     // ownership of the original (moved into `spawn_blocking`).
@@ -116,7 +118,7 @@ pub async fn recover_vault(
         &mut sk_bytes,
     );
 
-    Ok(RecoveryOutcome {
+    Ok(SecretKeyUnlockOutcome {
         session,
         keychain_restored,
         keychain_error,

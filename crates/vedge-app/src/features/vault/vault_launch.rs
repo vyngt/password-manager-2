@@ -27,8 +27,8 @@ use leptos_router::hooks::use_navigate;
 use std::time::Duration;
 use uuid::Uuid;
 use vedge_ipc::{
-    RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto,
-    UnlockWithRecoveryKeyInputDto, VaultDetailsDto,
+    RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto, UnlockWithSecretKeyInputDto,
+    VaultDetailsDto,
 };
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -96,11 +96,11 @@ pub fn VaultLaunch() -> impl IntoView {
     let pw = RwSignal::new(String::new());
     let unlocking = RwSignal::new(false);
 
-    // Recovery (5.1): the "Use Emergency Kit" panel state. `recovery_open` is
+    // Secret-Key unlock (5.1): the "Use Emergency Kit" panel state. `secret_key_open` is
     // toggled by the always-visible CTA and force-opened on a keychain error;
-    // `recovery_key` holds the `A3-…` Secret Key (passed through verbatim).
-    let recovery_open = RwSignal::new(false);
-    let recovery_key = RwSignal::new(String::new());
+    // `secret_key_input` holds the `A3-…` Secret Key (passed through verbatim).
+    let secret_key_open = RwSignal::new(false);
+    let secret_key_input = RwSignal::new(String::new());
 
     // Biometric: `bio_available` is device-wide (checked once); `bio_enrolled`
     // is per-selected-vault. When enrolled, the Hello button shows by default;
@@ -409,7 +409,7 @@ pub fn VaultLaunch() -> impl IntoView {
                     // Toast the pointer *and* open the Emergency Kit panel so the
                     // user lands directly on where to type their Secret Key.
                     show_error(msg_keychain);
-                    recovery_open.set(true);
+                    secret_key_open.set(true);
                 }
                 Err(e) => show_error(format!("{msg_failed}{e}")),
             }
@@ -420,14 +420,14 @@ pub fn VaultLaunch() -> impl IntoView {
     // Recover via the Emergency Kit: master password + the `A3-…` Secret Key.
     // Sibling of `do_unlock`; on success the shell inserts the session itself
     // (same as a normal unlock) and reports whether the keychain was restored.
-    let do_recover = move || {
+    let do_secret_key_unlock = move || {
         let Some(sel) = selected.get() else {
             return;
         };
         let password = pw.get();
         // Trim ONLY — `parse_secret_key` (core) owns normalization (case, 0/O,
         // 1/I/L) and the checksum. No UI-side re-validation.
-        let key = recovery_key.get().trim().to_owned();
+        let key = secret_key_input.get().trim().to_owned();
         if password.is_empty() || key.is_empty() || unlocking.get() {
             return;
         }
@@ -435,18 +435,18 @@ pub fn VaultLaunch() -> impl IntoView {
         let nav = use_navigate();
         // Hoist EVERY locale string here (owner present); reading inside
         // `spawn_local` trips the reactive-context warning (console must stay clean).
-        let msg_invalid = t_string!(i18n, unlock.recovery_invalid_key).to_owned();
+        let msg_invalid = t_string!(i18n, unlock.secret_key_invalid).to_owned();
         let msg_wrong = t_string!(i18n, unlock.wrong_password).to_owned();
         let msg_failed = t_string!(i18n, unlock.unlock_failed).to_owned();
-        let msg_partial = t_string!(i18n, unlock.recovery_partial).to_owned();
-        let msg_restored = t_string!(i18n, unlock.recovery_restored).to_owned();
+        let msg_partial = t_string!(i18n, unlock.secret_key_partial).to_owned();
+        let msg_restored = t_string!(i18n, unlock.secret_key_restored).to_owned();
         spawn_local(async move {
-            let input = UnlockWithRecoveryKeyInputDto {
+            let input = UnlockWithSecretKeyInputDto {
                 vault_path: sel.path.clone(),
                 master_password: password,
-                recovery_key_display: key,
+                secret_key_display: key,
             };
-            match api::recovery::unlock_with_recovery_key(&input).await {
+            match api::secret_key::unlock_with_secret_key(&input).await {
                 Ok(outcome) => {
                     if outcome.keychain_restored {
                         show_success(msg_restored);
@@ -457,7 +457,7 @@ pub fn VaultLaunch() -> impl IntoView {
                         ));
                     }
                     pw.set(String::new());
-                    recovery_key.set(String::new());
+                    secret_key_input.set(String::new());
                     record_unlock(&sel).await;
                     active.path.set(Some(sel.path.clone()));
                     nav("/v/vault", Default::default());
@@ -540,7 +540,7 @@ pub fn VaultLaunch() -> impl IntoView {
     let on_unlock = Callback::new(move |()| do_unlock());
     let on_bio_unlock = Callback::new(move |()| do_bio_unlock());
     let on_use_password = Callback::new(move |()| show_password.set(true));
-    let on_recover = Callback::new(move |()| do_recover());
+    let on_secret_key_unlock = Callback::new(move |()| do_secret_key_unlock());
 
     // Slice 5.2.2 — "Open a backup…" (and, behind Advanced, Replace).
     let backup_open = RwSignal::new(false);
@@ -627,12 +627,12 @@ pub fn VaultLaunch() -> impl IntoView {
                                 unlocking=unlocking
                                 bio_enrolled=bio_enrolled
                                 show_password=show_password
-                                recovery_open=recovery_open
-                                recovery_key=recovery_key
+                                secret_key_open=secret_key_open
+                                secret_key_input=secret_key_input
                                 on_unlock=on_unlock
                                 on_bio_unlock=on_bio_unlock
                                 on_use_password=on_use_password
-                                on_recover=on_recover
+                                on_secret_key_unlock=on_secret_key_unlock
                             />
                         </div>
                     </div>

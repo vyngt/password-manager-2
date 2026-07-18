@@ -9,7 +9,7 @@ pub mod index;
 pub mod kdf_params;
 pub mod otpauth;
 pub mod payloads;
-pub mod recovery;
+pub mod secret_key;
 pub mod secret_update;
 pub mod totp;
 
@@ -34,7 +34,7 @@ pub use payloads::{
     EntryPayload, EntryType, EnvVar, EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload,
     NotePayload, SshKeyPayload, TagPayload, UnknownPayload,
 };
-pub use recovery::{RECOVERY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
+pub use secret_key::{SECRET_KEY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
 pub use secret_update::{
     EnvVarUpdate, SecretListUpdate, SecretUpdate, SecretUpdates, resolve_secrets,
 };
