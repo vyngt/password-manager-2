@@ -37,6 +37,10 @@ pub fn RecoveryKeySetting() -> impl IntoView {
     let error = RwSignal::new(Option::<String>::None);
     // `None` → phase 1 (confirm); `Some(display)` → phase 2 (the minted key, shown once).
     let new_key = RwSignal::new(Option::<String>::None);
+    // Whether the Recovery Kit PDF was saved this session. The `RK1-` key is show-once and —
+    // unlike the Secret Key — is NOT re-derivable, so closing phase 2 without saving loses it
+    // while recovery stays enrolled. `done_enroll` warns in that case.
+    let kit_saved = RwSignal::new(false);
 
     let vault_path = move || active.path.get().unwrap_or_default();
 
@@ -59,9 +63,24 @@ pub fn RecoveryKeySetting() -> impl IntoView {
         error.set(None);
         current.set(String::new());
         new_key.set(None);
+        kit_saved.set(false);
         dialog_open.set(true);
     });
-    let close_enroll = Callback::new(move |()| dialog_open.set(false));
+    // Close the enroll dialog. If we're in phase 2 (a key was minted) and the Recovery Kit was
+    // never saved, warn first — the `RK1-` key can't be shown again.
+    let close_enroll = Callback::new(move |()| {
+        if new_key.get().is_some() && !kit_saved.get() {
+            let dismiss = t_string!(i18n, settings.dismiss).to_owned();
+            toast.show(
+                ToastInput::new(t_string!(i18n, settings.recovery_key_unsaved).to_owned())
+                    .variant(ToastVariant::Warning)
+                    .dismiss_label(dismiss),
+            );
+        }
+        new_key.set(None);
+        kit_saved.set(false);
+        dialog_open.set(false);
+    });
     let open_revoke = Callback::new(move |()| {
         error.set(None);
         revoke_open.set(true);
@@ -126,7 +145,10 @@ pub fn RecoveryKeySetting() -> impl IntoView {
                 Ok(Some(dest)) => {
                     let (msg, variant) =
                         match api::recovery::write_recovery_kit_pdf(&path, &display, &dest).await {
-                            Ok(()) => (msg_saved, ToastVariant::Success),
+                            Ok(()) => {
+                                kit_saved.set(true);
+                                (msg_saved, ToastVariant::Success)
+                            }
                             Err(e) => (format!("{msg_err}{e}"), ToastVariant::Danger),
                         };
                     toast.show(ToastInput::new(msg).variant(variant).dismiss_label(dismiss));
