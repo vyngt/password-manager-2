@@ -41,10 +41,11 @@ pub async fn change_password(
     let vault_id = vault_id_from_string(&vault_path);
     let handle = state.get_session(&vault_id)?;
 
-    // Refresh the hard TTL up front so the ~1-2 s KDF re-run below can't be reaped
-    // mid-change and lock the user out from under a successful change (Decision 6
-    // must hold unconditionally). The user is already authenticated in this
-    // unlocked session, so extending it here is sound. Re-stamped again after
+    // Refresh the hard TTL up front so the two Argon2 passes below (the current-password
+    // re-auth + the new-key re-derive) can't be reaped mid-change and lock the user out
+    // from under a successful change (Decision 6 must hold unconditionally). The user is
+    // already authenticated in this unlocked session, so extending it here is sound. The
+    // full session TTL (minutes) covers the ~2-3 s cost. Re-stamped again after
     // success to reset to a fresh full deadline.
     let ttl = crate::setup::services::session_ttl(&state).await;
     state.touch_deadline(&vault_id, ttl);

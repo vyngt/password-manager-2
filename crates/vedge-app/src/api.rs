@@ -15,10 +15,10 @@ pub mod tauri;
 // The 2.10.1 dead-code sweep removed wrappers with no call site and no near-term consumer
 // (e.g. server-side query variants superseded by client-side filtering, the bytes-based
 // document/emergency-kit variants superseded by path-based ones, and the then-parked
-// device/maintenance/recovery subsystems — `maintenance` was rewired in 4.6a, `recovery` in
-// 5.1). A still-unused wrapper is kept only when it has a documented near-term consumer, marked
-// `#[allow(dead_code, reason = "…")]` **per function**; a module whose *every* wrapper is still
-// unused carries a single module-level allow (below).
+// device/maintenance/secret-key subsystems — `maintenance` was rewired in 4.6a, the Secret-Key
+// unlock in 5.1, and change-password/rotate in 5.6). A still-unused wrapper is kept only when it
+// has a documented near-term consumer, marked `#[allow(dead_code, reason = "…")]` **per
+// function**; a module whose *every* wrapper is still unused carries a single module-level allow.
 pub mod audit;
 pub mod backup;
 pub mod biometric;

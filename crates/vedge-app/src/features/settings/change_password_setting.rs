@@ -81,6 +81,7 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
         let msg_ok = t_string!(i18n, settings.change_password_saved).to_owned();
         let msg_wrong = t_string!(i18n, settings.change_password_wrong).to_owned();
         let msg_err = t_string!(i18n, settings.change_password_err).to_owned();
+        let msg_no_keychain = t_string!(i18n, settings.kit_reexport_no_keychain).to_owned();
         let dismiss = t_string!(i18n, settings.dismiss).to_owned();
         spawn_local(async move {
             match api::password::change_password(&path, &dto).await {
@@ -98,6 +99,9 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
                 // The command re-verifies the current password first; a mismatch
                 // is `WrongCredentials` and nothing was rewrapped.
                 Err(ApiError::WrongCredentials) => error.set(Some(msg_wrong)),
+                // Verifying needs the current Secret Key from the keychain; on a
+                // biometric-only vault it may be absent — point at the kit, not a raw error.
+                Err(ApiError::Keychain(_)) => error.set(Some(msg_no_keychain)),
                 Err(e) => error.set(Some(format!("{msg_err} {e}"))),
             }
             busy.set(false);

@@ -67,7 +67,9 @@ async fn change_master_password_via_ui() -> Result<()> {
         .await
         .context("submit (wrong current password)")?;
     wait_until(Duration::from_secs(20), || async {
-        Ok(dialog_text(&session).await?.contains("Wrong current password"))
+        Ok(dialog_text(&session)
+            .await?
+            .contains("Wrong current password"))
     })
     .await
     .context("a wrong current password must be rejected in-dialog")?;

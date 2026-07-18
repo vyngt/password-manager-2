@@ -57,6 +57,7 @@ pub fn RotateSecretKeySetting() -> impl IntoView {
         let pw = current.get();
         let msg_wrong = t_string!(i18n, settings.rotate_wrong).to_owned();
         let msg_err = t_string!(i18n, settings.rotate_err).to_owned();
+        let msg_no_keychain = t_string!(i18n, settings.kit_reexport_no_keychain).to_owned();
         spawn_local(async move {
             match api::password::rotate_secret_key(&path, &pw).await {
                 Ok(out) => {
@@ -66,6 +67,9 @@ pub fn RotateSecretKeySetting() -> impl IntoView {
                 // The command re-verifies the current password first; a mismatch
                 // is `WrongCredentials` and nothing was rotated.
                 Err(ApiError::WrongCredentials) => error.set(Some(msg_wrong)),
+                // Verifying needs the current Secret Key from the keychain; on a
+                // biometric-only vault it may be absent — point at the kit, not a raw error.
+                Err(ApiError::Keychain(_)) => error.set(Some(msg_no_keychain)),
                 Err(e) => error.set(Some(format!("{msg_err} {e}"))),
             }
             busy.set(false);
