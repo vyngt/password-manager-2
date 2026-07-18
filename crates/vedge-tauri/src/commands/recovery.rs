@@ -23,10 +23,19 @@ use vedge_core::{
 
 use crate::dto::recovery::{RecoveryEnrollOutputDto, UnlockWithRecoveryKeyInputDto};
 use crate::error::CommandError;
+use crate::pdf;
 use crate::state::AppState;
 
 fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
+}
+
+async fn resolve_display_name(state: &AppState, vault_path: &str) -> Option<String> {
+    let recents = state.vault_registry.list().await.ok()?;
+    recents
+        .into_iter()
+        .find(|r| r.path.to_string_lossy() == vault_path)
+        .map(|r| r.display_name)
 }
 
 /// Enroll a Recovery Key on the unlocked vault, returning the `RK1-` display show-once.
@@ -172,4 +181,35 @@ pub async fn recovery_key_enrolled(
     let handle = state.get_session(&vault_id)?;
     let guard = handle.lock().await;
     Ok(guard.has_recovery_key())
+}
+
+/// Render the Recovery Kit PDF and write it to `dest_path`.
+///
+/// Unlike the Emergency Kit, the Recovery Key is NOT stored (show-once), so the `RK1-` display
+/// is passed in from the UI's transient enroll state — the same string that crossed once at
+/// enroll. Requires an unlocked session (the enroll flow that produced it is in one).
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path))]
+pub async fn write_recovery_kit_pdf(
+    vault_path: String,
+    recovery_key_display: String,
+    dest_path: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault_id = vault_id_from_string(&vault_path);
+    // Prove the vault is unlocked; we don't need the session contents (the display is supplied).
+    let _ = state.get_session(&vault_id)?;
+
+    let vault_name = resolve_display_name(&state, &vault_path)
+        .await
+        .unwrap_or_default();
+    let content = pdf::recovery_kit::RecoveryKitContent {
+        vault_name,
+        vault_path,
+        generated_at: vedge_core::domain::shared::now(),
+        recovery_key_display,
+    };
+    let bytes = pdf::recovery_kit::render(&content)?;
+    std::fs::write(&dest_path, &bytes)
+        .map_err(|e| CommandError::Storage(format!("write recovery kit pdf: {e}")))
 }

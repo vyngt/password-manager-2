@@ -78,3 +78,27 @@ pub async fn recovery_key_enrolled(vault_path: &str) -> Result<bool, ApiError> {
     }
     call("recovery_key_enrolled", &Args { vault_path }).await
 }
+
+/// Render + write the Recovery Kit PDF to `dest_path`. The `RK1-` display comes from the
+/// transient enroll state (it is not stored), so it is passed in rather than re-derived.
+pub async fn write_recovery_kit_pdf(
+    vault_path: &str,
+    recovery_key_display: &str,
+    dest_path: &str,
+) -> Result<(), ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+        recovery_key_display: &'a str,
+        dest_path: &'a str,
+    }
+    call_void(
+        "write_recovery_kit_pdf",
+        &Args {
+            vault_path,
+            recovery_key_display,
+            dest_path,
+        },
+    )
+    .await
+}
