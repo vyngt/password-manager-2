@@ -30,7 +30,7 @@ pub struct EmergencyKitContent {
     pub generated_at: Timestamp,
 
     /// `A3-XXXXX-XXXXX-…-XXXXX` — safe to print. Produced via
-    /// [`format_secret_key`](crate::domain::vault::recovery::format_secret_key).
+    /// [`format_secret_key`](crate::domain::vault::secret_key::format_secret_key).
     pub secret_key_display: String,
 
     /// Argon2id params in effect when the vault was created, stringified.

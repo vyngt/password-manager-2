@@ -1,4 +1,4 @@
-//! Recovery-key format — Crockford base32 + HMAC-SHA256 checksum.
+//! Secret Key format — Crockford base32 + HMAC-SHA256 checksum.
 //!
 //! The Emergency Kit stores a 16-byte Secret Key in a human-typable form:
 //!
@@ -33,7 +33,7 @@ use crate::domain::vault::errors::VaultError;
 
 /// Display-facing version prefix. Lives here (not `crypto_constants`) because
 /// it is a user-visible token rather than a crypto constant.
-pub const RECOVERY_FORMAT_PREFIX: &str = "A3";
+pub const SECRET_KEY_FORMAT_PREFIX: &str = "A3";
 
 /// HMAC personalization — bound to this format version.
 const CHECKSUM_CONTEXT: &[u8] = b"vedge-v1-kit-checksum";
@@ -77,7 +77,7 @@ pub fn format_secret_key(key: &[u8; SECRET_KEY_LEN]) -> String {
 
     // Layout: A3-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
     let mut out = String::with_capacity(ENCODED_CHARS.saturating_add(6));
-    out.push_str(RECOVERY_FORMAT_PREFIX);
+    out.push_str(SECRET_KEY_FORMAT_PREFIX);
     for chunk_idx in 0_usize..6 {
         out.push('-');
         let start = chunk_idx.saturating_mul(5);
@@ -110,15 +110,15 @@ pub fn parse_secret_key(s: &str) -> Result<Zeroizing<[u8; SECRET_KEY_LEN]>, Vaul
         .collect();
 
     if normalized.len() != ENCODED_CHARS {
-        return Err(VaultError::InvalidRecoveryKey(format!(
+        return Err(VaultError::InvalidSecretKey(format!(
             "expected {ENCODED_CHARS} characters after normalization, got {}",
             normalized.len(),
         )));
     }
 
     let (prefix, data) = normalized.split_at(2);
-    if prefix != RECOVERY_FORMAT_PREFIX {
-        return Err(VaultError::InvalidRecoveryKey(
+    if prefix != SECRET_KEY_FORMAT_PREFIX {
+        return Err(VaultError::InvalidSecretKey(
             "unknown format prefix — upgrade Vedge or check for typos".to_owned(),
         ));
     }
@@ -131,24 +131,24 @@ pub fn parse_secret_key(s: &str) -> Result<Zeroizing<[u8; SECRET_KEY_LEN]>, Vaul
     // payload and would pass the checksum. Because `normalized` already had
     // confusables resolved, the comparison is against the strict alphabet.
     if encode_fixed(&decoded) != data {
-        return Err(VaultError::InvalidRecoveryKey(
+        return Err(VaultError::InvalidSecretKey(
             "non-canonical encoding — trailing padding bits must be zero".to_owned(),
         ));
     }
 
     let key_slice = decoded
         .get(..SECRET_KEY_LEN)
-        .ok_or_else(|| VaultError::InvalidRecoveryKey("truncated payload".to_owned()))?;
+        .ok_or_else(|| VaultError::InvalidSecretKey("truncated payload".to_owned()))?;
     let mut key = [0u8; SECRET_KEY_LEN];
     key.copy_from_slice(key_slice);
 
     let checksum_slice = decoded
         .get(SECRET_KEY_LEN..PAYLOAD_LEN)
-        .ok_or_else(|| VaultError::InvalidRecoveryKey("truncated payload".to_owned()))?;
+        .ok_or_else(|| VaultError::InvalidSecretKey("truncated payload".to_owned()))?;
     let expected = compute_checksum(&key);
 
     if checksum_slice.ct_eq(&expected).unwrap_u8() != 1 {
-        return Err(VaultError::InvalidRecoveryKey(
+        return Err(VaultError::InvalidSecretKey(
             "checksum mismatch — likely a typo".to_owned(),
         ));
     }
@@ -225,7 +225,7 @@ const fn canonicalize_char(c: char) -> char {
 #[allow(clippy::cast_possible_truncation)]
 fn decode_fixed(data: &str) -> Result<[u8; PAYLOAD_LEN], VaultError> {
     if data.len() != DATA_CHARS {
-        return Err(VaultError::InvalidRecoveryKey(format!(
+        return Err(VaultError::InvalidSecretKey(format!(
             "data section length mismatch (expected {DATA_CHARS}, got {})",
             data.len(),
         )));
@@ -238,8 +238,8 @@ fn decode_fixed(data: &str) -> Result<[u8; PAYLOAD_LEN], VaultError> {
 
     for ch in data.chars() {
         let Some(value) = ALPHABET.iter().position(|&b| (b as char) == ch) else {
-            return Err(VaultError::InvalidRecoveryKey(
-                "invalid character in recovery key".to_owned(),
+            return Err(VaultError::InvalidSecretKey(
+                "invalid character in secret key".to_owned(),
             ));
         };
         buffer = (buffer << 5) | value as u32;
@@ -255,7 +255,7 @@ fn decode_fixed(data: &str) -> Result<[u8; PAYLOAD_LEN], VaultError> {
     }
 
     if cursor != PAYLOAD_LEN {
-        return Err(VaultError::InvalidRecoveryKey(format!(
+        return Err(VaultError::InvalidSecretKey(format!(
             "decoded {cursor} bytes, expected {PAYLOAD_LEN}",
         )));
     }
@@ -379,7 +379,7 @@ mod tests {
         display.replace_range(0..2, "B3");
         let err = parse_secret_key(&display).expect_err("wrong prefix must fail");
         match err {
-            VaultError::InvalidRecoveryKey(msg) => {
+            VaultError::InvalidSecretKey(msg) => {
                 assert!(msg.contains("prefix"), "got: {msg}");
             }
             other => panic!("wrong variant: {other:?}"),
@@ -409,7 +409,7 @@ mod tests {
         display.replace_range(first_data_idx..=first_data_idx, "U");
         let err = parse_secret_key(&display).expect_err("U must fail");
         match err {
-            VaultError::InvalidRecoveryKey(msg) => {
+            VaultError::InvalidSecretKey(msg) => {
                 assert!(
                     msg.contains("invalid character") || msg.contains("checksum"),
                     "got: {msg}",

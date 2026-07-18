@@ -1,8 +1,8 @@
 //! Emergency Kit DTO conversion layer.
 
-pub use vedge_ipc::{EmergencyKitDto, RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
+pub use vedge_ipc::{EmergencyKitDto, SecretKeyUnlockOutcomeDto, UnlockWithSecretKeyInputDto};
 
-use vedge_core::RecoveryOutcome;
+use vedge_core::SecretKeyUnlockOutcome;
 use vedge_core::domain::vault::emergency_kit::EmergencyKitContent;
 
 use crate::dto::common::ts_to_string;
@@ -19,8 +19,8 @@ pub fn emergency_kit_to_dto(c: EmergencyKitContent) -> EmergencyKitDto {
 }
 
 #[must_use]
-pub fn recovery_outcome_to_dto(o: &RecoveryOutcome) -> RecoveryOutcomeDto {
-    RecoveryOutcomeDto {
+pub fn secret_key_unlock_outcome_to_dto(o: &SecretKeyUnlockOutcome) -> SecretKeyUnlockOutcomeDto {
+    SecretKeyUnlockOutcomeDto {
         keychain_restored: o.keychain_restored,
         keychain_error: o.keychain_error.clone(),
     }

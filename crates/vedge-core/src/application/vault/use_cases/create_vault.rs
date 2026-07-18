@@ -48,7 +48,7 @@ use crate::domain::vault::entities::{
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::VaultIndex;
 use crate::domain::vault::kdf_params::KdfParams;
-use crate::domain::vault::recovery::format_secret_key;
+use crate::domain::vault::secret_key::format_secret_key;
 use crate::infrastructure::crypto::secret_mem::SecretMem;
 
 pub struct CreateVaultInput {
@@ -67,9 +67,9 @@ pub struct CreateVaultInput {
 ///
 /// The `session` is always valid; `keychain_stored` reports whether the Secret
 /// Key was also written to the OS keychain (the vault file is valid regardless
-/// — see [`recover_vault`] for the same contract).
+/// — see [`unlock_with_secret_key`] for the same contract).
 ///
-/// [`recover_vault`]: super::recover_vault::recover_vault
+/// [`unlock_with_secret_key`]: super::unlock_with_secret_key::unlock_with_secret_key
 pub struct CreateVaultOutput {
     pub session: VaultSession,
     /// `format_secret_key(&secret_key)` — the `A3-XXXXX-…` Emergency-Kit

@@ -98,7 +98,7 @@ pub enum VaultError {
     MlockFailed,
 
     #[error("invalid recovery key: {0}")]
-    InvalidRecoveryKey(String),
+    InvalidSecretKey(String),
 
     // --- keychain ---
     #[error("OS keychain is unavailable")]

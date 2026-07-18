@@ -47,7 +47,7 @@ pub use common::{
     CommonMetaDto, EntryTypeDto, Timestamp, b64_decode, b64_decode_fixed, b64_encode,
     ts_from_string, ts_to_string,
 };
-pub use emergency_kit::{EmergencyKitDto, RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto};
+pub use emergency_kit::{EmergencyKitDto, SecretKeyUnlockOutcomeDto, UnlockWithSecretKeyInputDto};
 pub use entry::{
     AddressDto, ApiKeyPayloadDto, CardPayloadDto, DocumentPayloadDto, EnvVarsPayloadDto,
     FolderPayloadDto, HistoryEntryDto, IdentityPayloadDto, IndexEntryDto, LoginPayloadDto,
@@ -63,8 +63,8 @@ pub use health::{
 pub use import::{ImportActionDto, ImportFailureDto, ImportPreviewRow, ImportReportDto};
 pub use misc::{
     ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, EnvExportFormatDto,
-    ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, UnlockResultDto,
-    UnlockVaultInputDto,
+    ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, SecretKeyRotationOutputDto,
+    UnlockResultDto, UnlockVaultInputDto,
 };
 pub use secret_update::{EnvVarUpdateDto, SecretListUpdateDto, SecretUpdateDto};
 pub use settings::{

@@ -388,6 +388,14 @@ pub async fn drawer_text(s: &Session) -> Result<String> {
     }
 }
 
+/// Visible text of the open modal dialog (empty string if none is mounted).
+pub async fn dialog_text(s: &Session) -> Result<String> {
+    match s.driver().find(By::Css("div[role='dialog']")).await {
+        Ok(el) => Ok(el.text().await.unwrap_or_default()),
+        Err(_) => Ok(String::new()),
+    }
+}
+
 /// Visible text of the audit table (empty string if it isn't mounted yet).
 pub async fn audit_table_text(s: &Session) -> Result<String> {
     match s

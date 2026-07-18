@@ -13,15 +13,15 @@ pub struct EmergencyKitDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecoveryOutcomeDto {
+pub struct SecretKeyUnlockOutcomeDto {
     pub keychain_restored: bool,
     #[serde(default)]
     pub keychain_error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnlockWithRecoveryKeyInputDto {
+pub struct UnlockWithSecretKeyInputDto {
     pub vault_path: String,
     pub master_password: String,
-    pub recovery_key_display: String,
+    pub secret_key_display: String,
 }

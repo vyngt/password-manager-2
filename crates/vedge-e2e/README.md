@@ -16,7 +16,7 @@ each slice previously left behind. Started as the Phase-2 "daily loop" (slice 2.
   favorite → folder → lock → **restart** → unlock → theme-persists),
   [`generator`](tests/generator.rs), [`trash`](tests/trash.rs),
   [`audit`](tests/audit.rs), [`totp`](tests/totp.rs), [`health`](tests/health.rs),
-  [`session_lock`](tests/session_lock.rs), [`recovery`](tests/recovery.rs). Each
+  [`session_lock`](tests/session_lock.rs), [`secret_key_unlock`](tests/secret_key_unlock.rs). Each
   carries a standing console-clean assertion. `mise e2e` runs **all** of them
   (it is not pinned to a single file); cargo runs the binaries serially.
 

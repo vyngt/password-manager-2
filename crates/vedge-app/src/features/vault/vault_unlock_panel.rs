@@ -25,15 +25,15 @@ pub fn VaultUnlockPanel(
     /// Recovery (5.1): whether the "Use Emergency Kit" panel is revealed. The
     /// always-visible CTA toggles it; the orchestrator's `do_unlock` also opens
     /// it on a keychain-missing error so the stuck user lands on it directly.
-    recovery_open: RwSignal<bool>,
+    secret_key_open: RwSignal<bool>,
     /// Recovery (5.1): the `A3-…` Secret Key typed by the user. Passed through
     /// verbatim (the core parser owns normalization + checksum).
-    recovery_key: RwSignal<String>,
+    secret_key_input: RwSignal<String>,
     on_unlock: Callback<()>,
     on_bio_unlock: Callback<()>,
     on_use_password: Callback<()>,
     /// Recovery (5.1): submit master password + Secret Key via the recovery path.
-    on_recover: Callback<()>,
+    on_secret_key_unlock: Callback<()>,
 ) -> impl IntoView {
     let i18n = use_i18n();
 
@@ -190,41 +190,43 @@ pub fn VaultUnlockPanel(
                                                 // ---- Emergency Kit recovery (slice 5.1) --------------
                                                 // Always-reachable CTA under the password form; the panel
                                                 // also auto-opens on a keychain-missing error (the
-                                                // orchestrator's `do_unlock` sets `recovery_open`).
+                                                // orchestrator's `do_unlock` sets `secret_key_open`).
                                                 <Button
                                                     variant=Variant::Link
                                                     class="mt-2"
                                                     attr:data-testid="use-kit"
                                                     on:click=move |_: web_sys::MouseEvent| {
-                                                        recovery_open.update(|o| *o = !*o);
+                                                        secret_key_open.update(|o| *o = !*o);
                                                     }
                                                 >
                                                     {move || t!(i18n, unlock.use_kit_cta)}
                                                 </Button>
-                                                <Show when=move || recovery_open.get()>
+                                                <Show when=move || secret_key_open.get()>
                                                     <div
                                                         class="mt-1 flex flex-col gap-2.5"
                                                         on:keydown=move |ev: web_sys::KeyboardEvent| {
                                                             if ev.key() == "Enter" {
-                                                                on_recover.run(());
+                                                                on_secret_key_unlock.run(());
                                                             }
                                                         }
                                                     >
                                                         <p class="text-xs text-foreground/50">
-                                                            {move || t!(i18n, unlock.recovery_hint)}
+                                                            {move || t!(i18n, unlock.secret_key_hint)}
                                                         </p>
                                                         <Input
-                                                            id="recovery-key"
+                                                            id="secret-key"
                                                             size=Size::Lg
                                                             class="font-jetbrains-mono"
                                                             placeholder=Signal::derive(move || {
                                                                 "A3-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX".to_owned()
                                                             })
                                                             aria_label=Signal::derive(move || {
-                                                                t_string!(i18n, unlock.recovery_key_label).to_owned()
+                                                                t_string!(i18n, unlock.secret_key_label).to_owned()
                                                             })
-                                                            value=Signal::derive(move || recovery_key.get())
-                                                            on_input=Callback::new(move |v: String| recovery_key.set(v))
+                                                            value=Signal::derive(move || secret_key_input.get())
+                                                            on_input=Callback::new(move |v: String| {
+                                                                secret_key_input.set(v);
+                                                            })
                                                         />
                                                         {move || {
                                                             let busy = unlocking.get();
@@ -234,10 +236,12 @@ pub fn VaultUnlockPanel(
                                                                     size=Size::Lg
                                                                     full_width=true
                                                                     loading=busy
-                                                                    attr:data-testid="recovery-submit"
-                                                                    on:click=move |_: web_sys::MouseEvent| on_recover.run(())
+                                                                    attr:data-testid="secret-key-submit"
+                                                                    on:click=move |_: web_sys::MouseEvent| {
+                                                                        on_secret_key_unlock.run(());
+                                                                    }
                                                                 >
-                                                                    {move || t!(i18n, unlock.recovery_submit)}
+                                                                    {move || t!(i18n, unlock.secret_key_submit)}
                                                                 </Button>
                                                             }
                                                         }}

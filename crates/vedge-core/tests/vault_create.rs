@@ -31,7 +31,7 @@ use vedge_core::domain::shared::VaultId;
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
-use vedge_core::domain::vault::recovery::parse_secret_key;
+use vedge_core::domain::vault::secret_key::parse_secret_key;
 use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
 use vedge_core::infrastructure::clipboard::MemoryClipboardProvider;
 use vedge_core::infrastructure::crypto::{Argon2idKdfProvider, XChaCha20CryptoProvider};

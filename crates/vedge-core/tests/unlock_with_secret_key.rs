@@ -16,14 +16,14 @@ use common::{Harness, build_unlock};
 use zeroize::Zeroizing;
 
 use vedge_core::application::vault::ports::{KeychainProvider, VaultRepository};
-use vedge_core::application::vault::use_cases::{RecoverVaultInput, recover_vault};
+use vedge_core::application::vault::use_cases::{UnlockWithSecretKeyInput, unlock_with_secret_key};
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
-use vedge_core::domain::vault::recovery::format_secret_key;
+use vedge_core::domain::vault::secret_key::format_secret_key;
 
 #[tokio::test]
-async fn recover_vault_happy_path_restores_keychain() {
+async fn unlock_with_secret_key_happy_path_restores_keychain() {
     let h = Harness::fresh().await;
     let display = format_secret_key(&h.secret_key);
 
@@ -31,13 +31,13 @@ async fn recover_vault_happy_path_restores_keychain() {
     h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
-    let outcome = recover_vault(
+    let outcome = unlock_with_secret_key(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-        RecoverVaultInput {
+        UnlockWithSecretKeyInput {
             vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
-            recovery_key_display: display,
+            secret_key_display: display,
         },
     )
     .await
@@ -55,30 +55,30 @@ async fn recover_vault_happy_path_restores_keychain() {
 }
 
 #[tokio::test]
-async fn recover_vault_rejects_invalid_checksum_fast() {
+async fn unlock_with_secret_key_rejects_invalid_checksum_fast() {
     let h = Harness::fresh().await;
     let mut display = format_secret_key(&h.secret_key);
     // Flip one char in the body (skip prefix) to break checksum.
     display.replace_range(3..=3, "Z");
 
     let uv = build_unlock(&h);
-    let err = recover_vault(
+    let err = unlock_with_secret_key(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-        RecoverVaultInput {
+        UnlockWithSecretKeyInput {
             vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
-            recovery_key_display: display,
+            secret_key_display: display,
         },
     )
     .await
     .unwrap_err();
 
-    assert!(matches!(err, VaultError::InvalidRecoveryKey(_)));
+    assert!(matches!(err, VaultError::InvalidSecretKey(_)));
 }
 
 #[tokio::test]
-async fn recover_vault_wrong_password_does_not_touch_keychain() {
+async fn unlock_with_secret_key_wrong_password_does_not_touch_keychain() {
     let h = Harness::fresh().await;
     let display = format_secret_key(&h.secret_key);
 
@@ -87,13 +87,13 @@ async fn recover_vault_wrong_password_does_not_touch_keychain() {
     h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
-    let err = recover_vault(
+    let err = unlock_with_secret_key(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-        RecoverVaultInput {
+        UnlockWithSecretKeyInput {
             vault_path: h.home.clone(),
             master_password: Zeroizing::new("WRONG password".into()),
-            recovery_key_display: display,
+            secret_key_display: display,
         },
     )
     .await
@@ -106,19 +106,19 @@ async fn recover_vault_wrong_password_does_not_touch_keychain() {
 }
 
 #[tokio::test]
-async fn recover_vault_emits_recovery_used_audit_event() {
+async fn unlock_with_secret_key_emits_recovery_used_audit_event() {
     let h = Harness::fresh().await;
     let display = format_secret_key(&h.secret_key);
     h.keychain.delete_secret_key(&h.vault_uuid).unwrap();
 
     let uv = build_unlock(&h);
-    let _outcome = recover_vault(
+    let _outcome = unlock_with_secret_key(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-        RecoverVaultInput {
+        UnlockWithSecretKeyInput {
             vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
-            recovery_key_display: display,
+            secret_key_display: display,
         },
     )
     .await
@@ -136,7 +136,7 @@ async fn recover_vault_emits_recovery_used_audit_event() {
 }
 
 #[tokio::test]
-async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
+async fn unlock_with_secret_key_surfaces_partial_outcome_when_keychain_write_fails() {
     // Use a failing-on-store mock keychain to exercise the partial path.
     let h = Harness::fresh().await;
     let display = format_secret_key(&h.secret_key);
@@ -178,13 +178,13 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
     });
 
     let uv = build_unlock(&h);
-    let outcome = recover_vault(
+    let outcome = unlock_with_secret_key(
         &uv,
         Arc::clone(&failing),
-        RecoverVaultInput {
+        UnlockWithSecretKeyInput {
             vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
-            recovery_key_display: display,
+            secret_key_display: display,
         },
     )
     .await
@@ -200,10 +200,10 @@ async fn recover_vault_surfaces_partial_outcome_when_keychain_write_fails() {
     );
 }
 
-/// Slice 4.6a: `recover_vault` delegates to `UnlockVault::execute`, so it inherits
+/// Slice 4.6a: `unlock_with_secret_key` delegates to `UnlockVault::execute`, so it inherits
 /// the `vault_uuid` backfill on first open of a pre-4.6 vault.
 #[tokio::test]
-async fn vault_uuid_backfilled_by_recover_vault() {
+async fn vault_uuid_backfilled_by_unlock_with_secret_key() {
     let h = Harness::fresh().await;
     let display = format_secret_key(&h.secret_key);
     // The harness now seeds a uuid-bearing vault (slice 5.2.0); recreate the pre-4.6
@@ -217,13 +217,13 @@ async fn vault_uuid_backfilled_by_recover_vault() {
     );
 
     let uv = build_unlock(&h);
-    let outcome = recover_vault(
+    let outcome = unlock_with_secret_key(
         &uv,
         Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
-        RecoverVaultInput {
+        UnlockWithSecretKeyInput {
             vault_path: h.home.clone(),
             master_password: h.master_password.clone(),
-            recovery_key_display: display,
+            secret_key_display: display,
         },
     )
     .await
@@ -232,6 +232,6 @@ async fn vault_uuid_backfilled_by_recover_vault() {
 
     assert!(
         h.repo.load_config().await.unwrap().vault_uuid.is_some(),
-        "recover_vault must backfill vault_uuid"
+        "unlock_with_secret_key must backfill vault_uuid"
     );
 }
