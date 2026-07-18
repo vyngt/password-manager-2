@@ -63,8 +63,8 @@ pub use health::{
 pub use import::{ImportActionDto, ImportFailureDto, ImportPreviewRow, ImportReportDto};
 pub use misc::{
     ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, EnvExportFormatDto,
-    ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, UnlockResultDto,
-    UnlockVaultInputDto,
+    ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, SecretKeyRotationOutputDto,
+    UnlockResultDto, UnlockVaultInputDto,
 };
 pub use secret_update::{EnvVarUpdateDto, SecretListUpdateDto, SecretUpdateDto};
 pub use settings::{

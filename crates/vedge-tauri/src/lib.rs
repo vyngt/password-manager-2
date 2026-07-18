@@ -131,6 +131,7 @@ pub fn run() {
             commands::document::export_document_to_path,
             // ---- password + maintenance ----
             commands::password::change_password,
+            commands::password::rotate_secret_key,
             commands::maintenance::run_maintenance,
             // ---- export entries (slice 5.3a) ----
             commands::export::export_entries,

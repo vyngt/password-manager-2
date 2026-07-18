@@ -91,6 +91,13 @@ pub struct ChangePasswordInputDto {
     pub new_secret_key_b64: Option<String>,
 }
 
+/// The re-issued Secret Key after a rotation — shown once, never persisted in
+/// plaintext (the same show-once contract as `CreateVaultOutputDto`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecretKeyRotationOutputDto {
+    pub secret_key_display: String,
+}
+
 // ---- CreateVault DTOs --------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
