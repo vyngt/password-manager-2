@@ -26,6 +26,7 @@ use crate::infrastructure::snapshot::manifest::{
     verify_hash_prefix,
 };
 use crate::infrastructure::snapshot::store;
+use crate::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
 
 /// What a snapshot capture returns to the UI — non-invertible facts only.
 #[derive(Debug, Clone)]
@@ -41,6 +42,29 @@ pub struct SnapshotReport {
 
 fn io_ctx(op: &str, e: &std::io::Error) -> VaultError {
     VaultError::Storage(StorageError::Io(format!("{op}: {e}")))
+}
+
+/// Null the Recovery Key slot in a freshly-`VACUUM INTO`'d snapshot copy (slice 5.7 ④, Fix A).
+///
+/// A snapshot has no recovery credential of its own — you *revert* it with the current
+/// session KEK (`unlock_with_kek_quiet`), never recovery-unlock it. `VACUUM INTO` byte-copies
+/// the live `recovery_slot`, so a snapshot captured while recovery is enrolled would carry a
+/// live slot — and reverting to it would silently re-arm a Recovery Key the user may have
+/// deliberately revoked. Null it at capture so snapshots are born slot-less. Runs BEFORE the
+/// manifest hash (so `vault_blake3` matches the file that lands) and BEFORE the atomic rename.
+///
+/// Fails the snapshot on error (fail-safe — better no snapshot than one with a live slot); the
+/// pre-restore auto-snapshot (⑭) treats that failure as best-effort at its own call site.
+async fn null_recovery_slot(vault_db: &Path) -> Result<(), VaultError> {
+    let db = VaultDbConnection::open(vault_db)
+        .await
+        .map_err(VaultError::Storage)?;
+    let repo = SqliteVaultRepository::new(db.handle());
+    repo.clear_recovery_slot().await?;
+    drop(repo); // release the handle clone so `close()` can actually close the pool
+    // Close so the WAL is checkpointed into the copy (self-contained) before it is hashed.
+    db.close().await.map_err(VaultError::Storage)?;
+    Ok(())
 }
 
 /// Session-less snapshot capture. Builds the snapshot dir + manifest and returns its report.
@@ -88,6 +112,9 @@ pub(crate) async fn write_snapshot(
     // 1. Live-safe VACUUM INTO the staging dir (dest must not exist — it is fresh).
     let vault_snap = staging.join(SNAPSHOT_VAULT_FILE);
     repo.vacuum_into(&vault_snap).await?;
+    // 🔴 Null the copied-over Recovery Key slot (slice 5.7 ④) BEFORE hashing — a snapshot
+    // carries no recovery credential; a live slot would re-arm recovery on the next revert.
+    null_recovery_slot(&vault_snap).await?;
     let (_vault_size, vault_blake3) = archive::hash_file(&vault_snap)?;
 
     // 2. Deduplicate each blob into the content-addressed pool (Decision ⑪/⑫); build the

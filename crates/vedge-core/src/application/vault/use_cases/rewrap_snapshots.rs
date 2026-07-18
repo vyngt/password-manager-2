@@ -113,6 +113,12 @@ async fn rewrap_one(
 
     let mut cfg = repo.load_config().await?;
     cfg.verify_hash = *new_verify_hash;
+    // A snapshot carries no Recovery Key slot of its own (slice 5.7 ④) — you revert it with
+    // the current session KEK, never recovery-unlock it. `create_snapshot` already nulls the
+    // slot at capture, so this is belt-and-suspenders (it should already be `None`); nulling
+    // it here as part of the rewrap guarantees a rewrapped snapshot never keeps a slot that
+    // wraps the pre-rewrap KEK — the same brick as ③, one level down.
+    cfg.recovery_slot = None;
     // One atomic transaction: every entry DEK + every tag key + the new `verify_hash`. The
     // object pool is NOT touched — DEK values are unchanged, only their KEK-wrapping.
     repo.rewrap_all_deks(&updates, &tag_updates, &cfg).await?;

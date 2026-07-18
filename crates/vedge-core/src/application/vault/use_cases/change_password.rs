@@ -118,6 +118,15 @@ pub async fn change_password(
     let mut new_config = session.config.clone();
     new_config.verify_hash = new_verify_hash;
     new_config.last_unlocked_at = Some(when);
+    // 🔴 A KEK change INVALIDATES the Recovery Key slot (slice 5.7 ③): the slot wraps
+    // the OLD KEK, so after this rewrap it would unwrap a KEK that decrypts nothing — a
+    // silent brick at the recovery moment. Null it in the SAME transaction as the DEK
+    // rewrap + new verify_hash (this relies on `rewrap_all_deks` including `RecoverySlot`
+    // in its `update_columns` — see repository.rs). There is no escrow: a password change
+    // genuinely revokes recovery, and the user re-enrols afterward. The recovery-unlock
+    // flow itself ends in a forced password change, so recovery ALSO leaves the slot
+    // deleted (expected). `session.config = new_config` at the tail clears it in memory too.
+    new_config.recovery_slot = None;
     session
         .repo
         .rewrap_all_deks(&updates, &tag_updates, &new_config)
