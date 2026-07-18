@@ -174,6 +174,9 @@ impl From<VaultError> for CommandError {
             | VaultError::RequiredSecretCleared(_)
             | VaultError::DuplicateEnvVarKey(_)
             | VaultError::EnvVarUnchangedWithoutStored(_)
+            // A .env set-copy of a value with a newline (5.4.1 ⑥): the message
+            // names the key and points at JSON; the UI shows it and offers JSON.
+            | VaultError::EnvValueNotDotEnvSafe { .. }
             // A breach lookup failure is normally degraded inside `scan_health`
             // (surfaced as `breach_check_failed`); this mapping is defensive only.
             | VaultError::BreachLookup(_) => Self::Invalid(e.to_string()),

@@ -509,16 +509,20 @@ fn primary_copy_field(entry_type: &EntryTypeDto) -> Option<FieldSelectorDto> {
         EntryTypeDto::Login => Some(FieldSelectorDto::Password),
         EntryTypeDto::Card => Some(FieldSelectorDto::CardNumber),
         EntryTypeDto::ApiKey => Some(FieldSelectorDto::ApiKey),
+        // 5.4.1: the reveal door now covers the SSH private key (the headline).
+        // Its primary is REQUIRED, so history reveal always resolves.
+        EntryTypeDto::SshKey => Some(FieldSelectorDto::PrivateKey),
         _ => None,
     }
 }
 
 /// Whether a type's primary secret can be revealed in history (gates the reveal
-/// action). After sealing (slice 5.4) that is the FieldSelector-backed primaries
-/// (Login/Card/ApiKey) plus Note (unsealed content). `SshKey` / `Identity` /
-/// `EnvVars` history reveal is DEFERRED — their primary field isn't a
-/// `FieldSelector` yet;
-/// their values are still copyable where a `FieldSelector` exists.
+/// action). The FieldSelector-backed REQUIRED primaries (Login/Card/ApiKey/SshKey)
+/// plus Note (unsealed content). History reveals ONE primary per version.
+/// `Identity` is out on purpose: `national_id` is OPTIONAL, so a version without
+/// one would error — the live edit form still reveals the current value.
+/// `EnvVars` is out too: its "primary" is the whole keyed set (read via the set
+/// copy/reveal, not a single field).
 fn has_secret(entry_type: &EntryTypeDto) -> bool {
     primary_copy_field(entry_type).is_some() || matches!(entry_type, EntryTypeDto::Note)
 }

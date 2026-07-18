@@ -15,7 +15,25 @@ pub enum FieldSelectorDto {
     Cvv,
     ApiKey,
     EnvVar(String),
+    // ---- 5.4.1 (Complete the Reveal Door) ----
+    Pin,
+    PrivateKey,
+    Passphrase,
+    ApiSecret,
+    NationalId,
+    RecoveryCode(u32),
     Custom(String),
+}
+
+// ---- EnvExportFormatDto ------------------------------------------------------
+
+/// Which shape the env-var **set** copy/reveal produces (slice 5.4.1 ⑥). Carries
+/// no data, so a plain C-like enum (unlike the adjacently-tagged
+/// [`FieldSelectorDto`]).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum EnvExportFormatDto {
+    DotEnv,
+    Json,
 }
 
 // ---- MaintenanceReportDto ----------------------------------------------------

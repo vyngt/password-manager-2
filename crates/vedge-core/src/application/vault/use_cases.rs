@@ -8,6 +8,7 @@ pub mod create_vault;
 pub mod delete_vault;
 pub mod document_ops;
 pub mod entry_history;
+pub mod env_vars;
 pub mod export_emergency_kit;
 pub mod export_entries;
 pub mod get_entry;
@@ -53,6 +54,7 @@ pub use entry_history::{
     changed_fields, copy_history_field, get_history_value, list_history, restore_from_history,
     reveal_history_field,
 };
+pub use env_vars::{CopyEnvVarsInput, RevealEnvVarsInput, copy_env_vars, reveal_env_vars};
 pub use export_emergency_kit::{ExportEmergencyKitInput, export_emergency_kit};
 pub use export_entries::{ExportEntriesInput, ExportFormat, ExportReport, export_entries};
 pub use get_entry::{GetEntryInput, get_entry};
@@ -73,7 +75,9 @@ pub use queries::{
 pub use recover_vault::{RecoverVaultInput, RecoveryOutcome, recover_vault};
 pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
-pub use reveal_field::{RevealFieldInput, reveal_field};
+pub use reveal_field::{
+    RevealFieldInput, RevealRecoveryCodesInput, reveal_field, reveal_recovery_codes,
+};
 pub use reveal_totp::reveal_totp;
 pub use revert_to_snapshot::{
     RevertReport, RevertToSnapshotInput, SeamlessRevertOutcome, revert_to_snapshot,

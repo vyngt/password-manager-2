@@ -2,6 +2,7 @@ pub mod aad;
 pub mod crypto_constants;
 pub mod emergency_kit;
 pub mod entities;
+pub mod env_export;
 pub mod errors;
 pub mod health;
 pub mod index;
