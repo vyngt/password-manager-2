@@ -32,9 +32,6 @@ pub mod health;
 pub mod import;
 pub mod maintenance;
 pub mod password;
-// Parked until slice 5.7's Settings + launch-screen UI (CG7) consumes these wrappers; the
-// allow is dropped there (the same lifecycle `api::password` had in 5.6).
-#[allow(dead_code, reason = "consumed by the 5.7 recovery UI in CG7")]
 pub mod recovery;
 pub mod registry;
 pub mod secret_key;

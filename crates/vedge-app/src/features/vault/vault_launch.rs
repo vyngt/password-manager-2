@@ -15,6 +15,7 @@ use crate::api::dialog::OpenDialogOptions;
 use crate::api::error::ApiError;
 use crate::features::vault::backup_open_dialog::BackupOpenDialog;
 use crate::features::vault::context::ActiveVault;
+use crate::features::vault::recovery_reset_dialog::RecoveryResetDialog;
 use crate::features::vault::registry_filter::filter_sort_registry;
 use crate::features::vault::vault_list::VaultList;
 use crate::features::vault::vault_manage_dialogs::{DeleteVaultDialog, VaultDetailsDialog};
@@ -27,8 +28,8 @@ use leptos_router::hooks::use_navigate;
 use std::time::Duration;
 use uuid::Uuid;
 use vedge_ipc::{
-    RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto, UnlockWithSecretKeyInputDto,
-    VaultDetailsDto,
+    RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto,
+    UnlockWithRecoveryKeyInputDto, UnlockWithSecretKeyInputDto, VaultDetailsDto,
 };
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
@@ -101,6 +102,19 @@ pub fn VaultLaunch() -> impl IntoView {
     // `secret_key_input` holds the `A3-…` Secret Key (passed through verbatim).
     let secret_key_open = RwSignal::new(false);
     let secret_key_input = RwSignal::new(String::new());
+
+    // Recovery Key (5.7): the forgot-password flow. `recovery_open` reveals the two-document
+    // panel; the two inputs hold the `RK1-` + `A3-` documents. A successful recovery unlock
+    // opens the forced set-new-password dialog (`recovery_reset_open`) before entering the
+    // vault; `recovery_target` carries the vault through that second step.
+    let recovery_open = RwSignal::new(false);
+    let recovery_key_input = RwSignal::new(String::new());
+    let recovery_secret_key_input = RwSignal::new(String::new());
+    let recovery_reset_open = RwSignal::new(false);
+    let recovery_new_password = RwSignal::new(String::new());
+    let recovery_confirm_password = RwSignal::new(String::new());
+    let recovery_error = RwSignal::new(Option::<String>::None);
+    let recovery_target = RwSignal::new(Option::<Selected>::None);
 
     // Biometric: `bio_available` is device-wide (checked once); `bio_enrolled`
     // is per-selected-vault. When enrolled, the Hello button shows by default;
@@ -471,6 +485,82 @@ pub fn VaultLaunch() -> impl IntoView {
         });
     };
 
+    // Recover a forgotten password (5.7): the `RK1-` Recovery Key + the `A3-` Secret Key,
+    // no master password. On success the session is unlocked but pending — open the forced
+    // set-new-password dialog (we enter the vault only after it completes).
+    let do_recovery_unlock = move || {
+        let Some(sel) = selected.get() else {
+            return;
+        };
+        // Trim ONLY — the core parsers own normalization + checksum for both documents.
+        let rk = recovery_key_input.get().trim().to_owned();
+        let sk = recovery_secret_key_input.get().trim().to_owned();
+        if rk.is_empty() || sk.is_empty() || unlocking.get() {
+            return;
+        }
+        unlocking.set(true);
+        let msg_wrong = t_string!(i18n, unlock.recover_wrong).to_owned();
+        let msg_invalid = t_string!(i18n, unlock.recover_invalid).to_owned();
+        let msg_failed = t_string!(i18n, unlock.unlock_failed).to_owned();
+        spawn_local(async move {
+            let input = UnlockWithRecoveryKeyInputDto {
+                vault_path: sel.path.clone(),
+                recovery_key_display: rk,
+                secret_key_display: sk,
+            };
+            match api::recovery::unlock_with_recovery_key(&input).await {
+                Ok(()) => {
+                    recovery_target.set(Some(sel));
+                    recovery_new_password.set(String::new());
+                    recovery_confirm_password.set(String::new());
+                    recovery_error.set(None);
+                    recovery_reset_open.set(true);
+                }
+                // A wrong Recovery Key OR Secret Key (the 2SKD binding) fails the unwrap.
+                Err(ApiError::WrongCredentials) => show_error(msg_wrong),
+                // A malformed kit, or a vault with no Recovery Key set up.
+                Err(ApiError::Invalid(_)) => show_error(msg_invalid),
+                Err(e) => show_error(format!("{msg_failed}{e}")),
+            }
+            unlocking.set(false);
+        });
+    };
+
+    // The forced new master password after a recovery unlock (5.7). No old-password reauth —
+    // the core gate ensures this only runs on the just-recovered session, once. On success we
+    // finally enter the vault; recovery is now off (the change nulled the slot).
+    let do_recovery_reset = move || {
+        let Some(sel) = recovery_target.get() else {
+            return;
+        };
+        let new_pw = recovery_new_password.get();
+        if new_pw.is_empty() || new_pw != recovery_confirm_password.get() || unlocking.get() {
+            return;
+        }
+        unlocking.set(true);
+        recovery_error.set(None);
+        let nav = use_navigate();
+        let msg_err = t_string!(i18n, unlock.recover_reset_err).to_owned();
+        let msg_done = t_string!(i18n, unlock.recover_reset_done).to_owned();
+        spawn_local(async move {
+            match api::recovery::change_password_after_recovery(&sel.path, &new_pw).await {
+                Ok(()) => {
+                    recovery_reset_open.set(false);
+                    recovery_key_input.set(String::new());
+                    recovery_secret_key_input.set(String::new());
+                    recovery_new_password.set(String::new());
+                    recovery_confirm_password.set(String::new());
+                    show_success(msg_done);
+                    record_unlock(&sel).await;
+                    active.path.set(Some(sel.path.clone()));
+                    nav("/v/vault", Default::default());
+                }
+                Err(e) => recovery_error.set(Some(format!("{msg_err} {e}"))),
+            }
+            unlocking.set(false);
+        });
+    };
+
     // Unlock via the biometric gate (Windows Hello). No master password; any
     // failure reveals the password fallback with an error toast.
     let do_bio_unlock = move || {
@@ -541,6 +631,19 @@ pub fn VaultLaunch() -> impl IntoView {
     let on_bio_unlock = Callback::new(move |()| do_bio_unlock());
     let on_use_password = Callback::new(move |()| show_password.set(true));
     let on_secret_key_unlock = Callback::new(move |()| do_secret_key_unlock());
+    let on_recovery_unlock = Callback::new(move |()| do_recovery_unlock());
+    let on_recovery_reset = Callback::new(move |()| do_recovery_reset());
+    // Dismissing the forced dialog enters the just-recovered (live) session rather than
+    // stranding it on the launch screen. The recovery slot is untouched until the password is
+    // actually changed, so recovery still works on the next lock — no brick, just a nudge
+    // deferred (Settings will still show recovery as on until they change the password).
+    let on_recovery_reset_close = Callback::new(move |()| {
+        recovery_reset_open.set(false);
+        if let Some(sel) = recovery_target.get() {
+            active.path.set(Some(sel.path));
+            use_navigate()("/v/vault", Default::default());
+        }
+    });
 
     // Slice 5.2.2 — "Open a backup…" (and, behind Advanced, Replace).
     let backup_open = RwSignal::new(false);
@@ -629,16 +732,29 @@ pub fn VaultLaunch() -> impl IntoView {
                                 show_password=show_password
                                 secret_key_open=secret_key_open
                                 secret_key_input=secret_key_input
+                                recovery_open=recovery_open
+                                recovery_key_input=recovery_key_input
+                                recovery_secret_key_input=recovery_secret_key_input
                                 on_unlock=on_unlock
                                 on_bio_unlock=on_bio_unlock
                                 on_use_password=on_use_password
                                 on_secret_key_unlock=on_secret_key_unlock
+                                on_recovery_unlock=on_recovery_unlock
                             />
                         </div>
                     </div>
                 </Show>
             </Show>
             <BackupOpenDialog open=backup_open selected=selected on_done=on_backup_done />
+            <RecoveryResetDialog
+                open=recovery_reset_open
+                new_password=recovery_new_password
+                confirm_password=recovery_confirm_password
+                busy=unlocking
+                error=recovery_error
+                on_submit=on_recovery_reset
+                on_close=on_recovery_reset_close
+            />
             <VaultDetailsDialog
                 target=details_target
                 details=details_stats

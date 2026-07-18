@@ -29,11 +29,19 @@ pub fn VaultUnlockPanel(
     /// Recovery (5.1): the `A3-…` Secret Key typed by the user. Passed through
     /// verbatim (the core parser owns normalization + checksum).
     secret_key_input: RwSignal<String>,
+    /// Recovery Key (5.7): whether the "Forgot password? Recover" panel is revealed.
+    recovery_open: RwSignal<bool>,
+    /// Recovery Key (5.7): the `RK1-…` Recovery Key typed by the user (first document).
+    recovery_key_input: RwSignal<String>,
+    /// Recovery Key (5.7): the `A3-…` Secret Key from the Emergency Kit (second document).
+    recovery_secret_key_input: RwSignal<String>,
     on_unlock: Callback<()>,
     on_bio_unlock: Callback<()>,
     on_use_password: Callback<()>,
     /// Recovery (5.1): submit master password + Secret Key via the recovery path.
     on_secret_key_unlock: Callback<()>,
+    /// Recovery Key (5.7): submit RK1 + A3 to reconstruct the KEK (no master password).
+    on_recovery_unlock: Callback<()>,
 ) -> impl IntoView {
     let i18n = use_i18n();
 
@@ -242,6 +250,85 @@ pub fn VaultUnlockPanel(
                                                                     }
                                                                 >
                                                                     {move || t!(i18n, unlock.secret_key_submit)}
+                                                                </Button>
+                                                            }
+                                                        }}
+                                                    </div>
+                                                </Show>
+
+                                                // ---- Recovery Key (slice 5.7) — forgot the master password ----
+                                                // The forgot-password door: two documents (RK1 + A3), no
+                                                // password. On success the orchestrator opens the forced
+                                                // set-new-password dialog before entering the vault.
+                                                <Button
+                                                    variant=Variant::Link
+                                                    class="mt-1"
+                                                    attr:data-testid="forgot-password"
+                                                    on:click=move |_: web_sys::MouseEvent| {
+                                                        recovery_open.update(|o| *o = !*o);
+                                                    }
+                                                >
+                                                    {move || t!(i18n, unlock.recover_cta)}
+                                                </Button>
+                                                <Show when=move || recovery_open.get()>
+                                                    <div
+                                                        class="mt-1 flex flex-col gap-2.5"
+                                                        on:keydown=move |ev: web_sys::KeyboardEvent| {
+                                                            if ev.key() == "Enter" {
+                                                                on_recovery_unlock.run(());
+                                                            }
+                                                        }
+                                                    >
+                                                        <p class="text-xs text-foreground/50">
+                                                            {move || t!(i18n, unlock.recover_hint)}
+                                                        </p>
+                                                        <Input
+                                                            id="recovery-key"
+                                                            size=Size::Lg
+                                                            class="font-jetbrains-mono"
+                                                            placeholder=Signal::derive(move || {
+                                                                "RK1-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+                                                                    .to_owned()
+                                                            })
+                                                            aria_label=Signal::derive(move || {
+                                                                t_string!(i18n, unlock.recover_key_label).to_owned()
+                                                            })
+                                                            value=Signal::derive(move || recovery_key_input.get())
+                                                            on_input=Callback::new(move |v: String| {
+                                                                recovery_key_input.set(v);
+                                                            })
+                                                        />
+                                                        <Input
+                                                            id="recovery-secret-key"
+                                                            size=Size::Lg
+                                                            class="font-jetbrains-mono"
+                                                            placeholder=Signal::derive(move || {
+                                                                "A3-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX".to_owned()
+                                                            })
+                                                            aria_label=Signal::derive(move || {
+                                                                t_string!(i18n, unlock.recover_secret_key_label).to_owned()
+                                                            })
+                                                            value=Signal::derive(move || {
+                                                                recovery_secret_key_input.get()
+                                                            })
+                                                            on_input=Callback::new(move |v: String| {
+                                                                recovery_secret_key_input.set(v);
+                                                            })
+                                                        />
+                                                        {move || {
+                                                            let busy = unlocking.get();
+                                                            view! {
+                                                                <Button
+                                                                    variant=Variant::Primary
+                                                                    size=Size::Lg
+                                                                    full_width=true
+                                                                    loading=busy
+                                                                    attr:data-testid="recovery-submit"
+                                                                    on:click=move |_: web_sys::MouseEvent| {
+                                                                        on_recovery_unlock.run(());
+                                                                    }
+                                                                >
+                                                                    {move || t!(i18n, unlock.recover_submit)}
                                                                 </Button>
                                                             }
                                                         }}

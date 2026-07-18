@@ -16,6 +16,7 @@ pub mod folder_tree;
 pub mod home_path;
 pub mod import_dialog;
 pub mod password_strength;
+pub mod recovery_reset_dialog;
 pub mod registry_filter;
 pub mod secret_display;
 pub mod selection;
