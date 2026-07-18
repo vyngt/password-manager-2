@@ -269,6 +269,7 @@ impl Harness {
             id: id.clone(),
             nonce,
             ciphertext,
+            dek_wrapped: None,
             created_at: now(),
             updated_at: now(),
         };

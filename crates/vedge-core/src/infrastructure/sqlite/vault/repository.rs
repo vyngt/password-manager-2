@@ -366,6 +366,10 @@ impl VaultRepository for SqliteVaultRepository {
         let mut active: tag_entity::ActiveModel = existing.into();
         active.nonce = ActiveValue::Set(model.nonce);
         active.ciphertext = ActiveValue::Set(model.ciphertext);
+        // 🔴 `dek_wrapped` MUST ride the update (slice 5.6.0): the at-unlock tag
+        // migration re-encrypts under a fresh DEK and calls this — dropping the DEK
+        // here would persist DEK-ciphertext with a NULL DEK, unreadable by either path.
+        active.dek_wrapped = ActiveValue::Set(model.dek_wrapped);
         active.updated_at = ActiveValue::Set(model.updated_at);
         active.update(self.conn.as_ref()).await.map_err(db_err)?;
         bump_commit_counter(self.conn.as_ref()).await?;

@@ -101,6 +101,7 @@ pub async fn create_tag(
         id: id.clone(),
         nonce,
         ciphertext,
+        dek_wrapped: None,
         created_at: when,
         updated_at: when,
     };
@@ -152,6 +153,7 @@ pub async fn rename_tag(
         id: tag_id.clone(),
         nonce,
         ciphertext,
+        dek_wrapped: None,
         created_at: when, // not updated by caller intent; overwritten by update_tag
         updated_at: when,
     };
