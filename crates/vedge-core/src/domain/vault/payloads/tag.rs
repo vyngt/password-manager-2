@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// The decrypted form of a tag row. Encrypted under KEK (no per-row DEK).
+/// The decrypted form of a tag row. Sealed under a per-row DEK that is wrapped by the
+/// KEK (slice 5.6.0), like an entry; legacy rows may still be KEK-sealed until migrated.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagPayload {
     /// Always stored normalized: lowercased, trimmed, internal whitespace collapsed.

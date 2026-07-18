@@ -253,28 +253,58 @@ impl Harness {
         id
     }
 
-    /// Seed a tag with the given (already normalized) name.
+    /// Seed a DEK-sealed tag (the current format, slice 5.6.0) with the given
+    /// (already normalized) name.
     pub async fn seed_tag(&self, normalized_name: &str) -> TagId {
         let id = TagId::new();
-        let payload = TagPayload {
-            name: normalized_name.to_owned(),
-            color: None,
-            sort_order: 0,
-        };
-        let bytes = serde_json::to_vec(&payload).unwrap();
+        let bytes = tag_bytes(normalized_name);
         let aad = tag_aad(&id).unwrap();
-        let (nonce, ciphertext) = self.crypto.encrypt_tag(&self.kek, &bytes, &aad).unwrap();
+        let dek = self.crypto.generate_dek();
+        let (nonce, ciphertext) = self.crypto.encrypt_entry(&dek, &bytes, &aad).unwrap();
+        let dek_wrapped = self.crypto.wrap_dek(&dek, &self.kek).unwrap();
 
         let row = TagRow {
             id: id.clone(),
             nonce,
             ciphertext,
+            dek_wrapped: Some(dek_wrapped),
             created_at: now(),
             updated_at: now(),
         };
         self.repo.insert_tag(&row).await.unwrap();
         id
     }
+
+    /// Seed a LEGACY tag sealed directly under the KEK (pre-5.6.0, `dek_wrapped =
+    /// None`) — simulates a v1 vault's tag so the at-unlock migration can be tested.
+    pub async fn seed_legacy_tag(&self, normalized_name: &str) -> TagId {
+        let id = TagId::new();
+        let bytes = tag_bytes(normalized_name);
+        let aad = tag_aad(&id).unwrap();
+        // KEK-as-AEAD-key: the pre-5.6.0 shape. `encrypt_entry(kek, …)` is byte-identical
+        // to the retired `encrypt_tag` (both call the same AEAD helper).
+        let (nonce, ciphertext) = self.crypto.encrypt_entry(&self.kek, &bytes, &aad).unwrap();
+
+        let row = TagRow {
+            id: id.clone(),
+            nonce,
+            ciphertext,
+            dek_wrapped: None,
+            created_at: now(),
+            updated_at: now(),
+        };
+        self.repo.insert_tag(&row).await.unwrap();
+        id
+    }
+}
+
+fn tag_bytes(normalized_name: &str) -> Vec<u8> {
+    let payload = TagPayload {
+        name: normalized_name.to_owned(),
+        color: None,
+        sort_order: 0,
+    };
+    serde_json::to_vec(&payload).unwrap()
 }
 
 pub fn tempdir_path() -> (TempDir, PathBuf) {

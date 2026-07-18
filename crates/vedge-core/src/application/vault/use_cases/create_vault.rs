@@ -42,7 +42,9 @@ use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{BLOBS_DIR, SNAPSHOTS_DIR, StorageError, VaultId, now};
 use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
-use crate::domain::vault::entities::{AuditAction, AuditEvent, VaultConfig};
+use crate::domain::vault::entities::{
+    AuditAction, AuditEvent, CURRENT_SCHEMA_VERSION, VaultConfig,
+};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::VaultIndex;
 use crate::domain::vault::kdf_params::KdfParams;
@@ -162,7 +164,7 @@ impl CreateVault {
         let config = VaultConfig {
             id: "default".to_owned(),
             magic: "VEDG".to_owned(),
-            schema_version: 1,
+            schema_version: CURRENT_SCHEMA_VERSION,
             vault_salt,
             kdf_params,
             verify_hash,

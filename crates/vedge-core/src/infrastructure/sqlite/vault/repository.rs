@@ -366,6 +366,10 @@ impl VaultRepository for SqliteVaultRepository {
         let mut active: tag_entity::ActiveModel = existing.into();
         active.nonce = ActiveValue::Set(model.nonce);
         active.ciphertext = ActiveValue::Set(model.ciphertext);
+        // 🔴 `dek_wrapped` MUST ride the update (slice 5.6.0): the at-unlock tag
+        // migration re-encrypts under a fresh DEK and calls this — dropping the DEK
+        // here would persist DEK-ciphertext with a NULL DEK, unreadable by either path.
+        active.dek_wrapped = ActiveValue::Set(model.dek_wrapped);
         active.updated_at = ActiveValue::Set(model.updated_at);
         active.update(self.conn.as_ref()).await.map_err(db_err)?;
         bump_commit_counter(self.conn.as_ref()).await?;
@@ -514,6 +518,7 @@ impl VaultRepository for SqliteVaultRepository {
     async fn rewrap_all_deks(
         &self,
         updates: &[(EntryId, [u8; 40])],
+        tag_updates: &[TagRow],
         new_config: &VaultConfig,
     ) -> Result<(), VaultError> {
         let config_model = config_map::domain_to_model(new_config)?;
@@ -527,6 +532,26 @@ impl VaultRepository for SqliteVaultRepository {
                 ..Default::default()
             };
             entry_entity::Entity::update(active)
+                .exec(&txn)
+                .await
+                .map_err(db_err)?;
+        }
+
+        // Tags (slice 5.6.0): each carries a re-wrapped or migrated per-row DEK. A
+        // re-wrap leaves `nonce`/`ciphertext` unchanged; a migrated legacy tag replaces
+        // all three. Written in the SAME txn as the entries + config, so `verify_hash`
+        // never advances past a tag left under the old KEK.
+        for tag in tag_updates {
+            let model = tag_map::domain_to_model(tag);
+            let active = tag_entity::ActiveModel {
+                id: ActiveValue::Unchanged(model.id),
+                nonce: ActiveValue::Set(model.nonce),
+                ciphertext: ActiveValue::Set(model.ciphertext),
+                dek_wrapped: ActiveValue::Set(model.dek_wrapped),
+                updated_at: ActiveValue::Set(model.updated_at),
+                ..Default::default()
+            };
+            tag_entity::Entity::update(active)
                 .exec(&txn)
                 .await
                 .map_err(db_err)?;
@@ -725,8 +750,8 @@ mod tests {
         config.vault_uuid = Some(ulid::Ulid::new().to_string());
         repo.save_config(&config).await.unwrap();
 
-        // No entry rewraps — just re-persist the config through the rewrap path.
-        repo.rewrap_all_deks(&[], &config).await.unwrap();
+        // No entry/tag rewraps — just re-persist the config through the rewrap path.
+        repo.rewrap_all_deks(&[], &[], &config).await.unwrap();
 
         let count = config_entity::Entity::find()
             .count(db.handle().as_ref())

@@ -209,8 +209,10 @@ fn folder_round_trip() {
 }
 
 #[test]
-fn tag_round_trip_under_kek() {
-    // TagPayload is encrypted directly under KEK (no per-row DEK), using tag_aad.
+fn tag_round_trip_dek_sealed() {
+    // Since 5.6.0 a TagPayload is sealed under a per-row DEK that is itself wrapped by the
+    // KEK, using tag_aad — exactly like an entry. (Pre-5.6.0 it was sealed directly under
+    // the KEK; that legacy read path is covered in `crypto_xchacha20::legacy_tag_decrypts_under_kek`.)
     let crypto = XChaCha20CryptoProvider::new();
     let kek: [u8; 32] = [0x99; 32];
     let id = TagId::new();
@@ -222,8 +224,14 @@ fn tag_round_trip_under_kek() {
         sort_order: 3,
     };
     let bytes = serde_json::to_vec(&tag).unwrap();
-    let (nonce, ct) = crypto.encrypt_tag(&kek, &bytes, &aad).unwrap();
-    let pt = crypto.decrypt_tag(&kek, &nonce, &ct, &aad).unwrap();
+
+    let dek = crypto.generate_dek();
+    let (nonce, ct) = crypto.encrypt_entry(&dek, &bytes, &aad).unwrap();
+    let wrapped = crypto.wrap_dek(&dek, &kek).unwrap();
+
+    // Unwrap the DEK under the KEK, then decrypt the tag under the DEK.
+    let dek2 = crypto.unwrap_dek(&wrapped, &kek).unwrap();
+    let pt = crypto.decrypt_entry(&dek2, &nonce, &ct, &aad).unwrap();
     let back: TagPayload = serde_json::from_slice(&pt).unwrap();
     assert_eq!(back, tag);
 }

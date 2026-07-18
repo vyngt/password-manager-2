@@ -190,8 +190,10 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
         let sig = sign_challenge(&name, true)?;
         let wrap_key = wrap_key_from_signature(&sig);
 
-        // Seal the KEK under the Hello-derived wrap key using the shared AEAD.
-        let (nonce, ct) = self.crypto.encrypt_tag(&wrap_key, kek, WRAP_AAD)?;
+        // Seal the KEK under the Hello-derived wrap key using the shared AEAD. `wrap_key`
+        // is an ephemeral per-enrolment key (not the vault KEK); `encrypt_entry` is the
+        // generic AEAD (5.6.0 retired the tag-specific `encrypt_tag`, which was byte-identical).
+        let (nonce, ct) = self.crypto.encrypt_entry(&wrap_key, kek, WRAP_AAD)?;
 
         let mut blob = Vec::with_capacity(NONCE_LEN.saturating_add(ct.len()));
         blob.extend_from_slice(&nonce);
@@ -228,7 +230,7 @@ impl BiometricAuthenticator for WindowsHelloAuthenticator {
 
         let pt = self
             .crypto
-            .decrypt_tag(&wrap_key, &nonce, &ct, WRAP_AAD)
+            .decrypt_entry(&wrap_key, &nonce, &ct, WRAP_AAD)
             .map_err(|_| VaultError::BiometricFailed("wrapped KEK decrypt failed".to_owned()))?;
         blob.zeroize();
 

@@ -10,8 +10,10 @@
 //!
 //! ## Encryption model
 //!
-//! Tags encrypt under the session KEK directly (no per-row DEK). The AAD
-//! is the tag ULID bytes; see [`crate::domain::vault::aad::tag_aad`].
+//! Each tag is sealed under its own per-row DEK, wrapped under the session KEK
+//! (slice 5.6.0) — exactly like an entry; see [`super::tag_crypto`]. The AAD is the
+//! tag ULID bytes; see [`crate::domain::vault::aad::tag_aad`]. (Before 5.6.0 a tag was
+//! sealed directly under the KEK, which bricked a tagged vault on a password change.)
 //!
 //! ## Rename is O(1)
 //!
@@ -32,6 +34,7 @@
 use tracing::instrument;
 
 use crate::application::vault::session::VaultSession;
+use crate::application::vault::use_cases::tag_crypto::seal_tag_payload;
 use crate::domain::shared::{TagId, now};
 use crate::domain::vault::aad::{entry_aad, tag_aad};
 use crate::domain::vault::entities::{AuditAction, TagRow};
@@ -92,15 +95,15 @@ pub async fn create_tag(
     let bytes = serde_json::to_vec(&payload)
         .map_err(|e| VaultError::MalformedPayload(format!("tag serialize: {e}")))?;
     let aad = tag_aad(&id)?;
-    let (nonce, ciphertext) = session
-        .crypto
-        .encrypt_tag(session.kek.expose(), &bytes, &aad)?;
+    let (nonce, ciphertext, dek_wrapped) =
+        seal_tag_payload(session.crypto.as_ref(), session.kek.expose(), &aad, &bytes)?;
 
     let when = now();
     let row = TagRow {
         id: id.clone(),
         nonce,
         ciphertext,
+        dek_wrapped: Some(dek_wrapped),
         created_at: when,
         updated_at: when,
     };
@@ -143,15 +146,15 @@ pub async fn rename_tag(
     let bytes = serde_json::to_vec(&payload)
         .map_err(|e| VaultError::MalformedPayload(format!("tag serialize: {e}")))?;
     let aad = tag_aad(tag_id)?;
-    let (nonce, ciphertext) = session
-        .crypto
-        .encrypt_tag(session.kek.expose(), &bytes, &aad)?;
+    let (nonce, ciphertext, dek_wrapped) =
+        seal_tag_payload(session.crypto.as_ref(), session.kek.expose(), &aad, &bytes)?;
 
     let when = now();
     let row = TagRow {
         id: tag_id.clone(),
         nonce,
         ciphertext,
+        dek_wrapped: Some(dek_wrapped),
         created_at: when, // not updated by caller intent; overwritten by update_tag
         updated_at: when,
     };

@@ -33,9 +33,10 @@ use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::ports::repository::VaultRepository;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{Timestamp, VaultId, now};
-use crate::domain::vault::aad::tag_aad;
 use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
-use crate::domain::vault::entities::{AuditAction, AuditEvent, EntryRow, TagRow, VaultConfig};
+use crate::domain::vault::entities::{
+    AuditAction, AuditEvent, CURRENT_SCHEMA_VERSION, EntryRow, TagRow, VaultConfig,
+};
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
 use crate::domain::vault::payloads::TagPayload;
@@ -73,6 +74,18 @@ fn backfill_vault_uuid(config: &mut VaultConfig) {
     }
 }
 
+/// Raise a vault's stored `schema_version` to what this build writes (slice 5.6.0).
+/// Idempotent — a no-op once at [`CURRENT_SCHEMA_VERSION`]. Rides the unconditional
+/// `save_config` alongside [`backfill_vault_uuid`], so an existing vault becomes v2 on its
+/// first unlock by a v2 build (its tags migrate in the same unlock); combined with the
+/// unlock-time guard, an older build then refuses that vault cleanly rather than failing at
+/// tag-decrypt.
+const fn bump_schema_version(config: &mut VaultConfig) {
+    if config.schema_version < CURRENT_SCHEMA_VERSION {
+        config.schema_version = CURRENT_SCHEMA_VERSION;
+    }
+}
+
 impl UnlockVault {
     #[instrument(skip_all, fields(vault_path = %input.vault_path.display()))]
     pub async fn execute(&self, input: UnlockVaultInput) -> Result<VaultSession, VaultError> {
@@ -89,6 +102,12 @@ impl UnlockVault {
         let config = repo.load_config().await?;
         if config.magic != "VEDG" {
             return Err(VaultError::BadMagic);
+        }
+        // Refuse a vault written by a NEWER build (slice 5.6.0): its at-rest tag ciphertext
+        // may be a shape this build cannot read (DEK-sealed vs the legacy KEK-sealed). Fail
+        // cleanly here rather than mysteriously at tag-decrypt. (`.vbk` restore has its own.)
+        if config.schema_version > CURRENT_SCHEMA_VERSION {
+            return Err(VaultError::UnsupportedSchemaVersion(config.schema_version));
         }
         let vault_id = VaultId::new(input.vault_path.clone());
 
@@ -168,6 +187,7 @@ impl UnlockVault {
         let mut updated_config = config;
         updated_config.last_unlocked_at = Some(when);
         backfill_vault_uuid(&mut updated_config);
+        bump_schema_version(&mut updated_config);
         repo.save_config(&updated_config).await?;
 
         // ---- 7b. Rollback compare (non-fatal) — AFTER backfill so the uuid is set.
@@ -246,6 +266,10 @@ impl UnlockVault {
         if config.magic != "VEDG" {
             return Err(VaultError::BadMagic);
         }
+        // Refuse a vault written by a NEWER build (slice 5.6.0) — see the password path.
+        if config.schema_version > CURRENT_SCHEMA_VERSION {
+            return Err(VaultError::UnsupportedSchemaVersion(config.schema_version));
+        }
         let vault_id = VaultId::new(vault_path.clone());
 
         // ---- 5. Pin the KEK in mlock'd memory --------------------------------
@@ -275,6 +299,7 @@ impl UnlockVault {
         let mut updated_config = config;
         updated_config.last_unlocked_at = Some(when);
         backfill_vault_uuid(&mut updated_config);
+        bump_schema_version(&mut updated_config);
         repo.save_config(&updated_config).await?;
 
         // ---- 7b. Rollback compare (non-fatal) — same as the password path.
@@ -318,7 +343,23 @@ impl UnlockVault {
 
         let tag_rows = repo.all_tags().await?;
         for tag_row in tag_rows {
-            let meta = self.decrypt_tag_row(&tag_row, kek).map_err(remap_err)?;
+            // At-unlock tag-DEK migration (slice 5.6.0), riding the O(n) index build — the
+            // ONE place it fires, reached by both unlock paths. A legacy KEK-sealed tag is
+            // re-sealed under a fresh per-row DEK and written back. Idempotent: a DEK-sealed
+            // tag is a no-op (no write, no nonce churn). A write error propagates (fails the
+            // unlock, like the config save); a crash mid-loop strands nothing — the next
+            // unlock re-migrates the remaining NULLs. Mirrors `backfill_vault_uuid`'s intent.
+            let row =
+                match super::tag_crypto::migrate_legacy_tag(self.crypto.as_ref(), kek, &tag_row)
+                    .map_err(remap_err)?
+                {
+                    Some(migrated) => {
+                        repo.update_tag(&migrated).await?;
+                        migrated
+                    }
+                    None => tag_row,
+                };
+            let meta = self.decrypt_tag_row(&row, kek).map_err(remap_err)?;
             index.insert_tag(meta);
         }
 
@@ -349,13 +390,11 @@ impl UnlockVault {
         Ok(idx)
     }
 
-    /// Decrypt one tag row → `TagMeta`. `payload_bytes` zeroizes via Drop.
+    /// Decrypt one tag row → `TagMeta`. `plaintext` zeroizes via Drop. Reads both the
+    /// DEK-sealed shape and the legacy KEK-sealed shape via `tag_crypto::open_tag_row`.
     #[instrument(skip_all, fields(tag_id = %row.id))]
     fn decrypt_tag_row(&self, row: &TagRow, kek: &[u8; KEK_LEN]) -> Result<TagMeta, VaultError> {
-        let aad = tag_aad(&row.id)?;
-        let plaintext = self
-            .crypto
-            .decrypt_tag(kek, &row.nonce, &row.ciphertext, &aad)?;
+        let plaintext = super::tag_crypto::open_tag_row(self.crypto.as_ref(), kek, row)?;
         let payload: TagPayload = serde_json::from_slice(&plaintext)
             .map_err(|e| VaultError::MalformedPayload(format!("tag payload: {e}")))?;
         // `plaintext` zeroizes via Drop. TagPayload fields are not secret.
