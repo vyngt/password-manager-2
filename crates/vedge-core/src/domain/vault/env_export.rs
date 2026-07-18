@@ -45,6 +45,23 @@ fn sh_single_quote(value: &str) -> String {
     out
 }
 
+/// Whether `key` is a `.env`-safe shell identifier (`[A-Za-z_][A-Za-z0-9_]*`).
+///
+/// In a `.env` file everything before the first `=` is the name, sourced
+/// unquoted — so `=`, whitespace, or a newline in the key would split the line
+/// wrong, be dropped, or inject an extra `KEY=VALUE`. Keys are validated on write
+/// only for non-emptiness + uniqueness (not charset), and import doesn't validate
+/// them at all, so this is enforced here. JSON escapes the key and has no such
+/// limit.
+fn is_dotenv_safe_key(key: &str) -> bool {
+    let mut chars = key.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
+        _ => return false, // empty, or a non-identifier first char (digit, `=`, …)
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 /// Format an env-var set. The output is secret plaintext, so it is wrapped in
 /// `Zeroizing`.
 ///
@@ -66,6 +83,11 @@ pub fn format_env_vars(
         EnvExportFormat::DotEnv => {
             let mut out = String::new();
             for (i, v) in vars.iter().enumerate() {
+                // The KEY must be `.env`-safe too — not just the value. A key with
+                // `=`, whitespace, or a newline would corrupt or inject the line.
+                if !is_dotenv_safe_key(&v.key) {
+                    return Err(VaultError::EnvValueNotDotEnvSafe { key: v.key.clone() });
+                }
                 let value = v.value.expose_secret();
                 if value.contains('\n') || value.contains('\r') {
                     return Err(VaultError::EnvValueNotDotEnvSafe { key: v.key.clone() });
@@ -171,5 +193,27 @@ mod tests {
     fn empty_set_is_not_an_error() {
         assert_eq!(&*format_env_vars(&[], EnvExportFormat::DotEnv).unwrap(), "");
         assert_eq!(&*format_env_vars(&[], EnvExportFormat::Json).unwrap(), "{}");
+    }
+
+    /// 🔴 Review finding: `.env` KEYS must be safe too, not just values. A key with
+    /// `=`, whitespace, a newline, a leading digit, or empty would corrupt or
+    /// inject the line — reject it (→ JSON); JSON escapes any key.
+    #[test]
+    fn dotenv_rejects_unsafe_keys_json_accepts_them() {
+        for bad in ["A=B", "FOO BAR", "K\nX", "1LEADING_DIGIT", ""] {
+            let vars = [ev(bad, "v")];
+            let err = format_env_vars(&vars, EnvExportFormat::DotEnv).unwrap_err();
+            assert!(
+                matches!(err, VaultError::EnvValueNotDotEnvSafe { .. }),
+                "key {bad:?} must be rejected for .env"
+            );
+            assert!(
+                format_env_vars(&vars, EnvExportFormat::Json).is_ok(),
+                "JSON must accept key {bad:?}"
+            );
+        }
+        // Valid shell identifiers pass.
+        assert!(format_env_vars(&[ev("DATABASE_URL", "v")], EnvExportFormat::DotEnv).is_ok());
+        assert!(format_env_vars(&[ev("_UNDERSCORE9", "v")], EnvExportFormat::DotEnv).is_ok());
     }
 }

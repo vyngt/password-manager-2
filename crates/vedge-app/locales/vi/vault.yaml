@@ -288,3 +288,5 @@ env_copy_json: 'Sao chép dạng JSON ({"KEY":"value"})'
 env_reveal_dotenv: "Hiện dạng .env"
 env_reveal_json: "Hiện dạng JSON"
 env_revealed_title: "Tập đã hiện"
+secret_copy: "Sao chép"
+secret_not_set: "Chưa đặt"

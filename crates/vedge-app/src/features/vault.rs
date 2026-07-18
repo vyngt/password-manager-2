@@ -2,6 +2,7 @@ pub mod auto_lock;
 pub mod backup_open_dialog;
 pub mod command_palette;
 pub mod context;
+pub mod detail_secrets;
 pub mod document_attach;
 pub mod entry_form;
 pub mod entry_form_body;

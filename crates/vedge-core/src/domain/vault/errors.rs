@@ -220,11 +220,14 @@ pub enum VaultError {
     #[error("env var '{0}' is unchanged but has no stored value")]
     EnvVarUnchangedWithoutStored(String),
 
-    /// An env-var value contains a newline, which `.env` cannot portably encode
-    /// (slice 5.4.1 ⑥). The set-copy's `DotEnv` path rejects it so the UI can point
-    /// at JSON (the lossless format) instead of silently emitting a value that
-    /// truncates on paste. The `key` names the offending row.
-    #[error("env var '{key}' has a newline and cannot be exported as .env; use JSON")]
+    /// A row that `.env` cannot represent (slice 5.4.1 ⑥): a **value** with a
+    /// newline (no portable `.env` encoding), or a **key** that is not a shell
+    /// identifier (`[A-Za-z_][A-Za-z0-9_]*`) — a key with `=`, whitespace, or a
+    /// newline would split wrong or inject a line, the exact hazard the value-side
+    /// single-quoting guards against. The set-copy's `DotEnv` path rejects it so
+    /// the UI can point at JSON (the lossless format) rather than emit corrupt or
+    /// injected output. The `key` names the offending row.
+    #[error("env var '{key}' cannot be exported as .env; use JSON")]
     EnvValueNotDotEnvSafe { key: String },
 
     // --- screen lock (slice 4.5b) ---

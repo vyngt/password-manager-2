@@ -443,7 +443,9 @@ mod tests {
     /// adding a field to any payload struct breaks THIS match at compile time —
     /// the same discipline `resolve_secrets` uses. That is what keeps the seal,
     /// the resolver, and the reveal door on one enumeration: a new sealed field
-    /// cannot land without a human deciding its selector here.
+    /// **forces a look here** (the destructure won't compile until it is bound). It
+    /// cannot make the field *fully* airtight — a dev could bind the new field `_`
+    /// to bypass — but it converts a silent omission into a deliberate one.
     fn sealed_fields(payload: &EntryPayload) -> Vec<(FieldSelector, String)> {
         match payload {
             EntryPayload::Login(LoginPayload {
@@ -537,11 +539,12 @@ mod tests {
     }
 
     /// 🔴 5.4.1 ③ — THE GUARD. Every sealed secret field must be reachable
-    /// through a `FieldSelector` arm. This is the deliverable: it makes the
-    /// write-only class impossible to reintroduce. `sealed_fields` enumerates the
-    /// seal with a no-`..` match; this test proves the door covers all of it.
-    /// Adding a sealed field without an `extract_field` arm fails here, loudly,
-    /// naming the field.
+    /// through a `FieldSelector` arm. This is the deliverable: it forces the
+    /// write-only decision to a compile-time look (a new sealed field can't be
+    /// added without visiting `sealed_fields`, which enumerates the seal with a
+    /// no-`..` match) and then fails loudly, naming the field, if the door doesn't
+    /// cover it. Not fully airtight (a `_` binding could bypass the enumeration),
+    /// but it turns a silent omission into a deliberate one.
     #[test]
     fn every_sealed_field_has_a_working_selector() {
         let payloads = [

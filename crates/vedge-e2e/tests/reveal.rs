@@ -40,31 +40,27 @@ async fn reveal_a_password_via_ui() -> Result<()> {
     let entries = list_entries(&session, &vault).await?;
     let id = entry_id(&entries, "GitHub").context("find GitHub entry id")?;
 
-    // Open → Edit. The password field must render EMPTY — the sealed secret does
-    // NOT cross on `get_entry` (slice 5.4), so it is not in the DOM.
+    // Open the entry → the read drawer. The sealed password does NOT cross on
+    // `get_entry` (slice 5.4), so it is not shown until an explicit reveal —
+    // reading lives in the drawer, not the edit form.
     open_entry(&session, &id).await?;
-    session
-        .click_testid("detail-edit")
-        .await
-        .context("drawer: Edit")?;
-    let before = session.by_id("ef-password").await?.prop("value").await?;
-    assert_eq!(
-        before.as_deref(),
-        Some(""),
-        "the sealed password must NOT be in the DOM before an explicit reveal"
+    let before = drawer_text(&session).await?;
+    assert!(
+        !before.contains("hunter2"),
+        "the sealed password must NOT be in the drawer before an explicit reveal"
     );
 
-    // Click Reveal → the audited `reveal_field` fetches the secret and fills it.
+    // Reveal in the DRAWER → the audited `reveal_field` fetches the secret and
+    // shows it in the SecretDisplay.
     session
-        .click_testid("reveal-field")
+        .click_testid("reveal-password")
         .await
-        .context("edit form: Reveal password")?;
+        .context("drawer: Reveal password")?;
     wait_until(Duration::from_secs(5), || async {
-        let v = session.by_id("ef-password").await?.prop("value").await?;
-        Ok(v.as_deref() == Some("hunter2"))
+        Ok(drawer_text(&session).await?.contains("hunter2"))
     })
     .await
-    .context("Reveal should fill the password field with the stored secret")?;
+    .context("Reveal should show the password in the read drawer")?;
 
     // The reveal is audited as `SecretRevealed` — the extraction the log now
     // distinguishes from a browse `Viewed` (slice 5.4 ③).
@@ -126,32 +122,28 @@ async fn reveal_an_ssh_private_key_via_ui() -> Result<()> {
     let entries = list_entries(&session, &vault).await?;
     let id = entry_id(&entries, "prod-server").context("find ssh entry id")?;
 
-    // Open → Edit. The private-key Textarea must render EMPTY (sealed; the secret
-    // does not cross on `get_entry`).
+    // Open the entry → the read drawer. The sealed key is NOT shown until an
+    // explicit reveal (it does not cross on `get_entry`); reading it lives in the
+    // drawer, not the edit form.
     open_entry(&session, &id).await?;
-    session
-        .click_testid("detail-edit")
-        .await
-        .context("drawer: Edit")?;
-    let before = session.by_id("ef-ssh-priv").await?.prop("value").await?;
-    assert_eq!(
-        before.as_deref(),
-        Some(""),
-        "the sealed SSH private key must NOT be in the DOM before an explicit reveal"
+    let marker = "VEDGE E2E BLOCK";
+    let before = drawer_text(&session).await?;
+    assert!(
+        !before.contains(marker),
+        "the sealed SSH private key must NOT be in the drawer before an explicit reveal"
     );
 
-    // Reveal → the audited `reveal_field` fetches the key and fills the Textarea,
-    // newlines intact.
+    // Reveal in the DRAWER: the audited `reveal_field` fetches the key and shows
+    // it (newlines intact) in the SecretDisplay.
     session
         .click_testid("reveal-ssh-key")
         .await
-        .context("edit form: Reveal SSH private key")?;
+        .context("drawer: Reveal SSH private key")?;
     wait_until(Duration::from_secs(5), || async {
-        let v = session.by_id("ef-ssh-priv").await?.prop("value").await?;
-        Ok(v.as_deref() == Some(pem))
+        Ok(drawer_text(&session).await?.contains(marker))
     })
     .await
-    .context("Reveal should fill the private key byte-exact (newlines intact)")?;
+    .context("Reveal should show the PEM in the read drawer")?;
 
     let page = session
         .invoke(
