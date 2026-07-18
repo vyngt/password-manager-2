@@ -16,8 +16,10 @@
 
 use crate::features::settings::backup_panel::BackupPanel;
 use crate::features::settings::biometric_setting::BiometricSetting;
+use crate::features::settings::change_password_setting::ChangeMasterPasswordSetting;
 use crate::features::settings::emergency_kit_setting::EmergencyKitSetting;
 use crate::features::settings::maintenance_panel::MaintenancePanel;
+use crate::features::settings::rotate_secret_key_setting::RotateSecretKeySetting;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
 use crate::i18n::{t, t_string, use_i18n};
@@ -251,6 +253,12 @@ pub fn SettingsPage() -> impl IntoView {
 
                 // ---- Biometric unlock (slice 2.8) -----------------
                 <BiometricSetting />
+
+                // ---- Change master password (slice 5.6) -----------
+                <ChangeMasterPasswordSetting />
+
+                // ---- Rotate Secret Key (slice 5.6) ----------------
+                <RotateSecretKeySetting />
 
                 // ---- Emergency Kit re-export (slice 5.1) ----------
                 <EmergencyKitSetting />

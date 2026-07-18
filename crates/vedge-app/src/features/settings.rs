@@ -1,10 +1,12 @@
 pub mod backup_panel;
 pub mod biometric_setting;
+pub mod change_password_setting;
 pub mod emergency_kit_setting;
 pub mod generator_prefs;
 pub mod import_panel;
 pub mod import_preview_table;
 pub mod maintenance_panel;
+pub mod rotate_secret_key_setting;
 pub mod security_prefs;
 pub mod theme_editor;
 pub mod theme_list;

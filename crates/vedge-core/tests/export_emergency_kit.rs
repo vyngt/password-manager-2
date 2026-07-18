@@ -19,7 +19,7 @@ use vedge_core::application::vault::use_cases::{
 };
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::errors::VaultError;
-use vedge_core::domain::vault::recovery::parse_secret_key;
+use vedge_core::domain::vault::secret_key::parse_secret_key;
 
 #[tokio::test]
 async fn export_round_trips_through_recovery_format() {

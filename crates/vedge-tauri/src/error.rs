@@ -136,7 +136,7 @@ impl From<VaultError> for CommandError {
             | VaultError::FolderNotEmpty
             | VaultError::FieldNotApplicable
             | VaultError::KeyDerivationFailed(_)
-            | VaultError::InvalidRecoveryKey(_)
+            | VaultError::InvalidSecretKey(_)
             | VaultError::InvalidTotpParams(_)
             | VaultError::HotpNotSupported
             | VaultError::TotpMigrationNotSupported

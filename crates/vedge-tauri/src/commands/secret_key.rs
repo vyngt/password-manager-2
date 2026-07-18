@@ -1,4 +1,4 @@
-//! `unlock_with_recovery_key` — unlock a vault using a typed Emergency
+//! `unlock_with_secret_key` — unlock a vault using a typed Emergency
 //! Kit string and (on success) re-register the Secret Key in the OS
 //! keychain.
 //!
@@ -20,20 +20,20 @@ use zeroize::Zeroizing;
 
 use vedge_core::application::vault::ports::KeychainProvider;
 use vedge_core::domain::shared::VaultId;
-use vedge_core::{RecoverVaultInput, recover_vault as core_recover};
+use vedge_core::{UnlockWithSecretKeyInput, unlock_with_secret_key as core_recover};
 
 use crate::dto::emergency_kit::{
-    RecoveryOutcomeDto, UnlockWithRecoveryKeyInputDto, recovery_outcome_to_dto,
+    SecretKeyUnlockOutcomeDto, UnlockWithSecretKeyInputDto, secret_key_unlock_outcome_to_dto,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
 
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %input.vault_path))]
-pub async fn unlock_with_recovery_key(
-    input: UnlockWithRecoveryKeyInputDto,
+pub async fn unlock_with_secret_key(
+    input: UnlockWithSecretKeyInputDto,
     state: tauri::State<'_, AppState>,
-) -> Result<RecoveryOutcomeDto, CommandError> {
+) -> Result<SecretKeyUnlockOutcomeDto, CommandError> {
     let vault_path = PathBuf::from(&input.vault_path);
     let vault_id = VaultId::new(vault_path.clone());
 
@@ -48,15 +48,15 @@ pub async fn unlock_with_recovery_key(
     let outcome = core_recover(
         &state.unlock_vault,
         Arc::clone(&state.keychain) as Arc<dyn KeychainProvider>,
-        RecoverVaultInput {
+        UnlockWithSecretKeyInput {
             vault_path,
             master_password,
-            recovery_key_display: input.recovery_key_display,
+            secret_key_display: input.secret_key_display,
         },
     )
     .await?;
 
-    let dto = recovery_outcome_to_dto(&outcome);
+    let dto = secret_key_unlock_outcome_to_dto(&outcome);
     state.insert_session(
         vault_id,
         outcome.session,

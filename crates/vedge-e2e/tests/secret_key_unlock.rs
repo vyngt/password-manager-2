@@ -20,7 +20,7 @@ use vedge_e2e::{MASTER_PASSWORD, Session, TestEnv, app_binary};
 /// the keychain.) Plus the negative: a mangled key is rejected and stays locked.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
-async fn recovery_unlock() -> Result<()> {
+async fn secret_key_unlock() -> Result<()> {
     let env = TestEnv::new()?;
     let app = app_binary()?;
     let vault = env.vault_path_str();
@@ -50,9 +50,9 @@ async fn recovery_unlock() -> Result<()> {
         .await
         .context("reveal Emergency Kit panel")?;
     session.fill_id("master-password", MASTER_PASSWORD).await?;
-    session.fill_id("recovery-key", &secret_key).await?;
+    session.fill_id("secret-key", &secret_key).await?;
     session
-        .click_testid("recovery-submit")
+        .click_testid("secret-key-submit")
         .await
         .context("Recover & Unlock")?;
     assert_unlocked(&session, &vault, true).await?;
@@ -77,9 +77,9 @@ async fn recovery_unlock() -> Result<()> {
         .await
         .context("reveal Emergency Kit panel (negative)")?;
     session.fill_id("master-password", MASTER_PASSWORD).await?;
-    session.fill_id("recovery-key", &mangled).await?;
+    session.fill_id("secret-key", &mangled).await?;
     session
-        .click_testid("recovery-submit")
+        .click_testid("secret-key-submit")
         .await
         .context("Recover & Unlock (mangled)")?;
     // The checksum fails before the KDF, so this returns fast; give a hypothetical

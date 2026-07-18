@@ -131,6 +131,7 @@ pub fn run() {
             commands::document::export_document_to_path,
             // ---- password + maintenance ----
             commands::password::change_password,
+            commands::password::rotate_secret_key,
             commands::maintenance::run_maintenance,
             // ---- export entries (slice 5.3a) ----
             commands::export::export_entries,
@@ -158,7 +159,7 @@ pub fn run() {
             commands::emergency_kit::export_emergency_kit,
             commands::emergency_kit::emergency_kit_pdf,
             commands::emergency_kit::write_emergency_kit_pdf,
-            commands::recovery::unlock_with_recovery_key,
+            commands::secret_key::unlock_with_secret_key,
             // ---- biometric unlock (slice 2.8) ----
             commands::biometric::biometric_available,
             commands::biometric::biometric_is_enrolled,

@@ -28,7 +28,7 @@ use vedge_core::application::vault::ports::{
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password, create_entry,
-    enroll_biometric, lock_vault,
+    enroll_biometric, lock_vault, reauthenticate_master_password,
 };
 use vedge_core::domain::vault::crypto_constants::KEK_LEN;
 use vedge_core::domain::vault::entities::AuditAction;
@@ -251,4 +251,48 @@ async fn vault_uuid_backfilled_on_biometric_unlock() {
         h.repo.load_config().await.unwrap().vault_uuid.is_some(),
         "biometric unlock must backfill vault_uuid"
     );
+}
+
+async fn reauthenticate(
+    h: &Harness,
+    session: &VaultSession,
+    pw: &str,
+) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
+    reauthenticate_master_password(
+        session,
+        Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Zeroizing::new(pw.to_owned()),
+    )
+    .await
+}
+
+/// The shared re-auth primitive (slice 5.6 ④), extracted from `enroll_biometric`:
+/// the correct current password re-derives *exactly* the live session KEK, so the
+/// credential-lifecycle flows can prove knowledge of it before an O(n) rewrap.
+#[tokio::test]
+async fn reauthenticate_accepts_the_current_password() {
+    let h = Harness::fresh().await;
+    let session = unlock_pw(&h, PW).await;
+
+    let kek = reauthenticate(&h, &session, PW).await.unwrap();
+    assert_eq!(
+        *kek, h.kek,
+        "the re-derived KEK matches the live session KEK"
+    );
+    lock_vault(session).await.unwrap();
+}
+
+/// A wrong current password is rejected as `WrongCredentials` — the guard the
+/// change-password / rotate flows run *before* touching any DEK.
+#[tokio::test]
+async fn reauthenticate_rejects_a_wrong_password() {
+    let h = Harness::fresh().await;
+    let session = unlock_pw(&h, PW).await;
+
+    let err = reauthenticate(&h, &session, "not-the-password")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, VaultError::WrongCredentials), "got {err:?}");
+    lock_vault(session).await.unwrap();
 }

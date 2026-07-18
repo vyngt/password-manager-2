@@ -83,9 +83,19 @@ pub struct UnlockResultDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChangePasswordInputDto {
+    /// The current master password — re-verified against the live session's
+    /// `verify_hash` before any rewrap (slice 5.6 ④).
+    pub current_password: String,
     pub new_password: String,
     #[serde(default)]
     pub new_secret_key_b64: Option<String>,
+}
+
+/// The re-issued Secret Key after a rotation — shown once, never persisted in
+/// plaintext (the same show-once contract as `CreateVaultOutputDto`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecretKeyRotationOutputDto {
+    pub secret_key_display: String,
 }
 
 // ---- CreateVault DTOs --------------------------------------------------------

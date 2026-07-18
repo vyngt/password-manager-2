@@ -19,7 +19,6 @@ use crate::application::vault::ports::biometric::BiometricAuthenticator;
 use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::session::VaultSession;
-use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::errors::VaultError;
 
 /// Enroll the unlocked vault for biometric unlock.
@@ -40,42 +39,24 @@ pub async fn enroll_biometric(
         return Err(VaultError::BiometricUnavailable);
     }
 
-    // 1. Resolve the Secret Key from the keychain (same source as unlock).
+    // Keyed on `vault_uuid` (slice 5.2.3) so a later move/rename keeps the enrollment.
     let uuid = session
         .vault_uuid()
         .ok_or(VaultError::KeychainEntryNotFound)?;
-    let secret_key = keychain.read_secret_key(uuid)?;
 
-    // 2. One Argon2 pass → (KEK, verify_hash): authorizes the re-prompt AND yields the
-    //    KEK to store. Runs on `spawn_blocking` so it never starves the async executor.
-    let vault_salt = session.config.vault_salt;
-    let kdf_params = session.config.kdf_params.clone();
-    let kdf_job = Arc::clone(&kdf);
-
-    let (kek_z, verify_hash) = tokio::task::spawn_blocking(
-        move || -> Result<(Zeroizing<[u8; KEK_LEN]>, [u8; 32]), VaultError> {
-            let input_bytes = kdf_job.preprocess_2skd(master_password.as_bytes(), &secret_key)?;
-            let master_key = kdf_job.derive_master_key(&input_bytes, &vault_salt, &kdf_params)?;
-            let verify = kdf_job.derive_verify_hash(&master_key)?;
-            let kek = kdf_job.derive_kek(&master_key)?;
-            Ok((kek, verify))
-        },
+    // Authorize the re-prompt AND obtain the KEK to store — one Argon2 pass,
+    // shared with the credential-lifecycle flows. A wrong password returns
+    // `WrongCredentials` and stores nothing.
+    let kek_z = super::reauthenticate::reauthenticate_master_password(
+        session,
+        kdf,
+        keychain,
+        master_password,
     )
-    .await
-    .map_err(|e| VaultError::KeyDerivationFailed(format!("spawn_blocking join: {e}")))??;
+    .await?;
 
-    // 3. Authorize: the re-prompted password must match the vault's verify hash.
-    if !session
-        .crypto
-        .verify_hash_matches(&verify_hash, &session.config.verify_hash)
-    {
-        // `kek_z` drops here, zeroizing the KEK we never store.
-        return Err(VaultError::WrongCredentials);
-    }
-
-    // 4. Store the KEK behind the biometric gate (shows the OS prompt). `kek_z`
-    //    zeroizes on drop immediately after. Keyed on `vault_uuid` (slice 5.2.3), the same
-    //    `uuid` the keychain read used above — so a later move/rename keeps the enrollment.
+    // Store the KEK behind the biometric gate (shows the OS prompt). `kek_z`
+    // zeroizes on drop immediately after.
     biometric.enroll(uuid, &kek_z)?;
     Ok(())
 }
