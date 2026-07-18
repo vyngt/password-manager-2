@@ -45,6 +45,7 @@ fn sample_config() -> VaultConfig {
         backup_keep_count: None,
         last_snapshot_at: None,
         last_backup_at: None,
+        recovery_slot: None,
     }
 }
 
