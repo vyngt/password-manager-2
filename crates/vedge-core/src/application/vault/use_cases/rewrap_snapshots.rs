@@ -27,6 +27,7 @@ use crate::application::vault::ports::repository::VaultRepository;
 use crate::application::vault::use_cases::tag_crypto::rewrap_tag_row;
 use crate::domain::vault::crypto_constants::KEK_LEN;
 use crate::domain::vault::errors::VaultError;
+use crate::infrastructure::backup::archive;
 use crate::infrastructure::snapshot::manifest::verify_hash_prefix;
 use crate::infrastructure::snapshot::store::{self, SnapshotEntry};
 use crate::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
@@ -127,9 +128,16 @@ async fn rewrap_one(
     // Close so the WAL is checkpointed into the snapshot's own `vault.vdb` (self-contained).
     db.close().await.map_err(VaultError::Storage)?;
 
-    // Stamp the manifest so the UI can confirm the rewrap landed (⑬) and clear the stale badge.
+    // 🔴 The rewrap rewrote every entry/tag DEK (+ verify_hash + the recovery slot) INSIDE
+    // `vault.vdb`, so its content hash changed — re-stamp `vault_blake3` too, not just
+    // `verify_hash_prefix`. `revert_to_snapshot` verifies the file against `vault_blake3`
+    // before swapping it in, so a stale hash makes every rewrapped snapshot revert as
+    // `SnapshotCorrupt` (a "change password / rotate / recover, then revert" corruption that
+    // was latent because no test rewrapped a snapshot and then reverted to it).
+    let (_size, vault_blake3) = archive::hash_file(&snap.vault_file())?;
     let mut manifest = snap.manifest.clone();
     manifest.verify_hash_prefix = verify_hash_prefix(new_verify_hash);
+    manifest.vault_blake3 = vault_blake3;
     store::write_manifest(&snap.dir, &manifest)?;
     Ok(())
 }

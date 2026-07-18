@@ -290,6 +290,116 @@ async fn a_stale_snapshot_falls_back_to_needs_unlock_not_a_failure() {
     let _ = tempdir;
 }
 
+/// 🔴 Test 7 — the HEALTHY counterpart to test 6, and the "change master password, then revert"
+/// path: after a password change re-wraps the snapshot to KEK₂, reverting to it OPENS cleanly
+/// under the new session KEK (`Reverted`, not `NeedsUnlock`) — not corrupt. Guards the
+/// change_password → rewrap_snapshots → revert chain (incl. slice 5.7's slot-nulling in the
+/// snapshot copy).
+#[tokio::test]
+async fn revert_after_change_password_opens_the_rewrapped_snapshot() {
+    let (mut ctx, snap_id) = build_live_with_snapshot().await; // KEK₁; live=2 (keeper,extra), snap=1
+
+    change_password(
+        &mut ctx.session,
+        Arc::clone(&ctx.kdf),
+        Arc::clone(&ctx.keychain),
+        Arc::clone(&ctx.biometric),
+        ChangePasswordInput {
+            new_password: Zeroizing::new("a-different-master-9".into()),
+            new_secret_key: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let outcome = revert_to_snapshot_in_session(
+        &ctx.session,
+        &ctx.unlock,
+        &ctx.factory,
+        ctx.keychain.as_ref(),
+        RevertToSnapshotInput {
+            vault: ctx.home.clone(),
+            snapshot_id: snap_id,
+            confirm_rollback: true,
+        },
+    )
+    .await
+    .unwrap();
+    drop(ctx.session);
+
+    match outcome {
+        SeamlessRevertOutcome::Reverted { session, report } => {
+            assert_eq!(report.entry_count, 1, "reverted to the 1-entry snapshot");
+            assert_eq!(
+                session.index().all_active().len(),
+                1,
+                "the re-wrapped snapshot opens cleanly under the new KEK — not corrupt"
+            );
+        }
+        SeamlessRevertOutcome::NeedsUnlock { .. } => {
+            panic!(
+                "a re-wrapped snapshot must Revert under the new KEK, not fall back to NeedsUnlock"
+            )
+        }
+        SeamlessRevertOutcome::CommitFailed { error } => panic!("revert commit failed: {error:?}"),
+    }
+    let _ = (ctx.kdf, ctx.biometric);
+}
+
+/// 🔴 Test 7b — the "rotate the Secret Key, then revert" path. A rotation is `change_password`
+/// with a fresh Secret Key (same master password), which re-derives KEK₂ and re-wraps the
+/// snapshot; reverting to it must open cleanly under the new session KEK.
+#[tokio::test]
+async fn revert_after_secret_key_rotation_opens_the_rewrapped_snapshot() {
+    let (mut ctx, snap_id) = build_live_with_snapshot().await;
+
+    // Rotate: keep the master password, hand in a fresh Secret Key (what rotate_secret_key does).
+    change_password(
+        &mut ctx.session,
+        Arc::clone(&ctx.kdf),
+        Arc::clone(&ctx.keychain),
+        Arc::clone(&ctx.biometric),
+        ChangePasswordInput {
+            // Keep the master password (the harness's), rotate only the Secret Key.
+            new_password: Zeroizing::new("correct horse battery staple".into()),
+            new_secret_key: Some(Zeroizing::new([0xAB; 16])),
+        },
+    )
+    .await
+    .unwrap();
+
+    let outcome = revert_to_snapshot_in_session(
+        &ctx.session,
+        &ctx.unlock,
+        &ctx.factory,
+        ctx.keychain.as_ref(),
+        RevertToSnapshotInput {
+            vault: ctx.home.clone(),
+            snapshot_id: snap_id,
+            confirm_rollback: true,
+        },
+    )
+    .await
+    .unwrap();
+    drop(ctx.session);
+
+    match outcome {
+        SeamlessRevertOutcome::Reverted { session, report } => {
+            assert_eq!(report.entry_count, 1);
+            assert_eq!(
+                session.index().all_active().len(),
+                1,
+                "the re-wrapped snapshot opens cleanly after a Secret-Key rotation"
+            );
+        }
+        SeamlessRevertOutcome::NeedsUnlock { .. } => {
+            panic!("a re-wrapped snapshot must Revert after a rotation, not NeedsUnlock")
+        }
+        SeamlessRevertOutcome::CommitFailed { error } => panic!("revert commit failed: {error:?}"),
+    }
+    let _ = (ctx.kdf, ctx.biometric);
+}
+
 /// Test 6b — a pre-commit failure (an unknown snapshot id) returns `Err` with the live session
 /// UNTOUCHED: the preflight runs BEFORE any teardown, so the user stays unlocked. This is the
 /// ejection-bug regression guard.

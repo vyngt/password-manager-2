@@ -36,8 +36,9 @@ use vedge_core::application::vault::ports::{
 };
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
-    ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password,
-    change_password_after_recovery, create_entry, create_snapshot, enroll_recovery_key, lock_vault,
+    ChangePasswordInput, CreateEntryInput, RevertToSnapshotInput, SeamlessRevertOutcome,
+    UnlockVaultInput, change_password, change_password_after_recovery, create_entry,
+    create_snapshot, enroll_recovery_key, lock_vault, revert_to_snapshot_in_session,
     revoke_recovery_key,
 };
 use vedge_core::domain::shared::SNAPSHOTS_DIR;
@@ -48,7 +49,9 @@ use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, L
 use vedge_core::domain::vault::secret_key::parse_recovery_key;
 use vedge_core::infrastructure::snapshot::manifest::SnapshotReason;
 use vedge_core::infrastructure::snapshot::store;
-use vedge_core::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
+use vedge_core::infrastructure::sqlite::vault::{
+    SqliteVaultRepository, SqliteVaultRepositoryFactory, VaultDbConnection,
+};
 
 const PW: &str = "correct horse battery staple";
 const NEW_PW: &str = "a-brand-new-passphrase-9";
@@ -349,6 +352,96 @@ async fn revoke_turns_recovery_off() {
         .await
         .unwrap_err();
     assert!(matches!(e, VaultError::RecoveryNotConfigured), "got {e:?}");
+}
+
+/// 🔴 The recovery counterpart of the change-password/rotate → revert guards: after a
+/// **recovery unlock + forced new password** rewraps a snapshot to the new KEK, reverting to
+/// it opens **cleanly** (`Reverted`), not `SnapshotCorrupt` — the "recover, then revert" path
+/// is not corrupt. (Regression guard for the `rewrap_one` `vault_blake3` re-stamp.)
+#[tokio::test]
+async fn revert_after_recovery_opens_the_rewrapped_snapshot() {
+    let h = Harness::fresh().await;
+    let unlocker = build_unlock(&h);
+    let keychain_arc = keychain(&h); // captured before `h` is destructured below
+    let home = h.home.clone();
+
+    // Enrol recovery, snapshot the 1-entry "keeper" state, then diverge (add a 2nd entry).
+    let mut session = unlock(&h, PW).await.unwrap();
+    seed_one_entry(&mut session).await; // "e1" — the keeper
+    let display = enroll_recovery_key(&mut session, kdf(&h), keychain(&h))
+        .await
+        .unwrap()
+        .recovery_key_display;
+    let snap = create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+    create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: login("e2"),
+        },
+    )
+    .await
+    .unwrap();
+    lock_vault(session).await.unwrap();
+
+    // Recover → forced new password (KEK₂) → rewrap_snapshots re-wraps the snapshot to KEK₂.
+    let recovery_key = parse_recovery_key(&display).unwrap();
+    let mut recovered = unlocker
+        .unlock_with_recovery_key(home.clone(), recovery_key, Zeroizing::new(h.secret_key))
+        .await
+        .unwrap();
+    change_password_after_recovery(
+        &mut recovered,
+        kdf(&h),
+        keychain(&h),
+        biometric(&h),
+        Zeroizing::new(NEW_PW.to_owned()),
+    )
+    .await
+    .unwrap();
+
+    // Only the recovered session may hold `vault.vdb` for the swap — drop the harness handles.
+    let Harness {
+        tempdir,
+        repo,
+        blob,
+        ..
+    } = h;
+    drop(repo);
+    drop(blob);
+    let factory = SqliteVaultRepositoryFactory::new();
+
+    let outcome = revert_to_snapshot_in_session(
+        &recovered,
+        &unlocker,
+        &factory,
+        keychain_arc.as_ref(),
+        RevertToSnapshotInput {
+            vault: home,
+            snapshot_id: snap.id,
+            confirm_rollback: true,
+        },
+    )
+    .await
+    .unwrap();
+    drop(recovered);
+
+    match outcome {
+        SeamlessRevertOutcome::Reverted { session, report } => {
+            assert_eq!(report.entry_count, 1, "reverted to the 1-entry snapshot");
+            assert_eq!(
+                session.index().all_active().len(),
+                1,
+                "the re-wrapped snapshot opens cleanly after a recovery-forced password change"
+            );
+        }
+        SeamlessRevertOutcome::NeedsUnlock { .. } => {
+            panic!("a re-wrapped snapshot must Revert after recovery, not fall back to NeedsUnlock")
+        }
+        SeamlessRevertOutcome::CommitFailed { error } => panic!("revert commit failed: {error:?}"),
+    }
+    let _ = tempdir;
 }
 
 /// Read a snapshot's own `vault.vdb` `recovery_slot` directly.
