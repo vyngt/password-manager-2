@@ -175,6 +175,13 @@ run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Service vedge-e2e-test 
 description = "Prove no legacy (.vdb / vault:* / path-hashed) artifact remains — read-only, exit 0 only if clean"
 run = "pwsh -NoProfile -File scripts/legacy_audit.ps1"
 
+# Prove — from evidence — that no pre-5.6.0 KEK-sealed tag (`tags.dek_wrapped IS NULL`) survives on
+# any reachable surface (live vaults, snapshots, scannable `.vbk`s), so slice 5.9 ② can retire the
+# legacy-tag read path. Cannot-see ⇒ FAIL; if it can't be made GREEN, the honest outcome is keep.
+[tasks.tag-legacy-audit]
+description = "Prove no legacy (KEK-sealed) tag remains — read-only, exit 0 only if clean (slice 5.9 ②)"
+run = "pwsh -NoProfile -File scripts/tag_legacy_audit.ps1"
+
 # ---------------------------------------------------------------------------
 # Frontend wasm type-check
 # ---------------------------------------------------------------------------
