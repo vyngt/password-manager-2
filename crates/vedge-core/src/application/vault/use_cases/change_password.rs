@@ -45,6 +45,12 @@ pub struct ChangePasswordInput {
     pub new_password: Zeroizing<String>,
     /// `None` = keep the Secret Key already on file.
     pub new_secret_key: Option<Zeroizing<[u8; SECRET_KEY_LEN]>>,
+    /// Did the Secret Key genuinely CHANGE? Drives the `SecretKeyRotated` audit action and
+    /// the `last_secret_key_rotation_at` stamp (slice 5.9 ③). 🔴 NOT derivable from
+    /// `new_secret_key.is_some()`: `change_password_after_recovery` passes `Some(same_key)`
+    /// (5.7 C4 re-stores the key on a fresh device) and must NOT be recorded as a rotation.
+    /// Set `true` only by `rotate_secret_key`; `false` by a plain change and by recovery reset.
+    pub secret_key_rotated: bool,
 }
 
 #[instrument(skip_all, fields(vault_id = %session.vault_id()))]
@@ -119,6 +125,15 @@ pub async fn change_password(
     // flow itself ends in a forced password change, so recovery ALSO leaves the slot
     // deleted (expected). `session.config = new_config` at the tail clears it in memory too.
     new_config.recovery_slot = None;
+    // Credential-age stamps (slice 5.9 ③), persisted in THIS rewrap txn (the columns are in
+    // `rewrap_all_deks`'s `update_columns`). The password's KEK was just re-derived, so
+    // `last_password_change_at` always advances — including on a Secret-Key rotation (its KEK
+    // changes too) and a recovery reset. `last_secret_key_rotation_at` advances ONLY when the
+    // key genuinely changed (`secret_key_rotated`), never on a recovery reset's same-key restore.
+    new_config.last_password_change_at = Some(when);
+    if input.secret_key_rotated {
+        new_config.last_secret_key_rotation_at = Some(when);
+    }
     session
         .repo
         .rewrap_all_deks(&updates, &tag_updates, &new_config)
@@ -168,6 +183,15 @@ pub async fn change_password(
     )?;
 
     // ---- 7. Audit ------------------------------------------------------------
-    super::create_entry::append_audit(session, AuditAction::PasswordChanged, None).await?;
+    // A Secret-Key rotation and a password change funnel through the same use case; split them
+    // in the log (slice 5.9 ③ — the 5.4 `Viewed`-conflation fix applied to credentials). A
+    // recovery reset carries `secret_key_rotated = false` (same key), so it reads as a password
+    // change, which is what it is.
+    let action = if input.secret_key_rotated {
+        AuditAction::SecretKeyRotated
+    } else {
+        AuditAction::PasswordChanged
+    };
+    super::create_entry::append_audit(session, action, None).await?;
     Ok(())
 }

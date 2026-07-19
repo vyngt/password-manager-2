@@ -100,6 +100,9 @@ rotate_err: "Không thể xoay Khóa bí mật:"
 rotate_new_key_intro: "Khóa bí mật mới của bạn — chỉ hiển thị một lần. Hãy lưu Bộ khẩn cấp mới ngay; bạn sẽ cần nó để mở khóa kho này sau khi cài lại hoặc trên thiết bị khác."
 rotate_save_kit: "Lưu Bộ khẩn cấp…"
 rotate_done: "Xong"
+# --- 5.9 credential-age nudge (③) ---
+credential_nudge_password: "Mật khẩu chính đã hơn 1 năm — cân nhắc đổi mật khẩu"
+credential_nudge_secret_key: "Khóa Bí mật đã hơn 2 năm — nếu xoay, hãy giữ Bộ khẩn cấp cũ (nó vẫn mở được các bản sao lưu cũ)"
 # --- 5.7 Recovery Key ---
 recovery_key: "Khóa khôi phục"
 recovery_key_desc: "Thiết lập Khóa khôi phục để đặt lại mật khẩu chính nếu bạn quên."

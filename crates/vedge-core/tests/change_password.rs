@@ -79,6 +79,7 @@ async fn rotate_password_then_unlock_with_new_only() {
         ChangePasswordInput {
             new_password: Zeroizing::new("new-hunter2".into()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await
@@ -111,6 +112,7 @@ async fn rotate_secret_key_only() {
         ChangePasswordInput {
             new_password: Zeroizing::new("correct horse battery staple".into()),
             new_secret_key: Some(Zeroizing::new(new_sk)),
+            secret_key_rotated: true,
         },
     )
     .await
@@ -157,6 +159,7 @@ async fn rotate_preserves_all_existing_entries_decrypted() {
         ChangePasswordInput {
             new_password: Zeroizing::new("next-pw".into()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await
@@ -190,6 +193,7 @@ async fn vault_uuid_survives_change_password() {
         ChangePasswordInput {
             new_password: Zeroizing::new("next-pw".into()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await
@@ -227,6 +231,7 @@ async fn change_pw(session: &mut VaultSession, h: &Harness, new_pw: &str) {
         ChangePasswordInput {
             new_password: Zeroizing::new(new_pw.to_owned()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await

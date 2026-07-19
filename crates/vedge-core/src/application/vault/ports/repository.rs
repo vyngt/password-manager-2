@@ -110,4 +110,17 @@ pub trait VaultRepository: Send + Sync {
     /// Null `vault_config.recovery_slot` in a targeted update (slice 5.7) — revoke, and
     /// the null-in-snapshot at capture (④). Idempotent.
     async fn clear_recovery_slot(&self) -> Result<(), VaultError>;
+
+    /// Set `vault_config.last_password_change_at` in a targeted update (slice 5.9 ③). Kept
+    /// out of `save_config`'s `update_columns`, so `rekey_vault` (which persists config via
+    /// `save_config` on the staged repo) uses this instead of the in-memory config value.
+    async fn touch_last_password_change_at(&self, at: Timestamp) -> Result<(), VaultError>;
+
+    /// Set `vault_config.last_secret_key_rotation_at` in a targeted update (slice 5.9 ③) —
+    /// written only on a real Secret-Key change (not a recovery reset).
+    async fn touch_last_secret_key_rotation_at(&self, at: Timestamp) -> Result<(), VaultError>;
+
+    /// Null `vault_config.last_snapshot_at` in a targeted update (slice 5.9 ④) — `rekey_vault`
+    /// retires the snapshot store, so the "last snapshot" timestamp must not claim one exists.
+    async fn clear_last_snapshot_at(&self) -> Result<(), VaultError>;
 }

@@ -88,15 +88,7 @@ impl CryptoProvider for XChaCha20CryptoProvider {
         aead_decrypt(dek, nonce, ciphertext, aad)
     }
 
-    fn decrypt_legacy_tag(
-        &self,
-        kek: &[u8; KEK_LEN],
-        nonce: &[u8; NONCE_LEN],
-        ciphertext: &[u8],
-        aad: &[u8],
-    ) -> Result<Zeroizing<Vec<u8>>, VaultError> {
-        aead_decrypt(kek, nonce, ciphertext, aad)
-    }
+    // `decrypt_legacy_tag` retired in slice 5.9 ② — the KEK is no longer an AEAD key anywhere.
 
     fn wrap_dek(
         &self,

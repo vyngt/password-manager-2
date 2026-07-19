@@ -5,14 +5,17 @@
 //! under the KEK, exactly like entries. These are the shared primitives for that:
 //!
 //! - [`seal_tag_payload`] — the WRITE side: mint a DEK, seal the plaintext under it,
-//!   wrap the DEK under the KEK. Used by create/rename and by every rewrap. **No write
-//!   path uses the KEK as an AEAD key** — the KEK only wraps the DEK here.
-//! - [`open_tag_row`] — the READ side, dual-path: a DEK-sealed row (`dek_wrapped =
-//!   Some`) unwraps its DEK and decrypts under it; a LEGACY row (`None`) decrypts
-//!   directly under the KEK via the one surviving [`CryptoProvider::decrypt_legacy_tag`]
-//!   door. This is the ONLY place the KEK is used as an AEAD key, and only to READ.
-//! - [`rewrap_tag_row`] — move a row from `old_kek` to `new_kek`, always producing a
-//!   DEK-sealed row so a caller can never leave a tag under the old KEK.
+//!   wrap the DEK under the KEK. Used by create/rename and by every rewrap. **No path
+//!   uses the KEK as an AEAD key** — the KEK only wraps the DEK.
+//! - [`open_tag_row`] — the READ side: unwrap the row's DEK under the KEK, decrypt under it.
+//! - [`rewrap_tag_row`] — move a row from `old_kek` to `new_kek`, re-wrapping its DEK.
+//!
+//! 🔴 **The legacy KEK-as-AEAD read path was RETIRED in slice 5.9 ②**, behind a prove-absence
+//! audit (`scripts/tag_legacy_audit.ps1`): `decrypt_legacy_tag` and the at-unlock `migrate_legacy_tag`
+//! are gone, so a pre-5.6.0 tag (`dek_wrapped = None`) no longer decrypts — it is a hard error. The
+//! security property is now unconditional: **no code uses the KEK as an AEAD key.** Every live tag is
+//! DEK-sealed (5.6.0's at-unlock migration ran for every reachable vault before the audit went green);
+//! to migrate a straggler, open the vault with a pre-5.9 build first.
 
 use zeroize::Zeroizing;
 
@@ -37,82 +40,42 @@ pub(crate) fn seal_tag_payload(
     Ok((nonce, ciphertext, wrapped))
 }
 
-/// Decrypt a tag row's payload under `kek`, choosing the path from `dek_wrapped`:
-/// `Some` → unwrap the DEK and decrypt under it; `None` → legacy KEK-direct decrypt.
+/// Decrypt a tag row's payload: unwrap its per-row DEK under `kek`, decrypt under the DEK.
 /// The returned plaintext zeroizes on drop.
+///
+/// A `dek_wrapped = None` row is a **retired** pre-5.6.0 KEK-sealed tag (slice 5.9 ②): the
+/// KEK-as-AEAD read path is gone, so it can no longer be decrypted — `DecryptionFailed`. Unreachable
+/// for a vault whose tags migrated before the retirement audit went green; open with a pre-5.9 build
+/// to migrate a straggler.
 pub(crate) fn open_tag_row(
     crypto: &dyn CryptoProvider,
     kek: &[u8; KEK_LEN],
     row: &TagRow,
 ) -> Result<Zeroizing<Vec<u8>>, VaultError> {
     let aad = tag_aad(&row.id)?;
-    match row.dek_wrapped {
-        Some(wrapped) => {
-            let dek = crypto.unwrap_dek(&wrapped, kek)?;
-            crypto.decrypt_entry(&dek, &row.nonce, &row.ciphertext, &aad)
-        }
-        None => crypto.decrypt_legacy_tag(kek, &row.nonce, &row.ciphertext, &aad),
-    }
+    let wrapped = row.dek_wrapped.ok_or(VaultError::DecryptionFailed)?;
+    let dek = crypto.unwrap_dek(&wrapped, kek)?;
+    crypto.decrypt_entry(&dek, &row.nonce, &row.ciphertext, &aad)
 }
 
-/// If `row` is a legacy KEK-sealed tag (`dek_wrapped = None`), return the migrated
-/// DEK-sealed row: decrypt under `kek`, re-seal under a fresh per-row DEK wrapped by the
-/// **same** `kek`. Returns `None` when the row already carries a DEK (nothing to migrate) —
-/// so a caller writes only on the one-time transition, keeping the migration idempotent.
-pub(crate) fn migrate_legacy_tag(
-    crypto: &dyn CryptoProvider,
-    kek: &[u8; KEK_LEN],
-    row: &TagRow,
-) -> Result<Option<TagRow>, VaultError> {
-    if row.dek_wrapped.is_some() {
-        return Ok(None);
-    }
-    let aad = tag_aad(&row.id)?;
-    let plaintext = crypto.decrypt_legacy_tag(kek, &row.nonce, &row.ciphertext, &aad)?;
-    let (nonce, ciphertext, dek_wrapped) = seal_tag_payload(crypto, kek, &aad, &plaintext)?;
-    Ok(Some(TagRow {
-        nonce,
-        ciphertext,
-        dek_wrapped: Some(dek_wrapped),
-        ..row.clone()
-    }))
-}
-
-/// Re-wrap (or migrate) a tag row from `old_kek` to `new_kek`, always yielding a
-/// DEK-sealed row readable under `new_kek`.
+/// Re-wrap a tag row's per-row DEK from `old_kek` to `new_kek`. The ciphertext (under the unchanged
+/// DEK) is untouched, so the result is readable under `new_kek`.
 ///
-/// - `dek_wrapped = Some` → unwrap the DEK under `old_kek`, re-wrap under `new_kek`;
-///   the ciphertext (under the unchanged DEK) is untouched.
-/// - `dek_wrapped = None` (a legacy KEK-sealed row — a pre-5.6.0 snapshot, or a live
-///   straggler whose at-unlock migration did not persist) → legacy-decrypt under
-///   `old_kek`, then re-seal under a fresh DEK wrapped by `new_kek`.
-///
-/// Either way the result carries `dek_wrapped = Some` under `new_kek`, so a caller can
-/// never leave a tag under the old KEK (the brick this slice closes).
+/// A `dek_wrapped = None` row is a **retired** pre-5.6.0 KEK-sealed tag (slice 5.9 ②) — there is no
+/// legacy re-seal path any more, so it is a hard `DecryptionFailed`. `rewrap_snapshots::rewrap_one`
+/// (its only legacy caller) aborts the whole snapshot on this, exactly as before; unreachable once
+/// every reachable vault's tags migrated before the retirement audit went green.
 pub(crate) fn rewrap_tag_row(
     crypto: &dyn CryptoProvider,
     row: &TagRow,
     old_kek: &[u8; KEK_LEN],
     new_kek: &[u8; KEK_LEN],
 ) -> Result<TagRow, VaultError> {
-    if let Some(wrapped) = row.dek_wrapped {
-        // Already DEK-sealed: re-wrap the DEK; ciphertext (under the unchanged DEK) is untouched.
-        let dek = crypto.unwrap_dek(&wrapped, old_kek)?;
-        let new_wrapped = crypto.wrap_dek(&dek, new_kek)?;
-        Ok(TagRow {
-            dek_wrapped: Some(new_wrapped),
-            ..row.clone()
-        })
-    } else {
-        // Legacy KEK-sealed: decrypt under `old_kek`, then re-seal under a fresh DEK by `new_kek`.
-        let aad = tag_aad(&row.id)?;
-        let plaintext = crypto.decrypt_legacy_tag(old_kek, &row.nonce, &row.ciphertext, &aad)?;
-        let (nonce, ciphertext, new_wrapped) = seal_tag_payload(crypto, new_kek, &aad, &plaintext)?;
-        Ok(TagRow {
-            nonce,
-            ciphertext,
-            dek_wrapped: Some(new_wrapped),
-            ..row.clone()
-        })
-    }
+    let wrapped = row.dek_wrapped.ok_or(VaultError::DecryptionFailed)?;
+    let dek = crypto.unwrap_dek(&wrapped, old_kek)?;
+    let new_wrapped = crypto.wrap_dek(&dek, new_kek)?;
+    Ok(TagRow {
+        dek_wrapped: Some(new_wrapped),
+        ..row.clone()
+    })
 }

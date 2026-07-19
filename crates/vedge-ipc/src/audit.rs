@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 /// app's audit filter derives its dropdown from this (so it can't drift), and a
 /// `vedge-tauri` test pins it one-for-one to `vedge_core::AuditAction::ALL` (so a
 /// new core variant can't silently drift out of it). Extend both together.
-pub const ACTION_NAMES: [&str; 24] = [
+pub const ACTION_NAMES: [&str; 25] = [
     "Unlocked",
     "Locked",
     "Created",
@@ -43,6 +43,7 @@ pub const ACTION_NAMES: [&str; 24] = [
     "RecoveryKeyEnabled",
     "RecoveryKeyRevoked",
     "VaultRekeyed",
+    "SecretKeyRotated",
 ];
 
 /// Filter + page parameters for `list_audit`. Empty `actions` = all.

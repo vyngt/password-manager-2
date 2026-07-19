@@ -22,9 +22,41 @@ pub fn ts_millis(s: &str) -> i64 {
     DateTime::parse_from_rfc3339(s).map_or(i64::MIN, |dt| dt.timestamp_millis())
 }
 
+/// True if `rfc3339` is more than `days` old relative to `now_ms` (epoch millis) — the
+/// credential-age nudge threshold (slice 5.9 ③). The caller supplies `now_ms`
+/// (`js_sys::Date::now()`), keeping this pure/testable, the way `relative_time` does.
+///
+/// 🔴 An unparseable/missing stamp (`ts_millis` → `i64::MIN`) is treated as NOT stale: the nudge
+/// must never fire on a value it could not read (fail safe — a false "your password is old" alarm
+/// trains users to click through warnings).
+#[must_use]
+pub fn is_older_than_days(rfc3339: &str, now_ms: i64, days: i64) -> bool {
+    let ts = ts_millis(rfc3339);
+    if ts == i64::MIN {
+        return false;
+    }
+    now_ms.saturating_sub(ts) > days.saturating_mul(86_400_000)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::ts_millis;
+    use super::{is_older_than_days, ts_millis};
+
+    const DAY_MS: i64 = 86_400_000;
+
+    #[test]
+    fn older_than_threshold_is_stale() {
+        let now = 400 * DAY_MS;
+        // Changed at t=0 → 400 days old.
+        let changed = "1970-01-01T00:00:00.000Z";
+        assert!(is_older_than_days(changed, now, 365));
+        assert!(!is_older_than_days(changed, now, 730));
+    }
+
+    #[test]
+    fn unreadable_stamp_is_never_stale() {
+        assert!(!is_older_than_days("not a timestamp", i64::MAX, 365));
+    }
 
     #[test]
     fn parses_z_and_offset_to_same_instant() {

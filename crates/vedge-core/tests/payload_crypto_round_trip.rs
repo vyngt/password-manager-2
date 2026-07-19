@@ -211,8 +211,8 @@ fn folder_round_trip() {
 #[test]
 fn tag_round_trip_dek_sealed() {
     // Since 5.6.0 a TagPayload is sealed under a per-row DEK that is itself wrapped by the
-    // KEK, using tag_aad — exactly like an entry. (Pre-5.6.0 it was sealed directly under
-    // the KEK; that legacy read path is covered in `crypto_xchacha20::legacy_tag_decrypts_under_kek`.)
+    // KEK, using tag_aad — exactly like an entry. (Pre-5.6.0 it was sealed directly under the
+    // KEK; that legacy read path was RETIRED in slice 5.9 ② — a NULL-dek tag now hard-fails.)
     let crypto = XChaCha20CryptoProvider::new();
     let kek: [u8; 32] = [0x99; 32];
     let id = TagId::new();

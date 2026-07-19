@@ -119,6 +119,10 @@ run = "cargo test -p vedge-app"
 description = "Unlock benchmark — O(n) index-build loop at 100/1k/10k entries (slice 5.3c, hard gate 2). NOT in `ci`; run to decide slice 5.5. `--release` so the numbers reflect production crypto, not a debug build."
 run = "cargo test --release -p vedge-core --test unlock_bench -- --ignored --nocapture"
 
+[tasks.kill-smoke]
+description = "Kill-mid-restore smoke (slice 5.9 ①) — hard-kill a real process at each journal state via the `VEDGE_RESTORE_PAUSE` seam, then prove a fresh process re-opens the home consistently. Debug build (the seam is `cfg(debug_assertions)`); NOT in `ci`."
+run = "cargo test -p vedge-core --test kill_mid_restore -- --ignored --exact kill_mid_restore_smoke --nocapture"
+
 [tasks.e2e]
 description = "End-to-end WebDriver run (tauri-driver + thirtyfour; needs a display + platform driver)"
 dir = "crates/vedge-tauri"
@@ -171,6 +175,13 @@ run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Service vedge-e2e-test 
 description = "Prove no legacy (.vdb / vault:* / path-hashed) artifact remains — read-only, exit 0 only if clean"
 run = "pwsh -NoProfile -File scripts/legacy_audit.ps1"
 
+# Prove — from evidence — that no pre-5.6.0 KEK-sealed tag (`tags.dek_wrapped IS NULL`) survives on
+# any reachable surface (live vaults, snapshots, scannable `.vbk`s), so slice 5.9 ② can retire the
+# legacy-tag read path. Cannot-see ⇒ FAIL; if it can't be made GREEN, the honest outcome is keep.
+[tasks.tag-legacy-audit]
+description = "Prove no legacy (KEK-sealed) tag remains — read-only, exit 0 only if clean (slice 5.9 ②)"
+run = "pwsh -NoProfile -File scripts/tag_legacy_audit.ps1"
+
 # ---------------------------------------------------------------------------
 # Frontend wasm type-check
 # ---------------------------------------------------------------------------
@@ -186,6 +197,15 @@ run = [
   "cargo check -p vedge-generator --target wasm32-unknown-unknown",
   "cargo check -p vedge-app --target wasm32-unknown-unknown",
 ]
+
+[tasks.wasm-link]
+description = "LINK the frontend wasm bundle (trunk build) — the real link `wasm`/`wasm-check` (a cargo check) never performs. Catches link-class `rust-lld` failures a type-check can't (escaped TWICE: 4.6b, 4.9a)."
+# Debug build (no --release), matching `e2e`: the `rust-lld` crash was a *debug*
+# wasm + debuginfo failure, so a debug link is the one that gates the class (the
+# `.cargo/config.toml` `debuginfo=0` workaround must stay). Deliberately NOT a
+# `depends` of `ci` — a full link is minutes, and folding it into `ci` would tax
+# every local `mise ci`. It runs as its own CI step (ci.yml) + before a release.
+run = "trunk build --config crates/vedge-app/Trunk.toml"
 
 # ---------------------------------------------------------------------------
 # Aggregate

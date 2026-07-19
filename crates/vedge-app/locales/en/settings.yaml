@@ -100,6 +100,9 @@ rotate_err: "Could not rotate the Secret Key:"
 rotate_new_key_intro: "Your new Secret Key — shown once. Save your new Emergency Kit now; you'll need it to unlock this vault after a reinstall or on another device."
 rotate_save_kit: "Save Emergency Kit…"
 rotate_done: "Done"
+# --- 5.9 credential-age nudge (③) ---
+credential_nudge_password: "Master password over 1 year old — consider changing it"
+credential_nudge_secret_key: "Secret Key over 2 years old — if you rotate, keep your old Emergency Kit (it still opens older backups)"
 # --- 5.7 Recovery Key ---
 recovery_key: "Recovery Key"
 recovery_key_desc: "Set up a Recovery Key so you can reset a forgotten master password."

@@ -1,10 +1,18 @@
-//! Settings — sectioned shell (Security | Appearance).
+//! Settings — a tabbed shell over five sections:
+//! **Security · Credentials · Appearance · Maintenance · Backup**.
 //!
-//! The **Security** section (2.6) holds idle auto-lock, lock-on-blur, and the
-//! clipboard clear delay, all bound to the app-global [`SecurityPrefsCtx`].
-//! Editing a control updates the live signal, persists immediately via
-//! `security_prefs::save`, and confirms with a Success toast. **Appearance** is
-//! the theme manager (2.6.1).
+//! - **Security** (2.6) — behavioural *preferences* only: idle auto-lock,
+//!   lock-on-blur, the clipboard clear delay, session length, breach-check — all
+//!   bound to the app-global [`SecurityPrefsCtx`]. Editing a control updates the
+//!   live signal, persists immediately via `security_prefs::save`, and confirms
+//!   with a Success toast.
+//! - **Credentials** (5.8) — the credential *operations*: biometric enrolment,
+//!   change master password, rotate Secret Key, Recovery Key, Emergency Kit, and
+//!   the **Re-key** danger zone. (Moved out of Security in 5.8 so a destructive op
+//!   never sits next to a clipboard-timeout dropdown.)
+//! - **Appearance** (2.6.1) — the theme manager (`ThemeList`).
+//! - **Maintenance** — the retention / maintenance panel.
+//! - **Backup** — back up / open a `.vbk`.
 //!
 //! Sections use the design-system `Tabs`. The Security controls are gated behind
 //! [`SecurityPrefsLoaded`] (a `Spinner` fallback) so they don't flash the default

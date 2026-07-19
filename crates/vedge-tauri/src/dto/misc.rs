@@ -1,9 +1,9 @@
 //! Misc DTO conversion layer.
 
 pub use vedge_ipc::{
-    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, EnvExportFormatDto,
-    ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, SecretKeyRotationOutputDto,
-    UnlockResultDto, UnlockVaultInputDto,
+    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, CredentialStatusDto,
+    EnvExportFormatDto, ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto,
+    SecretKeyRotationOutputDto, UnlockResultDto, UnlockVaultInputDto,
 };
 
 use vedge_core::MaintenanceReport;

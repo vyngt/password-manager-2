@@ -15,20 +15,41 @@ use std::sync::Arc;
 use tracing::instrument;
 use zeroize::Zeroizing;
 
-use vedge_core::domain::shared::VaultId;
+use vedge_core::domain::shared::{VaultId, format_rfc3339_millis};
 use vedge_core::{
-    ChangePasswordInput, change_password as change_password_core, format_secret_key,
-    reauthenticate_master_password,
+    ChangePasswordInput, change_password as change_password_core,
+    credential_status as credential_status_core, format_secret_key, reauthenticate_master_password,
 };
 
 use crate::dto::misc::{
-    ChangePasswordInputDto, SecretKeyRotationOutputDto, decode_change_password_secret_key,
+    ChangePasswordInputDto, CredentialStatusDto, SecretKeyRotationOutputDto,
+    decode_change_password_secret_key,
 };
 use crate::error::CommandError;
 use crate::state::AppState;
 
 fn vault_id_from_string(s: &str) -> VaultId {
     VaultId::new(PathBuf::from(s))
+}
+
+/// The vault's resolved credential ages for the Credentials-tab nudge (slice 5.9 ③).
+///
+/// Read from `vault_config`, NOT the retention-pruned audit log (a derived age would misfire as
+/// "never" once the last `PasswordChanged` row is pruned). A never-changed credential resolves to
+/// the vault's creation time. No secret crosses — only two RFC-3339 timestamps.
+#[tauri::command(rename_all = "snake_case")]
+#[instrument(skip_all, fields(vault_path = %vault_path))]
+pub async fn credential_status(
+    vault_path: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<CredentialStatusDto, CommandError> {
+    let handle = state.get_session(&vault_id_from_string(&vault_path))?;
+    let guard = handle.lock().await;
+    let status = credential_status_core(&guard);
+    Ok(CredentialStatusDto {
+        password_changed_at: format_rfc3339_millis(status.password_changed_at),
+        secret_key_rotated_at: format_rfc3339_millis(status.secret_key_rotated_at),
+    })
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -74,6 +95,9 @@ pub async fn change_password(
         Arc::clone(&state.biometric),
         ChangePasswordInput {
             new_password,
+            // A change-password command MAY also rotate the SK (the two-in-one primitive);
+            // record a rotation only when a fresh key was actually supplied (slice 5.9 ③).
+            secret_key_rotated: new_secret_key.is_some(),
             new_secret_key,
         },
     )
@@ -131,6 +155,9 @@ pub async fn rotate_secret_key(
         ChangePasswordInput {
             new_password: current,
             new_secret_key: Some(new_secret_key),
+            // A genuine Secret-Key rotation → the `SecretKeyRotated` audit action +
+            // `last_secret_key_rotation_at` stamp (slice 5.9 ③).
+            secret_key_rotated: true,
         },
     )
     .await?;

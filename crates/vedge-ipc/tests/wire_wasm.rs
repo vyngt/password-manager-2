@@ -418,3 +418,16 @@ fn rekey_dtos_decode() {
     assert_eq!(back.done, 342);
     assert_eq!(back.total, 1204);
 }
+
+/// Slice 5.9 ③ — the credential-age status carries ONLY two resolved timestamps; no DEK, no
+/// secret, no key material ever rides this DTO.
+#[wasm_bindgen_test]
+fn credential_status_dto_decodes() {
+    let dto = CredentialStatusDto {
+        password_changed_at: "2026-07-19T12:00:00.000Z".to_owned(),
+        secret_key_rotated_at: "2025-01-01T00:00:00.000Z".to_owned(),
+    };
+    let back = shell_to_frontend(&dto);
+    assert_eq!(back.password_changed_at, "2026-07-19T12:00:00.000Z");
+    assert_eq!(back.secret_key_rotated_at, "2025-01-01T00:00:00.000Z");
+}
