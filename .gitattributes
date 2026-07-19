@@ -1,3 +1,6 @@
 # Keep the embedded EFF wordlist LF-only so its SHA-256 (hashed as WORDS.join("\n"))
 # is stable across checkouts regardless of core.autocrlf.
 crates/vedge-generator/src/wordlists/eff_large.txt -text eol=lf
+
+# Git hooks are executed by `sh`; a CRLF shebang line breaks them on checkout.
+.githooks/** text eol=lf
