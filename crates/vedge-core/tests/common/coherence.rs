@@ -1,7 +1,9 @@
 //! PG.1 "Vault Integrity Matrix": one reusable [`assert_vault_coherent`] that OPENS THE VAULT
 //! HOME FRESH FROM DISK (new DB connection, KEK re-derived from the supplied creds — never the
-//! live in-memory session) and asserts 13 invariants across the five tables + blobs + snapshots
-//! + OS state. Called after every mutating-operation integration test.
+//! live in-memory session) and asserts the vault is internally consistent across the five tables +
+//! blobs + snapshots + OS state. Called after every mutating-operation integration test. 12 of 13
+//! candidate invariants are checked — #9 (`last_snapshot_at` vs the store) proved operation-specific,
+//! not global (see the #9 comment below), and is pinned at the `rekey_vault` call site instead.
 //!
 //! 🔴 The fresh open **is** the test. Phase 5's three worst bugs (5.6.0 tags, 5.7 snapshot
 //! manifests, 5.8 history) all returned `Ok`, kept the live session working, and failed only at
