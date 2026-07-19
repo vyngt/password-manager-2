@@ -15,6 +15,8 @@
     clippy::needless_pass_by_value
 )]
 
+pub mod coherence;
+
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 

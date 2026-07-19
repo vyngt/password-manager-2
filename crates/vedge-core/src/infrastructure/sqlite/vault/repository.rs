@@ -315,6 +315,14 @@ impl VaultRepository for SqliteVaultRepository {
         rows.into_iter().map(history_map::model_to_domain).collect()
     }
 
+    async fn all_history(&self) -> Result<Vec<EntryHistoryRow>, VaultError> {
+        let rows = history_entity::Entity::find()
+            .all(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        rows.into_iter().map(history_map::model_to_domain).collect()
+    }
+
     async fn get_history(&self, id: &str) -> Result<EntryHistoryRow, VaultError> {
         let model = history_entity::Entity::find_by_id(id.to_owned())
             .one(self.conn.as_ref())

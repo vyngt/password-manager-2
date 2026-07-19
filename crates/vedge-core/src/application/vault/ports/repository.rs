@@ -36,6 +36,10 @@ pub trait VaultRepository: Send + Sync {
     async fn insert_history(&self, row: &EntryHistoryRow) -> Result<(), VaultError>;
     /// Snapshots for one entry, newest-first (by version).
     async fn list_history(&self, entry_id: &EntryId) -> Result<Vec<EntryHistoryRow>, VaultError>;
+    /// EVERY history row across all entries (unordered). The cascade from `entries` to
+    /// `entry_history` is hand-written (no FK), so a coherence check needs to see rows an
+    /// `entry_id`-scoped `list_history` cannot — an orphan whose entry no longer exists. Read-only.
+    async fn all_history(&self) -> Result<Vec<EntryHistoryRow>, VaultError>;
     async fn get_history(&self, id: &str) -> Result<EntryHistoryRow, VaultError>;
     async fn delete_history_for_entry(&self, entry_id: &EntryId) -> Result<u64, VaultError>;
     /// Keep the `keep` newest snapshots for an entry; delete the rest. Returns
