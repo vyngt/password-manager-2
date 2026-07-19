@@ -187,6 +187,15 @@ run = [
   "cargo check -p vedge-app --target wasm32-unknown-unknown",
 ]
 
+[tasks.wasm-link]
+description = "LINK the frontend wasm bundle (trunk build) — the real link `wasm`/`wasm-check` (a cargo check) never performs. Catches link-class `rust-lld` failures a type-check can't (escaped TWICE: 4.6b, 4.9a)."
+# Debug build (no --release), matching `e2e`: the `rust-lld` crash was a *debug*
+# wasm + debuginfo failure, so a debug link is the one that gates the class (the
+# `.cargo/config.toml` `debuginfo=0` workaround must stay). Deliberately NOT a
+# `depends` of `ci` — a full link is minutes, and folding it into `ci` would tax
+# every local `mise ci`. It runs as its own CI step (ci.yml) + before a release.
+run = "trunk build --config crates/vedge-app/Trunk.toml"
+
 # ---------------------------------------------------------------------------
 # Aggregate
 # ---------------------------------------------------------------------------
