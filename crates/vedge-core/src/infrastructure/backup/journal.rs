@@ -1025,13 +1025,21 @@ mod tests {
 
             let expect_new = cp != Staged;
             if expect_new {
-                assert_eq!(fx.live_vault_bytes(), fx.new_bytes, "checkpoint {cp:?}: NEW");
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.new_bytes,
+                    "checkpoint {cp:?}: NEW"
+                );
                 assert!(
                     !fx.snapshot_marker_present(),
                     "checkpoint {cp:?}: a roll-forward RETIRES the snapshot store"
                 );
             } else {
-                assert_eq!(fx.live_vault_bytes(), fx.old_bytes, "checkpoint {cp:?}: OLD");
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.old_bytes,
+                    "checkpoint {cp:?}: OLD"
+                );
                 assert!(
                     fx.snapshot_marker_present(),
                     "checkpoint {cp:?}: a roll-back keeps the original store"
