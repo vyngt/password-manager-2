@@ -408,4 +408,13 @@ fn rekey_dtos_decode() {
     let back = shell_to_frontend(&cancelled);
     assert!(back.cancelled);
     assert!(back.secret_key_display.is_none());
+
+    // Progress is counts only — no key material.
+    let prog = RekeyProgressDto {
+        done: 342,
+        total: 1204,
+    };
+    let back = shell_to_frontend(&prog);
+    assert_eq!(back.done, 342);
+    assert_eq!(back.total, 1204);
 }

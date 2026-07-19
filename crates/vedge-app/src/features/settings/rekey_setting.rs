@@ -17,8 +17,19 @@ use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, D
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::form::form_field::FormField;
-use vedge_ui::components::{Button, Input, PasswordStrengthMeter, Spinner, Toggle};
+use vedge_ui::components::{Button, Input, PasswordStrengthMeter, ProgressBar, Spinner, Toggle};
 use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
+
+/// Percent complete `done/total` as a lint-clean `f64` (via `u32` so there's no
+/// `cast_precision_loss`). `total == 0` → 0.0.
+fn percent(done: u64, total: u64) -> f64 {
+    if total == 0 {
+        return 0.0;
+    }
+    let d = f64::from(u32::try_from(done).unwrap_or(u32::MAX));
+    let t = f64::from(u32::try_from(total).unwrap_or(u32::MAX));
+    (d / t) * 100.0
+}
 
 use vedge_ipc::RekeyInputDto;
 
@@ -47,6 +58,9 @@ pub fn RekeySetting() -> impl IntoView {
     let error = RwSignal::new(Option::<String>::None);
     // `Some(display)` → the re-key rotated the Secret Key; show it once before navigating away.
     let new_key = RwSignal::new(Option::<String>::None);
+    // `Some((done, total))` → live progress streamed from the backend over a Tauri Channel (a
+    // determinate bar); `None` → not started yet (Spinner).
+    let progress = RwSignal::new(Option::<(u64, u64)>::None);
 
     let vault_path = move || active.path.get().unwrap_or_default();
     let strength = Memo::new(move |_| password_score(&next.get()));
@@ -74,6 +88,7 @@ pub fn RekeySetting() -> impl IntoView {
         }
         error.set(None);
         busy.set(true);
+        progress.set(None);
         let path = vault_path();
         let dto = RekeyInputDto {
             current_password: current.get(),
@@ -88,8 +103,16 @@ pub fn RekeySetting() -> impl IntoView {
         let msg_err = t_string!(i18n, settings.change_password_err).to_owned();
         let dismiss = t_string!(i18n, settings.dismiss).to_owned();
         let nav = use_navigate();
+
+        // Progress streams over a Tauri Channel — this callback fires per entry as the backend
+        // re-encrypts (a push, not a poll); `try_set` no-ops if the dialog has since unmounted.
+        let on_progress = move |done: u64, total: u64| {
+            progress.try_set(Some((done, total)));
+        };
+
         spawn_local(async move {
-            match api::rekey::rekey_vault(&path, &dto).await {
+            let result = api::rekey::rekey_vault(&path, &dto, on_progress).await;
+            match result {
                 Ok(result) if result.cancelled => {
                     toast.show(
                         ToastInput::new(msg_cancelled)
@@ -97,6 +120,7 @@ pub fn RekeySetting() -> impl IntoView {
                             .dismiss_label(dismiss),
                     );
                     busy.set(false);
+                    progress.set(None);
                     dialog_open.set(false);
                 }
                 Ok(result) => {
@@ -104,6 +128,7 @@ pub fn RekeySetting() -> impl IntoView {
                     // straight to the launch screen to re-unlock against the re-keyed vault.
                     if let Some(display) = result.secret_key_display {
                         busy.set(false);
+                        progress.set(None);
                         new_key.set(Some(display));
                     } else {
                         toast.show(
@@ -117,14 +142,17 @@ pub fn RekeySetting() -> impl IntoView {
                 Err(ApiError::WrongCredentials) => {
                     error.set(Some(msg_wrong));
                     busy.set(false);
+                    progress.set(None);
                 }
                 Err(ApiError::Keychain(_)) => {
                     error.set(Some(msg_no_keychain));
                     busy.set(false);
+                    progress.set(None);
                 }
                 Err(e) => {
                     error.set(Some(format!("{msg_err} {e}")));
                     busy.set(false);
+                    progress.set(None);
                 }
             }
         });
@@ -202,7 +230,27 @@ pub fn RekeySetting() -> impl IntoView {
                             fallback=move || {
                                 view! {
                                     <div class="flex flex-col items-center gap-3 py-4">
-                                        <Spinner />
+                                        <Show
+                                            when=move || progress.get().is_some()
+                                            fallback=|| view! { <Spinner /> }
+                                        >
+                                            <div class="w-full">
+                                                <ProgressBar
+                                                    value=Signal::derive(move || {
+                                                        progress.get().map_or(0.0, |(d, t)| percent(d, t))
+                                                    })
+                                                    show_value=true
+                                                    aria_label=Signal::derive(move || {
+                                                        t_string!(i18n, settings.rekey_working).to_owned()
+                                                    })
+                                                />
+                                                <p class="text-xs text-text-secondary text-center mt-1">
+                                                    {move || {
+                                                        progress.get().map(|(d, t)| format!("{d} / {t}"))
+                                                    }}
+                                                </p>
+                                            </div>
+                                        </Show>
                                         <p class="text-sm text-text-secondary text-center">
                                             {move || t!(i18n, settings.rekey_working)}
                                         </p>

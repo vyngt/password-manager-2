@@ -21,7 +21,7 @@ use vedge_core::{
     rekey_vault as core_rekey,
 };
 
-use crate::dto::rekey::{RekeyInputDto, RekeyResultDto};
+use crate::dto::rekey::{RekeyInputDto, RekeyProgressDto, RekeyResultDto};
 use crate::error::CommandError;
 use crate::state::AppState;
 
@@ -40,6 +40,7 @@ fn vault_id_from_string(s: &str) -> VaultId {
 pub async fn rekey_vault(
     vault_path: String,
     input: RekeyInputDto,
+    on_progress: tauri::ipc::Channel<RekeyProgressDto>,
     state: tauri::State<'_, AppState>,
 ) -> Result<RekeyResultDto, CommandError> {
     let vault_id = vault_id_from_string(&vault_path);
@@ -74,9 +75,12 @@ pub async fn rekey_vault(
     // A cancel flag reachable by `cancel_rekey` WITHOUT the session guard (it touches only the
     // outer lock), so the user can abort a long re-key before its commit point.
     let cancel = state.register_rekey_cancel(&vault_id);
-    // Determinate progress is deferred (no WASM↔Tauri event bridge yet — see the tracking note);
-    // the core still drives this callback so a future slice can wire it without a core change.
-    let on_progress = |_done: u64, _total: u64| {};
+    // Determinate progress STREAMED over a Tauri Channel: the callback pushes each `(done, total)`
+    // to the frontend's `onmessage` as the re-key runs — no polling, no second command. A send
+    // error (the frontend went away) is ignored; it never affects the re-key.
+    let progress = move |done, total| {
+        let _ = on_progress.send(RekeyProgressDto { done, total });
+    };
 
     let outcome = core_rekey(
         &guard,
@@ -87,7 +91,7 @@ pub async fn rekey_vault(
             new_password: Zeroizing::new(input.new_password.clone()),
             new_secret_key,
         },
-        &on_progress,
+        &progress,
         &cancel,
     )
     .await;

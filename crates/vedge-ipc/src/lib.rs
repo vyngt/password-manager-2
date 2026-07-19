@@ -69,7 +69,7 @@ pub use misc::{
     UnlockResultDto, UnlockVaultInputDto,
 };
 pub use recovery::{RecoveryEnrollOutputDto, UnlockWithRecoveryKeyInputDto};
-pub use rekey::{RekeyInputDto, RekeyResultDto};
+pub use rekey::{RekeyInputDto, RekeyProgressDto, RekeyResultDto};
 pub use secret_update::{EnvVarUpdateDto, SecretListUpdateDto, SecretUpdateDto};
 pub use settings::{
     AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto,

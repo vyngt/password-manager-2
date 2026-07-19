@@ -21,6 +21,17 @@ pub struct RekeyInputDto {
     pub rotate_secret_key: bool,
 }
 
+/// Live re-key progress — `done` of `total` entries re-encrypted.
+///
+/// Counts ONLY; never any key material. The frontend polls this (a guard-free command) while the
+/// re-key runs and feeds a determinate progress bar. `total == 0` means "not started / no reading
+/// yet".
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct RekeyProgressDto {
+    pub done: u64,
+    pub total: u64,
+}
+
 /// Re-key result. On success the vault is LOCKED (the frontend navigates to the launch screen);
 /// on a pre-commit cancel it is untouched and still unlocked.
 #[derive(Debug, Clone, Serialize, Deserialize)]

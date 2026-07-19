@@ -10,6 +10,26 @@ extern "C" {
     pub async fn invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
 }
 
+/// Tauri v2 `Channel` — the streaming primitive for a long-running command (slice 5.8, re-key
+/// progress). Exposed globally by `withGlobalTauri` at `window.__TAURI__.core.Channel`. A command
+/// with a `Channel<T>` param pushes messages to the JS `onmessage` handler as it runs; the frontend
+/// passes the channel in the invoke args under the param's name.
+#[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
+extern "C" {
+    pub type Channel;
+
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Channel;
+
+    /// Set the message handler (`channel.onmessage = handler`). Each backend `send` invokes it with
+    /// the deserialized payload.
+    #[wasm_bindgen(method, setter = onmessage)]
+    pub fn set_onmessage(
+        this: &Channel,
+        handler: &::wasm_bindgen::closure::Closure<dyn FnMut(JsValue)>,
+    );
+}
+
 /// Window APIs
 #[wasm_bindgen]
 extern "C" {
