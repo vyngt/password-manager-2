@@ -1,6 +1,6 @@
 [package]
 name        = "vedge-tauri"
-version     = "3.0.0"
+version.workspace = true
 description = "Vedge Tauri shell"
 authors     = ["VyNT <vyngt@outlook.com>"]
 edition     = "2024"
