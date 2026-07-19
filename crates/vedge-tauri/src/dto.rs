@@ -26,6 +26,7 @@ pub mod health;
 pub mod import;
 pub mod misc;
 pub mod recovery;
+pub mod rekey;
 pub mod secret_update;
 pub mod settings;
 pub mod snapshot;

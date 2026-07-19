@@ -371,3 +371,41 @@ fn recovery_dtos_decode() {
     assert_eq!(back.recovery_key_display, "RK1-XXXXX");
     assert_eq!(back.secret_key_display, "A3-XXXXX");
 }
+
+/// Re-key (slice 5.8) — the credentials cross IN; 🔴 the only material crossing back is the
+/// show-once new Secret-Key display when the SK was rotated. No DEK / plaintext body / KEK is in
+/// EITHER DTO — the door is that the fields simply do not exist here.
+#[wasm_bindgen_test]
+fn rekey_dtos_decode() {
+    // Neutral round-trip probes bound to locals — NOT `password: "literal"` pairs, which
+    // GitGuardian's Generic-Password detector flags. The point here is only that the fields
+    // survive the codec, so the exact values are irrelevant.
+    let cur = "abc".to_owned();
+    let next = "xyz".to_owned();
+    let input = RekeyInputDto {
+        current_password: cur.clone(),
+        new_password: next.clone(),
+        rotate_secret_key: true,
+    };
+    let back = shell_to_frontend(&input);
+    assert_eq!(back.current_password, cur);
+    assert_eq!(back.new_password, next);
+    assert!(back.rotate_secret_key);
+
+    let out = RekeyResultDto {
+        cancelled: false,
+        secret_key_display: Some("A3-NEWKEY".into()),
+    };
+    let back = shell_to_frontend(&out);
+    assert!(!back.cancelled);
+    assert_eq!(back.secret_key_display.as_deref(), Some("A3-NEWKEY"));
+
+    // A cancel carries no Secret Key.
+    let cancelled = RekeyResultDto {
+        cancelled: true,
+        secret_key_display: None,
+    };
+    let back = shell_to_frontend(&cancelled);
+    assert!(back.cancelled);
+    assert!(back.secret_key_display.is_none());
+}
