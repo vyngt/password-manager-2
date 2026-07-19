@@ -298,6 +298,11 @@ async fn revert_after_change_password_via_ui() -> Result<()> {
         Ok(session.driver().find(By::Css("div.toast")).await.is_err())
     })
     .await;
+    // The credential rows moved out of Security into a dedicated Credentials tab in slice 5.8.
+    session
+        .click_button_text("Credentials")
+        .await
+        .context("open the Credentials tab")?;
     session
         .click_testid("change-master-password")
         .await

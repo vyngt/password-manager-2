@@ -1,5 +1,5 @@
-//! Credential-lifecycle UI e2e (slice 5.6): change the master password from
-//! Settings ▸ Security (wrong current password rejected → correct → relock →
+//! Credential-lifecycle UI e2e (slice 5.6; the rows moved to a Credentials tab in 5.8): change the
+//! master password from Settings ▸ Credentials (wrong current password rejected → correct → relock →
 //! unlock with the new password → data survives), and rotate the Secret Key
 //! (the reversed "keep your old kit" copy → a genuinely new key is issued).
 //!
@@ -44,11 +44,16 @@ async fn change_master_password_via_ui() -> Result<()> {
     add_login(&session, "GitHub", "alice", "login-value-1").await?;
     wait_row_count(&session, 1, Duration::from_secs(10)).await?;
 
-    // Settings ▸ Security (the default tab) → Change master password.
+    // Settings ▸ Credentials → Change master password. (The credential rows moved out of the
+    // Security tab into a dedicated Credentials tab in slice 5.8.)
     session
         .click_testid("nav-settings")
         .await
         .context("open settings")?;
+    session
+        .click_button_text("Credentials")
+        .await
+        .context("open the Credentials tab")?;
     session
         .click_testid("change-master-password")
         .await
@@ -146,11 +151,15 @@ async fn rotate_secret_key_reissues_the_kit() -> Result<()> {
         .context("secret_key_display before rotation")?
         .to_owned();
 
-    // Settings ▸ Security → Rotate Secret Key.
+    // Settings ▸ Credentials → Rotate Secret Key. (Moved out of Security in slice 5.8.)
     session
         .click_testid("nav-settings")
         .await
         .context("open settings")?;
+    session
+        .click_button_text("Credentials")
+        .await
+        .context("open the Credentials tab")?;
     session
         .click_testid("rotate-secret-key")
         .await

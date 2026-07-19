@@ -1,4 +1,5 @@
-//! Recovery Key UI e2e (slice 5.7): enrol a Recovery Key from Settings ▸ Security (the
+//! Recovery Key UI e2e (slice 5.7; the enrol row moved to a Credentials tab in 5.8): enrol a
+//! Recovery Key from Settings ▸ Credentials (the
 //! `RK1-` key is shown once with the "keep it separate" copy), and recover a forgotten
 //! master password from the launch screen (two documents → forced new password → in the
 //! vault, recovery now off).
@@ -20,7 +21,7 @@ use vedge_e2e::{MASTER_PASSWORD, Session, TestEnv, app_binary};
 /// `MASTER_PASSWORD`. A leetspeak passphrase — a test fixture, not a real secret.
 const NEW_PW: &str = "R3covered-Horse-Battery-Staple!";
 
-/// Enrol recovery through Settings ▸ Security, returning the shown-once `RK1-` display.
+/// Enrol recovery through Settings ▸ Credentials, returning the shown-once `RK1-` display.
 ///
 /// Asserts the enroll dialog carries the "keep it separate from your Emergency Kit" copy, and
 /// that phase 2 renders a genuine `RK1-` key.
@@ -29,6 +30,11 @@ async fn enrol_recovery(session: &Session) -> Result<String> {
         .click_testid("nav-settings")
         .await
         .context("open settings")?;
+    // The credential rows moved out of Security into a dedicated Credentials tab in slice 5.8.
+    session
+        .click_button_text("Credentials")
+        .await
+        .context("open the Credentials tab")?;
     session
         .click_testid("recovery-setup")
         .await
