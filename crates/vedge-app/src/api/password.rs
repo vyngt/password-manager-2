@@ -2,10 +2,19 @@
 
 use serde::Serialize;
 
-use vedge_ipc::{ChangePasswordInputDto, SecretKeyRotationOutputDto};
+use vedge_ipc::{ChangePasswordInputDto, CredentialStatusDto, SecretKeyRotationOutputDto};
 
 use crate::api::call::{call, call_void};
 use crate::api::error::ApiError;
+
+/// The vault's resolved credential ages (RFC-3339) for the Credentials-tab nudge (slice 5.9 ③).
+pub async fn credential_status(vault_path: &str) -> Result<CredentialStatusDto, ApiError> {
+    #[derive(Serialize)]
+    struct Args<'a> {
+        vault_path: &'a str,
+    }
+    call("credential_status", &Args { vault_path }).await
+}
 
 pub async fn change_password(
     vault_path: &str,

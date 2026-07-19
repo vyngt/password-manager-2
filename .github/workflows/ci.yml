@@ -44,11 +44,12 @@ jobs:
       - name: Cache cargo registry + target
         uses: Swatinem/rust-cache@v2
 
-      # Prebuilt binaries (fast) for the two extra gate tools.
-      - name: Install leptosfmt + cargo-deny
+      # Prebuilt binaries (fast) for the extra gate tools. `trunk` LINKS the wasm
+      # bundle in the wasm-link step below (the core gate only type-checks it).
+      - name: Install leptosfmt + cargo-deny + trunk
         uses: taiki-e/install-action@v2
         with:
-          tool: leptosfmt,cargo-deny
+          tool: leptosfmt,cargo-deny,trunk
 
       # mise is the single source of truth for the task definitions. It has no
       # `[tools]` block (the toolchain is installed above), so this just makes the
@@ -60,6 +61,12 @@ jobs:
 
       - name: Core gate (fmt-check + lint + test + wasm)
         run: mise run ci
+
+      # The real wasm LINK — `mise run ci`'s wasm phase is only a `cargo check`
+      # (type-check). A link-class `rust-lld` failure escaped this gap TWICE
+      # (4.6b, 4.9a); `trunk build` closes it (slice 5.9 ④).
+      - name: Frontend wasm LINK (trunk build)
+        run: mise run wasm-link
 
       - name: Supply-chain audit (cargo deny)
         run: mise run audit

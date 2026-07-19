@@ -241,6 +241,7 @@ async fn rotate_password(h: &Harness, session: &mut VaultSession, new: &str) {
         ChangePasswordInput {
             new_password: Zeroizing::new(new.to_owned()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await

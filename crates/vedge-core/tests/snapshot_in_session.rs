@@ -236,6 +236,7 @@ async fn a_stale_snapshot_falls_back_to_needs_unlock_not_a_failure() {
         ChangePasswordInput {
             new_password: Zeroizing::new("a different master".into()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await
@@ -307,6 +308,7 @@ async fn revert_after_change_password_opens_the_rewrapped_snapshot() {
         ChangePasswordInput {
             new_password: Zeroizing::new("a-different-master-9".into()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await
@@ -363,6 +365,7 @@ async fn revert_after_secret_key_rotation_opens_the_rewrapped_snapshot() {
             // Keep the master password (the harness's), rotate only the Secret Key.
             new_password: Zeroizing::new("correct horse battery staple".into()),
             new_secret_key: Some(Zeroizing::new([0xAB; 16])),
+            secret_key_rotated: true,
         },
     )
     .await

@@ -186,6 +186,7 @@ async fn change_password_restores_stored_kek() {
         ChangePasswordInput {
             new_password: Zeroizing::new("new-master".into()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await

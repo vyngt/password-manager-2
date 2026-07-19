@@ -39,8 +39,8 @@ struct AuditRow {
 pub fn severity(action: &str) -> BadgeVariant {
     match action {
         "PermanentlyDeleted" | "RecoveryUsed" => BadgeVariant::Danger,
-        "Deleted" | "PasswordChanged" | "Exported" | "BackupRestored" | "RollbackDetected"
-        | "VaultRekeyed" => BadgeVariant::Warning,
+        "Deleted" | "PasswordChanged" | "SecretKeyRotated" | "Exported" | "BackupRestored"
+        | "RollbackDetected" | "VaultRekeyed" => BadgeVariant::Warning,
         "Unlocked" | "BiometricUnlocked" | "Locked" => BadgeVariant::Info,
         _ => BadgeVariant::Default,
     }
@@ -76,6 +76,7 @@ pub fn action_label(i18n: I18nContext<Locale>, action: &str) -> String {
         "RecoveryKeyEnabled" => t_string!(i18n, audit.action_recovery_key_enabled).to_owned(),
         "RecoveryKeyRevoked" => t_string!(i18n, audit.action_recovery_key_revoked).to_owned(),
         "VaultRekeyed" => t_string!(i18n, audit.action_vault_rekeyed).to_owned(),
+        "SecretKeyRotated" => t_string!(i18n, audit.action_secret_key_rotated).to_owned(),
         other => other.to_owned(),
     }
 }

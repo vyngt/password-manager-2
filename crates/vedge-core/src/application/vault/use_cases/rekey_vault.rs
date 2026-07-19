@@ -107,6 +107,10 @@ struct NewCreds<'a> {
     old_kek: &'a [u8; KEK_LEN],
     new_kek: &'a [u8; KEK_LEN],
     verify_hash: &'a [u8; VERIFY_HASH_LEN],
+    /// Did the Secret Key actually change? For re-key this IS `new_secret_key.is_some()` — a
+    /// re-key never passes a same-key `Some` (unlike `change_password_after_recovery`), so the
+    /// signal is unambiguous here. Drives the `last_secret_key_rotation_at` stamp (slice 5.9 ③).
+    secret_key_rotated: bool,
 }
 
 /// Everything a single entry's re-encryption needs: the crypto, both KEKs, and both blob stores
@@ -118,6 +122,9 @@ struct RekeyCtx<'a> {
     verify_hash: &'a [u8; VERIFY_HASH_LEN],
     live_blob: &'a dyn BlobStore,
     staged_blob: &'a FilesystemBlobStore,
+    /// Threaded from `NewCreds` — stamps `last_secret_key_rotation_at` in the staged config
+    /// only when the SK genuinely rotated (slice 5.9 ③).
+    secret_key_rotated: bool,
 }
 
 fn io_ctx(op: &str, e: &std::io::Error) -> VaultError {
@@ -186,6 +193,7 @@ pub async fn rekey_vault(
         old_kek: &old_kek_z,
         new_kek: &new_kek_z,
         verify_hash: &new_verify_hash,
+        secret_key_rotated: input.new_secret_key.is_some(),
     };
     let status = match reencrypt_into_staging(
         &staged_vault,
@@ -267,6 +275,7 @@ async fn reencrypt_into_staging(
         verify_hash: creds.verify_hash,
         live_blob: session.blob.as_ref(),
         staged_blob: &staged_blob,
+        secret_key_rotated: creds.secret_key_rotated,
     };
 
     let result = reencrypt_rows(&staged_repo, &ctx, on_progress, cancel).await;
@@ -317,14 +326,24 @@ async fn reencrypt_rows(
     }
 
     // Config: the new `verify_hash`; NULL the recovery slot (a KEK change revokes recovery, 5.7 ③).
-    // `save_config` deliberately OMITS `recovery_slot` from its UPDATE, so null it via the
-    // targeted `clear_recovery_slot` afterwards.
+    // `save_config` deliberately OMITS `recovery_slot` + the credential-age + snapshot columns from
+    // its UPDATE, so those are written via targeted setters afterwards.
+    let when = now();
     let mut cfg = staged_repo.load_config().await?;
     cfg.verify_hash = *ctx.verify_hash;
-    cfg.last_unlocked_at = Some(now());
+    cfg.last_unlocked_at = Some(when);
     cfg.recovery_slot = None;
     staged_repo.save_config(&cfg).await?;
     staged_repo.clear_recovery_slot().await?;
+    // Credential-age stamps (slice 5.9 ③) — re-key refreshes the password KEK (always) and, when a
+    // new Secret Key was supplied, rotates it too. Targeted setters because `save_config` omits them.
+    staged_repo.touch_last_password_change_at(when).await?;
+    if ctx.secret_key_rotated {
+        staged_repo.touch_last_secret_key_rotation_at(when).await?;
+    }
+    // 🔴 Re-key RETIRES the snapshot store (`preserve = &[]`), so the "last snapshot" timestamp must
+    // not keep claiming one exists (slice 5.9 ④ / the 5.8 self-review bug).
+    staged_repo.clear_last_snapshot_at().await?;
 
     // Audit — written INTO the STAGED (surviving) DB, not the live session repo (discarded on the
     // swap): `VaultRekeyed` then `PasswordChanged` (re-key is a superset of a password change).
@@ -409,6 +428,15 @@ async fn reencrypt_one_entry(
 /// 🔴 This is the `..`-less / no-`_` enumeration that makes a silently-partial re-key impossible
 /// (spec ①, the 5.4.1 move): a future `EntryPayload` variant that carries its own external
 /// ciphertext will fail to compile here until a maintainer decides how re-key must rotate it.
+///
+/// **Honest limit (5.8 review):** the compile guard covers ONE axis — the *payload-variant* axis
+/// (a new `EntryPayload` arm). It does NOT guard the *surface/table* axis: a future ciphertext-
+/// bearing surface that is a sibling of entries/history/blobs/tags (say, a new encrypted column or
+/// side table) would not touch this match and would slip through silently. That axis is guarded
+/// instead by the integration completeness test (`tests/rekey_vault.rs`), which seeds every surface
+/// and is watched to FAIL on a partial pass. Partial re-key is *impossible* on the variant axis and
+/// *detectable* on the surface axis — not the same guarantee, and the test is load-bearing for the
+/// second.
 async fn reencrypt_payload_and_blob(
     ctx: &RekeyCtx<'_>,
     entry_id: &EntryId,
@@ -425,7 +453,16 @@ async fn reencrypt_payload_and_blob(
             let blob_plain = ctx
                 .live_blob
                 .read_blob(entry_id, old_dek, &doc.blob_nonce)
-                .await?;
+                .await
+                // Name the entry. A re-key aborts entirely if ANY document blob is missing or
+                // unreadable, and `read_blob`'s error (a bare `Storage(Io)` / `DecryptionFailed`)
+                // does not say which entry — surface it so the operator can find the culprit
+                // (the cause is preserved in the message).
+                .map_err(|e| {
+                    VaultError::Storage(StorageError::Io(format!(
+                        "re-key: entry {entry_id}'s document blob is unreadable: {e}"
+                    )))
+                })?;
             let new_blob_nonce = ctx
                 .staged_blob
                 .write_blob(entry_id, new_dek, &blob_plain)

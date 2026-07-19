@@ -33,6 +33,10 @@ pub fn model_to_domain(model: Model) -> Result<VaultConfig, VaultError> {
             .as_deref()
             .map(|b| fixed_bytes::<40>(b, "vault_config.recovery_slot"))
             .transpose()?,
+        last_password_change_at: string_to_ts_opt(model.last_password_change_at.as_deref())?,
+        last_secret_key_rotation_at: string_to_ts_opt(
+            model.last_secret_key_rotation_at.as_deref(),
+        )?,
     })
 }
 
@@ -59,5 +63,10 @@ pub fn domain_to_model(config: &VaultConfig) -> Result<Model, VaultError> {
         last_snapshot_at: config.last_snapshot_at.as_ref().map(ts_to_string),
         last_backup_at: config.last_backup_at.as_ref().map(ts_to_string),
         recovery_slot: config.recovery_slot.map(|a| a.to_vec()),
+        last_password_change_at: config.last_password_change_at.as_ref().map(ts_to_string),
+        last_secret_key_rotation_at: config
+            .last_secret_key_rotation_at
+            .as_ref()
+            .map(ts_to_string),
     })
 }

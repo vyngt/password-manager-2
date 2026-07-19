@@ -41,19 +41,9 @@ pub trait CryptoProvider: Send + Sync {
         aad: &[u8],
     ) -> Result<Zeroizing<Vec<u8>>, VaultError>;
 
-    /// Decrypt a LEGACY tag ciphertext sealed directly under the KEK (pre-5.6.0, when
-    /// tags had no per-row DEK). This is the ONLY surviving operation that uses the KEK
-    /// as an AEAD key, and it is deliberately READ-only — there is **no** encrypt twin, so
-    /// no write path can seal a tag (or anything) under the KEK again. Since 5.6.0 tags
-    /// carry a per-row DEK (like entries); this exists solely to read rows not yet migrated
-    /// (see `use_cases::tag_crypto::open_tag_row`).
-    fn decrypt_legacy_tag(
-        &self,
-        kek: &[u8; KEK_LEN],
-        nonce: &[u8; NONCE_LEN],
-        ciphertext: &[u8],
-        aad: &[u8],
-    ) -> Result<Zeroizing<Vec<u8>>, VaultError>;
+    // 🔴 `decrypt_legacy_tag` (the last KEK-as-AEAD operation, a read-only door for pre-5.6.0
+    // tags) was RETIRED in slice 5.9 ② behind a prove-absence audit. The KEK now ONLY wraps DEKs —
+    // no method uses it as an AEAD key, so a legacy tag can never be re-sealed OR read again.
 
     /// Wrap a DEK under the KEK using AES-256 Key Wrap (RFC 3394). Output is exactly
     /// 40 bytes: 32-byte DEK + 8-byte integrity check.

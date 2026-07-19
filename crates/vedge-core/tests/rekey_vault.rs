@@ -42,7 +42,7 @@ use vedge_core::application::vault::use_cases::{
     UpdateEntryInput, create_entry, create_snapshot, import_document, lock_vault, rekey_vault,
     update_entry,
 };
-use vedge_core::domain::shared::{EntryId, SNAPSHOTS_DIR, TagId, VAULT_FILE};
+use vedge_core::domain::shared::{EntryId, SNAPSHOTS_DIR, TagId, VAULT_FILE, now};
 use vedge_core::domain::vault::aad::{entry_aad, tag_aad};
 use vedge_core::domain::vault::crypto_constants::{DEK_LEN, KEK_LEN, SECRET_KEY_LEN};
 use vedge_core::domain::vault::entities::{EntryHistoryRow, EntryRow, TagRow, VaultConfig};
@@ -472,6 +472,8 @@ async fn rekey_opens_on_new_credentials_and_nulls_recovery() {
             .unwrap();
         let repo = SqliteVaultRepository::new(db.handle());
         repo.set_recovery_slot(&[0x11u8; 40]).await.unwrap();
+        // Stamp a "last snapshot" so we can prove the re-key retire nulls it (5.9 ④).
+        repo.touch_last_snapshot_at(now()).await.unwrap();
         drop(repo);
         db.close().await.unwrap();
     }
@@ -514,6 +516,20 @@ async fn rekey_opens_on_new_credentials_and_nulls_recovery() {
     assert!(
         config.recovery_slot.is_none(),
         "a re-key nulls the recovery slot"
+    );
+    // Credential-age stamps (5.9 ③): re-key with a new SK refreshes both.
+    assert!(
+        config.last_password_change_at.is_some(),
+        "a re-key stamps the password change"
+    );
+    assert!(
+        config.last_secret_key_rotation_at.is_some(),
+        "a re-key with a new Secret Key stamps the rotation"
+    );
+    // Re-key RETIRES the snapshot store, so the stamp must not keep claiming one (5.9 ④).
+    assert!(
+        config.last_snapshot_at.is_none(),
+        "a re-key retires snapshots and nulls last_snapshot_at"
     );
 }
 

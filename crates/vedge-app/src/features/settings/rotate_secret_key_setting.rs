@@ -8,21 +8,29 @@
 //! once and offers to re-issue the Emergency Kit from it. `busy` gates the
 //! O(n) rewrap against a double-submit.
 
+use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::form::form_field::FormField;
-use vedge_ui::components::{Button, Input};
-use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
+use vedge_ui::components::{Badge, Button, Input};
+use vedge_ui::primitives::tokens::{
+    BadgeSize, BadgeVariant, DialogSize, Size, ToastVariant, Variant,
+};
 
 use crate::api;
 use crate::api::dialog::{DialogFilter, SaveDialogOptions};
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::secret_display::SecretDisplay;
+use crate::features::vault::timestamps::is_older_than_days;
 use crate::i18n::{t, t_string, use_i18n};
+
+/// Nudge to rotate the Secret Key after this many days (slice 5.9 ③). Longer than the password
+/// threshold: the SK is 256-bit random, so age is a compromise-window concern, not a strength one.
+const SECRET_KEY_STALE_DAYS: i64 = 730;
 
 #[component]
 pub fn RotateSecretKeySetting() -> impl IntoView {
@@ -36,6 +44,24 @@ pub fn RotateSecretKeySetting() -> impl IntoView {
     let error = RwSignal::new(Option::<String>::None);
     // `None` → phase 1 (confirm); `Some(display)` → phase 2 (the re-issued key).
     let new_key = RwSignal::new(Option::<String>::None);
+    // Credential-age nudge (slice 5.9 ③): true when the Secret Key is stale.
+    let stale = RwSignal::new(false);
+    Effect::new(move |_| {
+        let path = active.path.get().unwrap_or_default();
+        if path.is_empty() {
+            return;
+        }
+        spawn_local(async move {
+            if let Ok(status) = api::password::credential_status(&path).await {
+                let now_ms = Utc::now().timestamp_millis();
+                stale.set(is_older_than_days(
+                    &status.secret_key_rotated_at,
+                    now_ms,
+                    SECRET_KEY_STALE_DAYS,
+                ));
+            }
+        });
+    });
 
     let vault_path = move || active.path.get().unwrap_or_default();
 
@@ -63,6 +89,8 @@ pub fn RotateSecretKeySetting() -> impl IntoView {
                 Ok(out) => {
                     current.set(String::new());
                     new_key.set(Some(out.secret_key_display));
+                    // Just rotated → no longer stale.
+                    stale.set(false);
                 }
                 // The command re-verifies the current password first; a mismatch
                 // is `WrongCredentials` and nothing was rotated.
@@ -134,6 +162,13 @@ pub fn RotateSecretKeySetting() -> impl IntoView {
                 <div class="text-xs text-text-secondary mt-0.5">
                     {move || t!(i18n, settings.rotate_secret_key_desc)}
                 </div>
+                <Show when=move || stale.get() fallback=|| ()>
+                    <div class="mt-1.5" data-testid="secret-key-age-nudge">
+                        <Badge variant=BadgeVariant::Warning size=BadgeSize::Sm>
+                            {move || t!(i18n, settings.credential_nudge_secret_key)}
+                        </Badge>
+                    </div>
+                </Show>
             </div>
             <div class="shrink-0 mt-0.5">
                 <Button

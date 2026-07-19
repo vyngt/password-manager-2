@@ -198,7 +198,37 @@ fn persist(journal_path: &Path, journal: &RestoreJournal) -> Result<(), VaultErr
     }
     // Loud on purpose: the kill-mid-restore smoke reads these transitions.
     warn!(state = ?journal.state, home = %journal.home_path.display(), "restore journal transition");
+    #[cfg(debug_assertions)]
+    maybe_pause_for_kill_smoke(journal.state);
     Ok(())
+}
+
+/// Debug-only, env-gated pause for the on-device kill-mid-restore smoke (slice 5.9 ①).
+///
+/// The post-commit journal transitions are size-independent microsecond metadata renames, so a
+/// hard `taskkill` can never land on one by timing alone. Set `VEDGE_RESTORE_PAUSE` to a state
+/// name (`Staged` / `HomeAside` / `Swapped`, or `*` for every one) and this prints a
+/// machine-readable `PAUSED:<state>` to stderr and blocks, giving a harness (or a human) a
+/// deterministic window to kill the process exactly after that state became durable on disk.
+///
+/// 🔴 `cfg(debug_assertions)` **and** env-gated — release-impossible, exactly like the
+/// `VEDGE_E2E_*` seams and the debug fast-KDF (`kdf_params::fast`). A pause reachable in a release
+/// build would be a denial-of-service on every restore/revert/re-key.
+#[cfg(debug_assertions)]
+fn maybe_pause_for_kill_smoke(state: RestoreState) {
+    let Some(want) = std::env::var_os("VEDGE_RESTORE_PAUSE") else {
+        return;
+    };
+    let want = want.to_string_lossy();
+    let name = format!("{state:?}");
+    if want != "*" && want != name {
+        return;
+    }
+    // The marker the harness greps for, then a generous window to be hard-killed. `persist` runs on
+    // a blocking thread (`commit_swap` is called via `spawn_blocking`), so blocking it is safe.
+    eprintln!("PAUSED:{name}");
+    std::thread::sleep(std::time::Duration::from_secs(120));
+    eprintln!("RESUMED:{name}");
 }
 
 fn read_journal(journal_path: &Path) -> Result<RestoreJournal, VaultError> {

@@ -46,6 +46,8 @@ fn sample_config() -> VaultConfig {
         last_snapshot_at: None,
         last_backup_at: None,
         recovery_slot: None,
+        last_password_change_at: None,
+        last_secret_key_rotation_at: None,
     }
 }
 

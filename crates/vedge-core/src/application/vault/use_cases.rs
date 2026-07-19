@@ -7,6 +7,7 @@ pub mod create_entry;
 pub mod create_snapshot;
 pub mod create_vault;
 pub mod credential_common;
+pub mod credential_status;
 pub mod delete_vault;
 pub mod document_ops;
 pub mod enroll_recovery_key;
@@ -53,6 +54,7 @@ pub use copy_field::{CopyFieldInput, FieldSelector, copy_field, place_text_on_cl
 pub use create_entry::{CreateEntryInput, CreateEntryOutput, create_entry};
 pub use create_snapshot::{SnapshotReport, create_snapshot};
 pub use create_vault::{CreateVault, CreateVaultInput, CreateVaultOutput};
+pub use credential_status::{CredentialStatus, credential_status};
 pub use delete_vault::{DeleteVaultInput, DeleteVaultReport, delete_vault};
 pub use document_ops::{
     DOCUMENT_SIZE_LIMIT_BYTES, ImportDocumentInput, export_document, import_document,
