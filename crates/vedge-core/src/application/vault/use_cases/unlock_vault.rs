@@ -25,6 +25,7 @@ use std::sync::Arc;
 use tracing::instrument;
 use zeroize::Zeroizing;
 
+use crate::application::vault::ports::blob_store::BlobStore;
 use crate::application::vault::ports::clipboard::ClipboardProvider;
 use crate::application::vault::ports::crypto::CryptoProvider;
 use crate::application::vault::ports::factories::{BlobStoreFactory, VaultRepositoryFactory};
@@ -33,7 +34,7 @@ use crate::application::vault::ports::keychain::KeychainProvider;
 use crate::application::vault::ports::repository::VaultRepository;
 use crate::application::vault::session::VaultSession;
 use crate::domain::shared::{Timestamp, VaultId, now};
-use crate::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
+use crate::domain::vault::crypto_constants::{KEK_LEN, RECOVERY_KEY_LEN, SECRET_KEY_LEN};
 use crate::domain::vault::entities::{
     AuditAction, AuditEvent, CURRENT_SCHEMA_VERSION, EntryRow, TagRow, VaultConfig,
 };
@@ -255,13 +256,100 @@ impl UnlockVault {
         kek_bytes: Zeroizing<[u8; KEK_LEN]>,
         audit_action: Option<AuditAction>,
     ) -> Result<VaultSession, VaultError> {
-        // ---- 0. Per-vault infrastructure ------------------------------------
-        let repo = self.repo_factory.open(&vault_path).await?;
+        let (repo, blob, config, vault_id) = self.open_and_load(&vault_path).await?;
+        self.finish_open_with_kek(repo, blob, vault_id, config, kek_bytes, audit_action)
+            .await
+    }
+
+    /// Recovery unlock (slice 5.7): open a vault with the KEK reconstructed from a
+    /// `(Recovery Key, Secret Key)` pair — the master password is forgotten.
+    ///
+    /// A **single** vault open: load the config, read the slot, derive `KEK_rec` and unwrap
+    /// the slot to the real KEK, then reuse the keyless tail (`finish_open_with_kek`). A
+    /// wrong `R` OR wrong `SK` yields a wrong `KEK_rec`, so the AES-KW unwrap fails its
+    /// integrity check → `WrongCredentials` (neither document alone opens the vault). The
+    /// typed `SK` is re-stored to the keychain (best-effort — the device adopts the vault)
+    /// AND stashed in the session for the forced password change that must follow — the
+    /// caller drives `change_password_after_recovery`, which consumes the stash.
+    #[instrument(skip_all, fields(vault_path = %vault_path.display()))]
+    pub async fn unlock_with_recovery_key(
+        &self,
+        vault_path: PathBuf,
+        recovery_key: Zeroizing<[u8; RECOVERY_KEY_LEN]>,
+        secret_key: Zeroizing<[u8; SECRET_KEY_LEN]>,
+    ) -> Result<VaultSession, VaultError> {
+        let (repo, blob, config, vault_id) = self.open_and_load(&vault_path).await?;
+
+        // No slot ⇒ recovery is not enrolled. Fail cleanly rather than unwrap a null.
+        let slot = config
+            .recovery_slot
+            .ok_or(VaultError::RecoveryNotConfigured)?;
+
+        // Derive KEK_rec = HKDF-recovery(Argon2id(2SKD(R, SK))) and unwrap the slot → KEK.
+        // Argon2id is CPU-bound → `spawn_blocking`. The unwrap runs inside the same closure
+        // so the derived `KEK_rec` never crosses an await point.
+        let kdf = Arc::clone(&self.kdf);
+        let crypto = Arc::clone(&self.crypto);
+        let vault_salt = config.vault_salt;
+        let kdf_params = config.kdf_params.clone();
+        let recovery_key_bytes = recovery_key;
+        let sk_for_derive = secret_key.clone();
+        let kek_bytes =
+            tokio::task::spawn_blocking(move || -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
+                let input = kdf.preprocess_2skd(recovery_key_bytes.as_slice(), &sk_for_derive)?;
+                let master_key = kdf.derive_master_key(&input, &vault_salt, &kdf_params)?;
+                let kek_rec = kdf.derive_recovery_kek(&master_key)?;
+                // Wrong R OR wrong SK → wrong KEK_rec → AES-KW integrity check fails.
+                let kek = crypto
+                    .unwrap_dek(&slot, &kek_rec)
+                    .map_err(|_| VaultError::WrongCredentials)?;
+                Ok(kek)
+            })
+            .await
+            .map_err(|e| VaultError::KeyDerivationFailed(format!("spawn_blocking join: {e}")))??;
+
+        let mut session = self
+            .finish_open_with_kek(
+                repo,
+                blob,
+                vault_id,
+                config,
+                kek_bytes,
+                Some(AuditAction::RecoveryUsed),
+            )
+            .await?;
+
+        // The device adopts the vault: re-store the typed Secret Key (best-effort). The stash
+        // below is what guarantees the forced password change works even if this fails.
+        if let Some(uuid) = session.vault_uuid() {
+            if let Err(e) = self.keychain.store_secret_key(uuid, &secret_key) {
+                tracing::warn!(error = %e, "recovery unlock succeeded but the Secret Key could not be re-stored to the keychain");
+            }
+        }
+        session.pending_recovery_reset = Some(secret_key);
+        Ok(session)
+    }
+
+    /// Steps 0–1 shared by the keyless open paths: construct the per-vault repo + blob store,
+    /// load the config, and enforce the magic / newer-schema guards. Returns the pieces
+    /// [`finish_open_with_kek`](Self::finish_open_with_kek) needs.
+    async fn open_and_load(
+        &self,
+        vault_path: &std::path::Path,
+    ) -> Result<
+        (
+            Arc<dyn VaultRepository>,
+            Arc<dyn BlobStore>,
+            VaultConfig,
+            VaultId,
+        ),
+        VaultError,
+    > {
+        let repo = self.repo_factory.open(vault_path).await?;
         let blob = self
             .blob_factory
-            .create(&vault_path, Arc::clone(&self.crypto))?;
+            .create(vault_path, Arc::clone(&self.crypto))?;
 
-        // ---- 1. Load config --------------------------------------------------
         let config = repo.load_config().await?;
         if config.magic != "VEDG" {
             return Err(VaultError::BadMagic);
@@ -270,8 +358,24 @@ impl UnlockVault {
         if config.schema_version > CURRENT_SCHEMA_VERSION {
             return Err(VaultError::UnsupportedSchemaVersion(config.schema_version));
         }
-        let vault_id = VaultId::new(vault_path.clone());
+        let vault_id = VaultId::new(vault_path.to_path_buf());
+        Ok((repo, blob, config, vault_id))
+    }
 
+    /// Steps 5–8 shared by every keyless open (biometric, seamless-revert, recovery): pin the
+    /// already-validated KEK, build + validate the index by decrypt (`kek_validation_error`),
+    /// write the optional unlock audit + `last_unlocked_at`, run the rollback compare, and
+    /// assemble the session. Folded from `open_with_kek` in slice 5.7 so the recovery path
+    /// reuses it without a second DB open.
+    async fn finish_open_with_kek(
+        &self,
+        repo: Arc<dyn VaultRepository>,
+        blob: Arc<dyn BlobStore>,
+        vault_id: VaultId,
+        config: VaultConfig,
+        kek_bytes: Zeroizing<[u8; KEK_LEN]>,
+        audit_action: Option<AuditAction>,
+    ) -> Result<VaultSession, VaultError> {
         // ---- 5. Pin the KEK in mlock'd memory --------------------------------
         let kek = SecretMem::new(*kek_bytes)?;
         drop(kek_bytes);

@@ -160,6 +160,13 @@ pub fn run() {
             commands::emergency_kit::emergency_kit_pdf,
             commands::emergency_kit::write_emergency_kit_pdf,
             commands::secret_key::unlock_with_secret_key,
+            // ---- Recovery Key (slice 5.7) ----
+            commands::recovery::enroll_recovery_key,
+            commands::recovery::unlock_with_recovery_key,
+            commands::recovery::change_password_after_recovery,
+            commands::recovery::revoke_recovery_key,
+            commands::recovery::recovery_key_enrolled,
+            commands::recovery::write_recovery_kit_pdf,
             // ---- biometric unlock (slice 2.8) ----
             commands::biometric::biometric_available,
             commands::biometric::biometric_is_enrolled,

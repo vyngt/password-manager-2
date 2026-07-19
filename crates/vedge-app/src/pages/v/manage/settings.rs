@@ -19,6 +19,7 @@ use crate::features::settings::biometric_setting::BiometricSetting;
 use crate::features::settings::change_password_setting::ChangeMasterPasswordSetting;
 use crate::features::settings::emergency_kit_setting::EmergencyKitSetting;
 use crate::features::settings::maintenance_panel::MaintenancePanel;
+use crate::features::settings::recovery_key_setting::RecoveryKeySetting;
 use crate::features::settings::rotate_secret_key_setting::RotateSecretKeySetting;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
@@ -259,6 +260,9 @@ pub fn SettingsPage() -> impl IntoView {
 
                 // ---- Rotate Secret Key (slice 5.6) ----------------
                 <RotateSecretKeySetting />
+
+                // ---- Recovery Key (slice 5.7) ---------------------
+                <RecoveryKeySetting />
 
                 // ---- Emergency Kit re-export (slice 5.1) ----------
                 <EmergencyKitSetting />

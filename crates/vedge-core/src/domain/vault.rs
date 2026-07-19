@@ -34,7 +34,10 @@ pub use payloads::{
     EntryPayload, EntryType, EnvVar, EnvVarsPayload, FolderPayload, IdentityPayload, LoginPayload,
     NotePayload, SshKeyPayload, TagPayload, UnknownPayload,
 };
-pub use secret_key::{SECRET_KEY_FORMAT_PREFIX, format_secret_key, parse_secret_key};
+pub use secret_key::{
+    RECOVERY_KEY_FORMAT_PREFIX, SECRET_KEY_FORMAT_PREFIX, format_recovery_key, format_secret_key,
+    parse_recovery_key, parse_secret_key,
+};
 pub use secret_update::{
     EnvVarUpdate, SecretListUpdate, SecretUpdate, SecretUpdates, resolve_secrets,
 };

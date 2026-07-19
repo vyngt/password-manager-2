@@ -101,4 +101,13 @@ pub trait VaultRepository: Send + Sync {
     /// Set `vault_config.last_backup_at` in a targeted update (slice 5.2.1) — written only
     /// by `backup_vault` when a `.vbk` is produced. Separate from `last_snapshot_at`.
     async fn touch_last_backup_at(&self, at: Timestamp) -> Result<(), VaultError>;
+
+    /// Set `vault_config.recovery_slot` in a targeted update (slice 5.7) — recovery
+    /// enroll. Kept out of the config-upsert `update_columns` so a stale `save_config`
+    /// cannot clobber it; a KEK change nulls it in-txn via `rewrap_all_deks`.
+    async fn set_recovery_slot(&self, slot: &[u8; 40]) -> Result<(), VaultError>;
+
+    /// Null `vault_config.recovery_slot` in a targeted update (slice 5.7) — revoke, and
+    /// the null-in-snapshot at capture (④). Idempotent.
+    async fn clear_recovery_slot(&self) -> Result<(), VaultError>;
 }

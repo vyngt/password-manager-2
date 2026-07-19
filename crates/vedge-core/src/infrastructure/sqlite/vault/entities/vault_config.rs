@@ -29,6 +29,9 @@ pub struct Model {
     pub last_snapshot_at: Option<String>,
     /// When a `.vbk` was last written. 🔴 SEPARATE from `last_snapshot_at` (Decision ⑧).
     pub last_backup_at: Option<String>,
+    /// The Recovery Key slot (slice 5.7): `AES-KW(KEK_rec, KEK)`, 40 bytes. Nullable BLOB;
+    /// `NULL` ⇒ recovery off. Set/cleared by targeted repo updates; never crosses to WASM.
+    pub recovery_slot: Option<Vec<u8>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

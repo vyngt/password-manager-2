@@ -7,6 +7,10 @@
 //! test: restoring a deliberately CORRUPTED vault from the picker, with NO `invoke()` for the
 //! mutation. (5.2c filed "e2e drives restore via invoke" as a drift note; this fixes it.)
 //!
+//! 🔴 A revert now **locks the vault** (supersedes the 5.2.3 "seamless, stay-in-vault"
+//! Decision ⑰): reverting is a destructive, credentials-affecting operation, so the user is
+//! sent to the launch screen to re-unlock against the reverted state.
+//!
 //! `#[ignore]` by default; run via `mise e2e`.
 
 mod common;
@@ -19,7 +23,10 @@ use serde_json::Value;
 use thirtyfour::By;
 
 use common::*;
-use vedge_e2e::{Session, TestEnv, app_binary};
+use vedge_e2e::{MASTER_PASSWORD, Session, TestEnv, app_binary};
+
+/// A strong new master password for the change-password → revert scenario (a test fixture).
+const NEW_PW: &str = "R3verted-Horse-Battery-Staple!";
 
 /// How many active entries carry this name (the tweezers recovers a fresh copy).
 fn count_named(entries: &[Value], name: &str) -> usize {
@@ -128,28 +135,45 @@ async fn snapshot_and_revert_via_ui() -> Result<()> {
         .await
         .context("confirm revert")?;
 
-    // 🔴 Seamless (5.2.3): the revert reflects the snapshot WITHOUT ejecting to the launch
-    // screen. Poll the entries — `list_entries` blocks on the session guard while the swap runs,
-    // so it returns only once the reverted session is in place: "keeper" back, "extra" gone.
-    wait_until(Duration::from_secs(30), || async {
-        let entries = list_entries(&session, &vault).await.unwrap_or_default();
-        Ok(entry_id(&entries, "keeper").is_some() && entry_id(&entries, "extra").is_none())
-    })
-    .await
-    .context("the seamless revert must reflect the snapshot without a re-unlock")?;
-    // And the vault stayed unlocked the whole time — no password was ever re-entered.
+    // 🔴 The revert LOCKS the vault and sends the user to the launch screen (supersedes ⑰).
+    assert_unlocked(&session, &vault, false)
+        .await
+        .context("a revert must lock the vault, not keep the session live")?;
+
+    // Re-unlock (same password — no credential change here) → the snapshot state: "keeper"
+    // back, "extra" (added after the snapshot) gone.
+    click_vault_option(&session).await?;
+    session
+        .wait_for(By::Id("master-password"), Duration::from_secs(10))
+        .await
+        .context("unlock panel after the revert locked the vault")?;
+    session.fill_id("master-password", MASTER_PASSWORD).await?;
+    session
+        .click_testid("unlock-submit")
+        .await
+        .context("re-unlock after revert")?;
     assert_unlocked(&session, &vault, true).await?;
+
+    let entries = list_entries(&session, &vault).await?;
+    assert!(
+        entry_id(&entries, "keeper").is_some(),
+        "keeper (in the snapshot) must survive the revert"
+    );
+    assert!(
+        entry_id(&entries, "extra").is_none(),
+        "extra (added after the snapshot) must be gone after the revert"
+    );
 
     session.assert_console_clean().await?;
     session.close().await;
     Ok(())
 }
 
-/// 🟠 B2 focus (slice 5.2.3, Decision ⑰): a revert from `/v/snapshots` keeps the user IN the
-/// vault — the snapshots page stays mounted and no launch-screen password field ever appears.
+/// 🔴 A revert from `/v/snapshots` LOCKS the vault (supersedes the 5.2.3 ⑰ "stay in vault"):
+/// the app ejects to the launch screen and the user must re-unlock against the reverted state.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
-async fn revert_stays_in_the_vault() -> Result<()> {
+async fn revert_locks_the_vault_and_requires_reunlock() -> Result<()> {
     let env = TestEnv::new()?;
     let app = app_binary()?;
     let vault = env.vault_path_str();
@@ -200,24 +224,155 @@ async fn revert_stays_in_the_vault() -> Result<()> {
         .await
         .context("confirm revert")?;
 
-    // The vault stays unlocked and the snapshots page stays mounted — no eject. Give the swap
-    // time to finish, then assert both.
+    // 🔴 The revert LOCKED the vault: the backend reports locked, and the launch-screen unlock
+    // prompt is reachable once the vault is selected (the snapshots page is gone).
+    assert_unlocked(&session, &vault, false)
+        .await
+        .context("a revert must lock the vault")?;
+    click_vault_option(&session).await?;
+    session
+        .wait_for(By::Id("master-password"), Duration::from_secs(10))
+        .await
+        .context("the launch-screen unlock prompt must appear after a revert")?;
+    session.fill_id("master-password", MASTER_PASSWORD).await?;
+    session
+        .click_testid("unlock-submit")
+        .await
+        .context("re-unlock after the revert")?;
     assert_unlocked(&session, &vault, true).await?;
+
+    session.assert_console_clean().await?;
+    session.close().await;
+    Ok(())
+}
+
+/// 🔴 The "change master password, then revert" path, UI-driven (the `vault_blake3` re-stamp
+/// fix): a KEK change re-wraps the snapshot to the NEW KEK; reverting to it must open cleanly
+/// (never `SnapshotCorrupt`), lock the vault, and re-unlock under the NEW password with the
+/// snapshot's data intact. Without the fix the revert fails "failed verification" and the vault
+/// stays unlocked; with it, the vault locks and the NEW password opens the reverted state.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "e2e: needs tauri-driver + a platform WebDriver + a display; run via `mise e2e`"]
+async fn revert_after_change_password_via_ui() -> Result<()> {
+    let env = TestEnv::new()?;
+    let app = app_binary()?;
+    let vault = env.vault_path_str();
+
+    let session = Session::launch(&env, &app).await?;
+    session.console_selftest().await?;
+    create_and_unlock(&session, &vault).await?;
+    add_login(&session, "keeper", "u", "p").await?;
+
+    // Snapshot on /v/snapshots.
+    session
+        .click_testid("nav-snapshots")
+        .await
+        .context("nav snapshots")?;
     session
         .wait_for(
-            By::Css("[data-testid='snapshots-page']".to_string()),
+            By::Css("[data-testid='snapshots-page']"),
+            Duration::from_secs(5),
+        )
+        .await
+        .context("snapshots page")?;
+    session
+        .click_testid("snapshot-take")
+        .await
+        .context("take snapshot")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshot-row']"),
             Duration::from_secs(10),
         )
         .await
-        .context("the snapshots page must stay mounted — the revert did not eject to launch")?;
-    // No launch-screen password field is present (the eject path would have shown one).
-    assert!(
-        session
+        .context("snapshot row appears")?;
+
+    // Change the master password (Settings ▸ Security) → re-wraps the snapshot to the new KEK.
+    session
+        .click_testid("nav-settings")
+        .await
+        .context("open settings")?;
+    // The snapshot's success toast is app-global and can overlap the Settings controls — wait
+    // for it to auto-dismiss so it doesn't intercept the button click (a test-timing guard).
+    let _ = wait_until(Duration::from_secs(10), || async {
+        Ok(session.driver().find(By::Css("div.toast")).await.is_err())
+    })
+    .await;
+    session
+        .click_testid("change-master-password")
+        .await
+        .context("open change-password dialog")?;
+    session
+        .fill_id("current-master-password", MASTER_PASSWORD)
+        .await?;
+    session.fill_id("new-master-password", NEW_PW).await?;
+    session
+        .fill_id("new-master-password-confirm", NEW_PW)
+        .await?;
+    session
+        .click_testid("change-password-submit")
+        .await
+        .context("submit the password change")?;
+    wait_until(Duration::from_secs(30), || async {
+        Ok(session
             .driver()
-            .find(By::Id("master-password"))
+            .find(By::Css("div[role='dialog']"))
             .await
-            .is_err(),
-        "a seamless revert must not surface the launch-screen unlock prompt"
+            .is_err())
+    })
+    .await
+    .context("the change-password dialog closes on success")?;
+
+    // Revert to the (now re-wrapped) snapshot.
+    session
+        .click_testid("nav-snapshots")
+        .await
+        .context("nav snapshots again")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshot-revert']"),
+            Duration::from_secs(5),
+        )
+        .await
+        .context("revert button")?;
+    session
+        .click_testid("snapshot-revert")
+        .await
+        .context("arm revert confirm")?;
+    session
+        .wait_for(
+            By::Css("[data-testid='snapshot-revert-confirm']"),
+            Duration::from_secs(5),
+        )
+        .await
+        .context("revert confirm button")?;
+    session
+        .click_testid("snapshot-revert-confirm")
+        .await
+        .context("confirm revert")?;
+
+    // 🔴 The revert must NOT corrupt (the `vault_blake3` re-stamp) — it succeeds and LOCKS.
+    assert_unlocked(&session, &vault, false)
+        .await
+        .context("revert after a password change must succeed and lock (not fail as corrupt)")?;
+
+    // Re-unlock under the NEW password → the re-wrapped snapshot opens; the entry is intact.
+    click_vault_option(&session).await?;
+    session
+        .wait_for(By::Id("master-password"), Duration::from_secs(10))
+        .await
+        .context("unlock panel after revert")?;
+    session.fill_id("master-password", NEW_PW).await?;
+    session
+        .click_testid("unlock-submit")
+        .await
+        .context("re-unlock with the new password")?;
+    assert_unlocked(&session, &vault, true).await?;
+
+    let entries = list_entries(&session, &vault).await?;
+    assert!(
+        entry_id(&entries, "keeper").is_some(),
+        "the entry must survive a change-password + revert (not corrupt)"
     );
 
     session.assert_console_clean().await?;

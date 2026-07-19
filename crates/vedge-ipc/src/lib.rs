@@ -32,6 +32,7 @@ pub mod export;
 pub mod health;
 pub mod import;
 pub mod misc;
+pub mod recovery;
 pub mod secret_update;
 pub mod settings;
 pub mod snapshot;
@@ -66,6 +67,7 @@ pub use misc::{
     ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, SecretKeyRotationOutputDto,
     UnlockResultDto, UnlockVaultInputDto,
 };
+pub use recovery::{RecoveryEnrollOutputDto, UnlockWithRecoveryKeyInputDto};
 pub use secret_update::{EnvVarUpdateDto, SecretListUpdateDto, SecretUpdateDto};
 pub use settings::{
     AppSettingDto, CreateCustomThemeInputDto, ExtensionSessionDto, KnownDeviceDto,

@@ -74,6 +74,8 @@ pub fn action_label(i18n: I18nContext<Locale>, action: &str) -> String {
         "BackupRestored" => t_string!(i18n, audit.action_backup_restored).to_owned(),
         "RollbackDetected" => t_string!(i18n, audit.action_rollback_detected).to_owned(),
         "SecretRevealed" => t_string!(i18n, audit.action_secret_revealed).to_owned(),
+        "RecoveryKeyEnabled" => t_string!(i18n, audit.action_recovery_key_enabled).to_owned(),
+        "RecoveryKeyRevoked" => t_string!(i18n, audit.action_recovery_key_revoked).to_owned(),
         other => other.to_owned(),
     }
 }

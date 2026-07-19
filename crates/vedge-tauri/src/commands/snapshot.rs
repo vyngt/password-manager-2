@@ -118,17 +118,17 @@ pub async fn revert_to_snapshot(
     Ok(revert_report_to_dto(report))
 }
 
-/// Seamless in-place revert from `/v/snapshots` (slice 5.2.3, Decision ⑰) — keeps the user IN
-/// the vault instead of ejecting to the launch screen.
+/// In-place revert from `/v/snapshots`, starting from an **unlocked** session (the core
+/// pre-flights + swaps with the session's own KEK).
 ///
-/// Requires an **unlocked** session (the opposite of `revert_to_snapshot`, which stays the H0
-/// launch-screen path). The core use case pre-flights the snapshot with the session still alive
-/// (a bad-snapshot error
-/// leaves the user unlocked), then tears the session down, swaps, and re-opens. On success we
-/// replace the session **in place** in its existing slot (no remove/insert race). A stale
-/// snapshot that can't be re-opened — or a rare post-teardown swap failure — drops the session
-/// and tells the UI to navigate to the launch screen; a re-open failure is NOT reported as a
-/// failed revert (L1).
+/// 🔴 On EVERY outcome the vault ends **locked** (`stayed_unlocked: false`) and the UI navigates
+/// to the launch screen to re-unlock — a revert is a destructive, credentials-affecting
+/// operation, so the user re-authenticates against the reverted state rather than silently
+/// continuing the pre-revert session (this supersedes slice 5.2.3's "seamless, stay-in-vault"
+/// Decision ⑰). The core still rebuilds + validates the session on a healthy revert, which
+/// proves the reverted snapshot opens under the current KEK before we lock. A stale snapshot
+/// (re-open fails) or a rare post-teardown swap failure also locks; a re-open failure is NOT a
+/// failed revert (L1). A pre-flight error leaves the session untouched (still unlocked).
 #[tauri::command(rename_all = "snake_case")]
 #[instrument(skip_all, fields(vault_path = %vault_path))]
 pub async fn revert_to_snapshot_in_session(
@@ -142,7 +142,7 @@ pub async fn revert_to_snapshot_in_session(
     // guard is held across the whole operation, so the reaper / screen-lock watcher / maintenance
     // cannot find and race the swap.
     let handle = state.get_session(&vault_id)?;
-    let mut guard = handle.lock().await;
+    let guard = handle.lock().await;
 
     let factory = SqliteVaultRepositoryFactory::new();
     let outcome = revert_to_snapshot_in_session_core(
@@ -162,17 +162,21 @@ pub async fn revert_to_snapshot_in_session(
         // Pre-flight failure — the session is UNTOUCHED, so keep it: the user stays unlocked.
         Err(e) => Err(e.into()),
         Ok(SeamlessRevertOutcome::Reverted { session, report }) => {
-            let rollback_detected = session.rollback_warning().is_some();
-            // Replace the session in place; the old (already-closed) session drops + zeroizes.
-            *guard = *session;
+            // 🔴 A revert is a destructive, credentials-affecting operation (it restores an older
+            // state), so LOCK the vault afterward and make the user re-unlock — never silently
+            // continue the pre-revert session. This is consistent with backup-restore
+            // (`revert_to_snapshot` / `replace_vault`, both launch-screen paths). The core
+            // rebuilt + validated the session, which PROVES the reverted snapshot opens under the
+            // current KEK (so the re-unlock will succeed with the current password); we drop that
+            // session and lock rather than keep it live.
+            drop(session);
             drop(guard);
-            let ttl = crate::setup::services::session_ttl(&state).await;
-            state.touch_deadline(&vault_id, ttl);
+            let _ = state.remove_session(&vault_id);
             Ok(SeamlessRevertDto {
-                stayed_unlocked: true,
+                stayed_unlocked: false,
                 entry_count: report.entry_count,
                 reverted_at: report.reverted_at,
-                rollback_detected,
+                rollback_detected: false,
             })
         }
         Ok(SeamlessRevertOutcome::NeedsUnlock { report }) => {

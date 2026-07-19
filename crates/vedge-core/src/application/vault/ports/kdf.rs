@@ -39,6 +39,16 @@ pub trait KeyDerivationProvider: Send + Sync {
         master_key: &[u8; MASTER_KEY_LEN],
     ) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError>;
 
+    /// HKDF-expand the Master Key to the **recovery** KEK (slice 5.7). Identical to
+    /// [`derive_kek`](Self::derive_kek) but with the `vedge-v1-recovery-kek` info string —
+    /// the one domain-separation point that makes `KEK_rec` ≠ the password-derived KEK,
+    /// even though both share `preprocess_2skd`/`derive_master_key`. The Master Key here is
+    /// derived from `2SKD(Recovery Key, Secret Key)`, not from the master password.
+    fn derive_recovery_kek(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError>;
+
     /// HKDF-expand the Master Key to the `verify_hash`. Stored on disk — **not secret**.
     fn derive_verify_hash(
         &self,

@@ -53,4 +53,16 @@ pub struct VaultConfig {
     /// card reads ONLY this — a directory full of snapshots must never silence
     /// "you have never backed up this vault".
     pub last_backup_at: Option<Timestamp>,
+    /// The Recovery Key slot (slice 5.7): `AES-KW(wrap_key = KEK_rec, payload = KEK)`,
+    /// 40 bytes. `Some` ⇒ recovery is enrolled; `None` ⇒ off. Additive nullable, NO
+    /// `schema_version` bump (the `vault_uuid`/`commit_counter` precedent).
+    ///
+    /// 🔴 Write discipline: set/cleared ONLY by the targeted `set_recovery_slot` /
+    /// `clear_recovery_slot` repo methods and OMITTED from the `save_config`
+    /// `update_columns` (like `commit_counter`), so a generic unlock-time `save_config`
+    /// can never clobber or resurrect it. It IS in `rewrap_all_deks`'s `update_columns`,
+    /// so a KEK change nulls it in the SAME transaction as the DEK rewrap (a stale slot
+    /// would unwrap a dead KEK — a silent brick at recovery time). Never key material that
+    /// crosses to WASM — it lives only here, in the vault file.
+    pub recovery_slot: Option<[u8; 40]>,
 }

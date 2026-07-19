@@ -111,12 +111,12 @@ pub fn SnapshotsPage() -> impl IntoView {
         });
     };
 
-    // Revert SEAMLESSLY (slice 5.2.3, Decision ⑰): the backend holds the KEK, swaps, and
-    // re-opens — the user stays in the vault instead of being ejected to the launch screen. The
-    // revert auto-snapshots first, so it is undoable. `confirm_rollback = true`: reverting from
-    // inside the vault IS the confirmation. If a stale snapshot can't be re-opened, the backend
-    // reports `stayed_unlocked = false` and we navigate to the launch screen to unlock — that is
-    // not a revert failure.
+    // Revert in place: the backend holds the KEK, auto-snapshots first (undoable), swaps, and
+    // re-opens. `confirm_rollback = true`: reverting from inside the vault IS the confirmation.
+    // 🔴 A revert now LOCKS the vault (`stayed_unlocked = false` on every success) — reverting is
+    // a destructive, credentials-affecting operation, so the user re-unlocks against the reverted
+    // state instead of silently continuing the pre-revert session. So we navigate to the launch
+    // screen. (The `stayed_unlocked` branch is kept defensive in case the backend policy changes.)
     let do_revert = move |id: String| {
         let path = untrack(|| active.path.get()).unwrap_or_default();
         if path.is_empty() {
