@@ -64,9 +64,9 @@ pub use health::{
 };
 pub use import::{ImportActionDto, ImportFailureDto, ImportPreviewRow, ImportReportDto};
 pub use misc::{
-    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, EnvExportFormatDto,
-    ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto, SecretKeyRotationOutputDto,
-    UnlockResultDto, UnlockVaultInputDto,
+    ChangePasswordInputDto, CreateVaultInputDto, CreateVaultOutputDto, CredentialStatusDto,
+    EnvExportFormatDto, ExportedDocumentDto, FieldSelectorDto, MaintenanceReportDto,
+    SecretKeyRotationOutputDto, UnlockResultDto, UnlockVaultInputDto,
 };
 pub use recovery::{RecoveryEnrollOutputDto, UnlockWithRecoveryKeyInputDto};
 pub use rekey::{RekeyInputDto, RekeyProgressDto, RekeyResultDto};

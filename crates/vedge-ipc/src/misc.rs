@@ -98,6 +98,17 @@ pub struct SecretKeyRotationOutputDto {
     pub secret_key_display: String,
 }
 
+/// Resolved credential ages for the Credentials-tab nudge (slice 5.9 ③).
+///
+/// Both are RFC-3339 strings, resolved server-side so a never-changed credential reads as the
+/// vault's creation time, never "never". No secret crosses — only timestamps read from
+/// `vault_config`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CredentialStatusDto {
+    pub password_changed_at: String,
+    pub secret_key_rotated_at: String,
+}
+
 // ---- CreateVault DTOs --------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -8,14 +8,17 @@
 //! toast and close. `busy` gates the dialog against a double-submit — two
 //! overlapping rewraps are undefined.
 
+use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::form::form_field::FormField;
-use vedge_ui::components::{Button, Input, PasswordStrengthMeter};
-use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
+use vedge_ui::components::{Badge, Button, Input, PasswordStrengthMeter};
+use vedge_ui::primitives::tokens::{
+    BadgeSize, BadgeVariant, DialogSize, Size, ToastVariant, Variant,
+};
 
 use vedge_ipc::ChangePasswordInputDto;
 
@@ -23,11 +26,16 @@ use crate::api;
 use crate::api::error::ApiError;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::password_strength::score as password_score;
+use crate::features::vault::timestamps::is_older_than_days;
 use crate::i18n::{t, t_string, use_i18n};
 
 /// Minimum acceptable strength (0–4) for the new master password — mirrors the
 /// onboarding gate so a change can't weaken below what creation required.
 const MIN_STRENGTH: u8 = 2;
+
+/// Nudge the user to change the master password after this many days (slice 5.9 ③).
+/// Conservative — a nagging password manager trains users to click through warnings.
+const PASSWORD_STALE_DAYS: i64 = 365;
 
 #[component]
 pub fn ChangeMasterPasswordSetting() -> impl IntoView {
@@ -41,6 +49,25 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
     let confirm = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
     let error = RwSignal::new(Option::<String>::None);
+    // Credential-age nudge (slice 5.9 ③): true when the master password is stale. Loaded on
+    // mount (and on vault switch) via `credential_status`, the biometric_setting.rs pattern.
+    let stale = RwSignal::new(false);
+    Effect::new(move |_| {
+        let path = active.path.get().unwrap_or_default();
+        if path.is_empty() {
+            return;
+        }
+        spawn_local(async move {
+            if let Ok(status) = api::password::credential_status(&path).await {
+                let now_ms = Utc::now().timestamp_millis();
+                stale.set(is_older_than_days(
+                    &status.password_changed_at,
+                    now_ms,
+                    PASSWORD_STALE_DAYS,
+                ));
+            }
+        });
+    });
 
     // Settings always runs inside an unlocked vault; the path drives the command.
     let vault_path = move || active.path.get().unwrap_or_default();
@@ -95,6 +122,8 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
                     next.set(String::new());
                     confirm.set(String::new());
                     dialog_open.set(false);
+                    // Just changed → no longer stale (avoids a lingering nudge until remount).
+                    stale.set(false);
                 }
                 // The command re-verifies the current password first; a mismatch
                 // is `WrongCredentials` and nothing was rewrapped.
@@ -117,6 +146,13 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
                 <div class="text-xs text-text-secondary mt-0.5">
                     {move || t!(i18n, settings.change_password_desc)}
                 </div>
+                <Show when=move || stale.get() fallback=|| ()>
+                    <div class="mt-1.5" data-testid="password-age-nudge">
+                        <Badge variant=BadgeVariant::Warning size=BadgeSize::Sm>
+                            {move || t!(i18n, settings.credential_nudge_password)}
+                        </Badge>
+                    </div>
+                </Show>
             </div>
             <div class="shrink-0 mt-0.5">
                 <Button
