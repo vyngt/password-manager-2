@@ -1,7 +1,8 @@
 use zeroize::Zeroizing;
 
 use crate::domain::vault::crypto_constants::{
-    DEK_LEN, DEK_WRAPPED_LEN, KEK_LEN, NONCE_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN, VERIFY_HASH_LEN,
+    DEK_LEN, DEK_WRAPPED_LEN, KEK_LEN, NONCE_LEN, RECOVERY_KEY_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN,
+    VERIFY_HASH_LEN,
 };
 use crate::domain::vault::errors::VaultError;
 
@@ -80,6 +81,11 @@ pub trait CryptoProvider: Send + Sync {
     /// Generate a fresh 16-byte Secret Key from the OS CSPRNG. Wrapped in
     /// `Zeroizing` — this is the vault's root secret alongside the password.
     fn generate_secret_key(&self) -> Zeroizing<[u8; SECRET_KEY_LEN]>;
+
+    /// Generate a fresh 32-byte Recovery Key from the OS CSPRNG (slice 5.7). Wrapped in
+    /// `Zeroizing` — a 256-bit credential, generated server-side (the sentinel rule); only
+    /// its `RK1-` display ever crosses to the frontend, shown once.
+    fn generate_recovery_key(&self) -> Zeroizing<[u8; RECOVERY_KEY_LEN]>;
 
     /// Generate a fresh 32-byte vault salt from the OS CSPRNG. Not secret —
     /// no zeroize wrapper.

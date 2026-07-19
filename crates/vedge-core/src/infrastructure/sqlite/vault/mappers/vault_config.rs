@@ -28,6 +28,11 @@ pub fn model_to_domain(model: Model) -> Result<VaultConfig, VaultError> {
         backup_keep_count: model.backup_keep_count,
         last_snapshot_at: string_to_ts_opt(model.last_snapshot_at.as_deref())?,
         last_backup_at: string_to_ts_opt(model.last_backup_at.as_deref())?,
+        recovery_slot: model
+            .recovery_slot
+            .as_deref()
+            .map(|b| fixed_bytes::<40>(b, "vault_config.recovery_slot"))
+            .transpose()?,
     })
 }
 
@@ -53,5 +58,6 @@ pub fn domain_to_model(config: &VaultConfig) -> Result<Model, VaultError> {
         backup_keep_count: config.backup_keep_count,
         last_snapshot_at: config.last_snapshot_at.as_ref().map(ts_to_string),
         last_backup_at: config.last_backup_at.as_ref().map(ts_to_string),
+        recovery_slot: config.recovery_slot.map(|a| a.to_vec()),
     })
 }

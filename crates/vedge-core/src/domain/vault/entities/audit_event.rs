@@ -54,13 +54,21 @@ pub enum AuditAction {
     /// secret. NOT deduped (unlike `TotpRevealed`): every extraction is a
     /// deliberate act, so each one is logged.
     SecretRevealed,
+    /// A Recovery Key was enrolled (slice 5.7) — an opt-in `RK1-` credential that can
+    /// reconstruct the vault KEK. DISTINCT from `RecoveryUsed` (that means recovery was
+    /// *exercised* to unlock). No secret left the vault; the slot lives only in the file.
+    RecoveryKeyEnabled,
+    /// A Recovery Key was revoked (slice 5.7) — the slot was deleted, turning recovery off
+    /// for future copies of this vault. Honest scope: an already-copied `.vdb` keeps its old
+    /// slot; true revocation of a leaked key is a full re-key (5.8).
+    RecoveryKeyRevoked,
 }
 
 impl AuditAction {
     /// Every variant, in enum order. The single source of truth for exhaustive
     /// coverage checks — the DTO wire-format test and the app's audit-filter
     /// array both derive from this, so a new variant can't silently vanish.
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 23] = [
         Self::Unlocked,
         Self::Locked,
         Self::Created,
@@ -82,6 +90,8 @@ impl AuditAction {
         Self::BackupRestored,
         Self::RollbackDetected,
         Self::SecretRevealed,
+        Self::RecoveryKeyEnabled,
+        Self::RecoveryKeyRevoked,
     ];
 
     #[must_use]
@@ -108,6 +118,8 @@ impl AuditAction {
             Self::BackupRestored => "BackupRestored",
             Self::RollbackDetected => "RollbackDetected",
             Self::SecretRevealed => "SecretRevealed",
+            Self::RecoveryKeyEnabled => "RecoveryKeyEnabled",
+            Self::RecoveryKeyRevoked => "RecoveryKeyRevoked",
         }
     }
 
@@ -135,6 +147,8 @@ impl AuditAction {
             "BackupRestored" => Self::BackupRestored,
             "RollbackDetected" => Self::RollbackDetected,
             "SecretRevealed" => Self::SecretRevealed,
+            "RecoveryKeyEnabled" => Self::RecoveryKeyEnabled,
+            "RecoveryKeyRevoked" => Self::RecoveryKeyRevoked,
             _ => return None,
         })
     }

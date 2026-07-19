@@ -183,6 +183,8 @@ impl CreateVault {
             backup_keep_count: None,
             last_snapshot_at: None,
             last_backup_at: None,
+            // A fresh vault has no Recovery Key enrolled (slice 5.7).
+            recovery_slot: None,
         };
 
         // ---- 6. Provision the home + blob store, persist config -------------

@@ -37,15 +37,16 @@ pub use application::vault::use_cases::{
     AUDIT_PAGE_DEFAULT, AUDIT_PAGE_MAX, BackupPreview, BackupReport, BackupStatus,
     BackupVaultInput, ChangePasswordInput, CopyEnvVarsInput, CopyFieldInput, CopyHistoryFieldInput,
     CreateEntryInput, CreateEntryOutput, CreateVault, CreateVaultInput, CreateVaultOutput,
-    DOCUMENT_SIZE_LIMIT_BYTES, DeleteVaultInput, DeleteVaultReport, ExportEmergencyKitInput,
-    ExportEntriesInput, ExportFormat, ExportReport, FieldSelector, GetEntryInput, HistoryVersion,
-    ImportDocumentInput, InspectBackupInput, MaintenanceReport, OpenBackupInput, OpenBackupReport,
-    ReplaceReport, ReplaceVaultInput, RevealEnvVarsInput, RevealFieldInput,
-    RevealHistoryFieldInput, RevealRecoveryCodesInput, RevertReport, RevertToSnapshotInput,
-    SeamlessRevertOutcome, SecretKeyUnlockOutcome, SnapshotReport, TargetStateKind, UnlockVault,
-    UnlockVaultInput, UnlockWithSecretKeyInput, UpdateEntryInput, backup_status, backup_vault,
-    change_password, close_session_db, copy_env_vars, copy_field, copy_history_field, create_entry,
-    create_snapshot, create_tag, delete_tag, delete_vault, enroll_biometric, entries_by_domain,
+    DOCUMENT_SIZE_LIMIT_BYTES, DeleteVaultInput, DeleteVaultReport, EnrollRecoveryOutcome,
+    ExportEmergencyKitInput, ExportEntriesInput, ExportFormat, ExportReport, FieldSelector,
+    GetEntryInput, HistoryVersion, ImportDocumentInput, InspectBackupInput, MaintenanceReport,
+    OpenBackupInput, OpenBackupReport, ReplaceReport, ReplaceVaultInput, RevealEnvVarsInput,
+    RevealFieldInput, RevealHistoryFieldInput, RevealRecoveryCodesInput, RevertReport,
+    RevertToSnapshotInput, SeamlessRevertOutcome, SecretKeyUnlockOutcome, SnapshotReport,
+    TargetStateKind, UnlockVault, UnlockVaultInput, UnlockWithSecretKeyInput, UpdateEntryInput,
+    backup_status, backup_vault, change_password, change_password_after_recovery, close_session_db,
+    copy_env_vars, copy_field, copy_history_field, create_entry, create_snapshot, create_tag,
+    delete_tag, delete_vault, enroll_biometric, enroll_recovery_key, entries_by_domain,
     entries_by_folder, entries_by_tag, export_document, export_emergency_kit, export_entries,
     get_entry, get_history_value, hard_delete_entry, import_document, inspect_backup,
     list_active_entries, list_audit, list_history, list_tags, list_trashed_entries, lock_vault,
@@ -53,8 +54,8 @@ pub use application::vault::use_cases::{
     reauthenticate_master_password, record_lock, rename_tag, replace_vault_from_backup,
     restore_entry, restore_from_history, reveal_env_vars, reveal_field, reveal_history_field,
     reveal_recovery_codes, reveal_totp, revert_to_snapshot, revert_to_snapshot_in_session,
-    run_maintenance, scan_health, search_entries, set_favorite, set_sort_order, set_tags,
-    soft_delete_entry, unlock_with_secret_key, update_entry,
+    revoke_recovery_key, run_maintenance, scan_health, search_entries, set_favorite,
+    set_sort_order, set_tags, soft_delete_entry, unlock_with_secret_key, update_entry,
 };
 // Import entries (slice 5.3b) + the snapshot-source tweezers (slice 5.3c).
 pub use application::vault::use_cases::{
@@ -70,7 +71,8 @@ pub use domain::vault::health::{
 pub use domain::vault::index::{IndexEntry, TagMeta, VaultIndex};
 pub use domain::vault::otpauth::{TotpEnrolment, parse_totp_input};
 pub use domain::vault::secret_key::{
-    SECRET_KEY_FORMAT_PREFIX, format_secret_key, parse_secret_key,
+    RECOVERY_KEY_FORMAT_PREFIX, SECRET_KEY_FORMAT_PREFIX, format_recovery_key, format_secret_key,
+    parse_recovery_key, parse_secret_key,
 };
 pub use domain::vault::secret_update::{
     EnvVarUpdate, SecretListUpdate, SecretUpdate, SecretUpdates, resolve_secrets,

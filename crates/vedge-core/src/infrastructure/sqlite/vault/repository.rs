@@ -109,6 +109,13 @@ impl VaultRepository for SqliteVaultRepository {
             // cannot clobber a timestamp written after this config was read.
             last_snapshot_at: ActiveValue::Set(model.last_snapshot_at),
             last_backup_at: ActiveValue::Set(model.last_backup_at),
+            // Set on INSERT (a fresh vault seeds NULL — recovery off); on UPDATE it is
+            // preserved by OMITTING it from `update_columns` below, so a generic
+            // `save_config` (e.g. an unlock stamping `last_unlocked_at`) can never
+            // clobber or resurrect an enrolled slot. Written ONLY by `set_recovery_slot`
+            // / `clear_recovery_slot`, and nulled in-txn by `rewrap_all_deks` on a KEK
+            // change. Slice 5.7.
+            recovery_slot: ActiveValue::Set(model.recovery_slot),
         };
 
         config_entity::Entity::insert(active)
@@ -128,8 +135,8 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::VaultUuid,
                         ConfigCol::BackupDir,
                         ConfigCol::BackupKeepCount,
-                        // NOT ConfigCol::CommitCounter / LastSnapshotAt / LastBackupAt —
-                        // see the field comments above.
+                        // NOT ConfigCol::CommitCounter / LastSnapshotAt / LastBackupAt /
+                        // RecoverySlot — see the field comments above.
                     ])
                     .to_owned(),
             )
@@ -577,6 +584,7 @@ impl VaultRepository for SqliteVaultRepository {
             backup_keep_count: ActiveValue::Set(config_model.backup_keep_count),
             last_snapshot_at: ActiveValue::Set(config_model.last_snapshot_at),
             last_backup_at: ActiveValue::Set(config_model.last_backup_at),
+            recovery_slot: ActiveValue::Set(config_model.recovery_slot),
         };
         config_entity::Entity::insert(config_active)
             .on_conflict(
@@ -595,6 +603,13 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::VaultUuid,
                         ConfigCol::BackupDir,
                         ConfigCol::BackupKeepCount,
+                        // 🔴 RecoverySlot IS updated here (slice 5.7 ③, C1) — UNLIKE
+                        // `save_config`. A KEK change rewraps every DEK; the slot wraps
+                        // the OLD KEK, so `change_password`/`rewrap_one` set
+                        // `new_config.recovery_slot = None` and this writes that null in
+                        // the SAME txn. Dropping it here would leave a slot that unwraps a
+                        // dead KEK — a silent brick at the recovery moment.
+                        ConfigCol::RecoverySlot,
                         // NOT ConfigCol::CommitCounter (bumped in-txn just below) /
                         // LastSnapshotAt / LastBackupAt (targeted-update columns).
                     ])
@@ -653,6 +668,32 @@ impl VaultRepository for SqliteVaultRepository {
             .map_err(db_err)?;
         Ok(())
     }
+
+    async fn set_recovery_slot(&self, slot: &[u8; 40]) -> Result<(), VaultError> {
+        // Targeted single-column write (slice 5.7), like `touch_last_backup_at` — so it
+        // never rides a full-config upsert and can't be clobbered by a stale `save_config`.
+        config_entity::Entity::update_many()
+            .col_expr(ConfigCol::RecoverySlot, Expr::value(slot.to_vec()))
+            .filter(ConfigCol::Id.eq("default"))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn clear_recovery_slot(&self) -> Result<(), VaultError> {
+        // Null the slot (revoke, or the null-in-snapshot at capture — slice 5.7 ④⑥).
+        config_entity::Entity::update_many()
+            .col_expr(
+                ConfigCol::RecoverySlot,
+                Expr::value(Option::<Vec<u8>>::None),
+            )
+            .filter(ConfigCol::Id.eq("default"))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -696,6 +737,7 @@ mod tests {
             backup_keep_count: None,
             last_snapshot_at: None,
             last_backup_at: None,
+            recovery_slot: None,
         }
     }
 

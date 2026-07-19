@@ -349,3 +349,25 @@ fn import_preview_row_decodes() {
     assert_eq!(back.duplicate_of, Some(1));
     assert_eq!(back.username.as_deref(), Some("octocat"));
 }
+
+/// Recovery Key (slice 5.7) — the show-once `RK1-` display crosses on enroll, and the two
+/// typed documents cross on recover. 🔴 The `recovery_slot` (`[u8;40]`) is in NEITHER DTO — it
+/// lives only in the vault file and must never reach WASM.
+#[wasm_bindgen_test]
+fn recovery_dtos_decode() {
+    let out = RecoveryEnrollOutputDto {
+        recovery_key_display: "RK1-ABCDE-FGHIJ-KLMNO".into(),
+    };
+    let back = shell_to_frontend(&out);
+    assert_eq!(back.recovery_key_display, "RK1-ABCDE-FGHIJ-KLMNO");
+
+    let input = UnlockWithRecoveryKeyInputDto {
+        vault_path: "/x/work.vedge".into(),
+        recovery_key_display: "RK1-XXXXX".into(),
+        secret_key_display: "A3-XXXXX".into(),
+    };
+    let back = shell_to_frontend(&input);
+    assert_eq!(back.vault_path, "/x/work.vedge");
+    assert_eq!(back.recovery_key_display, "RK1-XXXXX");
+    assert_eq!(back.secret_key_display, "A3-XXXXX");
+}

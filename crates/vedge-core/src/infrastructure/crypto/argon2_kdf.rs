@@ -5,8 +5,8 @@ use zeroize::Zeroizing;
 
 use crate::application::vault::ports::kdf::KeyDerivationProvider;
 use crate::domain::vault::crypto_constants::{
-    HKDF_INFO_2SKD, HKDF_INFO_KEK, HKDF_INFO_SYNC_AUTH, HKDF_INFO_VERIFY, KEK_LEN, MASTER_KEY_LEN,
-    SECRET_KEY_LEN, VAULT_SALT_LEN, VERIFY_HASH_LEN,
+    HKDF_INFO_2SKD, HKDF_INFO_KEK, HKDF_INFO_RECOVERY_KEK, HKDF_INFO_SYNC_AUTH, HKDF_INFO_VERIFY,
+    KEK_LEN, MASTER_KEY_LEN, SECRET_KEY_LEN, VAULT_SALT_LEN, VERIFY_HASH_LEN,
 };
 use crate::domain::vault::errors::VaultError;
 use crate::domain::vault::kdf_params::KdfParams;
@@ -78,6 +78,16 @@ impl KeyDerivationProvider for Argon2idKdfProvider {
         Ok(Zeroizing::new(hkdf_expand::<KEK_LEN>(
             master_key,
             HKDF_INFO_KEK,
+        )?))
+    }
+
+    fn derive_recovery_kek(
+        &self,
+        master_key: &[u8; MASTER_KEY_LEN],
+    ) -> Result<Zeroizing<[u8; KEK_LEN]>, VaultError> {
+        Ok(Zeroizing::new(hkdf_expand::<KEK_LEN>(
+            master_key,
+            HKDF_INFO_RECOVERY_KEK,
         )?))
     }
 
