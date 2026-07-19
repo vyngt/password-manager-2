@@ -409,6 +409,15 @@ async fn reencrypt_one_entry(
 /// 🔴 This is the `..`-less / no-`_` enumeration that makes a silently-partial re-key impossible
 /// (spec ①, the 5.4.1 move): a future `EntryPayload` variant that carries its own external
 /// ciphertext will fail to compile here until a maintainer decides how re-key must rotate it.
+///
+/// **Honest limit (5.8 review):** the compile guard covers ONE axis — the *payload-variant* axis
+/// (a new `EntryPayload` arm). It does NOT guard the *surface/table* axis: a future ciphertext-
+/// bearing surface that is a sibling of entries/history/blobs/tags (say, a new encrypted column or
+/// side table) would not touch this match and would slip through silently. That axis is guarded
+/// instead by the integration completeness test (`tests/rekey_vault.rs`), which seeds every surface
+/// and is watched to FAIL on a partial pass. Partial re-key is *impossible* on the variant axis and
+/// *detectable* on the surface axis — not the same guarantee, and the test is load-bearing for the
+/// second.
 async fn reencrypt_payload_and_blob(
     ctx: &RekeyCtx<'_>,
     entry_id: &EntryId,
@@ -425,7 +434,16 @@ async fn reencrypt_payload_and_blob(
             let blob_plain = ctx
                 .live_blob
                 .read_blob(entry_id, old_dek, &doc.blob_nonce)
-                .await?;
+                .await
+                // Name the entry. A re-key aborts entirely if ANY document blob is missing or
+                // unreadable, and `read_blob`'s error (a bare `Storage(Io)` / `DecryptionFailed`)
+                // does not say which entry — surface it so the operator can find the culprit
+                // (the cause is preserved in the message).
+                .map_err(|e| {
+                    VaultError::Storage(StorageError::Io(format!(
+                        "re-key: entry {entry_id}'s document blob is unreadable: {e}"
+                    )))
+                })?;
             let new_blob_nonce = ctx
                 .staged_blob
                 .write_blob(entry_id, new_dek, &blob_plain)

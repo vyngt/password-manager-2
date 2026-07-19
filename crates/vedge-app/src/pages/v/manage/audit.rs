@@ -33,6 +33,24 @@ use crate::i18n::{t, t_string, use_i18n};
 /// form there.
 const AUDIT_ACTIONS: [&str; 24] = vedge_ipc::ACTION_NAMES;
 
+/// The `start–end of total` range for the result-count summary band, or `None`
+/// when there is nothing to show.
+///
+/// Returns `None` for an empty log (`total == 0`) **and** for a page past the
+/// end (`count == 0`): retention pruning (`audit_retention_days`) can shrink
+/// `total` below an `offset` the user had already navigated to, so the fetched
+/// page comes back empty while `total > 0`. Without the `count == 0` guard that
+/// rendered a reversed range — e.g. `101–100 of 40` — because `start = offset+1`
+/// outran `end = offset+count`. The pagination footer re-points to a valid page;
+/// the summary just shows the empty label until then. `end` is also clamped to
+/// `total` to defend against a partial page racing a concurrent prune.
+fn audit_summary_range(offset: u64, count: u64, total: u64) -> Option<(u64, u64)> {
+    if total == 0 || count == 0 {
+        return None;
+    }
+    Some((offset + 1, (offset + count).min(total)))
+}
+
 #[component]
 pub fn AuditPage() -> impl IntoView {
     let i18n = use_i18n();
@@ -299,20 +317,20 @@ pub fn AuditPage() -> impl IntoView {
                 <p class="text-xs text-text-tertiary" data-testid="audit-summary">
                     {move || {
                         let total = page_data.with(|p| p.total);
-                        if total == 0 {
-                            Either::Left(view! { {move || t!(i18n, audit.summary_empty)} })
-                        } else {
-                            let offset = u64::from(view_state.with(|v| v.offset));
-                            let count = page_data.with(|p| p.events.len()) as u64;
-                            let start = offset + 1;
-                            let end = offset + count;
-                            Either::Right(
-                                view! {
-                                    {t!(
-                                        i18n, audit.summary, start = start, end = end, total = total
-                                    )}
-                                },
-                            )
+                        let count = page_data.with(|p| p.events.len()) as u64;
+                        let offset = u64::from(view_state.with(|v| v.offset));
+                        match audit_summary_range(offset, count, total) {
+                            None => Either::Left(view! { {move || t!(i18n, audit.summary_empty)} }),
+                            Some((start, end)) => {
+                                Either::Right(
+                                    view! {
+                                        {t!(
+                                            i18n, audit.summary, start = start, end = end, total =
+                                            total
+                                        )}
+                                    },
+                                )
+                            }
                         }
                     }}
                 </p>
@@ -350,5 +368,35 @@ pub fn AuditPage() -> impl IntoView {
                 }}
             </div>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::audit_summary_range;
+
+    #[test]
+    fn normal_page_reports_its_range() {
+        assert_eq!(audit_summary_range(0, 25, 40), Some((1, 25)));
+        assert_eq!(audit_summary_range(25, 15, 40), Some((26, 40)));
+    }
+
+    #[test]
+    fn empty_log_shows_nothing() {
+        assert_eq!(audit_summary_range(0, 0, 0), None);
+    }
+
+    #[test]
+    fn page_past_the_end_after_a_prune_does_not_reverse_the_range() {
+        // Retention pruned total to 40 while the offset still points at page 6
+        // (offset 100). The fetched page is empty → None, NOT `Some((101, 100))`.
+        assert_eq!(audit_summary_range(100, 0, 40), None);
+    }
+
+    #[test]
+    fn a_partial_page_racing_a_prune_clamps_end_to_total() {
+        // total shrank to 30 mid-flight but the page still holds 25 rows at
+        // offset 25 → end clamps to 30 rather than reporting 50.
+        assert_eq!(audit_summary_range(25, 25, 30), Some((26, 30)));
     }
 }
