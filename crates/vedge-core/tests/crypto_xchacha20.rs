@@ -67,20 +67,8 @@ fn decrypt_with_tampered_ciphertext_fails() {
     assert!(matches!(err, VaultError::DecryptionFailed));
 }
 
-#[test]
-fn legacy_tag_decrypts_under_kek() {
-    // A pre-5.6.0 tag was sealed directly under the KEK. `decrypt_legacy_tag` reads that
-    // shape; `encrypt_entry(kek, …)` reproduces the byte-identical legacy ciphertext (the
-    // retired `encrypt_tag` was the same AEAD helper).
-    let p = provider();
-    let (nonce, ct) = p
-        .encrypt_entry(&kek_a(), b"{\"name\":\"aws\"}", b"tag-aad")
-        .unwrap();
-    let pt = p
-        .decrypt_legacy_tag(&kek_a(), &nonce, &ct, b"tag-aad")
-        .unwrap();
-    assert_eq!(&*pt, b"{\"name\":\"aws\"}");
-}
+// `legacy_tag_decrypts_under_kek` was REMOVED in slice 5.9 ②: `decrypt_legacy_tag` (the last
+// KEK-as-AEAD operation) is retired, so there is no legacy tag read path left to test.
 
 #[test]
 fn wrap_unwrap_dek_round_trips() {

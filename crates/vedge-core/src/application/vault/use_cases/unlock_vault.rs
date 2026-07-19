@@ -447,23 +447,11 @@ impl UnlockVault {
 
         let tag_rows = repo.all_tags().await?;
         for tag_row in tag_rows {
-            // At-unlock tag-DEK migration (slice 5.6.0), riding the O(n) index build — the
-            // ONE place it fires, reached by both unlock paths. A legacy KEK-sealed tag is
-            // re-sealed under a fresh per-row DEK and written back. Idempotent: a DEK-sealed
-            // tag is a no-op (no write, no nonce churn). A write error propagates (fails the
-            // unlock, like the config save); a crash mid-loop strands nothing — the next
-            // unlock re-migrates the remaining NULLs. Mirrors `backfill_vault_uuid`'s intent.
-            let row =
-                match super::tag_crypto::migrate_legacy_tag(self.crypto.as_ref(), kek, &tag_row)
-                    .map_err(remap_err)?
-                {
-                    Some(migrated) => {
-                        repo.update_tag(&migrated).await?;
-                        migrated
-                    }
-                    None => tag_row,
-                };
-            let meta = self.decrypt_tag_row(&row, kek).map_err(remap_err)?;
+            // Decrypt each DEK-sealed tag into the index. The at-unlock legacy-tag migration was
+            // RETIRED in slice 5.9 ② (behind a prove-absence audit) — a pre-5.6.0 KEK-sealed tag
+            // (`dek_wrapped = None`) now hard-fails in `open_tag_row` rather than migrating, so
+            // `build_index` is read-only again (no `update_tag` write here).
+            let meta = self.decrypt_tag_row(&tag_row, kek).map_err(remap_err)?;
             index.insert_tag(meta);
         }
 

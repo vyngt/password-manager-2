@@ -18,7 +18,6 @@
 
 mod common;
 
-use std::path::Path;
 use std::sync::Arc;
 
 use common::{Harness, build_unlock};
@@ -34,7 +33,7 @@ use vedge_core::application::vault::use_cases::{
     ChangePasswordInput, CreateEntryInput, UnlockVaultInput, change_password, create_entry,
     create_snapshot, create_tag, lock_vault,
 };
-use vedge_core::domain::shared::{SNAPSHOTS_DIR, TagId, now};
+use vedge_core::domain::shared::{SNAPSHOTS_DIR, TagId};
 use vedge_core::domain::vault::aad::tag_aad;
 use vedge_core::domain::vault::crypto_constants::{KEK_LEN, SECRET_KEY_LEN};
 use vedge_core::domain::vault::entities::TagRow;
@@ -114,39 +113,6 @@ fn read_dek_tag_name(h: &Harness, kek: &[u8; KEK_LEN], row: &TagRow) -> String {
     serde_json::from_slice::<TagPayload>(&pt).unwrap().name
 }
 
-/// Seed a LEGACY (KEK-sealed, `dek_wrapped = None`) tag directly into a snapshot's own
-/// `vault.vdb`, under the snapshot-moment KEK (= the original password's KEK, `h.kek`) —
-/// simulating a v1 snapshot so `rewrap_one`'s NULL-tag migration path can be exercised.
-async fn seed_legacy_tag_into_snapshot(h: &Harness, snap_dir: &Path, name: &str) -> TagId {
-    let db = VaultDbConnection::open(&snap_dir.join("vault.vdb"))
-        .await
-        .unwrap();
-    let repo = SqliteVaultRepository::new(db.handle());
-    let id = TagId::new();
-    let payload = TagPayload {
-        name: name.to_owned(),
-        color: None,
-        sort_order: 0,
-    };
-    let bytes = serde_json::to_vec(&payload).unwrap();
-    let aad = tag_aad(&id).unwrap();
-    // KEK-sealed under the snapshot-moment KEK (`encrypt_entry(kek, …)` reproduces the
-    // byte-identical pre-5.6.0 shape).
-    let (nonce, ciphertext) = h.crypto.encrypt_entry(&h.kek, &bytes, &aad).unwrap();
-    let row = TagRow {
-        id: id.clone(),
-        nonce,
-        ciphertext,
-        dek_wrapped: None,
-        created_at: now(),
-        updated_at: now(),
-    };
-    repo.insert_tag(&row).await.unwrap();
-    drop(repo);
-    db.close().await.unwrap();
-    id
-}
-
 // ---- tests --------------------------------------------------------------
 
 /// 🔴 Test 1 — THE BUG, reproduced then fixed. A vault with a tag survives a password
@@ -199,67 +165,28 @@ async fn tagged_vault_survives_secret_key_rotation() {
     lock_vault(s).await.unwrap();
 }
 
-/// Test 4 — the at-unlock migration of a legacy tag is idempotent: the second unlock is a
-/// no-op and `dek_wrapped` / `nonce` / `ciphertext` do not churn.
+/// 🔴 Retirement guard (slice 5.9 ②). The legacy KEK-as-AEAD read path — `decrypt_legacy_tag` and
+/// the at-unlock `migrate_legacy_tag` — was RETIRED behind a prove-absence audit
+/// (`mise tag-legacy-audit`). So a pre-5.6.0 KEK-sealed tag (`dek_wrapped = None`) no longer
+/// migrates on unlock; it HARD-FAILS (`DecryptionFailed`). Unreachable for a vault whose tags
+/// migrated before the audit went green — this pins that the door is gone, not just unused.
 #[tokio::test]
-async fn at_unlock_migration_is_idempotent() {
+async fn retired_legacy_tag_hard_fails_unlock() {
     let h = Harness::fresh().await;
-    let legacy = h.seed_legacy_tag("legacy").await;
+    h.seed_legacy_tag("orphan").await;
 
-    let s1 = unlock(&h, "correct horse battery staple").await.unwrap();
-    assert_eq!(s1.index().tags.get(&legacy).unwrap().name, "legacy");
-    lock_vault(s1).await.unwrap();
-
-    let after1 = h.repo.get_tag(&legacy).await.unwrap();
+    let err = unlock(&h, "correct horse battery staple")
+        .await
+        .expect_err("a retired legacy tag must fail unlock, not silently migrate");
     assert!(
-        after1.dek_wrapped.is_some(),
-        "a legacy tag is migrated to a per-row DEK on first unlock"
+        matches!(err, VaultError::DecryptionFailed),
+        "expected DecryptionFailed for a retired legacy tag, got {err:?}"
     );
 
-    let s2 = unlock(&h, "correct horse battery staple").await.unwrap();
-    lock_vault(s2).await.unwrap();
-    let after2 = h.repo.get_tag(&legacy).await.unwrap();
-    assert_eq!(
-        after2.dek_wrapped, after1.dek_wrapped,
-        "no re-migration on the second unlock"
-    );
-    assert_eq!(after2.nonce, after1.nonce, "no nonce churn");
-    assert_eq!(after2.ciphertext, after1.ciphertext, "no ciphertext churn");
-}
-
-/// Tests 5 + 6 — a half-migrated vault (one DEK-sealed tag + one legacy NULL, as a crash
-/// mid-migration would leave it) both READS (dual-path) and COMPLETES: nothing is stranded,
-/// and the pending NULL is migrated to a non-NULL `dek_wrapped` on the next unlock.
-#[tokio::test]
-async fn half_migrated_vault_reads_and_completes() {
-    let h = Harness::fresh().await;
-    let dek_tag = h.seed_tag("already").await; // DEK-sealed (current format)
-    let legacy_tag = h.seed_legacy_tag("pending").await; // legacy NULL
-
-    let s = unlock(&h, "correct horse battery staple").await.unwrap();
-    assert_eq!(s.index().tags.get(&dek_tag).unwrap().name, "already");
-    assert_eq!(s.index().tags.get(&legacy_tag).unwrap().name, "pending");
-    lock_vault(s).await.unwrap();
-
-    // 🔴 Strands nothing: the pending NULL is now DEK-sealed (a test that only re-reads with
-    // zero migrated rows would pass even against the B1 update_tag bug — this asserts a real
-    // migrated write persisted `dek_wrapped`).
+    // And it was NOT rewritten — no silent migration behind the failure.
     assert!(
-        h.repo
-            .get_tag(&legacy_tag)
-            .await
-            .unwrap()
-            .dek_wrapped
-            .is_some(),
-        "the pending legacy tag was migrated, not stranded"
-    );
-    assert!(
-        h.repo
-            .get_tag(&dek_tag)
-            .await
-            .unwrap()
-            .dek_wrapped
-            .is_some()
+        h.repo.all_tags().await.unwrap()[0].dek_wrapped.is_none(),
+        "the legacy tag must stay untouched (no partial migration write)"
     );
 }
 
@@ -304,47 +231,8 @@ async fn snapshot_tags_survive_password_change() {
     db.close().await.unwrap();
 }
 
-/// 🔴 Test 9 (B2) — a LEGACY (NULL) snapshot tag is MIGRATED, not skipped, on a password
-/// change. Skipping it would leave it under the old KEK while `verify_hash` advances, and a
-/// revert reopen (`build_index`) hard-fails on a tag it can't decrypt → a re-brick. After
-/// the change the snapshot's legacy tag is DEK-sealed and reads under the NEW KEK.
-#[tokio::test]
-async fn legacy_snapshot_tag_is_migrated_not_skipped_on_password_change() {
-    let h = Harness::fresh().await;
-    let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
-    create_entry(
-        &mut session,
-        CreateEntryInput {
-            payload: login_tagged("e1", vec![]),
-        },
-    )
-    .await
-    .unwrap();
-    create_snapshot(&session, SnapshotReason::Manual)
-        .await
-        .unwrap();
-    let snap_dir = store::list_snapshots(&h.home.join(SNAPSHOTS_DIR)).unwrap()[0]
-        .dir
-        .clone();
-
-    // A v1 snapshot: a KEK-sealed (NULL) tag in the snapshot's own vault.vdb.
-    let legacy_tag_id = seed_legacy_tag_into_snapshot(&h, &snap_dir, "prod").await;
-
-    change_pw(&mut session, &h, "new-hunter2").await;
-    lock_vault(session).await.unwrap();
-
-    let new_kek = derive_kek(&h, "new-hunter2");
-    let db = VaultDbConnection::open(&snap_dir.join("vault.vdb"))
-        .await
-        .unwrap();
-    let repo = SqliteVaultRepository::new(db.handle());
-    let tags = repo.all_tags().await.unwrap();
-    let tag = tags.iter().find(|t| t.id == legacy_tag_id).unwrap();
-    assert!(
-        tag.dek_wrapped.is_some(),
-        "the legacy snapshot tag must be migrated to a DEK, not skipped"
-    );
-    assert_eq!(read_dek_tag_name(&h, &new_kek, tag), "prod");
-    drop(repo);
-    db.close().await.unwrap();
-}
+// 🔴 The B2 test (a legacy NULL snapshot tag MIGRATED, not skipped, on a password change) was
+// REMOVED in slice 5.9 ②: its scenario is retired. A legacy snapshot tag no longer migrates — the
+// snapshot rewrap now fails on it gracefully (non-fatal, badged stale, per rewrap_snapshots's L1),
+// and the retirement guard `retired_legacy_tag_hard_fails_unlock` covers the "legacy → hard fail"
+// property. The audit (`mise tag-legacy-audit`) proved no reachable vault carries such a tag.
