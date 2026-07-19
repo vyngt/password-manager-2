@@ -30,7 +30,11 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$AppDb = 'local/app.db'
+    [string]$AppDb = 'local/app.db',
+    # Extra folders to scan for `.vbk` backups (a backup can live anywhere the user saved it — the
+    # registered-vault parents + configured backup_dirs are NOT the whole story). Pass every folder
+    # you keep backups in, e.g. -ScanDir V:\tmp\BK1,D:\backups.
+    [string[]]$ScanDir = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -79,14 +83,21 @@ Write-Host ""
 if (-not (Get-Command sqlite3 -ErrorAction SilentlyContinue)) {
     Fail "cannot enumerate: sqlite3 is not on PATH."
 }
-if (-not (Get-Command tar -ErrorAction SilentlyContinue)) {
-    Fail "cannot enumerate: tar is not on PATH — .vbk archives can't be opened."
+# Prefer Windows' own bsdtar (System32\tar.exe): it handles `V:\…` / `C:\…` paths natively, whereas
+# Git's GNU tar on PATH treats a drive-colon as a remote host and mangles a Windows `-C` target.
+$tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
+if (-not (Test-Path -LiteralPath $tarExe)) {
+    $tarExe = (Get-Command tar -ErrorAction SilentlyContinue).Source
+}
+if (-not $tarExe) {
+    Fail "cannot enumerate: no tar available — .vbk archives can't be opened."
 }
 if (-not (Test-Path -LiteralPath $AppDb)) {
     Fail "cannot enumerate: app database not found at '$AppDb'. Open the app once, or pass -AppDb."
 }
 
 $parentDirs = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($d in $ScanDir) { if ($d) { [void]$parentDirs.Add($d) } }
 
 if ($failures.Count -eq 0) {
     $rows = @(& sqlite3 -separator '|' $AppDb "SELECT path FROM vault_registry;" 2>$null)
@@ -132,7 +143,7 @@ if ($failures.Count -eq 0) {
             $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("vbk_" + [System.Guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $tmp -Force | Out-Null
             try {
-                & tar -xf $vbk.FullName -C $tmp 2>$null
+                & $tarExe -xf $vbk.FullName -C $tmp 2>$null
                 if ($LASTEXITCODE -ne 0) {
                     Fail "cannot enumerate: could not extract .vbk: $($vbk.FullName)"
                     continue
