@@ -12,6 +12,7 @@ mod m20260713_100009_add_commit_counter;
 mod m20260714_100010_add_snapshot_backup_fields;
 mod m20260718_100011_add_tag_dek;
 mod m20260718_100012_add_recovery_slot;
+mod m20260719_100013_add_credential_age_fields;
 
 pub struct Migrator;
 
@@ -30,6 +31,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260714_100010_add_snapshot_backup_fields::Migration),
             Box::new(m20260718_100011_add_tag_dek::Migration),
             Box::new(m20260718_100012_add_recovery_slot::Migration),
+            Box::new(m20260719_100013_add_credential_age_fields::Migration),
         ]
     }
 }

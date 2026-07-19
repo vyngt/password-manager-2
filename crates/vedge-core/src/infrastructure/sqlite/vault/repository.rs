@@ -116,6 +116,13 @@ impl VaultRepository for SqliteVaultRepository {
             // / `clear_recovery_slot`, and nulled in-txn by `rewrap_all_deks` on a KEK
             // change. Slice 5.7.
             recovery_slot: ActiveValue::Set(model.recovery_slot),
+            // Set on INSERT (a fresh vault seeds NULL); on UPDATE preserved by OMITTING them
+            // from `update_columns`, so a generic `save_config` can never clobber the
+            // credential age. Written by the credential paths via `rewrap_all_deks` + the
+            // targeted `touch_last_password_change_at` / `touch_last_secret_key_rotation_at`.
+            // Slice 5.9.
+            last_password_change_at: ActiveValue::Set(model.last_password_change_at),
+            last_secret_key_rotation_at: ActiveValue::Set(model.last_secret_key_rotation_at),
         };
 
         config_entity::Entity::insert(active)
@@ -136,7 +143,8 @@ impl VaultRepository for SqliteVaultRepository {
                         ConfigCol::BackupDir,
                         ConfigCol::BackupKeepCount,
                         // NOT ConfigCol::CommitCounter / LastSnapshotAt / LastBackupAt /
-                        // RecoverySlot — see the field comments above.
+                        // RecoverySlot / LastPasswordChangeAt / LastSecretKeyRotationAt —
+                        // see the field comments above.
                     ])
                     .to_owned(),
             )
@@ -585,6 +593,8 @@ impl VaultRepository for SqliteVaultRepository {
             last_snapshot_at: ActiveValue::Set(config_model.last_snapshot_at),
             last_backup_at: ActiveValue::Set(config_model.last_backup_at),
             recovery_slot: ActiveValue::Set(config_model.recovery_slot),
+            last_password_change_at: ActiveValue::Set(config_model.last_password_change_at),
+            last_secret_key_rotation_at: ActiveValue::Set(config_model.last_secret_key_rotation_at),
         };
         config_entity::Entity::insert(config_active)
             .on_conflict(
@@ -610,6 +620,12 @@ impl VaultRepository for SqliteVaultRepository {
                         // the SAME txn. Dropping it here would leave a slot that unwraps a
                         // dead KEK — a silent brick at the recovery moment.
                         ConfigCol::RecoverySlot,
+                        // 🔴 Credential-age stamps (slice 5.9 ③) ARE updated here, like
+                        // `RecoverySlot` — `change_password` sets them on `new_config` and this
+                        // persists them in the SAME rewrap txn (`save_config` omits them, so the
+                        // rewrap is the only way they ride a full-config upsert).
+                        ConfigCol::LastPasswordChangeAt,
+                        ConfigCol::LastSecretKeyRotationAt,
                         // NOT ConfigCol::CommitCounter (bumped in-txn just below) /
                         // LastSnapshotAt / LastBackupAt (targeted-update columns).
                     ])
@@ -694,6 +710,51 @@ impl VaultRepository for SqliteVaultRepository {
             .map_err(db_err)?;
         Ok(())
     }
+
+    async fn touch_last_password_change_at(&self, at: Timestamp) -> Result<(), VaultError> {
+        // Targeted write (slice 5.9), like `touch_last_snapshot_at` — the credential-age
+        // columns are omitted from `save_config`, so `rekey_vault` (which persists via
+        // `save_config` on the staged repo) stamps them this way instead.
+        config_entity::Entity::update_many()
+            .col_expr(
+                ConfigCol::LastPasswordChangeAt,
+                Expr::value(ts_to_string(&at)),
+            )
+            .filter(ConfigCol::Id.eq("default"))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn touch_last_secret_key_rotation_at(&self, at: Timestamp) -> Result<(), VaultError> {
+        config_entity::Entity::update_many()
+            .col_expr(
+                ConfigCol::LastSecretKeyRotationAt,
+                Expr::value(ts_to_string(&at)),
+            )
+            .filter(ConfigCol::Id.eq("default"))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn clear_last_snapshot_at(&self) -> Result<(), VaultError> {
+        // Null it after `rekey_vault` retires the snapshot store (slice 5.9 ④ / the 5.8
+        // self-review bug): re-key drops every snapshot but was leaving the timestamp
+        // claiming one exists.
+        config_entity::Entity::update_many()
+            .col_expr(
+                ConfigCol::LastSnapshotAt,
+                Expr::value(Option::<String>::None),
+            )
+            .filter(ConfigCol::Id.eq("default"))
+            .exec(self.conn.as_ref())
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -738,6 +799,8 @@ mod tests {
             last_snapshot_at: None,
             last_backup_at: None,
             recovery_slot: None,
+            last_password_change_at: None,
+            last_secret_key_rotation_at: None,
         }
     }
 

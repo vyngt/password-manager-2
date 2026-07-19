@@ -67,6 +67,7 @@ async fn change_pw(session: &mut VaultSession, h: &Harness, new_pw: &str) {
         ChangePasswordInput {
             new_password: Zeroizing::new(new_pw.to_owned()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await
@@ -186,6 +187,7 @@ async fn tagged_vault_survives_secret_key_rotation() {
         ChangePasswordInput {
             new_password: Zeroizing::new("correct horse battery staple".into()),
             new_secret_key: Some(Zeroizing::new([0xEE; SECRET_KEY_LEN])),
+            secret_key_rotated: true,
         },
     )
     .await

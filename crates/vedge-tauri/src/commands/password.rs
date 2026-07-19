@@ -74,6 +74,9 @@ pub async fn change_password(
         Arc::clone(&state.biometric),
         ChangePasswordInput {
             new_password,
+            // A change-password command MAY also rotate the SK (the two-in-one primitive);
+            // record a rotation only when a fresh key was actually supplied (slice 5.9 ③).
+            secret_key_rotated: new_secret_key.is_some(),
             new_secret_key,
         },
     )
@@ -131,6 +134,9 @@ pub async fn rotate_secret_key(
         ChangePasswordInput {
             new_password: current,
             new_secret_key: Some(new_secret_key),
+            // A genuine Secret-Key rotation → the `SecretKeyRotated` audit action +
+            // `last_secret_key_rotation_at` stamp (slice 5.9 ③).
+            secret_key_rotated: true,
         },
     )
     .await?;

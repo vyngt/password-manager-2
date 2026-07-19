@@ -264,6 +264,7 @@ async fn history_decryptable_after_password_change() {
         ChangePasswordInput {
             new_password: Zeroizing::new("new-master".into()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await
@@ -301,6 +302,7 @@ async fn history_decryptable_after_secret_key_rotation() {
         ChangePasswordInput {
             new_password: Zeroizing::new("correct horse battery staple".into()),
             new_secret_key: Some(Zeroizing::new(new_sk)),
+            secret_key_rotated: true,
         },
     )
     .await

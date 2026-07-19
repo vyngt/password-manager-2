@@ -65,4 +65,21 @@ pub struct VaultConfig {
     /// would unwrap a dead KEK — a silent brick at recovery time). Never key material that
     /// crosses to WASM — it lives only here, in the vault file.
     pub recovery_slot: Option<[u8; 40]>,
+    /// When the master password's KEK was last refreshed (slice 5.9 ③). Written by every
+    /// credential path that re-derives the password KEK — `change_password`,
+    /// `rotate_secret_key`, `rekey_vault`, `change_password_after_recovery` — in the SAME
+    /// transaction as the rewrap. `None` ⇒ unknown → the credential-age nudge treats it as
+    /// `created_at`, never "never". Additive nullable, NO `schema_version` bump (the
+    /// `recovery_slot`/`vault_uuid` precedent). Same write discipline as `recovery_slot`:
+    /// in `rewrap_all_deks`'s `update_columns` + targeted setters, OMITTED from
+    /// `save_config` so a generic unlock can't clobber it.
+    pub last_password_change_at: Option<Timestamp>,
+    /// When the Secret Key was last rotated (slice 5.9 ③). Written ONLY when the SK
+    /// actually changes — `rotate_secret_key` and `rekey_vault` with a new SK — NOT by a
+    /// recovery reset (which re-stores the SAME key). Keyed off the explicit
+    /// `secret_key_rotated` flag on `ChangePasswordInput`, never `new_secret_key.is_some()`
+    /// (recovery-reset passes `Some(same_key)` and would be wrongly stamped). `None` ⇒ never
+    /// rotated → the nudge treats it as `created_at`. Same additive-nullable, no-bump,
+    /// write-discipline story as `last_password_change_at`.
+    pub last_secret_key_rotation_at: Option<Timestamp>,
 }

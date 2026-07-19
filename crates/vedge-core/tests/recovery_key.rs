@@ -86,6 +86,7 @@ async fn change_pw(session: &mut VaultSession, h: &Harness, new_pw: &str) {
         ChangePasswordInput {
             new_password: Zeroizing::new(new_pw.to_owned()),
             new_secret_key: None,
+            secret_key_rotated: false,
         },
     )
     .await

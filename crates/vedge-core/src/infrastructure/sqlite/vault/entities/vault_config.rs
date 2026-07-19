@@ -32,6 +32,12 @@ pub struct Model {
     /// The Recovery Key slot (slice 5.7): `AES-KW(KEK_rec, KEK)`, 40 bytes. Nullable BLOB;
     /// `NULL` ⇒ recovery off. Set/cleared by targeted repo updates; never crosses to WASM.
     pub recovery_slot: Option<Vec<u8>>,
+    /// When the master password's KEK was last refreshed (RFC-3339 millis). Nullable;
+    /// written by the credential paths in the rewrap txn / by a targeted update (slice 5.9).
+    pub last_password_change_at: Option<String>,
+    /// When the Secret Key was last rotated (RFC-3339 millis). Nullable; written only on a
+    /// real SK change, not a recovery reset (slice 5.9).
+    pub last_secret_key_rotation_at: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

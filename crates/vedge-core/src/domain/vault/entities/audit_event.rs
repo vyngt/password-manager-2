@@ -68,13 +68,20 @@ pub enum AuditAction {
     /// material (wherever a copied `.vdb` took it) decrypts nothing going forward. A superset
     /// of `PasswordChanged`, which follows it in the same operation.
     VaultRekeyed,
+    /// The Secret Key was rotated (slice 5.9 ③) — a fresh key was generated and every DEK was
+    /// re-wrapped under the new KEK, keeping the same master password. DISTINCT from
+    /// `PasswordChanged`: rotation funnels through the same `change_password` use case, so
+    /// without this the audit log could not tell "I changed my password" from "I rotated my
+    /// Secret Key" (the 5.4 `Viewed`-conflation fix, applied to credentials). A recovery reset
+    /// re-stores the SAME key and is therefore recorded as `PasswordChanged`, not this.
+    SecretKeyRotated,
 }
 
 impl AuditAction {
     /// Every variant, in enum order. The single source of truth for exhaustive
     /// coverage checks — the DTO wire-format test and the app's audit-filter
     /// array both derive from this, so a new variant can't silently vanish.
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 25] = [
         Self::Unlocked,
         Self::Locked,
         Self::Created,
@@ -99,6 +106,7 @@ impl AuditAction {
         Self::RecoveryKeyEnabled,
         Self::RecoveryKeyRevoked,
         Self::VaultRekeyed,
+        Self::SecretKeyRotated,
     ];
 
     #[must_use]
@@ -128,6 +136,7 @@ impl AuditAction {
             Self::RecoveryKeyEnabled => "RecoveryKeyEnabled",
             Self::RecoveryKeyRevoked => "RecoveryKeyRevoked",
             Self::VaultRekeyed => "VaultRekeyed",
+            Self::SecretKeyRotated => "SecretKeyRotated",
         }
     }
 
@@ -158,6 +167,7 @@ impl AuditAction {
             "RecoveryKeyEnabled" => Self::RecoveryKeyEnabled,
             "RecoveryKeyRevoked" => Self::RecoveryKeyRevoked,
             "VaultRekeyed" => Self::VaultRekeyed,
+            "SecretKeyRotated" => Self::SecretKeyRotated,
             _ => return None,
         })
     }

@@ -51,6 +51,10 @@ pub async fn change_password_after_recovery(
             // The SAME Secret Key, supplied explicitly: keeps it unchanged, re-stores it, and
             // sidesteps the keychain read the normal path would do.
             new_secret_key: Some(secret_key),
+            // 🔴 NOT a rotation — the key is unchanged (slice 5.9 ③). This is the exact edge
+            // that makes `new_secret_key.is_some()` an invalid rotation signal: here it is
+            // `Some` but nothing rotated, so recording a rotation would be a lie.
+            secret_key_rotated: false,
         },
     )
     .await

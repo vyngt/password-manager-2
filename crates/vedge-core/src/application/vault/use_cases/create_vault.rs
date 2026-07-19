@@ -185,6 +185,10 @@ impl CreateVault {
             last_backup_at: None,
             // A fresh vault has no Recovery Key enrolled (slice 5.7).
             recovery_slot: None,
+            // No credential change/rotation yet (slice 5.9 ③); the nudge treats these `None`s as
+            // `created_at`, so a brand-new vault reads "0 days old", never "never".
+            last_password_change_at: None,
+            last_secret_key_rotation_at: None,
         };
 
         // ---- 6. Provision the home + blob store, persist config -------------
