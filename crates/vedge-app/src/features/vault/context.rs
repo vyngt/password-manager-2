@@ -26,3 +26,30 @@ impl Default for ActiveVault {
         Self::new()
     }
 }
+
+/// The show-once new Secret Key from a re-key that rotated it (slice 5.8).
+///
+/// Re-key LOCKS the vault on success, so the key can't be shown on the settings dialog — the
+/// auto-lock watcher ejects it to the launch screen within ~1 s. Instead the re-key dialog stashes
+/// the `A3-…` display here (a context provided **above the router**, so it survives the `/v`
+/// unmount) and navigates to the launch screen, which shows it in a dismissable panel where there
+/// is no auto-lock. Cleared when the user dismisses it.
+#[derive(Clone, Copy)]
+pub struct NewSecretKit {
+    pub display: RwSignal<Option<String>>,
+}
+
+impl NewSecretKit {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            display: RwSignal::new(None),
+        }
+    }
+}
+
+impl Default for NewSecretKit {
+    fn default() -> Self {
+        Self::new()
+    }
+}

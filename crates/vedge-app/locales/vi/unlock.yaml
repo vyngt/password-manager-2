@@ -99,6 +99,7 @@ err_restore: "Không thể khôi phục từ ảnh chụp: "
 restore_none: "Kho này không có ảnh chụp nào để khôi phục."
 restore_done: "Đã khôi phục từ ảnh chụp mới nhất — hãy mở khóa để tiếp tục."
 dismiss: "Đóng"
+new_kit_title: "Khóa bí mật mới của bạn"
 # --- 5.1 recovery (Emergency Kit) ---
 use_kit_cta: "Dùng Bộ khẩn cấp…"
 secret_key_hint: "Nhập mật khẩu chính ở trên, cùng Khóa bí mật in trên Bộ khẩn cấp."

@@ -31,7 +31,7 @@ use crate::i18n::{t, t_string, use_i18n};
 /// array's length and fails to compile here until it's updated. Each name is
 /// localized via [`action_label`]; an unrecognized one falls through to its raw
 /// form there.
-const AUDIT_ACTIONS: [&str; 23] = vedge_ipc::ACTION_NAMES;
+const AUDIT_ACTIONS: [&str; 24] = vedge_ipc::ACTION_NAMES;
 
 #[component]
 pub fn AuditPage() -> impl IntoView {

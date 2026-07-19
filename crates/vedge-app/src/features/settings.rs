@@ -7,6 +7,7 @@ pub mod import_panel;
 pub mod import_preview_table;
 pub mod maintenance_panel;
 pub mod recovery_key_setting;
+pub mod rekey_setting;
 pub mod rotate_secret_key_setting;
 pub mod security_prefs;
 pub mod theme_editor;

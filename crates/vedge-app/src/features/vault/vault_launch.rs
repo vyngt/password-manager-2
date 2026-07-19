@@ -14,9 +14,10 @@ use crate::api;
 use crate::api::dialog::OpenDialogOptions;
 use crate::api::error::ApiError;
 use crate::features::vault::backup_open_dialog::BackupOpenDialog;
-use crate::features::vault::context::ActiveVault;
+use crate::features::vault::context::{ActiveVault, NewSecretKit};
 use crate::features::vault::recovery_reset_dialog::RecoveryResetDialog;
 use crate::features::vault::registry_filter::filter_sort_registry;
+use crate::features::vault::secret_display::SecretDisplay;
 use crate::features::vault::vault_list::VaultList;
 use crate::features::vault::vault_manage_dialogs::{DeleteVaultDialog, VaultDetailsDialog};
 use crate::features::vault::vault_unlock_panel::VaultUnlockPanel;
@@ -31,10 +32,11 @@ use vedge_ipc::{
     RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto,
     UnlockWithRecoveryKeyInputDto, UnlockWithSecretKeyInputDto, VaultDetailsDto,
 };
+use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{Button, EmptyState, Spinner};
-use vedge_ui::primitives::tokens::{ToastVariant, Variant};
+use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
 use wasm_bindgen::JsCast;
 
 /// A chosen unlock target: a vault path + display name, plus the registry `id`
@@ -88,6 +90,10 @@ async fn record_unlock(sel: &Selected) {
 pub fn VaultLaunch() -> impl IntoView {
     let i18n = use_i18n();
     let active = expect_context::<ActiveVault>();
+    // The show-once new Secret Key handed off by a re-key that rotated it (5.8): re-key LOCKS and
+    // sends the user here, so this is where it's safe to show (no auto-lock to eject it).
+    let new_kit = expect_context::<NewSecretKit>();
+    let on_new_kit_close = Callback::new(move |()| new_kit.display.set(None));
     let toast = use_toast();
 
     let registry = RwSignal::new(Vec::<RegisteredVaultStatusDto>::new());
@@ -768,6 +774,39 @@ pub fn VaultLaunch() -> impl IntoView {
                 details=details_stats
                 on_confirm=on_delete
             />
+            // The show-once new Secret Key after a re-key rotated it (5.8). Shown HERE (not on the
+            // settings dialog) because re-key locks the vault and the auto-lock would eject the
+            // dialog before the user could copy it — the launch screen has no auto-lock.
+            <Dialog
+                open=Signal::derive(move || new_kit.display.get().is_some())
+                on_close=on_new_kit_close
+                size=DialogSize::Sm
+                close_label=Signal::derive(move || t_string!(i18n, unlock.dismiss).to_owned())
+            >
+                <DialogHeader>
+                    <DialogTitle>{move || t!(i18n, unlock.new_kit_title)}</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                        <p class="text-sm text-text-primary">
+                            {move || t!(i18n, settings.rekey_new_kit_intro)}
+                        </p>
+                        <SecretDisplay value=Signal::derive(move || {
+                            new_kit.display.get().unwrap_or_default()
+                        }) />
+                        <div class="flex justify-end">
+                            <Button
+                                variant=Variant::Primary
+                                size=Size::Sm
+                                attr:data-testid="rekey-new-kit-done"
+                                on:click=move |_: web_sys::MouseEvent| on_new_kit_close.run(())
+                            >
+                                {move || t!(i18n, settings.rekey_continue)}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogBody>
+            </Dialog>
         </div>
     }
 }

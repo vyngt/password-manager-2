@@ -167,6 +167,9 @@ pub fn run() {
             commands::recovery::revoke_recovery_key,
             commands::recovery::recovery_key_enrolled,
             commands::recovery::write_recovery_kit_pdf,
+            // ---- re-key (slice 5.8) ----
+            commands::rekey::rekey_vault,
+            commands::rekey::cancel_rekey,
             // ---- biometric unlock (slice 2.8) ----
             commands::biometric::biometric_available,
             commands::biometric::biometric_is_enrolled,

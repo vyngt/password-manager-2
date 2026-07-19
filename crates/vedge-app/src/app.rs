@@ -11,7 +11,7 @@ use crate::features::settings::security_prefs::{
     self, SecurityPrefs, SecurityPrefsCtx, SecurityPrefsLoaded,
 };
 use crate::features::settings::theme_util::theme_config_from_dto;
-use crate::features::vault::context::ActiveVault;
+use crate::features::vault::context::{ActiveVault, NewSecretKit};
 use crate::features::window_panel::WindowPanel;
 use crate::routes::AppRoutes;
 use vedge_ui::components::feedback::toast::provider::ToastProvider;
@@ -142,6 +142,9 @@ pub fn App() -> impl IntoView {
     provide_context(theme.clone());
     let active = ActiveVault::new();
     provide_context(active);
+    // The show-once new Secret Key from a re-key (5.8): provided above the router so it survives the
+    // `/v` unmount that fires when re-key locks the vault, then shown on the launch screen.
+    provide_context(NewSecretKit::new());
 
     // Boot into the *saved* active theme (falls back to the seeded light config
     // on error). `commit` re-derives, injects the `--color-*` cascade, and syncs

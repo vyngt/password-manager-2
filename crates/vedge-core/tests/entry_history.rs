@@ -22,13 +22,15 @@ use vedge_core::application::vault::ports::{
 use vedge_core::application::vault::session::VaultSession;
 use vedge_core::application::vault::use_cases::{
     ChangePasswordInput, CreateEntryInput, FieldSelector, RevealHistoryFieldInput,
-    UnlockVaultInput, UpdateEntryInput, change_password, create_entry, get_history_value,
-    hard_delete_entry, list_history, lock_vault, restore_from_history, reveal_history_field,
-    update_entry,
+    UnlockVaultInput, UpdateEntryInput, change_password, change_password_after_recovery,
+    create_entry, enroll_recovery_key, get_history_value, hard_delete_entry, list_history,
+    lock_vault, restore_from_history, reveal_history_field, update_entry,
 };
 use vedge_core::domain::shared::EntryId;
+use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
+use vedge_core::parse_recovery_key;
 
 async fn unlock(h: &Harness, pw: &str) -> VaultSession {
     build_unlock(h)
@@ -272,6 +274,89 @@ async fn history_decryptable_after_password_change() {
 
     // The snapshot — encrypted under the entry's stable DEK, whose *wrapping*
     // rotated — still decrypts, because we unwrap from the live row.
+    assert_eq!(history_password(&session2, &id, &hid).await, "orig");
+    lock_vault(session2).await.unwrap();
+}
+
+/// History survives a **Secret-Key rotation** — the same rewrap as a password change (the entry
+/// DEK is unchanged; only its KEK-wrapping rotates), here driven with a fresh Secret Key.
+#[tokio::test]
+async fn history_decryptable_after_secret_key_rotation() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, "correct horse battery staple").await;
+    let id = create_login(&mut session, "GitHub", "orig").await;
+    update_login(&mut session, &id, "edited").await;
+    let hid = list_history(&session, &id).await.unwrap()[1]
+        .history_id
+        .clone()
+        .unwrap();
+
+    // Rotate the Secret Key, keeping the password: change_password with a fresh SK.
+    let new_sk: [u8; SECRET_KEY_LEN] = [0xEE; SECRET_KEY_LEN];
+    change_password(
+        &mut session,
+        Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
+        ChangePasswordInput {
+            new_password: Zeroizing::new("correct horse battery staple".into()),
+            new_secret_key: Some(Zeroizing::new(new_sk)),
+        },
+    )
+    .await
+    .unwrap();
+    lock_vault(session).await.unwrap();
+
+    // Re-unlock with the same password (the new SK comes from the keychain); history decrypts.
+    let session2 = unlock(&h, "correct horse battery staple").await;
+    assert_eq!(history_password(&session2, &id, &hid).await, "orig");
+    lock_vault(session2).await.unwrap();
+}
+
+/// History survives a **recovery** (forgot-password) reset: recovery-unlock (Recovery Key + Secret
+/// Key) → the forced new password (`change_password_after_recovery`, the same rewrap core) → the
+/// pre-recovery snapshot still decrypts under the new credentials.
+#[tokio::test]
+async fn history_decryptable_after_recovery_reset() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h, "correct horse battery staple").await;
+    let id = create_login(&mut session, "GitHub", "orig").await;
+    update_login(&mut session, &id, "edited").await;
+    let hid = list_history(&session, &id).await.unwrap()[1]
+        .history_id
+        .clone()
+        .unwrap();
+
+    // Enrol a Recovery Key, then lock (the password is "forgotten").
+    let display = enroll_recovery_key(
+        &mut session,
+        Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+    )
+    .await
+    .unwrap()
+    .recovery_key_display;
+    lock_vault(session).await.unwrap();
+
+    // Recover with the two documents, then set the forced new password.
+    let recovery_key = parse_recovery_key(&display).unwrap();
+    let mut recovered = build_unlock(&h)
+        .unlock_with_recovery_key(h.home.clone(), recovery_key, Zeroizing::new(h.secret_key))
+        .await
+        .unwrap();
+    change_password_after_recovery(
+        &mut recovered,
+        Arc::clone(&h.kdf) as Arc<dyn KeyDerivationProvider>,
+        Arc::clone(&h.keychain) as Arc<dyn KeychainProvider>,
+        Arc::clone(&h.biometric) as Arc<dyn BiometricAuthenticator>,
+        Zeroizing::new("new-master".into()),
+    )
+    .await
+    .unwrap();
+    lock_vault(recovered).await.unwrap();
+
+    // The new password opens the vault; the pre-recovery history still decrypts.
+    let session2 = unlock(&h, "new-master").await;
     assert_eq!(history_password(&session2, &id, &hid).await, "orig");
     lock_vault(session2).await.unwrap();
 }
