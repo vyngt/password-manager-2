@@ -34,6 +34,7 @@ pub mod maintenance;
 pub mod password;
 pub mod recovery;
 pub mod registry;
+pub mod rekey;
 pub mod secret_key;
 pub mod settings;
 pub mod snapshot;

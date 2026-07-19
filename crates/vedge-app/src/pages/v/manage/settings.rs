@@ -20,6 +20,7 @@ use crate::features::settings::change_password_setting::ChangeMasterPasswordSett
 use crate::features::settings::emergency_kit_setting::EmergencyKitSetting;
 use crate::features::settings::maintenance_panel::MaintenancePanel;
 use crate::features::settings::recovery_key_setting::RecoveryKeySetting;
+use crate::features::settings::rekey_setting::RekeySetting;
 use crate::features::settings::rotate_secret_key_setting::RotateSecretKeySetting;
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
@@ -252,6 +253,19 @@ pub fn SettingsPage() -> impl IntoView {
                     </div>
                 </div>
 
+            // The credential operations moved to the Credentials tab (slice 5.8) — Security keeps
+            // only behavioural preferences.
+            </Show>
+        }
+        .into_any()
+    });
+
+    // ---- Credentials tab (slice 5.8) — the credential OPERATIONS, moved out of Security ----
+    // These are self-contained components (each its own dialog + busy gate), so the tab is just a
+    // container. Re-key sits in a danger zone at the bottom.
+    let credentials_panel = Arc::new(move || {
+        view! {
+            <div class="pt-2">
                 // ---- Biometric unlock (slice 2.8) -----------------
                 <BiometricSetting />
 
@@ -266,7 +280,12 @@ pub fn SettingsPage() -> impl IntoView {
 
                 // ---- Emergency Kit re-export (slice 5.1) ----------
                 <EmergencyKitSetting />
-            </Show>
+
+                // ---- Re-key vault (slice 5.8) — danger zone -------
+                <div class="mt-6 pt-4 border-t" style="border-color:var(--color-danger)">
+                    <RekeySetting />
+                </div>
+            </div>
         }
         .into_any()
     });
@@ -276,6 +295,12 @@ pub fn SettingsPage() -> impl IntoView {
             id: "security".to_owned(),
             label: Box::new(move || view! { {move || t!(i18n, settings.security)} }.into_any()),
             panel: security_panel,
+            disabled: false,
+        },
+        Tab {
+            id: "credentials".to_owned(),
+            label: Box::new(move || view! { {move || t!(i18n, settings.credentials)} }.into_any()),
+            panel: credentials_panel,
             disabled: false,
         },
         Tab {

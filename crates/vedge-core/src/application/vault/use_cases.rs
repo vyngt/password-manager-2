@@ -6,6 +6,7 @@ pub mod copy_field;
 pub mod create_entry;
 pub mod create_snapshot;
 pub mod create_vault;
+pub mod credential_common;
 pub mod delete_vault;
 pub mod document_ops;
 pub mod enroll_recovery_key;
@@ -24,6 +25,7 @@ pub mod open_backup;
 pub mod queries;
 pub mod reauthenticate;
 pub mod refs;
+pub mod rekey_vault;
 pub mod replace_vault;
 pub mod restore_entry;
 pub mod reveal_field;
@@ -80,6 +82,7 @@ pub use queries::{
     list_trashed_entries, search_entries,
 };
 pub use reauthenticate::reauthenticate_master_password;
+pub use rekey_vault::{RekeyOutcome, RekeyReport, RekeyVaultInput, rekey_vault};
 pub use replace_vault::{ReplaceReport, ReplaceVaultInput, replace_vault_from_backup};
 pub use restore_entry::restore_entry;
 pub use reveal_field::{

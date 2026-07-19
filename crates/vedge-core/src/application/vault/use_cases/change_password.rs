@@ -65,23 +65,15 @@ pub async fn change_password(
         keychain.read_secret_key(uuid)?
     };
 
-    // ---- 2. Derive a new KEK + verify_hash ----------------------------------
-    let vault_salt = session.config.vault_salt;
-    let kdf_params = session.config.kdf_params.clone();
-    let password = input.new_password;
-    let kdf_job = Arc::clone(&kdf);
-
-    let (new_kek_z, new_verify_hash) = tokio::task::spawn_blocking(
-        move || -> Result<(Zeroizing<[u8; KEK_LEN]>, [u8; 32]), VaultError> {
-            let input_bytes = kdf_job.preprocess_2skd(password.as_bytes(), &secret_key)?;
-            let master_key = kdf_job.derive_master_key(&input_bytes, &vault_salt, &kdf_params)?;
-            let verify = kdf_job.derive_verify_hash(&master_key)?;
-            let kek = kdf_job.derive_kek(&master_key)?;
-            Ok((kek, verify))
-        },
+    // ---- 2. Derive a new KEK + verify_hash (shared with rekey_vault, 5.8) ----
+    let (new_kek_z, new_verify_hash) = super::credential_common::derive_kek_and_verify(
+        kdf,
+        input.new_password,
+        secret_key,
+        session.config.vault_salt,
+        session.config.kdf_params.clone(),
     )
-    .await
-    .map_err(|e| VaultError::KeyDerivationFailed(format!("spawn_blocking join: {e}")))??;
+    .await?;
 
     // ---- 3. Re-wrap every entry's DEK under the new KEK --------------------
     // Kept as `Zeroizing` (not zeroized inline) because the snapshot rewrap (⑬, step 4b)
@@ -154,30 +146,26 @@ pub async fn change_password(
     }
     drop(old_kek_z);
 
-    // ---- 5. Keychain update --------------------------------------------------
-    if let Some(sk) = input.new_secret_key {
-        let uuid = session
-            .vault_uuid()
-            .ok_or(VaultError::KeychainEntryNotFound)?;
-        keychain.store_secret_key(uuid, &sk)?;
-    }
-
-    // ---- 6. Swap the session's KEK ------------------------------------------
+    // ---- 5+6. Swap the session's KEK, then re-store the OS-held credentials ----
+    // The keychain Secret Key (if rotated) and the biometric-gated KEK are re-stored after
+    // the atomic commit so a rollback never leaves them holding key material the on-disk
+    // vault no longer matches. The stored biometric KEK was stale (the DEKs were re-wrapped
+    // under the new KEK); re-storing the new KEK keeps biometric unlock working. Both keyed
+    // on `vault_uuid` (slice 5.2.3). Shared with `rekey_vault` (5.8).
     session.kek = SecretMem::new(*new_kek_z)?;
     drop(new_kek_z);
     session.config = new_config;
 
-    // ---- 6b. Refresh the biometric-gated KEK if enrolled --------------------
-    // The stored KEK is now stale (the DEKs were re-wrapped under the new KEK). Re-store
-    // the new KEK so biometric unlock keeps working. Done after the atomic commit so a
-    // rollback never leaves the gate holding a KEK the DB doesn't match. Keyed on
-    // `vault_uuid` (slice 5.2.3), not the file path.
-    let biometric_uuid = session
+    let uuid = session
         .vault_uuid()
         .ok_or(VaultError::KeychainEntryNotFound)?;
-    if biometric.is_enrolled(biometric_uuid)? {
-        biometric.enroll(biometric_uuid, session.kek.expose())?;
-    }
+    super::credential_common::restore_keychain_and_biometric(
+        keychain.as_ref(),
+        biometric.as_ref(),
+        uuid,
+        session.kek.expose(),
+        input.new_secret_key.as_deref(),
+    )?;
 
     // ---- 7. Audit ------------------------------------------------------------
     super::create_entry::append_audit(session, AuditAction::PasswordChanged, None).await?;

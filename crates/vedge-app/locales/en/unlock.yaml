@@ -99,6 +99,7 @@ err_restore: "Couldn't restore from a snapshot: "
 restore_none: "This vault has no snapshots to restore from."
 restore_done: "Restored from the latest snapshot — unlock to continue."
 dismiss: "Dismiss"
+new_kit_title: "Your new Secret Key"
 # --- 5.1 recovery (Emergency Kit) ---
 use_kit_cta: "Use Emergency Kit…"
 secret_key_hint: "Enter your master password above, plus the Secret Key printed on your Emergency Kit."

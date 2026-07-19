@@ -980,4 +980,73 @@ mod tests {
         );
         fx.assert_clean(false);
     }
+
+    // ---- slice 5.8: the RETIRING swap (`preserve = &[]`) — the mirror of the revert tests ----
+
+    /// 🔴 A `commit_swap(preserve = &[])` (what `rekey_vault` uses) RETIRES the live `snapshots/`
+    /// store — the opposite of a revert (③): a pre-re-key snapshot's bodies are on the OLD DEKs,
+    /// so keeping it revertable would defeat the re-key.
+    #[test]
+    fn retiring_swap_drops_the_live_snapshot_store() {
+        let fx = Fixture::new(true, true);
+        fx.seed_live_snapshot();
+        fx.commit_until(None).unwrap(); // `commit_until` = preserve `&[]`
+        assert_eq!(fx.live_vault_bytes(), fx.new_bytes, "vault swapped to NEW");
+        assert!(
+            !fx.snapshot_marker_present(),
+            "an empty-preserve swap must RETIRE the pre-re-key snapshot store"
+        );
+        fx.assert_clean(true);
+    }
+
+    /// 🔴 The retire crash matrix: crash at EVERY checkpoint of a retiring swap. On roll-forward the
+    /// snapshot store is GONE (retired with the swapped-in home); on a `Staged` roll-back nothing
+    /// happened, so the original store (and its marker) survives.
+    #[test]
+    fn retiring_swap_drops_snapshots_at_every_checkpoint() {
+        use Checkpoint::{
+            HomeAsideJournal, HomeMoved, HomeSwapped, OldCleaned, Staged, SubdirsPreserved,
+            SwappedJournal,
+        };
+        let checkpoints = [
+            Staged,
+            HomeAsideJournal,
+            HomeMoved,
+            SwappedJournal,
+            HomeSwapped,
+            SubdirsPreserved,
+            OldCleaned,
+        ];
+        for cp in checkpoints {
+            let fx = Fixture::new(true, true);
+            fx.seed_live_snapshot();
+            let _ = fx.commit_until(Some(cp)); // preserve `&[]`
+            recover_if_pending(&fx.home).unwrap();
+
+            let expect_new = cp != Staged;
+            if expect_new {
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.new_bytes,
+                    "checkpoint {cp:?}: NEW"
+                );
+                assert!(
+                    !fx.snapshot_marker_present(),
+                    "checkpoint {cp:?}: a roll-forward RETIRES the snapshot store"
+                );
+            } else {
+                assert_eq!(
+                    fx.live_vault_bytes(),
+                    fx.old_bytes,
+                    "checkpoint {cp:?}: OLD"
+                );
+                assert!(
+                    fx.snapshot_marker_present(),
+                    "checkpoint {cp:?}: a roll-back keeps the original store"
+                );
+            }
+            fx.assert_clean(expect_new);
+            assert!(recover_if_pending(&fx.home).unwrap().is_none());
+        }
+    }
 }

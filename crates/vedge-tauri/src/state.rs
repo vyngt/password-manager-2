@@ -10,6 +10,7 @@
 //!    use-case awaits without blocking other vaults.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Duration;
 
@@ -164,6 +165,13 @@ pub struct AppState {
     /// parks the handle here for the next scheduler tick to audit-then-drop, instead
     /// of dropping it silently (slice 4.6a, A4 — closes 4.5a's audit-silent eviction).
     pending_locks: Arc<StdMutex<Vec<SessionHandle>>>,
+
+    /// Cancel flags for in-flight re-keys (slice 5.8), keyed by vault. A re-key holds the
+    /// per-session `AsyncMutex` for its whole (minutes-long) run, so a `cancel_rekey` command
+    /// cannot reach it through the guard. It sets the flag here instead — this map is behind the
+    /// OUTER `StdMutex` only, so the cancel touches it without ever blocking on the session guard,
+    /// and the re-key loop polls the flag before its commit point.
+    rekey_cancels: Arc<StdMutex<HashMap<VaultId, Arc<AtomicBool>>>>,
 }
 
 impl AppState {
@@ -201,6 +209,35 @@ impl AppState {
             create_vault,
             sessions: Arc::new(StdMutex::new(HashMap::new())),
             pending_locks: Arc::new(StdMutex::new(Vec::new())),
+            rekey_cancels: Arc::new(StdMutex::new(HashMap::new())),
+        }
+    }
+
+    /// Register a fresh cancel flag for a re-key on `id` and return it (the running re-key polls
+    /// it). Overwrites any stale flag from a prior run. Touches only the outer lock.
+    #[must_use]
+    pub fn register_rekey_cancel(&self, id: &VaultId) -> Arc<AtomicBool> {
+        let flag = Arc::new(AtomicBool::new(false));
+        if let Ok(mut g) = self.rekey_cancels.lock() {
+            g.insert(id.clone(), Arc::clone(&flag));
+        }
+        flag
+    }
+
+    /// Signal an in-flight re-key on `id` to cancel (a no-op if none is running). Touches only the
+    /// outer lock, so it never blocks on the session guard the re-key holds.
+    pub fn signal_rekey_cancel(&self, id: &VaultId) {
+        if let Ok(g) = self.rekey_cancels.lock() {
+            if let Some(flag) = g.get(id) {
+                flag.store(true, Ordering::Relaxed);
+            }
+        }
+    }
+
+    /// Drop a re-key's cancel flag once it finishes (success, cancel, or error).
+    pub fn clear_rekey_cancel(&self, id: &VaultId) {
+        if let Ok(mut g) = self.rekey_cancels.lock() {
+            g.remove(id);
         }
     }
 

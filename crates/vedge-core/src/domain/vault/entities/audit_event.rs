@@ -62,13 +62,19 @@ pub enum AuditAction {
     /// for future copies of this vault. Honest scope: an already-copied `.vdb` keeps its old
     /// slot; true revocation of a leaked key is a full re-key (5.8).
     RecoveryKeyRevoked,
+    /// The vault was re-keyed (slice 5.8) — a fresh DEK was minted for every entry and every
+    /// ciphertext surface (entries, all history versions, document blobs, tags) was
+    /// re-encrypted under a new KEK. The ONLY operation that revokes a captured DEK: old key
+    /// material (wherever a copied `.vdb` took it) decrypts nothing going forward. A superset
+    /// of `PasswordChanged`, which follows it in the same operation.
+    VaultRekeyed,
 }
 
 impl AuditAction {
     /// Every variant, in enum order. The single source of truth for exhaustive
     /// coverage checks — the DTO wire-format test and the app's audit-filter
     /// array both derive from this, so a new variant can't silently vanish.
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 24] = [
         Self::Unlocked,
         Self::Locked,
         Self::Created,
@@ -92,6 +98,7 @@ impl AuditAction {
         Self::SecretRevealed,
         Self::RecoveryKeyEnabled,
         Self::RecoveryKeyRevoked,
+        Self::VaultRekeyed,
     ];
 
     #[must_use]
@@ -120,6 +127,7 @@ impl AuditAction {
             Self::SecretRevealed => "SecretRevealed",
             Self::RecoveryKeyEnabled => "RecoveryKeyEnabled",
             Self::RecoveryKeyRevoked => "RecoveryKeyRevoked",
+            Self::VaultRekeyed => "VaultRekeyed",
         }
     }
 
@@ -149,6 +157,7 @@ impl AuditAction {
             "SecretRevealed" => Self::SecretRevealed,
             "RecoveryKeyEnabled" => Self::RecoveryKeyEnabled,
             "RecoveryKeyRevoked" => Self::RecoveryKeyRevoked,
+            "VaultRekeyed" => Self::VaultRekeyed,
             _ => return None,
         })
     }

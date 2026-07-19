@@ -1,0 +1,50 @@
+#!/usr/bin/env sh
+# VEdge pre-commit hook — fast formatting gate. Mirrors the FIRST thing CI runs
+# (`mise run fmt-check`), so a formatting slip is caught here instead of after a
+# push. A rustfmt/leptosfmt slip aborts the whole `mise ci` job (fmt runs first),
+# which is exactly how slice 5.8's history-tests commit tripped CI on a one-line
+# import reorder.
+#
+# Runs the same two checks, and nothing else:
+#   1. cargo fmt --all -- --check        (rustfmt; skips macro bodies — sub-second, no compile)
+#   2. leptosfmt --check <app> <ui>      (the view! macro internals)
+#
+# Deliberately does NOT run clippy/test/wasm — those are minutes-slow and belong
+# in CI (and in `mise ci` before a push). Keeping this hook sub-second is what
+# stops it from tempting `git commit --no-verify`.
+#
+# Install:  git config core.hooksPath .githooks   (or `mise run install-hooks`)
+# Bypass :  git commit --no-verify                (emergencies only)
+
+set -e
+
+# Run from the repo root regardless of where `git commit` was invoked.
+cd "$(git rev-parse --show-toplevel)"
+
+fail=0
+
+printf 'pre-commit: cargo fmt --check\n'
+if ! cargo fmt --all -- --check; then
+  fail=1
+fi
+
+if command -v leptosfmt >/dev/null 2>&1; then
+  printf 'pre-commit: leptosfmt --check\n'
+  # Capture: leptosfmt prints its config + every OK file on success (noisy).
+  # Only surface that output when the check actually fails.
+  if ! out=$(leptosfmt --check crates/vedge-app crates/vedge-ui 2>&1); then
+    printf '%s\n' "$out"
+    fail=1
+  fi
+else
+  printf 'pre-commit: leptosfmt not found — skipping (run `mise run setup`). CI still checks it.\n'
+fi
+
+if [ "$fail" -ne 0 ]; then
+  printf '\n\342\234\226 pre-commit: formatting check failed.\n'
+  printf '  Fix    : mise run fmt   (then `git add` the reformatted files and re-commit)\n'
+  printf '  Bypass : git commit --no-verify   (only if you know what you are doing)\n'
+  exit 1
+fi
+
+exit 0

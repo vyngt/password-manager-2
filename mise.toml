@@ -16,7 +16,7 @@
 # ---------------------------------------------------------------------------
 
 [tasks.setup]
-description = "One-time dev setup: wasm target + trunk + tauri-cli + leptosfmt + supply-chain tools"
+description = "One-time dev setup: wasm target + trunk + tauri-cli + leptosfmt + supply-chain tools + git hooks"
 run = [
   "rustup target add wasm32-unknown-unknown",
   "cargo install trunk --locked",
@@ -24,7 +24,14 @@ run = [
   "cargo install tauri-driver --locked",
   "cargo install leptosfmt --locked",
   "cargo install cargo-audit cargo-deny --locked",
+  "git config core.hooksPath .githooks",
 ]
+
+[tasks.install-hooks]
+description = "Point git at the tracked .githooks/ dir (pre-commit fmt gate) — for existing clones"
+# core.hooksPath is per-clone local config, not versioned; run once per clone
+# (setup does it too). The hook itself lives in .githooks/ and IS versioned.
+run = "git config core.hooksPath .githooks"
 
 # ---------------------------------------------------------------------------
 # Run / build
