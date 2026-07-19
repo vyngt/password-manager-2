@@ -265,17 +265,14 @@ pub async fn assert_vault_coherent(home: &Path, creds: &Creds<'_>, os: Option<&O
         assert_snapshot_opens_under_kek(snap, &crypto, &kek).await;
     }
 
-    // ── #9 a non-empty snapshot store implies last_snapshot_at is set ──
-    //    (One-directional: retention can prune a store to empty while a genuine "last taken at"
-    //    stamp remains — that is coherent. The re-key case, empty-store-must-be-NULL, is pinned at
-    //    the re-key call site, where the context makes it unambiguous.)
-    if !snaps.is_empty() {
-        assert!(
-            config.last_snapshot_at.is_some(),
-            "[coherence] invariant 9 (snapshot-stamp): {} snapshots exist but last_snapshot_at is NULL in {where_}",
-            snaps.len()
-        );
-    }
+    // ── #9 last_snapshot_at vs the store — NOT a global invariant (a helper finding) ──
+    //    Exercising the helper proved neither direction holds universally: `replace_vault_from_backup`
+    //    leaves a pre-replace undo snapshot on disk while restoring the backup's config
+    //    (last_snapshot_at = NULL) → non-empty store + NULL stamp; and retention can prune a store to
+    //    empty while a genuine "last taken at" stamp remains → empty store + Some. The 5.8 re-key bug
+    //    (empty store but a stale Some) that #9 was meant to pin is asserted at the re-key call site
+    //    (`rekey_vault.rs`), where the operation makes empty-⇒-NULL unambiguous. So the general helper
+    //    does not check it — a false-positive invariant is worse than one pinned where it's true.
 
     // ── #10 referential integrity: tag_ids + folder_id resolve (history orphans handled in #2) ──
     let folder_ids: HashSet<EntryId> = decoded

@@ -190,6 +190,19 @@ async fn open_round_trips_entries_and_a_document_into_a_fresh_home() {
     assert_eq!(bytes.to_vec(), b"the quick brown fox".to_vec());
     drop(opened);
 
+    // The opened home is a coherent vault: every entry + the document blob decrypt (os = None —
+    // the open used a throwaway keychain, so the OS-state checks don't apply here).
+    common::coherence::assert_vault_coherent(
+        &dest,
+        &common::coherence::Creds {
+            master_password: &h.master_password,
+            secret_key: &h.secret_key,
+            recovery_key: None,
+        },
+        None,
+    )
+    .await;
+
     // Opening is not restoring: no `BackupRestored` row is invented for a vault that was
     // never overwritten.
     let db = VaultDbConnection::open(&dest.join(VAULT_FILE))

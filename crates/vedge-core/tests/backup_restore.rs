@@ -405,6 +405,18 @@ async fn restore_over_an_existing_vault_replaces_it() {
             .exists()
     );
 
+    // The restored home is a coherent vault (os = None — the restore used a throwaway keychain).
+    common::coherence::assert_vault_coherent(
+        &target,
+        &common::coherence::Creds {
+            master_password: &h.master_password,
+            secret_key: &h.secret_key,
+            recovery_key: None,
+        },
+        None,
+    )
+    .await;
+
     // The restored vault opens and carries the backed-up entry.
     let restored = unlock_at(&h, &target).await;
     drop(restored);

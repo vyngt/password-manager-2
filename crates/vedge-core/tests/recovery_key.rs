@@ -210,6 +210,23 @@ async fn recover_a_forgotten_password_end_to_end() {
 
     // The password is forgotten. Recover with the two documents.
     let recovery_key = parse_recovery_key(&display).unwrap();
+
+    // 🔴 The full invariant #7 — the ONLY caller that supplies a Recovery Key: the freshly-armed
+    // slot must unwrap under KEK_rec to the CURRENT vault KEK. A stale/mis-wrapped slot fails here.
+    common::coherence::assert_vault_coherent(
+        &h.home,
+        &common::coherence::Creds {
+            master_password: PW,
+            secret_key: &h.secret_key,
+            recovery_key: Some(&*recovery_key), // Zeroizing<[u8; N]> → &[u8; N]
+        },
+        Some(&common::coherence::OsState {
+            vault_uuid: &h.vault_uuid,
+            keychain: h.keychain.as_ref(),
+        }),
+    )
+    .await;
+
     let unlocker = build_unlock(&h);
     let mut recovered = unlocker
         .unlock_with_recovery_key(h.home.clone(), recovery_key, Zeroizing::new(h.secret_key))

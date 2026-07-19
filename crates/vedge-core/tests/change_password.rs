@@ -54,6 +54,24 @@ fn login(name: &str, pw: &str) -> EntryPayload {
     })
 }
 
+/// Assert the vault is coherent from a fresh open under the POST-change credentials — the whole
+/// point of a credential op is that a *later* unlock still opens everything.
+async fn assert_coherent_after(h: &Harness, new_pw: &str, sk: &[u8; SECRET_KEY_LEN]) {
+    common::coherence::assert_vault_coherent(
+        &h.home,
+        &common::coherence::Creds {
+            master_password: new_pw,
+            secret_key: sk,
+            recovery_key: None,
+        },
+        Some(&common::coherence::OsState {
+            vault_uuid: &h.vault_uuid,
+            keychain: h.keychain.as_ref(),
+        }),
+    )
+    .await;
+}
+
 #[tokio::test]
 async fn rotate_password_then_unlock_with_new_only() {
     let h = Harness::fresh().await;
@@ -96,6 +114,9 @@ async fn rotate_password_then_unlock_with_new_only() {
         .await
         .unwrap_err();
     assert!(matches!(err, VaultError::WrongCredentials));
+
+    // Every entry re-wrapped under the new KEK (#1, #6).
+    assert_coherent_after(&h, "new-hunter2", &h.secret_key).await;
 }
 
 #[tokio::test]
@@ -127,6 +148,9 @@ async fn rotate_secret_key_only() {
     // Confirm the keychain actually got rewritten.
     let read_sk = h.keychain.read_secret_key(&h.vault_uuid).unwrap();
     assert_eq!(*read_sk, new_sk);
+
+    // Coherent under the SAME password paired with the NEW Secret Key.
+    assert_coherent_after(&h, "correct horse battery staple", &new_sk).await;
 }
 
 #[tokio::test]
@@ -364,4 +388,41 @@ async fn a_failed_snapshot_rewrap_never_fails_the_change() {
     assert_eq!(repo.load_config().await.unwrap().verify_hash, new_verify);
     drop(repo);
     db.close().await.unwrap();
+}
+
+/// 🔴 PG.1 ④ acceptance vehicle — a `change_password` over a vault with a TAG (the 5.6.0 surface)
+/// and a SNAPSHOT (the 5.7 surface) must leave BOTH coherent under the new KEK. Re-introduce the
+/// 5.6.0 bug (drop the tag re-wrap loop in `rewrap_all_deks`) → invariant #5 fails; re-introduce
+/// the 5.7 bug (drop the `vault_blake3` re-stamp in `rewrap_one`) → invariant #8 fails.
+#[tokio::test]
+async fn change_password_leaves_tags_and_snapshots_coherent() {
+    let h = Harness::fresh().await;
+    let tag_id = h.seed_tag("work").await;
+    let mut session = unlock(&h, "correct horse battery staple").await.unwrap();
+
+    let mut meta = CommonMeta::new("gh", EntryType::Login);
+    meta.tag_ids = vec![tag_id];
+    create_entry(
+        &mut session,
+        CreateEntryInput {
+            payload: EntryPayload::Login(LoginPayload {
+                meta,
+                username: "alice".into(),
+                password: SecretString::from("p1"),
+                totp_secret: None,
+                totp_params: vedge_core::TotpParams::default(),
+                recovery_codes: vec![],
+            }),
+        },
+    )
+    .await
+    .unwrap();
+    create_snapshot(&session, SnapshotReason::Manual)
+        .await
+        .unwrap();
+
+    change_pw(&mut session, &h, "brand-new-password").await;
+    lock_vault(session).await.unwrap();
+
+    assert_coherent_after(&h, "brand-new-password", &h.secret_key).await;
 }

@@ -33,6 +33,7 @@ use vedge_core::application::vault::use_cases::{
     create_snapshot, revert_to_snapshot,
 };
 use vedge_core::domain::shared::SNAPSHOTS_DIR;
+use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
 use vedge_core::infrastructure::blob::FilesystemBlobStoreFactory;
 use vedge_core::infrastructure::keychain::MemoryKeychainProvider;
@@ -72,6 +73,8 @@ struct Reunlock {
     keychain: Arc<dyn KeychainProvider>,
     home: std::path::PathBuf,
     master_password: zeroize::Zeroizing<String>,
+    secret_key: [u8; SECRET_KEY_LEN],
+    vault_uuid: String,
 }
 
 impl Reunlock {
@@ -100,6 +103,24 @@ impl Reunlock {
         let n = session.index().all_active().len();
         drop(session); // release the connection before the next swap
         n
+    }
+
+    /// Assert the reverted home is coherent from a fresh open (the swap left every surface
+    /// consistent under the current KEK — the 5.7 class of bug).
+    async fn assert_coherent(&self) {
+        common::coherence::assert_vault_coherent(
+            &self.home,
+            &common::coherence::Creds {
+                master_password: &self.master_password,
+                secret_key: &self.secret_key,
+                recovery_key: None,
+            },
+            Some(&common::coherence::OsState {
+                vault_uuid: &self.vault_uuid,
+                keychain: self.keychain.as_ref(),
+            }),
+        )
+        .await;
     }
 }
 
@@ -132,6 +153,8 @@ async fn build_two_snapshot_vault() -> (Reunlock, SqliteVaultRepositoryFactory) 
         kdf,
         keychain,
         master_password,
+        secret_key,
+        vault_uuid,
         repo,
         blob,
         ..
@@ -147,6 +170,8 @@ async fn build_two_snapshot_vault() -> (Reunlock, SqliteVaultRepositoryFactory) 
             keychain: keychain as Arc<dyn KeychainProvider>,
             home,
             master_password,
+            secret_key,
+            vault_uuid,
         },
         SqliteVaultRepositoryFactory::new(),
     )
@@ -216,6 +241,9 @@ async fn revert_is_undoable_and_keeps_every_snapshot() {
         2,
         "⑭ the revert was undoable"
     );
+
+    // The reverted home is coherent under the current KEK (every snapshot re-hashes + opens; #8).
+    ctx.assert_coherent().await;
 }
 
 /// A revert to a NON-existent snapshot id fails with a dedicated variant (L3), not a
