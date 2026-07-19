@@ -28,9 +28,9 @@ use vedge_core::application::vault::use_cases::{
 };
 use vedge_core::domain::shared::EntryId;
 use vedge_core::domain::vault::crypto_constants::SECRET_KEY_LEN;
-use vedge_core::parse_recovery_key;
 use vedge_core::domain::vault::entities::AuditAction;
 use vedge_core::domain::vault::payloads::{CommonMeta, EntryPayload, EntryType, LoginPayload};
+use vedge_core::parse_recovery_key;
 
 async fn unlock(h: &Harness, pw: &str) -> VaultSession {
     build_unlock(h)
