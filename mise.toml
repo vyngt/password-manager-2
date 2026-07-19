@@ -119,6 +119,10 @@ run = "cargo test -p vedge-app"
 description = "Unlock benchmark — O(n) index-build loop at 100/1k/10k entries (slice 5.3c, hard gate 2). NOT in `ci`; run to decide slice 5.5. `--release` so the numbers reflect production crypto, not a debug build."
 run = "cargo test --release -p vedge-core --test unlock_bench -- --ignored --nocapture"
 
+[tasks.kill-smoke]
+description = "Kill-mid-restore smoke (slice 5.9 ①) — hard-kill a real process at each journal state via the `VEDGE_RESTORE_PAUSE` seam, then prove a fresh process re-opens the home consistently. Debug build (the seam is `cfg(debug_assertions)`); NOT in `ci`."
+run = "cargo test -p vedge-core --test kill_mid_restore -- --ignored --exact kill_mid_restore_smoke --nocapture"
+
 [tasks.e2e]
 description = "End-to-end WebDriver run (tauri-driver + thirtyfour; needs a display + platform driver)"
 dir = "crates/vedge-tauri"
