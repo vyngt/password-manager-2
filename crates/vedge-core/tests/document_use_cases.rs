@@ -59,6 +59,8 @@ async fn round_trip_preserves_bytes() {
     let (filename, bytes) = export_document(&session, &id).await.unwrap();
     assert_eq!(filename, "passport.pdf");
     assert_eq!(&*bytes, &payload);
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -144,4 +146,7 @@ async fn hard_delete_document_removes_blob() {
 
     hard_delete_entry(&mut session, &id).await.unwrap();
     assert!(!blob_file.exists());
+
+    // The blob is gone AND leaves no orphan (invariant #4).
+    h.assert_coherent().await;
 }

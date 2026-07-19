@@ -186,6 +186,20 @@ async fn secret_key_display_roundtrips() {
 
     let parsed = parse_secret_key(&out.secret_key_display).unwrap();
     assert_eq!(*parsed, raw);
+
+    // A freshly created vault is coherent from a fresh open (verify_hash re-derives, credential-age
+    // stamps sane). `os = None` — this test uses its own providers, not the Harness.
+    drop(out.session);
+    common::coherence::assert_vault_coherent(
+        &path,
+        &common::coherence::Creds {
+            master_password: "correct horse battery staple",
+            secret_key: &raw,
+            recovery_key: None,
+        },
+        None,
+    )
+    .await;
 }
 
 #[tokio::test]

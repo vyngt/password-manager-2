@@ -78,6 +78,8 @@ async fn create_then_index_reflects() {
 
     let fetched = session.index().entries.get(&out.entry_id).unwrap();
     assert_eq!(fetched.name, "gh");
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -171,6 +173,8 @@ async fn update_bumps_version_and_refreshes_nonce() {
     assert_ne!(row_v1.ciphertext, row_v2.ciphertext);
     // DEK is stable across updates — the wrapped blob is the same.
     assert_eq!(row_v1.dek_wrapped, row_v2.dek_wrapped);
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -194,6 +198,8 @@ async fn soft_delete_then_restore() {
     restore_entry(&mut session, &id).await.unwrap();
     assert_eq!(session.index().all_active().len(), 1);
     assert!(session.index().all_trashed().is_empty());
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -214,6 +220,8 @@ async fn hard_delete_removes_from_db_and_index() {
     assert!(session.index().entries.get(&id).is_none());
     let err = h.repo.get_entry(&id).await.unwrap_err();
     assert!(matches!(err, VaultError::EntryNotFound(_)));
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -242,6 +250,9 @@ async fn hard_delete_folder_with_children_is_refused() {
         .await
         .unwrap_err();
     assert!(matches!(err, VaultError::FolderNotEmpty));
+
+    // A refused delete must not have left the folder or its child inconsistent.
+    h.assert_coherent().await;
 }
 
 #[tokio::test]

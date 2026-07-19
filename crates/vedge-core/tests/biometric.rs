@@ -109,6 +109,9 @@ async fn enroll_then_unlock_with_kek_roundtrip() {
             .any(|e| matches!(e.action, AuditAction::BiometricUnlocked)),
         "biometric unlock is audited"
     );
+
+    // Enrolling biometric stores the KEK behind the gate but does not touch the vault-at-rest.
+    h.assert_coherent().await;
     lock_vault(session2).await.unwrap();
 }
 

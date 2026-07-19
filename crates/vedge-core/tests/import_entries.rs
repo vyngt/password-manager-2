@@ -231,6 +231,9 @@ async fn export_then_import_round_trips_all_entries() {
     );
     // ③ the Unknown round-trips byte-faithfully through the whole vault path.
     assert_eq!(unknown_raw(&dst_bundle), src_unknown);
+
+    // The imported vault is internally consistent: remapped folder + created tag resolve (#10).
+    dst.assert_coherent().await;
 }
 
 /// ④ **No merge**: importing a "Work" folder into a vault that already has one
@@ -328,6 +331,8 @@ async fn tags_match_or_create_by_name() {
     assert_eq!(tags.len(), 2, "work must be reused, not duplicated");
     assert_eq!(tags.values().filter(|t| t.name == "work").count(), 1);
     assert_eq!(tags.values().filter(|t| t.name == "brandnew").count(), 1);
+
+    dst.assert_coherent().await;
 }
 
 /// ⑨ CSV Skip actually skips: a row marked Skip is NOT imported.
