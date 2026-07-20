@@ -394,7 +394,7 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
     let app = app_binary()?;
     let vault = env.vault_path_str();
 
-    let session = Session::launch(&env, &app).await?;
+    let mut session = Session::launch(&env, &app).await?;
     session.console_selftest().await?;
     create_and_unlock(&session, &vault).await?;
     add_login(&session, "keeper", "u", "p").await?;
@@ -428,10 +428,19 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
         .context("lock the vault")?;
     assert_unlocked(&session, &vault, false).await?;
 
-    // 🔴 Corrupt the vault's DB from the harness (NO invoke), then reload so the picker
-    // re-probes it and marks it un-openable.
+    // 🔴 Corrupt the vault's DB from the harness (NO invoke), then RELAUNCH so the
+    // launch screen re-probes it and marks it un-openable. This mirrors the real
+    // flow: a corrupt vault is detected on the next app launch (`refresh_registry`
+    // runs on mount) — the app never reloads its own webview. A raw
+    // `driver().refresh()` exercises a webview reload that is not a user path
+    // (the frontend has no reload; release disables F5) and does not survive the
+    // production CSP (PG.2b) — so relaunch is both faithful and CSP-safe, matching
+    // `daily_loop`'s restart step.
     corrupt_vault_db(&vault)?;
-    session.driver().refresh().await.context("reload the app")?;
+    session.close().await;
+    session = Session::launch(&env, &app)
+        .await
+        .context("relaunch to re-probe the corrupt vault")?;
 
     // The picker offers Restore for the corrupt vault.
     session
