@@ -41,7 +41,6 @@
   },
   "productName": "VEdge",
   "mainBinaryName": "VEdge",
-  "version": "3.0.0",
   "identifier": "app.vynt.v-edge",
   "plugins": {},
   "app": {
