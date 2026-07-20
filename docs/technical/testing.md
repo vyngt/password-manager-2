@@ -1,13 +1,13 @@
 # Testing layers
 
-VEdge's tests sit at three levels. Each catches a different class of bug; none subsumes the others.
+VEdge's tests sit at four levels. Each catches a different class of bug; none subsumes the others.
 
 ## 1. Backend / host tests — `cargo test --workspace`
 
 Pure Rust, host target, real SQLite + real crypto. This is where the **dangerous** bugs are caught — crypto, KDF, persistence, session lifecycle, "does an entry survive lock → re-unlock". Also the frontend's **pure logic** (extracted from components): `matches()`, `display_name_from_path`, `to_login_payload`, `ApiError::from_envelope`, dialog-option serde.
 
 ```
-cargo test --workspace --exclude vedge-e2e --lib --bins --tests   # ~461 tests (mise test)
+cargo test --workspace --exclude vedge-e2e --lib --bins --tests   # the workspace host suite (mise test)
 ```
 
 (`--exclude vedge-e2e` keeps the WebDriver deps off the default gate — see level 4; `--lib --bins
@@ -29,7 +29,7 @@ Lives in `crates/vedge-ipc/tests/wire_wasm.rs` (cfg-gated to `wasm32`, so host `
 
 ## 3. Manual GUI smoke — `cargo tauri dev`
 
-The whole path from a click to SQLite and back, in a real Tauri window. Catches **composition/navigation/reactive** bugs that only appear when components are mounted and driven (e.g. Leptos's "accessed outside a reactive tracking context" warning). Human-run; see [`docs/smokes/`](smokes/README.md).
+The whole path from a click to SQLite and back, in a real Tauri window. Catches **composition/navigation/reactive** bugs that only appear when components are mounted and driven (e.g. Leptos's "accessed outside a reactive tracking context" warning). Human-run; see [`docs/technical/smokes/`](smokes/README.md).
 
 ```
 cd crates/vedge-tauri && cargo tauri dev
@@ -44,13 +44,13 @@ mise e2e                      # trunk build (debug wasm) → cargo build --featu
 cargo test --workspace        # unaffected: vedge-e2e is #[ignore]-gated AND --exclude'd from the gate
 ```
 
-Lives in `crates/vedge-e2e/` (harness in `src/lib.rs`, scenario in `tests/daily_loop.rs`). **Opt-in / `#[ignore]`-gated** — it needs a display + the platform driver, so it never runs in the default `mise test`/`mise ci`. See [`crates/vedge-e2e/README.md`](../crates/vedge-e2e/README.md) for prerequisites, the deterministic seams (`VEDGE_DATA_DIR`, temp vault dir, real keychain), and the manual boundary (real biometric prompt, native OS file dialogs).
+Lives in `crates/vedge-e2e/` (harness in `src/lib.rs`, scenario in `tests/daily_loop.rs`). **Opt-in / `#[ignore]`-gated** — it needs a display + the platform driver, so it never runs in the default `mise test`/`mise ci`. See [`crates/vedge-e2e/README.md`](../../crates/vedge-e2e/README.md) for prerequisites, the deterministic seams (`VEDGE_DATA_DIR`, temp vault dir, real keychain), and the manual boundary (real biometric prompt, native OS file dialogs).
 
 > Prereqs: `cargo install tauri-driver --locked` + a version-matched platform WebDriver (msedgedriver ↔ WebView2). The build must embed **debug** wasm (`trunk build` without `--release`) or the console-clean warning never compiles in.
 
 ## Supply-chain gate — `mise audit` (slice 2.10.2)
 
-Tests catch *our* bugs; the audit gate catches bugs (and licensing/provenance problems) in the ~600
+Tests catch *our* bugs; the audit gate catches bugs (and licensing/provenance problems) in the many
 crates we depend on. For a password manager this is a first-class security gate. It's separate from the
 code gates because it needs network (the RustSec advisory DB) and two extra tools.
 
@@ -58,7 +58,7 @@ code gates because it needs network (the RustSec advisory DB) and two extra tool
 mise audit                      # cargo deny check  (advisories + bans + licenses + sources)
 ```
 
-- **`cargo deny check`** (config: [`/deny.toml`](../deny.toml)) is **the gate** — four checks:
+- **`cargo deny check`** (config: [`/deny.toml`](../../deny.toml)) is **the gate** — four checks:
   **advisories** ([RustSec DB](https://rustsec.org), plus unmaintained/yanked), **bans**
   (duplicate-version surfacing; the crypto version spread is documented-structural, so it runs at
   `warn`), **licenses** (a permissive SPDX allowlist — no GPL/AGPL in the tree), and **sources**
@@ -88,15 +88,15 @@ in an opt-in CI job.
 Two CI substrates, so a fast dev pace never exhausts GitHub-hosted runner minutes:
 
 - **GitHub Actions — the authoritative PR gate.** `.github/workflows/ci.yml` runs the core gate
-  (`mise ci` + `mise audit`) on **`pull_request` into `develop`/`master` + manual dispatch only — no
+  (`mise ci` + `mise audit`) on **`pull_request` into `develop`/`main` + manual dispatch only — no
   `push` trigger**, so feature-branch commits fire nothing (≈ one run per PR). `.github/workflows/e2e.yml`
-  runs `mise e2e` on **manual dispatch only** (Windows runners bill at 2×; a nightly schedule is left
-  commented-out), with `runner` selectable — point it at a **self-hosted Windows runner** (your machine
-  already has WebView2 + msedgedriver) for zero hosted minutes. The e2e job enables the fast-KDF +
-  in-memory-biometric seams via the harness env.
+  runs `mise e2e` on **`pull_request` into `develop`/`main` + a nightly `schedule`**, on a
+  **self-hosted Windows runner** (your machine already has WebView2 + msedgedriver) — so e2e is part of the
+  PR gate (PG.2a). Honest caveat: an offline runner makes the PR check *queue* rather than fail; the nightly
+  is the backstop. The e2e job enables the fast-KDF + in-memory-biometric seams via the harness env.
 - **Local Jenkins in Docker — off GitHub entirely.** `Jenkinsfile` + `ci/jenkins/` bring up a Dockerised
   Jenkins controller (toolchain baked in) that runs the same core gate on demand. See
-  [`ci/jenkins/README.md`](../ci/jenkins/README.md). Core gate only — e2e stays on the `mise e2e` /
+  [`ci/jenkins/README.md`](../../ci/jenkins/README.md). Core gate only — e2e stays on the `mise e2e` /
   GitHub-e2e path (needs a display + WebDriver).
 
 The e2e suite is **locale-independent** as of 3.8: controls are located by `data-testid`, not English text.

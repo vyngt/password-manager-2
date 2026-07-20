@@ -1,8 +1,8 @@
 # VEdge — Architecture
 
 VEdge is a **local-first, offline** password manager built with **Rust + Tauri v2** (desktop shell) and
-**Leptos 0.8 / WASM** (CSR frontend). There is no server and no cloud: a vault is a single encrypted
-file on disk, unlocked with a master password (+ a device Secret Key), and every secret is encrypted
+**Leptos 0.8 / WASM** (CSR frontend). There is no server and no cloud: a vault is a `.vedge`
+folder on disk, unlocked with a master password (+ a device Secret Key), and every secret is encrypted
 **at the application level, per entry** — the database file itself is plaintext SQLite.
 
 This document describes the shipped (v3) architecture. It is kept in sync with the code; every crypto
@@ -47,8 +47,8 @@ A single Cargo workspace of eight crates:
 ## `vedge-core` — Clean Architecture
 
 - **`domain/`** — pure types and rules, no I/O. Vault: the entry `payloads/` (login, card, note,
-  api_key, ssh_key, env_vars, identity, document, folder, tag), the in-memory `index`, `recovery`
-  (Emergency Kit / Secret Key encoding), `aad`, `kdf_params`, `crypto_constants`, and the SQLite
+  api_key, ssh_key, env_vars, identity, document, folder, tag), the in-memory `index`, `emergency_kit` /
+  `secret_key` (Emergency Kit / Secret Key encoding), `aad`, `kdf_params`, `crypto_constants`, and the SQLite
   `entities/` (`vault_config`, `entry_row`, `tag_row`, `entry_history_row`, `audit_event`).
 - **`application/`** — use-cases orchestrating the domain over **ports** (traits): `UnlockVault`,
   `create_entry`/`update_entry`/`soft_delete`/`restore`/`hard_delete`, `copy_field`, `move_entry`, the
@@ -136,7 +136,7 @@ opens each payload; lock zeroizes the KEK and the decrypted in-memory index.
 - **Two databases, same Sea-ORM stack:**
   - **`app.db`** — non-secret app state: settings, themes, recent vaults, known devices. One shared
     connection, its own migrator.
-  - **the vault `*.vdb`** — the encrypted entries, tags, per-entry history, `vault_config` (KDF params,
+  - **the vault DB (`vault.vdb`, inside the `.vedge` home)** — the encrypted entries, tags, per-entry history, `vault_config` (KDF params,
     salts, verify-hash), and the audit log. Its own connection + migrator, opened on unlock.
 
 The in-memory `VaultIndex` is a decrypted projection (names, types, folders, tags, timestamps) rebuilt
@@ -210,11 +210,11 @@ skips OS clipboard history / cloud sync and well-behaved managers, alongside the
 
 Four testing layers (host `cargo test` · wasm wire-codec · manual `cargo tauri dev` smoke · WebDriver
 e2e) plus the CI gates (`fmt` / `leptosfmt` / `clippy -D warnings` whole-workspace / `wasm` check) and a
-supply-chain gate (`cargo audit` + `cargo deny`). See [`docs/testing.md`](docs/testing.md) and
+supply-chain gate (`cargo audit` + `cargo deny`). See [`docs/technical/testing.md`](docs/technical/testing.md) and
 [`README.md`](README.md#development) for the commands (`mise ci`, `mise audit`, `mise e2e`).
 
 CI runs on **two substrates**: GitHub Actions (`.github/workflows/ci.yml` — the authoritative PR gate,
-triggered by PR-into-`develop`/`master` + manual dispatch only, deliberately **no `push`**; `e2e.yml`
+triggered by PR-into-`develop`/`main` + manual dispatch only, deliberately **no `push`**; `e2e.yml`
 dispatch-only) and a local **Jenkins-in-Docker** controller (`Jenkinsfile` + `ci/jenkins/`) that runs
 the same core gate off GitHub — both pinned to the project's dev rust toolchain so CI clippy == local.
 The WebDriver e2e drives a fast, locale-independent (`data-testid`) daily-loop; its Argon2 fast-KDF and

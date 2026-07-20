@@ -1,7 +1,7 @@
 # cargo-deny — VEdge supply-chain gate.
 #
 # Run: `cargo deny check` (or `mise audit`, which also runs `cargo audit`).
-# Documented in docs/testing.md. Every `ignore` below carries a RUSTSEC id, a
+# Documented in docs/technical/testing.md. Every `ignore` below carries a RUSTSEC id, a
 # reason, and an implicit review-by note — no silent ignores.
 
 [graph]

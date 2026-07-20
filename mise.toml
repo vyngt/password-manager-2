@@ -98,7 +98,7 @@ description = "Supply-chain gate — cargo-deny (advisories/bans/licenses/source
 # of which `cargo tree -i` confirms are unused (feature-gated behind sqlx/quic
 # features we never enable). Gating on those would mean writing misleading `ignore`s
 # for CVEs in crypto crates we don't even compile. Run `cargo audit` manually for a
-# raw-lockfile view. Needs network (RustSec DB). Not in `ci`; see docs/testing.md.
+# raw-lockfile view. Needs network (RustSec DB). Not in `ci`; see docs/technical/testing.md.
 run = "cargo deny check"
 
 # ---------------------------------------------------------------------------
@@ -161,6 +161,21 @@ run = [
   "trunk build --config ../vedge-app/Trunk.toml",
   "cargo build -p vedge-tauri --features custom-protocol",
   "cargo test -p vedge-e2e -- --ignored --test-threads=1",
+]
+
+# Regenerate the PG.5b user-guide screenshots (docs/guide/images/) by driving the
+# real app through the e2e harness — re-running this IS the screenshot refresh
+# process (PG.5b Decision ④), so shots never drift from the shipped UI. Same
+# build steps as `e2e`; runs ONLY the `screenshots` scenario. Needs a display +
+# platform driver (msedgedriver). Override the output dir with `VEDGE_SHOTS_DIR`.
+# NOT in `ci`.
+[tasks.screenshots]
+description = "Capture the user-guide screenshots into docs/guide/images (PG.5b) via the e2e harness"
+dir = "crates/vedge-tauri"
+run = [
+  "trunk build --config ../vedge-app/Trunk.toml",
+  "cargo build -p vedge-tauri --features custom-protocol",
+  "cargo test -p vedge-e2e --test screenshots -- --ignored --test-threads=1 --nocapture",
 ]
 
 # ---------------------------------------------------------------------------

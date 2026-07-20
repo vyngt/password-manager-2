@@ -1,9 +1,10 @@
 //! Rotate-Secret-Key (slice 5.6 ③) — a Settings ▸ Security row + two-phase dialog.
 //!
 //! Rotating the Secret Key changes what unlocks the vault going forward. 🔴 The
-//! old Emergency Kit is **not** orphaned — it stays the only key to every backup
-//! and snapshot taken *before* the rotation, so the dialog tells the user to keep
-//! it (never "shred it"). Phase 1 re-authenticates the current password and
+//! old Emergency Kit is **not** orphaned — local snapshots are rewrapped forward
+//! to the new key, but it stays the only key to any external `.vbk` backups taken
+//! *before* the rotation, so the dialog tells the user to keep it (never "shred
+//! it"). Phase 1 re-authenticates the current password and
 //! rotates (the fresh key is generated server-side); phase 2 shows the new key
 //! once and offers to re-issue the Emergency Kit from it. `busy` gates the
 //! O(n) rewrap against a double-submit.

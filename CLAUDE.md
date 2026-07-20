@@ -31,7 +31,7 @@ Reach for `Memo` only when the work is non-trivial or you need to gate re-render
 - **Signal read without a reactive owner** (the recurring i18n footgun): reading a signal — including `t!`/`t_string!`, which do a *tracked read* of the locale — requires a reactive owner, or Leptos warns at runtime (`accessed outside a reactive tracking context`) and the value freezes at first render.
   - **Safe contexts:** reactive closures (`{move || …}`, `Signal::derive(move || …)`), `Memo`s, `Effect`s, and **event-handler bodies** (`on:click=move |_| …`, `on:input:target=…`) — these have an owner and don't warn.
   - **Warns / freezes — two owner-less cases:** (1) an *eager* read in the component body, e.g. `Signal::stored([t_string!(…)])` or building a `Vec` of labels inline → wrap the display value in `Signal::derive` (it then also relocalizes on language switch), or `untrack(|| …)` if it genuinely must be one-shot (e.g. `Select` options built once). (2) a read *inside a `spawn_local` future* → hoist it into the handler body **before** the async block (`let msg = t_string!(…); spawn_local(async move { … msg … })`), or use `untrack(|| …)` for a closure invoked from both an `Effect` and a `spawn_local`.
-  - No lint catches this yet (see `docs/testing.md`); the manual `cargo tauri dev` smoke is the current backstop — the browser console must stay warning-free.
+  - No lint catches this yet (see `docs/technical/testing.md`); the manual `cargo tauri dev` smoke is the current backstop — the browser console must stay warning-free.
 
 ### Types and ownership in props
 
