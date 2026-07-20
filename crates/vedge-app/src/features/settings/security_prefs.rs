@@ -33,6 +33,13 @@ pub struct SecurityPrefs {
     /// Off by default; the **backend** reads this flag before any egress.
     #[serde(default)]
     pub breach_check_enabled: bool,
+    /// Opt-in automatic update check on launch (slice PG.3). Off by default,
+    /// mirroring [`breach_check_enabled`](Self::breach_check_enabled) — it
+    /// governs only the *background* check; the manual "Check for updates" button
+    /// on the About tab always works. A plain GET, no unique ID / telemetry, and
+    /// failure is silent.
+    #[serde(default)]
+    pub update_check_enabled: bool,
     /// Hard **backend-enforced** session ceiling in minutes (slice 4.5a); `0`
     /// disables it. Distinct from `auto_lock_minutes` (an *idle* timer): this is
     /// an absolute wall-clock deadline the backend reaper enforces even if the
@@ -60,6 +67,7 @@ impl Default for SecurityPrefs {
             lock_on_blur: false,
             clipboard_clear_seconds: default_clipboard_clear_seconds(),
             breach_check_enabled: false,
+            update_check_enabled: false,
             session_max_minutes: default_session_max_minutes(),
         }
     }
@@ -121,6 +129,7 @@ mod tests {
             lock_on_blur: true,
             clipboard_clear_seconds: 45,
             breach_check_enabled: true,
+            update_check_enabled: true,
             session_max_minutes: 240,
         };
         let value = serde_json::to_value(&prefs).unwrap();
@@ -136,6 +145,7 @@ mod tests {
         assert_eq!(empty.clipboard_clear_seconds, 30);
         assert!(!empty.lock_on_blur);
         assert!(!empty.breach_check_enabled);
+        assert!(!empty.update_check_enabled);
         assert_eq!(empty.session_max_minutes, 480);
 
         let partial: SecurityPrefs =

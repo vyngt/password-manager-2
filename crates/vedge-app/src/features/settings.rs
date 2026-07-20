@@ -1,3 +1,4 @@
+pub mod about_panel;
 pub mod backup_panel;
 pub mod biometric_setting;
 pub mod change_password_setting;

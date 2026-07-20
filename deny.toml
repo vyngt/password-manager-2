@@ -69,7 +69,9 @@ allow = [
     "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.9
-# VEdge's own crates set no `license` field.
+# VEdge's own crates inherit `license = "MIT"` from `[workspace.package]` (PG.3),
+# which is already in the allowlist above. They are also `publish = false`, so this
+# skips them regardless.
 private = { ignore = true }
 
 # ---------------------------------------------------------------------------
