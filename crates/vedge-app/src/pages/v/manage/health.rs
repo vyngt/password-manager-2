@@ -239,10 +239,10 @@ pub fn HealthPage() -> impl IntoView {
     });
 
     view! {
-        <div class="h-full overflow-y-auto p-6" data-testid="health-page">
-            <div class="max-w-5xl mx-auto space-y-4">
+        <div class="h-full p-6 flex flex-col" data-testid="health-page">
+            <div class="max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 gap-4">
                 // ---- Header: title + run-scan + last-scanned ----
-                <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="flex flex-wrap items-start justify-between gap-3 shrink-0">
                     <div class="min-w-0">
                         <h1 class="text-xl font-semibold text-text-primary">
                             {move || t_string!(i18n, health.title).to_owned()}
@@ -276,120 +276,125 @@ pub fn HealthPage() -> impl IntoView {
                     </div>
                 </div>
 
-                // ---- Body ----
-                {move || {
-                    if scanning.get() {
-                        EitherOf3::A(
-                            view! {
-                                <div class="flex items-center gap-3 text-text-secondary py-10">
-                                    <Spinner />
-                                    <span>
-                                        {move || t_string!(i18n, health.scanning).to_owned()}
-                                    </span>
-                                </div>
-                            },
-                        )
-                    } else if !has_report.get() {
-                        EitherOf3::B(
-                            view! {
-                                <EmptyState
-                                    icon=icondata::FaShieldHalvedSolid
-                                    title=Signal::derive(move || {
-                                        t_string!(i18n, health.not_scanned_title).to_owned()
-                                    })
-                                    description=Signal::derive(move || {
-                                        t_string!(i18n, health.not_scanned_desc).to_owned()
-                                    })
-                                />
-                            },
-                        )
-                    } else {
-                        EitherOf3::C(
-                            view! {
-                                <div class="space-y-4">
-                                    <HealthSummary
-                                        summary=summary
-                                        entries_scanned=entries_scanned
-                                        affected_entries=affected_entries
-                                        breach_checked=breach_checked
+                // ---- Body: the single scroll band (pattern B). The header above
+                // stays fixed; the report content scrolls here. The table grows
+                // naturally inside, so there is ONE scrollbar (this band) — no
+                // nested/whole-page scroll (see the A-vs-B note in `layout.rs`). ----
+                <div class="flex-1 min-h-0 overflow-y-auto">
+                    {move || {
+                        if scanning.get() {
+                            EitherOf3::A(
+                                view! {
+                                    <div class="flex items-center gap-3 text-text-secondary py-10">
+                                        <Spinner />
+                                        <span>
+                                            {move || t_string!(i18n, health.scanning).to_owned()}
+                                        </span>
+                                    </div>
+                                },
+                            )
+                        } else if !has_report.get() {
+                            EitherOf3::B(
+                                view! {
+                                    <EmptyState
+                                        icon=icondata::FaShieldHalvedSolid
+                                        title=Signal::derive(move || {
+                                            t_string!(i18n, health.not_scanned_title).to_owned()
+                                        })
+                                        description=Signal::derive(move || {
+                                            t_string!(i18n, health.not_scanned_desc).to_owned()
+                                        })
                                     />
-                                    <Show when=move || breach_failed.get()>
-                                        <p
-                                            class="text-xs text-warning-text rounded-md border border-warning/40 bg-warning-muted px-3 py-2"
-                                            data-testid="health-breach-unavailable"
-                                        >
-                                            {move || {
-                                                t_string!(i18n, health.breach_unavailable).to_owned()
-                                            }}
-                                        </p>
-                                    </Show>
-                                    <Show
-                                        when=move || has_findings.get()
-                                        fallback=move || {
-                                            view! {
-                                                <EmptyState
-                                                    icon=icondata::FaCircleCheckSolid
-                                                    title=Signal::derive(move || {
-                                                        t_string!(i18n, health.clean_title).to_owned()
-                                                    })
-                                                    description=Signal::derive(move || {
-                                                        t_string!(i18n, health.clean_desc).to_owned()
-                                                    })
-                                                />
-                                            }
-                                        }
-                                    >
-                                        <HealthTable
-                                            findings=findings
-                                            names=names
-                                            loading=scanning
-                                            on_select=on_select
+                                },
+                            )
+                        } else {
+                            EitherOf3::C(
+                                view! {
+                                    <div class="space-y-4">
+                                        <HealthSummary
+                                            summary=summary
+                                            entries_scanned=entries_scanned
+                                            affected_entries=affected_entries
+                                            breach_checked=breach_checked
                                         />
-                                        <Show when=move || !reuse.with(Vec::is_empty)>
-                                            <div class="space-y-2">
-                                                <h2 class="text-sm font-semibold text-text-primary">
-                                                    {move || {
-                                                        t_string!(i18n, health.reuse_heading).to_owned()
-                                                    }}
-                                                </h2>
-                                                <For
-                                                    each=move || reuse.get()
-                                                    key=|(group, _)| *group
-                                                    children=move |(group, entries)| {
-                                                        view! {
-                                                            <div class="rounded-md border border-secondary/15 p-3">
-                                                                <div class="text-xs text-text-secondary mb-1">
-                                                                    {format!(
-                                                                        "{} #{group}",
-                                                                        t_string!(i18n, health.reuse_group),
-                                                                    )}
-                                                                </div>
-                                                                <div class="text-sm text-text-primary">
-                                                                    {entries.join(", ")}
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                    }
-                                                />
-                                            </div>
-                                        </Show>
-                                        <Show when=move || skipped_count.get() != 0>
-                                            <p class="text-xs text-text-tertiary">
+                                        <Show when=move || breach_failed.get()>
+                                            <p
+                                                class="text-xs text-warning-text rounded-md border border-warning/40 bg-warning-muted px-3 py-2"
+                                                data-testid="health-breach-unavailable"
+                                            >
                                                 {move || {
-                                                    format!(
-                                                        "{} {}",
-                                                        skipped_count.get(),
-                                                        t_string!(i18n, health.skipped),
-                                                    )
+                                                    t_string!(i18n, health.breach_unavailable).to_owned()
                                                 }}
                                             </p>
                                         </Show>
-                                    </Show>
-                                </div>
-                            },
-                        )
-                    }
-                }}
+                                        <Show
+                                            when=move || has_findings.get()
+                                            fallback=move || {
+                                                view! {
+                                                    <EmptyState
+                                                        icon=icondata::FaCircleCheckSolid
+                                                        title=Signal::derive(move || {
+                                                            t_string!(i18n, health.clean_title).to_owned()
+                                                        })
+                                                        description=Signal::derive(move || {
+                                                            t_string!(i18n, health.clean_desc).to_owned()
+                                                        })
+                                                    />
+                                                }
+                                            }
+                                        >
+                                            <HealthTable
+                                                findings=findings
+                                                names=names
+                                                loading=scanning
+                                                on_select=on_select
+                                            />
+                                            <Show when=move || !reuse.with(Vec::is_empty)>
+                                                <div class="space-y-2">
+                                                    <h2 class="text-sm font-semibold text-text-primary">
+                                                        {move || {
+                                                            t_string!(i18n, health.reuse_heading).to_owned()
+                                                        }}
+                                                    </h2>
+                                                    <For
+                                                        each=move || reuse.get()
+                                                        key=|(group, _)| *group
+                                                        children=move |(group, entries)| {
+                                                            view! {
+                                                                <div class="rounded-md border border-secondary/15 p-3">
+                                                                    <div class="text-xs text-text-secondary mb-1">
+                                                                        {format!(
+                                                                            "{} #{group}",
+                                                                            t_string!(i18n, health.reuse_group),
+                                                                        )}
+                                                                    </div>
+                                                                    <div class="text-sm text-text-primary">
+                                                                        {entries.join(", ")}
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                        }
+                                                    />
+                                                </div>
+                                            </Show>
+                                            <Show when=move || skipped_count.get() != 0>
+                                                <p class="text-xs text-text-tertiary">
+                                                    {move || {
+                                                        format!(
+                                                            "{} {}",
+                                                            skipped_count.get(),
+                                                            t_string!(i18n, health.skipped),
+                                                        )
+                                                    }}
+                                                </p>
+                                            </Show>
+                                        </Show>
+                                    </div>
+                                },
+                            )
+                        }
+                    }}
+                </div>
             </div>
         </div>
     }

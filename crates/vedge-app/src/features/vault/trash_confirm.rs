@@ -11,7 +11,7 @@ use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use vedge_ipc::IndexEntryDto;
 use vedge_ui::components::Button;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
 /// Confirm the permanent deletion of a single trashed entry. Open iff `target`
@@ -35,7 +35,7 @@ pub fn PermanentDeleteDialog(
                 <DialogTitle>{move || t!(i18n, vault.hard_delete_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     {move || {
                         target
                             .get()
@@ -49,30 +49,31 @@ pub fn PermanentDeleteDialog(
                     }}
                     <p class="text-sm text-foreground/70">
                         {move || t!(i18n, vault.hard_delete_confirm)}
-                    </p> <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, vault.cancel)}
-                        </Button>
-                        <Button
-                            variant=Variant::Danger
-                            size=Size::Sm
-                            attr:data-testid="confirm-delete-permanent"
-                            on:click=move |_: web_sys::MouseEvent| {
-                                if let Some(e) = target.get_untracked() {
-                                    on_confirm.run(e.id);
-                                }
-                                close.run(());
-                            }
-                        >
-                            {move || t!(i18n, vault.delete_permanently)}
-                        </Button>
-                    </div>
+                    </p>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, vault.cancel)}
+                </Button>
+                <Button
+                    variant=Variant::Danger
+                    size=Size::Sm
+                    attr:data-testid="confirm-delete-permanent"
+                    on:click=move |_: web_sys::MouseEvent| {
+                        if let Some(e) = target.get_untracked() {
+                            on_confirm.run(e.id);
+                        }
+                        close.run(());
+                    }
+                >
+                    {move || t!(i18n, vault.delete_permanently)}
+                </Button>
+            </DialogFooter>
         </Dialog>
     }
 }
@@ -100,35 +101,35 @@ pub fn EmptyTrashDialog(
                 <DialogTitle>{move || t!(i18n, vault.empty_trash_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     <p class="text-sm text-foreground/70">
                         {move || {
                             let n = count.get();
                             t!(i18n, vault.empty_trash_confirm, count = n)
                         }}
                     </p>
-                    <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, vault.cancel)}
-                        </Button>
-                        <Button
-                            variant=Variant::Danger
-                            size=Size::Sm
-                            attr:data-testid="confirm-empty-trash"
-                            on:click=move |_: web_sys::MouseEvent| {
-                                on_confirm.run(());
-                                close.run(());
-                            }
-                        >
-                            {move || t!(i18n, vault.empty_trash_action)}
-                        </Button>
-                    </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, vault.cancel)}
+                </Button>
+                <Button
+                    variant=Variant::Danger
+                    size=Size::Sm
+                    attr:data-testid="confirm-empty-trash"
+                    on:click=move |_: web_sys::MouseEvent| {
+                        on_confirm.run(());
+                        close.run(());
+                    }
+                >
+                    {move || t!(i18n, vault.empty_trash_action)}
+                </Button>
+            </DialogFooter>
         </Dialog>
     }
 }

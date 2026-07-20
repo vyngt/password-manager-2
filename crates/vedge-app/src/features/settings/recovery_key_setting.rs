@@ -238,7 +238,7 @@ pub fn RecoveryKeySetting() -> impl IntoView {
                 <DialogTitle>{move || t!(i18n, settings.recovery_key_setup_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     <div class="flex flex-col gap-2 rounded-lg border border-border bg-foreground/5 p-3 text-xs text-text-secondary">
                         {move || t!(i18n, settings.recovery_key_keep_separate)}
                     </div>
@@ -350,7 +350,7 @@ pub fn RecoveryKeySetting() -> impl IntoView {
                 <DialogTitle>{move || t!(i18n, settings.recovery_key_revoke_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     <p class="text-sm text-text-secondary">
                         {move || t!(i18n, settings.recovery_key_revoke_body)}
                     </p>

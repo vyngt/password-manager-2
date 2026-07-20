@@ -34,7 +34,9 @@ use crate::features::settings::rotate_secret_key_setting::RotateSecretKeySetting
 use crate::features::settings::security_prefs::{self, SecurityPrefsCtx, SecurityPrefsLoaded};
 use crate::features::settings::theme_list::ThemeList;
 use crate::i18n::{t, t_string, use_i18n};
+use icondata as i;
 use leptos::prelude::*;
+use leptos_icons::Icon;
 use std::sync::Arc;
 use vedge_ui::components::Spinner;
 use vedge_ui::components::feedback::toast::provider::use_toast;
@@ -302,46 +304,85 @@ pub fn SettingsPage() -> impl IntoView {
     let tabs = vec![
         Tab {
             id: "security".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.security)} }.into_any()),
+            label: Box::new(move || {
+                view! {
+                    <Icon attr:aria-hidden="true" icon=i::FaLockSolid />
+                    {move || t!(i18n, settings.security)}
+                }
+                .into_any()
+            }),
             panel: security_panel,
             disabled: false,
         },
         Tab {
             id: "credentials".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.credentials)} }.into_any()),
+            label: Box::new(move || {
+                view! {
+                    <Icon attr:aria-hidden="true" icon=i::FaKeySolid />
+                    {move || t!(i18n, settings.credentials)}
+                }
+                .into_any()
+            }),
             panel: credentials_panel,
             disabled: false,
         },
         Tab {
             id: "appearance".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.appearance)} }.into_any()),
+            label: Box::new(move || {
+                view! {
+                    <Icon attr:aria-hidden="true" icon=i::FaPaletteSolid />
+                    {move || t!(i18n, settings.appearance)}
+                }
+                .into_any()
+            }),
             panel: Arc::new(|| view! { <ThemeList /> }.into_any()),
             disabled: false,
         },
         Tab {
             id: "maintenance".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.maintenance)} }.into_any()),
+            label: Box::new(move || {
+                view! {
+                    <Icon attr:aria-hidden="true" icon=i::FaWrenchSolid />
+                    {move || t!(i18n, settings.maintenance)}
+                }
+                .into_any()
+            }),
             panel: Arc::new(|| view! { <MaintenancePanel /> }.into_any()),
             disabled: false,
         },
         Tab {
             id: "backup".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.backup)} }.into_any()),
+            label: Box::new(move || {
+                view! {
+                    <Icon attr:aria-hidden="true" icon=i::FaBoxArchiveSolid />
+                    {move || t!(i18n, settings.backup)}
+                }
+                .into_any()
+            }),
             panel: Arc::new(|| view! { <BackupPanel /> }.into_any()),
             disabled: false,
         },
         Tab {
             id: "about".to_owned(),
-            label: Box::new(move || view! { {move || t!(i18n, settings.about)} }.into_any()),
+            label: Box::new(move || {
+                view! {
+                    <Icon attr:aria-hidden="true" icon=i::FaCircleInfoSolid />
+                    {move || t!(i18n, settings.about)}
+                }
+                .into_any()
+            }),
             panel: Arc::new(|| view! { <AboutPanel /> }.into_any()),
             disabled: false,
         },
     ];
 
     view! {
-        <div class="h-full overflow-y-auto p-6">
-            <div class="max-w-2xl mx-auto">
-                <Tabs tabs=tabs variant=TabsVariant::Underline />
+        // Pattern B: fixed shell, the tab bar stays put, and the ACTIVE panel owns
+        // the remaining height and scrolls (`tabs--fill`) — a long tab (e.g. About)
+        // no longer scrolls its own navigation away.
+        <div class="h-full p-6 flex flex-col">
+            <div class="max-w-2xl w-full mx-auto flex flex-col flex-1 min-h-0">
+                <Tabs tabs=tabs variant=TabsVariant::Underline class="tabs--fill" />
             </div>
         </div>
     }

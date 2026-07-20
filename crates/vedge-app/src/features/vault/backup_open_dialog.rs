@@ -48,6 +48,7 @@ use crate::i18n::{t, t_string, use_i18n};
 
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
+use vedge_ui::components::feedback::{DialogBody, DialogHeader, DialogTitle};
 use vedge_ui::components::{Button, Checkbox, Dialog, Input};
 use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
 
@@ -308,393 +309,396 @@ pub fn BackupOpenDialog(
             on_close=Callback::new(move |()| close())
             close_label=Signal::derive(move || t_string!(i18n, unlock.ob_cancel).to_owned())
         >
-            <div class="space-y-4" data-testid="backup-open-dialog">
-                <div>
-                    <h2 class="text-base font-semibold text-text-primary">
-                        {move || t!(i18n, unlock.ob_title)}
-                    </h2>
-                    <p class="text-xs text-text-secondary mt-0.5">
+            <DialogHeader>
+                <DialogTitle>{move || t!(i18n, unlock.ob_title)}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+                <div class="space-y-4" data-testid="backup-open-dialog">
+                    <p class="text-xs text-text-secondary">
                         {move || t!(i18n, unlock.ob_subtitle)}
                     </p>
-                </div>
 
-                // ---- The archive: typed, pasteable, with a Browse button ----
-                <div class="space-y-1">
-                    <label class="text-xs font-medium text-text-primary" for="backup-archive">
-                        {move || t!(i18n, unlock.ob_archive_label)}
-                    </label>
-                    <div class="flex items-end gap-2">
-                        <div class="flex-1">
-                            <Input
-                                id="backup-archive"
-                                value=Signal::derive(move || archive.get())
-                                placeholder=Signal::derive(move || {
-                                    t_string!(i18n, unlock.ob_archive_placeholder).to_owned()
-                                })
-                                on_input=Callback::new(move |v: String| {
-                                    archive.set(v);
-                                    preview.set(None);
-                                })
-                            />
+                    // ---- The archive: typed, pasteable, with a Browse button ----
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-text-primary" for="backup-archive">
+                            {move || t!(i18n, unlock.ob_archive_label)}
+                        </label>
+                        <div class="flex items-end gap-2">
+                            <div class="flex-1 min-w-0">
+                                <Input
+                                    id="backup-archive"
+                                    value=Signal::derive(move || archive.get())
+                                    placeholder=Signal::derive(move || {
+                                        t_string!(i18n, unlock.ob_archive_placeholder).to_owned()
+                                    })
+                                    on_input=Callback::new(move |v: String| {
+                                        archive.set(v);
+                                        preview.set(None);
+                                    })
+                                />
+                            </div>
+                            <Button
+                                variant=Variant::Secondary
+                                size=Size::Md
+                                attr:data-testid="backup-archive-browse"
+                                on:click=move |_: web_sys::MouseEvent| browse_archive()
+                            >
+                                {move || t!(i18n, onboarding.choose)}
+                            </Button>
                         </div>
-                        <Button
-                            variant=Variant::Secondary
-                            size=Size::Md
-                            attr:data-testid="backup-archive-browse"
-                            on:click=move |_: web_sys::MouseEvent| browse_archive()
-                        >
-                            {move || t!(i18n, onboarding.choose)}
-                        </Button>
                     </div>
-                </div>
 
-                // ---- Where it goes: a fresh home (Open) or the selected vault (Replace) ----
-                {move || {
-                    if mode.get() == Mode::Open {
-                        Either::Left(
-                            view! {
-                                <div class="space-y-3">
-                                    <div class="space-y-1">
-                                        <label
-                                            class="text-xs font-medium text-text-primary"
-                                            for="backup-name"
-                                        >
-                                            {move || t!(i18n, unlock.ob_name_label)}
-                                        </label>
-                                        <Input
-                                            id="backup-name"
-                                            value=Signal::derive(move || name.get())
-                                            placeholder=Signal::derive(move || {
-                                                t_string!(i18n, unlock.ob_name_placeholder).to_owned()
-                                            })
-                                            on_input=Callback::new(move |v: String| {
-                                                name.set(v);
-                                                preview.set(None);
-                                            })
-                                        />
-                                    </div>
-                                    <div class="space-y-1">
-                                        <label
-                                            class="text-xs font-medium text-text-primary"
-                                            for="backup-location"
-                                        >
-                                            {move || t!(i18n, unlock.ob_location_label)}
-                                        </label>
-                                        <div class="flex items-end gap-2">
-                                            <div class="flex-1">
-                                                <Input
-                                                    id="backup-location"
-                                                    value=Signal::derive(move || location.get())
-                                                    placeholder=Signal::derive(move || {
-                                                        t_string!(i18n, onboarding.location_placeholder).to_owned()
-                                                    })
-                                                    on_input=Callback::new(move |v: String| {
-                                                        location.set(v);
-                                                        preview.set(None);
-                                                    })
-                                                />
-                                            </div>
-                                            <Button
-                                                variant=Variant::Secondary
-                                                size=Size::Md
-                                                attr:data-testid="backup-location-browse"
-                                                on:click=move |_: web_sys::MouseEvent| { browse_location() }
+                    // ---- Where it goes: a fresh home (Open) or the selected vault (Replace) ----
+                    {move || {
+                        if mode.get() == Mode::Open {
+                            Either::Left(
+                                view! {
+                                    <div class="space-y-3">
+                                        <div class="space-y-1">
+                                            <label
+                                                class="text-xs font-medium text-text-primary"
+                                                for="backup-name"
                                             >
-                                                {move || t!(i18n, onboarding.choose)}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    // The live preview of the home that will be created.
-                                    <div
-                                        class="rounded border border-border bg-surface-muted px-2.5 py-2 text-xs"
-                                        data-testid="backup-dest-preview"
-                                    >
-                                        <span class="text-text-secondary">
-                                            {move || t!(i18n, onboarding.preview_label)}
-                                        </span>
-                                        <span class="ml-1 font-mono text-text-primary">
-                                            {move || {
-                                                let h = dest_home.get();
-                                                if h.is_empty() {
-                                                    untrack(|| {
-                                                        t_string!(i18n, onboarding.preview_placeholder).to_owned()
-                                                    })
-                                                } else {
-                                                    h
-                                                }
-                                            }}
-                                        </span>
-                                    </div>
-                                </div>
-                            },
-                        )
-                    } else {
-                        Either::Right(
-                            view! {
-                                <div
-                                    class="rounded border px-2.5 py-2 text-xs"
-                                    style="border-color:var(--color-danger);background:var(--color-danger-muted)"
-                                    data-testid="replace-target"
-                                >
-                                    <div class="font-medium" style="color:var(--color-danger-text)">
-                                        {move || t!(i18n, unlock.ob_replace_target)}
-                                    </div>
-                                    <div class="mt-0.5 font-mono text-text-primary">
-                                        {move || {
-                                            target_path
-                                                .get()
-                                                .unwrap_or_else(|| {
-                                                    untrack(|| {
-                                                        t_string!(i18n, unlock.ob_replace_no_target).to_owned()
-                                                    })
+                                                {move || t!(i18n, unlock.ob_name_label)}
+                                            </label>
+                                            <Input
+                                                id="backup-name"
+                                                value=Signal::derive(move || name.get())
+                                                placeholder=Signal::derive(move || {
+                                                    t_string!(i18n, unlock.ob_name_placeholder).to_owned()
                                                 })
-                                        }}
-                                    </div>
-                                </div>
-                            },
-                        )
-                    }
-                }}
-
-                // ---- The preview, and the acknowledgements ----
-                {move || {
-                    preview
-                        .get()
-                        .map(|p| {
-                            let stops = hard_stops(&p, mode.get());
-                            view! {
-                                <div
-                                    class="rounded border border-border px-2.5 py-2 text-xs space-y-1.5"
-                                    data-testid="backup-preview"
-                                >
-                                    <div class="text-text-primary">
-                                        {p.backup_entry_count.to_string()}" "
-                                        {move || t!(i18n, unlock.ob_entries)}" · "
-                                        {p.created_at.clone()}
-                                    </div>
-
-                                    // 🔴 A hard stop: no checkbox will get past this.
-                                    {stops
-                                        .reason
-                                        .map(|_| {
-                                            view! {
-                                                <div
-                                                    class="font-medium"
-                                                    style="color:var(--color-danger-text)"
-                                                    data-testid="backup-blocked"
-                                                >
-                                                    {move || blocked_message(stops.reason)}
-                                                </div>
-                                            }
-                                        })}
-
-                                    // ② This is a copy — and it will get its own identity.
-                                    {p
-                                        .duplicate_of
-                                        .clone()
-                                        .map(|_| {
-                                            view! {
-                                                <div
-                                                    class="text-text-secondary"
-                                                    data-testid="backup-duplicate"
-                                                >
-                                                    {move || t!(i18n, unlock.ob_duplicate)}
-                                                </div>
-                                            }
-                                        })}
-
-                                    // M3: the credential story — and NEVER a false "same".
-                                    // 🔴 `Some(false)` renders NOTHING. Silence here means
-                                    // "checked, and they match" — and that is the only case in
-                                    // which we are allowed to be silent. `None` is *unknown* and
-                                    // must SAY it is unknown; a pre-5.2.2 archive carries no
-                                    // credential prefix, and quietly treating unknown as "fine"
-                                    // is how a user shreds the only kit that still opens it.
-                                    {(p.credentials_differ != Some(false))
-                                        .then(|| {
-                                            let differs = p.credentials_differ == Some(true);
-                                            let cls = if differs {
-                                                "font-medium"
-                                            } else {
-                                                "text-text-secondary"
-                                            };
-                                            let style = if differs {
-                                                "color:var(--color-warning-text)"
-                                            } else {
-                                                ""
-                                            };
-                                            view! {
-                                                <div class=cls style=style data-testid="backup-credentials">
-                                                    {move || {
-                                                        if differs {
-                                                            t_string!(i18n, unlock.ob_creds_differ).to_owned()
-                                                        } else {
-                                                            t_string!(i18n, unlock.ob_creds_unknown).to_owned()
-                                                        }
-                                                    }}
-                                                </div>
-                                            }
-                                        })}
-
-                                    // ③ Replace only: three risks, three checkboxes.
-                                    {(mode.get() == Mode::Replace && !stops.blocked)
-                                        .then(|| {
-                                            view! {
-                                                <div class="pt-1 space-y-1.5 border-t border-border">
-                                                    {p
-                                                        .rollback_delta
-                                                        .map(|d| {
-                                                            view! {
-                                                                <label class="flex items-start gap-2">
-                                                                    <Checkbox
-                                                                        checked=Signal::derive(move || { confirm_rollback.get() })
-                                                                        on_change=Callback::new(move |v: bool| {
-                                                                            confirm_rollback.set(v);
-                                                                        })
-                                                                        attr:data-testid="confirm-rollback"
-                                                                    />
-                                                                    <span class="text-text-primary">
-                                                                        {move || t!(i18n, unlock.ob_risk_rollback)} " ("
-                                                                        {d.to_string()}")"
-                                                                    </span>
-                                                                </label>
-                                                            }
-                                                        })}
-                                                    {(p.credentials_differ == Some(true))
-                                                        .then(|| {
-                                                            view! {
-                                                                <label class="flex items-start gap-2">
-                                                                    <Checkbox
-                                                                        checked=Signal::derive(move || {
-                                                                            confirm_credentials.get()
-                                                                        })
-                                                                        on_change=Callback::new(move |v: bool| {
-                                                                            confirm_credentials.set(v);
-                                                                        })
-                                                                        attr:data-testid="confirm-credentials"
-                                                                    />
-                                                                    <span class="text-text-primary">
-                                                                        {move || t!(i18n, unlock.ob_risk_credentials)}
-                                                                    </span>
-                                                                </label>
-                                                            }
-                                                        })}
-                                                    {(p.target_state == TargetStateDto::Unreadable)
-                                                        .then(|| {
-                                                            view! {
-                                                                <label class="flex items-start gap-2">
-                                                                    <Checkbox
-                                                                        checked=Signal::derive(move || { confirm_unverified.get() })
-                                                                        on_change=Callback::new(move |v: bool| {
-                                                                            confirm_unverified.set(v);
-                                                                        })
-                                                                        attr:data-testid="confirm-unverified"
-                                                                    />
-                                                                    <span class="text-text-primary">
-                                                                        {move || t!(i18n, unlock.ob_risk_unverified)}
-                                                                    </span>
-                                                                </label>
-                                                            }
-                                                        })}
-                                                </div>
-                                            }
-                                        })}
-                                </div>
-                            }
-                        })
-                }}
-
-                // ---- Actions ----
-                <div class="flex items-center justify-between gap-2 pt-1">
-                    // Advanced ▸ Replace. Collapsed, and never the first thing offered.
-                    <Button
-                        variant=Variant::Ghost
-                        size=Size::Sm
-                        attr:data-testid="open-backup-advanced"
-                        on:click=move |_: web_sys::MouseEvent| {
-                            mode.update(|m| {
-                                *m = if *m == Mode::Open { Mode::Replace } else { Mode::Open };
-                            });
-                            preview.set(None);
-                            confirm_rollback.set(false);
-                            confirm_credentials.set(false);
-                            confirm_unverified.set(false);
-                        }
-                    >
-                        {move || {
-                            if mode.get() == Mode::Open {
-                                t_string!(i18n, unlock.ob_advanced).to_owned()
-                            } else {
-                                t_string!(i18n, unlock.ob_advanced_back).to_owned()
-                            }
-                        }}
-                    </Button>
-
-                    <div class="flex items-center gap-2">
-                        {move || {
-                            let p = preview.get();
-                            let is_replace = mode.get() == Mode::Replace;
-                            match p {
-                                None => {
-                                    Either::Left(
-                                        // Step 1 → 2.
-                                        view! {
-                                            <Button
-                                                variant=Variant::Primary
-                                                loading=busy.get()
-                                                disabled=!can_preview.get()
-                                                attr:data-testid="backup-preview-continue"
-                                                on:click=move |_: web_sys::MouseEvent| load_preview()
+                                                on_input=Callback::new(move |v: String| {
+                                                    name.set(v);
+                                                    preview.set(None);
+                                                })
+                                            />
+                                        </div>
+                                        <div class="space-y-1">
+                                            <label
+                                                class="text-xs font-medium text-text-primary"
+                                                for="backup-location"
                                             >
-                                                {move || t!(i18n, unlock.ob_continue)}
-                                            </Button>
-                                        },
-                                    )
-                                }
-                                Some(p) => {
-                                    let stops = hard_stops(&p, mode.get());
-                                    let unmet = is_replace
-                                        && ((p.rollback_delta.is_some() && !confirm_rollback.get())
-                                            || (p.credentials_differ == Some(true)
-                                                && !confirm_credentials.get())
-                                            || (p.target_state == TargetStateDto::Unreadable
-                                                && !confirm_unverified.get()));
-                                    Either::Right(
-                                        // Step 2: act — unless a hard stop says otherwise.
-                                        view! {
-                                            <Button
-                                                variant=if is_replace {
-                                                    Variant::Danger
-                                                } else {
-                                                    Variant::Primary
-                                                }
-                                                loading=busy.get()
-                                                disabled=stops.blocked || unmet
-                                                attr:data-testid=if is_replace {
-                                                    "replace-confirm"
-                                                } else {
-                                                    "open-backup-confirm"
-                                                }
-                                                on:click=move |_: web_sys::MouseEvent| {
-                                                    if is_replace { do_replace() } else { do_open() }
-                                                }
-                                            >
+                                                {move || t!(i18n, unlock.ob_location_label)}
+                                            </label>
+                                            <div class="flex items-end gap-2">
+                                                <div class="flex-1 min-w-0">
+                                                    <Input
+                                                        id="backup-location"
+                                                        value=Signal::derive(move || location.get())
+                                                        placeholder=Signal::derive(move || {
+                                                            t_string!(i18n, onboarding.location_placeholder).to_owned()
+                                                        })
+                                                        on_input=Callback::new(move |v: String| {
+                                                            location.set(v);
+                                                            preview.set(None);
+                                                        })
+                                                    />
+                                                </div>
+                                                <Button
+                                                    variant=Variant::Secondary
+                                                    size=Size::Md
+                                                    attr:data-testid="backup-location-browse"
+                                                    on:click=move |_: web_sys::MouseEvent| { browse_location() }
+                                                >
+                                                    {move || t!(i18n, onboarding.choose)}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        // The live preview of the home that will be created.
+                                        <div
+                                            class="rounded border border-border bg-surface-muted px-2.5 py-2 text-xs"
+                                            data-testid="backup-dest-preview"
+                                        >
+                                            <span class="text-text-secondary">
+                                                {move || t!(i18n, onboarding.preview_label)}
+                                            </span>
+                                            <span class="ml-1 font-mono text-text-primary">
                                                 {move || {
-                                                    if is_replace {
-                                                        t_string!(i18n, unlock.ob_replace_action).to_owned()
+                                                    let h = dest_home.get();
+                                                    if h.is_empty() {
+                                                        untrack(|| {
+                                                            t_string!(i18n, onboarding.preview_placeholder).to_owned()
+                                                        })
                                                     } else {
-                                                        t_string!(i18n, unlock.ob_open_action).to_owned()
+                                                        h
                                                     }
                                                 }}
-                                            </Button>
-                                        },
-                                    )
+                                            </span>
+                                        </div>
+                                    </div>
+                                },
+                            )
+                        } else {
+                            Either::Right(
+                                view! {
+                                    <div
+                                        class="rounded border px-2.5 py-2 text-xs"
+                                        style="border-color:var(--color-danger);background:var(--color-danger-muted)"
+                                        data-testid="replace-target"
+                                    >
+                                        <div
+                                            class="font-medium"
+                                            style="color:var(--color-danger-text)"
+                                        >
+                                            {move || t!(i18n, unlock.ob_replace_target)}
+                                        </div>
+                                        <div class="mt-0.5 font-mono text-text-primary">
+                                            {move || {
+                                                target_path
+                                                    .get()
+                                                    .unwrap_or_else(|| {
+                                                        untrack(|| {
+                                                            t_string!(i18n, unlock.ob_replace_no_target).to_owned()
+                                                        })
+                                                    })
+                                            }}
+                                        </div>
+                                    </div>
+                                },
+                            )
+                        }
+                    }}
+
+                    // ---- The preview, and the acknowledgements ----
+                    {move || {
+                        preview
+                            .get()
+                            .map(|p| {
+                                let stops = hard_stops(&p, mode.get());
+                                view! {
+                                    <div
+                                        class="rounded border border-border px-2.5 py-2 text-xs space-y-1.5"
+                                        data-testid="backup-preview"
+                                    >
+                                        <div class="text-text-primary">
+                                            {p.backup_entry_count.to_string()}" "
+                                            {move || t!(i18n, unlock.ob_entries)}" · "
+                                            {p.created_at.clone()}
+                                        </div>
+
+                                        // 🔴 A hard stop: no checkbox will get past this.
+                                        {stops
+                                            .reason
+                                            .map(|_| {
+                                                view! {
+                                                    <div
+                                                        class="font-medium"
+                                                        style="color:var(--color-danger-text)"
+                                                        data-testid="backup-blocked"
+                                                    >
+                                                        {move || blocked_message(stops.reason)}
+                                                    </div>
+                                                }
+                                            })}
+
+                                        // ② This is a copy — and it will get its own identity.
+                                        {p
+                                            .duplicate_of
+                                            .clone()
+                                            .map(|_| {
+                                                view! {
+                                                    <div
+                                                        class="text-text-secondary"
+                                                        data-testid="backup-duplicate"
+                                                    >
+                                                        {move || t!(i18n, unlock.ob_duplicate)}
+                                                    </div>
+                                                }
+                                            })}
+
+                                        // M3: the credential story — and NEVER a false "same".
+                                        // 🔴 `Some(false)` renders NOTHING. Silence here means
+                                        // "checked, and they match" — and that is the only case in
+                                        // which we are allowed to be silent. `None` is *unknown* and
+                                        // must SAY it is unknown; a pre-5.2.2 archive carries no
+                                        // credential prefix, and quietly treating unknown as "fine"
+                                        // is how a user shreds the only kit that still opens it.
+                                        {(p.credentials_differ != Some(false))
+                                            .then(|| {
+                                                let differs = p.credentials_differ == Some(true);
+                                                let cls = if differs {
+                                                    "font-medium"
+                                                } else {
+                                                    "text-text-secondary"
+                                                };
+                                                let style = if differs {
+                                                    "color:var(--color-warning-text)"
+                                                } else {
+                                                    ""
+                                                };
+                                                view! {
+                                                    <div class=cls style=style data-testid="backup-credentials">
+                                                        {move || {
+                                                            if differs {
+                                                                t_string!(i18n, unlock.ob_creds_differ).to_owned()
+                                                            } else {
+                                                                t_string!(i18n, unlock.ob_creds_unknown).to_owned()
+                                                            }
+                                                        }}
+                                                    </div>
+                                                }
+                                            })}
+
+                                        // ③ Replace only: three risks, three checkboxes.
+                                        {(mode.get() == Mode::Replace && !stops.blocked)
+                                            .then(|| {
+                                                view! {
+                                                    <div class="pt-1 space-y-1.5 border-t border-border">
+                                                        {p
+                                                            .rollback_delta
+                                                            .map(|d| {
+                                                                view! {
+                                                                    <label class="flex items-start gap-2">
+                                                                        <Checkbox
+                                                                            checked=Signal::derive(move || { confirm_rollback.get() })
+                                                                            on_change=Callback::new(move |v: bool| {
+                                                                                confirm_rollback.set(v);
+                                                                            })
+                                                                            attr:data-testid="confirm-rollback"
+                                                                        />
+                                                                        <span class="text-text-primary">
+                                                                            {move || t!(i18n, unlock.ob_risk_rollback)} " ("
+                                                                            {d.to_string()}")"
+                                                                        </span>
+                                                                    </label>
+                                                                }
+                                                            })}
+                                                        {(p.credentials_differ == Some(true))
+                                                            .then(|| {
+                                                                view! {
+                                                                    <label class="flex items-start gap-2">
+                                                                        <Checkbox
+                                                                            checked=Signal::derive(move || {
+                                                                                confirm_credentials.get()
+                                                                            })
+                                                                            on_change=Callback::new(move |v: bool| {
+                                                                                confirm_credentials.set(v);
+                                                                            })
+                                                                            attr:data-testid="confirm-credentials"
+                                                                        />
+                                                                        <span class="text-text-primary">
+                                                                            {move || t!(i18n, unlock.ob_risk_credentials)}
+                                                                        </span>
+                                                                    </label>
+                                                                }
+                                                            })}
+                                                        {(p.target_state == TargetStateDto::Unreadable)
+                                                            .then(|| {
+                                                                view! {
+                                                                    <label class="flex items-start gap-2">
+                                                                        <Checkbox
+                                                                            checked=Signal::derive(move || { confirm_unverified.get() })
+                                                                            on_change=Callback::new(move |v: bool| {
+                                                                                confirm_unverified.set(v);
+                                                                            })
+                                                                            attr:data-testid="confirm-unverified"
+                                                                        />
+                                                                        <span class="text-text-primary">
+                                                                            {move || t!(i18n, unlock.ob_risk_unverified)}
+                                                                        </span>
+                                                                    </label>
+                                                                }
+                                                            })}
+                                                    </div>
+                                                }
+                                            })}
+                                    </div>
                                 }
+                            })
+                    }}
+
+                    // ---- Actions ----
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        // Advanced ▸ Replace. Collapsed, and never the first thing offered.
+                        <Button
+                            variant=Variant::Ghost
+                            size=Size::Sm
+                            attr:data-testid="open-backup-advanced"
+                            on:click=move |_: web_sys::MouseEvent| {
+                                mode.update(|m| {
+                                    *m = if *m == Mode::Open { Mode::Replace } else { Mode::Open };
+                                });
+                                preview.set(None);
+                                confirm_rollback.set(false);
+                                confirm_credentials.set(false);
+                                confirm_unverified.set(false);
                             }
-                        }}
+                        >
+                            {move || {
+                                if mode.get() == Mode::Open {
+                                    t_string!(i18n, unlock.ob_advanced).to_owned()
+                                } else {
+                                    t_string!(i18n, unlock.ob_advanced_back).to_owned()
+                                }
+                            }}
+                        </Button>
+
+                        <div class="flex items-center gap-2">
+                            {move || {
+                                let p = preview.get();
+                                let is_replace = mode.get() == Mode::Replace;
+                                match p {
+                                    None => {
+                                        Either::Left(
+                                            // Step 1 → 2.
+                                            view! {
+                                                <Button
+                                                    variant=Variant::Primary
+                                                    loading=busy.get()
+                                                    disabled=!can_preview.get()
+                                                    attr:data-testid="backup-preview-continue"
+                                                    on:click=move |_: web_sys::MouseEvent| load_preview()
+                                                >
+                                                    {move || t!(i18n, unlock.ob_continue)}
+                                                </Button>
+                                            },
+                                        )
+                                    }
+                                    Some(p) => {
+                                        let stops = hard_stops(&p, mode.get());
+                                        let unmet = is_replace
+                                            && ((p.rollback_delta.is_some() && !confirm_rollback.get())
+                                                || (p.credentials_differ == Some(true)
+                                                    && !confirm_credentials.get())
+                                                || (p.target_state == TargetStateDto::Unreadable
+                                                    && !confirm_unverified.get()));
+                                        Either::Right(
+                                            // Step 2: act — unless a hard stop says otherwise.
+                                            view! {
+                                                <Button
+                                                    variant=if is_replace {
+                                                        Variant::Danger
+                                                    } else {
+                                                        Variant::Primary
+                                                    }
+                                                    loading=busy.get()
+                                                    disabled=stops.blocked || unmet
+                                                    attr:data-testid=if is_replace {
+                                                        "replace-confirm"
+                                                    } else {
+                                                        "open-backup-confirm"
+                                                    }
+                                                    on:click=move |_: web_sys::MouseEvent| {
+                                                        if is_replace { do_replace() } else { do_open() }
+                                                    }
+                                                >
+                                                    {move || {
+                                                        if is_replace {
+                                                            t_string!(i18n, unlock.ob_replace_action).to_owned()
+                                                        } else {
+                                                            t_string!(i18n, unlock.ob_open_action).to_owned()
+                                                        }
+                                                    }}
+                                                </Button>
+                                            },
+                                        )
+                                    }
+                                }
+                            }}
+                        </div>
                     </div>
                 </div>
-            </div>
+            </DialogBody>
         </Dialog>
     }
 }

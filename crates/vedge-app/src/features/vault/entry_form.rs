@@ -772,7 +772,7 @@ fn TotpEnrolField(data: RwSignal<EntryFormData>) -> impl IntoView {
                 }}
             </div>
             <div class="flex items-center gap-2">
-                <div class="flex-1">
+                <div class="flex-1 min-w-0">
                     <Input
                         id="ef-totp"
                         placeholder=Signal::derive(move || {

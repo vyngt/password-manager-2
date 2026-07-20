@@ -8,7 +8,7 @@ pub fn VaultSearch(search_query: RwSignal<String>) -> impl IntoView {
     let i18n = use_i18n();
 
     view! {
-        <div class="flex-1">
+        <div class="flex-1 min-w-0">
             <Input
                 id="vault-search"
                 placeholder=Signal::derive(move || {

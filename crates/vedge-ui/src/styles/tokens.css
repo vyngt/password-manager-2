@@ -112,8 +112,13 @@
     /* ---- Focus ---- */
     --color-focus-ring: #2563eb;
 
-    /* ---- Typography ---- */
-    --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    /* ---- Typography ----
+       Honest system stack: "Inter" was named here but never bundled (no
+       @font-face), so the app has always rendered in the platform UI font
+       (Segoe UI on Windows). Name what actually ships rather than an absent
+       face. `--font-mono` (JetBrains Mono) IS bundled; secret-bearing
+       surfaces stay pinned to it — a correctness property (PG.4). */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
 
     /* Font sizes + line-heights (Tailwind v4 paired tokens) */

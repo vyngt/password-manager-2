@@ -8,7 +8,14 @@
              Trunk-injected, deferred wasm module, so boot-time faults are still
              captured. See crates/vedge-app/console-guard.js. -->
         <link data-trunk rel="copy-file" href="console-guard.js" />
-        <script src="console-guard.js"></script>
+        <!-- ROOT-ABSOLUTE `/console-guard.js`, not relative: Trunk rewrites its own
+             injected asset URLs to absolute, but this hand-added <script> is not
+             Trunk-managed. A relative `console-guard.js` resolves against the current
+             client route on a webview reload (e.g. `/v/health/console-guard.js`) →
+             404 → the asset fallback returns index.html → "Unexpected token '<'". The
+             leading `/` pins it to the dist root on every route. Still `'self'` → the
+             CSP + attack_surface.rs pin are unchanged. -->
+        <script src="/console-guard.js"></script>
         <link data-trunk rel="rust" data-wasm-opt="z" />
         <link data-trunk rel="tailwind-css" href="styles/root.css" />
         <link data-trunk rel="copy-dir" href="fonts" />

@@ -70,9 +70,17 @@
     margin: 0;
   }
 
-  /* Body — scrollable */
+  /* Body — scrollable.
+     Owns its own VERTICAL spacing so a dialog is correctly padded whether or not
+     it has a footer, and consumers never hand-pad (the `pb-*` drift PG.4 removed):
+       - top stays 0: the header's bottom padding owns the header→body gap.
+       - bottom is space-6: the gap below the last content, to the footer (whose top
+         padding is 0) or, when there's no footer, to the dialog edge. Because the
+         footer contributes no top padding, moving an action row into `.dialog__footer`
+         never doubles this gap.
+     `--flush` opts a list/edge-to-edge body out of padding entirely. */
   .dialog__body {
-    padding: 0 var(--space-6);
+    padding: 0 var(--space-6) var(--space-6);
     overflow-y: auto;
     flex: 1;
     font-family: var(--font-sans);
@@ -81,13 +89,18 @@
     color: var(--color-text-secondary);
   }
 
-  /* Footer */
+  .dialog__body--flush {
+    padding: 0;
+  }
+
+  /* Footer — the body owns the gap above it (top padding: 0), so a footer added to
+     an already-padded body never doubles the spacing. */
   .dialog__footer {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: var(--space-3);
-    padding: var(--space-4) var(--space-6) var(--space-6);
+    padding: 0 var(--space-6) var(--space-6);
     flex-shrink: 0;
   }
 

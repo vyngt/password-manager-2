@@ -86,9 +86,9 @@ pub fn TagManager(
                 // `.dialog__body` has no bottom padding, so add our own so the
                 // list doesn't run to the dialog edge; min-width keeps the Sm
                 // dialog from feeling cramped.
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     <div class="flex gap-2 items-center">
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <Input
                                 id="tag-manager-new"
                                 value=Signal::derive(move || new_name.get())
@@ -241,7 +241,7 @@ fn TagManagerRow(
                     Either::Left(
                         view! {
                             <div class="flex gap-2 items-center">
-                                <div class="flex-1">
+                                <div class="flex-1 min-w-0">
                                     <Input
                                         id="tag-manager-rename"
                                         value=Signal::derive(move || edit_name.get())
