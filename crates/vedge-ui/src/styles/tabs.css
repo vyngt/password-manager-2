@@ -11,18 +11,27 @@
   .tabs__list {
     display: flex;
     align-items: flex-end;
-    /* `sticky` (still a positioned element, so it stays the containing block for
-       the absolute `.tabs__indicator`): when the tab content overflows a scrolling
-       ancestor (e.g. the Settings page), the tab bar stays pinned at the top
-       instead of scrolling away. The explicit background covers content scrolling
-       behind it; `z-index` keeps it above the panel. */
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--color-background);
+    position: relative;
     border-bottom: 1px solid var(--color-border);
     overflow-x: auto;
     scrollbar-width: none;
+  }
+
+  /* Fill mode (opt-in): the `.tabs` fills its parent's height, the tab bar stays
+     fixed, and the ACTIVE panel owns the remaining height and scrolls — pattern B,
+     for a long-content tab surface like Settings. Hidden panels are `display:none`
+     so the flex sizing only ever applies to the visible one. */
+  .tabs--fill {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .tabs--fill .tabs__list {
+    flex-shrink: 0;
+  }
+  .tabs--fill .tabs__panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
   .tabs__list::-webkit-scrollbar { display: none; }
 
