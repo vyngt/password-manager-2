@@ -1,17 +1,33 @@
-name: e2e (opt-in)
+name: e2e
 
-# The WebDriver daily-loop + Phase-3 scenarios. Opt-in ONLY — it needs a display
-# and the platform WebDriver, and Windows runners bill at 2×, so it never runs
-# automatically. Dispatch it by hand. The cheapest home is a **self-hosted
-# Windows runner** (your dev machine already has WebView2 + msedgedriver from
-# 2.9.2): register one, then pick `self-hosted` for the `runner` input below.
+# The WebDriver daily-loop + Phase-3 scenarios. It needs a display + the platform
+# WebDriver (WebView2 + msedgedriver), which GitHub-hosted runners can't reliably
+# drive — so it runs on a **self-hosted Windows runner** (your dev machine, from
+# 2.9.2; zero GitHub-hosted minutes).
 #
-# A nightly schedule is intentionally left commented-out — uncomment only if you
-# have a self-hosted runner (otherwise it would burn hosted minutes every night):
+# 🔴 PG.2a closed the "dispatch-only" gap. 5.8 moved the credential rows to a new
+# tab and broke THREE e2e suites — invisibly, for a whole slice — because this
+# workflow only ran on manual dispatch and nobody thought to run it. A PR into a
+# long-lived branch is exactly the change (navigation-driven UI) most likely to
+# break e2e, and PG.2b (capability/CSP hardening) is the highest-risk change in the
+# series, so e2e must gate it.
 #
-# schedule:
-#   - cron: "0 6 * * *"
+# ⚠️ HONEST CAVEAT — this gate is only as live as the self-hosted runner. If the
+# machine is offline the PR check QUEUES rather than fails, so it cannot block a
+# merge on its own; the machine owner controls both. The nightly `schedule` is the
+# backstop: a regression cannot hide longer than ~24h even if a PR skipped the run.
+# (Scheduled runs use the workflow file from the default branch — `master` — and
+# are best-effort: silently skipped when the self-hosted runner is down.)
+#
+# Fork-PR note: this repo takes PRs only from its own branches, so running e2e on a
+# self-hosted runner for `pull_request` is safe. If untrusted forks are ever
+# accepted, gate this behind `pull_request_target` + an approval, or it would run
+# fork code on the owner's machine.
 on:
+  pull_request:
+    branches: [develop, master]
+  schedule:
+    - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       runner:
@@ -22,10 +38,18 @@ on:
           - windows-latest
           - self-hosted
 
+# One self-hosted runner drives e2e serially, so supersede an outdated run when a
+# newer commit lands on the same ref rather than letting them queue up.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e:
     name: daily-loop + phase-3 scenarios
-    runs-on: ${{ inputs.runner }}
+    # `inputs.runner` only exists on workflow_dispatch; pull_request/schedule fall
+    # back to the self-hosted runner (the only one that can drive WebView2 e2e).
+    runs-on: ${{ inputs.runner || 'self-hosted' }}
     steps:
       - uses: actions/checkout@v4
 
