@@ -215,7 +215,7 @@ pub fn AboutPanel() -> impl IntoView {
             </div>
 
             // ---- Licence --------------------------------------------------
-            <div class="py-3.5 border-b border-border">
+            <div class="py-3.5 border-b border-border" data-testid="about-licence">
                 <div class="text-sm font-medium text-text-primary">
                     {move || t!(i18n, settings.about_licence)}
                 </div>
