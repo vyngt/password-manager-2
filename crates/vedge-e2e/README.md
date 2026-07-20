@@ -13,11 +13,11 @@ each slice previously left behind. Started as the Phase-2 "daily loop" (slice 2.
 - Scenarios: one topical `#[ignore]` test file per feature area, each fully
   self-contained (its own `Session`) so a failure names the feature it broke:
   [`daily_loop`](tests/daily_loop.rs) (create → add → search → edit/history →
-  favorite → folder → lock → **restart** → unlock → theme-persists),
-  [`generator`](tests/generator.rs), [`trash`](tests/trash.rs),
-  [`audit`](tests/audit.rs), [`totp`](tests/totp.rs), [`health`](tests/health.rs),
-  [`session_lock`](tests/session_lock.rs), [`secret_key_unlock`](tests/secret_key_unlock.rs). Each
-  carries a standing console-clean assertion. `mise e2e` runs **all** of them
+  favorite → folder → lock → **restart** → unlock → theme-persists) is the broadest;
+  the rest cover one feature area each — generator, trash, audit, totp, health,
+  session-lock, secret-key unlock, snapshots, backup, credential-lifecycle, re-key,
+  recovery-key, reveal, delete, onboarding, about, help, and the docs-screenshot
+  capture. Each carries a standing console-clean assertion. `mise e2e` runs **all** of them
   (it is not pinned to a single file); cargo runs the binaries serially.
 
 ## Run it
@@ -78,8 +78,8 @@ Full setup: the Tauri [WebDriver manual-setup guide][tauri-manual]. In short:
   dir and passes it to the `tauri-driver` child; the launched app inherits it and
   `resolve_app_dir` honors it first. This also disables the single-instance lock
   (so the restart test can relaunch), and isolates recents/settings/themes.
-- **Vault dir** — a temp dir holds the `.vdb`; the create wizard is pointed at it
-  via the `#vault-path` input (no native "Choose…" dialog).
+- **Vault dir** — a temp dir holds the `.vedge` vault home; the create wizard is
+  pointed at it via the `#vault-name` + `#vault-location` inputs (no native "Choose…" dialog).
 - **Keychain** — Windows-first: the **real** OS keychain is used. The create
   wizard writes the Secret Key; UI-unlock reads it back non-interactively; the
   restart test relies on it persisting across the two app processes.
@@ -124,7 +124,7 @@ Controls are located by **stable `data-testid`** attributes (kebab-case, semanti
 `login-generate-wand`, …) via `by_testid` / `click_testid` / `js_click_testid`.
 This keeps the suite **locale-independent** — a copy edit or a locale switch never
 breaks it. Form **inputs** keep their DOM `id`s (`ef-*`, `vault-search`,
-`vault-path`, `master-password`, `folder-new`, `gen-bulk-count`), used via
+`vault-name`, `vault-location`, `master-password`, `folder-new`, `gen-bulk-count`), used via
 `fill_id`. A few structural hooks are reused directly: `tr[data-testid=<entry-id>]`
 (entry rows — since 5.3.1b the vault table is a `DataTable` whose `row_testid` hook
 carries the id), `[role='option']` (+ `[data-value=…]` for a specific
@@ -175,7 +175,7 @@ storing secrets somewhere else.
 
 **Testing (this repo)**
 
-- [`docs/testing.md`](../../docs/testing.md) — VEdge's four testing layers; this
+- [`docs/technical/testing.md`](../../docs/technical/testing.md) — VEdge's four testing layers; this
   harness is **level 4** (E2E). Levels 1–3: host `cargo test`, `wasm-pack test
   --node` (IPC wire codec), and the manual `cargo tauri dev` smoke.
 

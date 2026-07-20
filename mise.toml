@@ -98,7 +98,7 @@ description = "Supply-chain gate — cargo-deny (advisories/bans/licenses/source
 # of which `cargo tree -i` confirms are unused (feature-gated behind sqlx/quic
 # features we never enable). Gating on those would mean writing misleading `ignore`s
 # for CVEs in crypto crates we don't even compile. Run `cargo audit` manually for a
-# raw-lockfile view. Needs network (RustSec DB). Not in `ci`; see docs/testing.md.
+# raw-lockfile view. Needs network (RustSec DB). Not in `ci`; see docs/technical/testing.md.
 run = "cargo deny check"
 
 # ---------------------------------------------------------------------------

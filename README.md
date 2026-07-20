@@ -1,17 +1,21 @@
 # VEdge
 
 A **local-first, offline** password manager for the desktop. No server, no cloud — your vault is a
-single encrypted file on your machine, unlocked with a master password (+ a device Secret Key). Built
+single encrypted folder on your machine, unlocked with a master password (+ a device Secret Key). Built
 with **Rust + Tauri v2** and a **Leptos** (Rust → WASM) frontend.
 
 📖 **New here? Read the [User Guide](docs/guide/README.md)** — install, first vault, backups &
 recovery, and the Emergency Kit / Recovery Key.
 
-## Illustrations
+## Screenshots
 
-<img src="./illustrations/master_password.jpg" width="700" height="350">
-<img src="./illustrations/vault.jpg" width="700" height="350">
-<img src="./illustrations/vault_form.jpg" width="700" height="350">
+<p align="center">
+  <img src="docs/guide/images/10-vault-list.png" width="780" alt="The vault"><br/>
+  <img src="docs/guide/images/12-entry-form.png" width="780" alt="Adding an entry"><br/>
+  <img src="docs/guide/images/20-generator.png" width="780" alt="The password generator">
+</p>
+
+More screens and a full walkthrough are in the **[User Guide](docs/guide/README.md)**.
 
 ## Security model
 
@@ -62,7 +66,7 @@ mise e2e       # opt-in WebDriver end-to-end (needs a display + a platform drive
 ```
 
 Individual gates: `mise fmt` · `mise lint` · `mise test` · `mise wasm`. The testing strategy (four
-layers + the supply-chain gate) is documented in **[`docs/testing.md`](docs/testing.md)**; the
+layers + the supply-chain gate) is documented in **[`docs/technical/testing.md`](docs/technical/testing.md)**; the
 supply-chain policy lives in **[`deny.toml`](deny.toml)**.
 
 ## Status

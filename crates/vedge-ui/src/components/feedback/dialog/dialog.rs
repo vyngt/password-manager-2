@@ -99,7 +99,7 @@ pub fn Dialog(
     // instances: with several Dialogs mounted on one page, every DialogHeader
     // resolved the LAST-mounted Dialog's context, so the ✕ closed the wrong
     // (already-closed) dialog and the visible one never dismissed. Verified via
-    // a headless-CDP instance-tagged trace (see docs/dialog_analyze.md).
+    // a headless-CDP instance-tagged trace (see docs/technical/dialog_analyze.md).
     let dialog_ctx = DialogContext {
         on_close,
         closeable,
