@@ -11,7 +11,15 @@
   .tabs__list {
     display: flex;
     align-items: flex-end;
-    position: relative;
+    /* `sticky` (still a positioned element, so it stays the containing block for
+       the absolute `.tabs__indicator`): when the tab content overflows a scrolling
+       ancestor (e.g. the Settings page), the tab bar stays pinned at the top
+       instead of scrolling away. The explicit background covers content scrolling
+       behind it; `z-index` keeps it above the panel. */
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--color-background);
     border-bottom: 1px solid var(--color-border);
     overflow-x: auto;
     scrollbar-width: none;

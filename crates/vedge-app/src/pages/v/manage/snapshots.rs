@@ -216,10 +216,10 @@ pub fn SnapshotsPage() -> impl IntoView {
     };
 
     view! {
-        <div class="h-full overflow-y-auto p-6" data-testid="snapshots-page">
-            <div class="max-w-4xl mx-auto space-y-4">
+        <div class="h-full p-6 flex flex-col" data-testid="snapshots-page">
+            <div class="max-w-4xl w-full mx-auto flex flex-col flex-1 min-h-0 gap-4">
                 // ---- Header: title + honesty copy + Take snapshot ----
-                <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="flex flex-wrap items-start justify-between gap-3 shrink-0">
                     <div class="min-w-0">
                         <h1 class="text-xl font-semibold text-text-primary">
                             {move || t_string!(i18n, snapshots.title).to_owned()}
@@ -243,87 +243,89 @@ pub fn SnapshotsPage() -> impl IntoView {
                     }}
                 </div>
 
-                // ---- List, or an empty state ----
-                {move || {
-                    let rows = snaps.get();
-                    if rows.is_empty() {
-                        Either::Left(
-                            view! {
-                                <EmptyState
-                                    title=Signal::derive(move || {
-                                        t_string!(i18n, snapshots.empty_title).to_owned()
-                                    })
-                                    description=Signal::derive(move || {
-                                        t_string!(i18n, snapshots.empty_desc).to_owned()
-                                    })
-                                />
-                            },
-                        )
-                    } else {
-                        Either::Right(
-                            view! {
-                                <ul class="space-y-2" role="list">
-                                    <For
-                                        each=move || snaps.get()
-                                        key=|s| s.id.clone()
-                                        children=move |s| {
-                                            view! {
-                                                <SnapshotRow
-                                                    snap=s
-                                                    pending_revert=pending_revert
-                                                    on_delete=Callback::new(delete)
-                                                    on_revert=Callback::new(do_revert)
-                                                    on_recover=Callback::new(do_recover)
-                                                />
-                                            }
-                                        }
-                                    />
-                                </ul>
-                            },
-                        )
-                    }
-                }}
-
-                // ---- The tweezers: recover picked entries from a snapshot (5.3c) ----
-                <Show when=move || !preview.get().is_empty() fallback=|| ()>
-                    <div
-                        class="rounded-md border border-border bg-surface-1 p-4 space-y-3"
-                        data-testid="recover-panel"
-                    >
-                        <div class="text-sm font-medium text-text-primary">
-                            {move || t_string!(i18n, snapshots.recover_title).to_owned()}
-                        </div>
-                        <ImportPreviewTable
-                            preview=preview
-                            picked=picked
-                            testid="recover-preview-table"
-                        />
-                        <div class="flex items-center justify-end gap-2">
-                            <Button
-                                variant=Variant::Secondary
-                                on:click=move |_: web_sys::MouseEvent| recover_cancel()
-                            >
-                                {move || t_string!(i18n, snapshots.recover_cancel).to_owned()}
-                            </Button>
-                            {move || {
-                                let b = busy.get();
+                // The scroll band (pattern B): the header above stays fixed; the
+                // snapshot list + recover panel own the remaining height and scroll here.
+                <div class="flex-1 min-h-0 overflow-y-auto space-y-4">
+                    // ---- List, or an empty state ----
+                    {move || {
+                        let rows = snaps.get();
+                        if rows.is_empty() {
+                            Either::Left(
                                 view! {
-                                    <Button
-                                        variant=Variant::Primary
-                                        loading=b
-                                        disabled=b
-                                        attr:data-testid="recover-commit"
-                                        on:click=move |_: web_sys::MouseEvent| recover_commit()
-                                    >
-                                        {move || {
-                                            t_string!(i18n, snapshots.recover_commit).to_owned()
-                                        }}
-                                    </Button>
-                                }
-                            }}
+                                    <EmptyState
+                                        title=Signal::derive(move || {
+                                            t_string!(i18n, snapshots.empty_title).to_owned()
+                                        })
+                                        description=Signal::derive(move || {
+                                            t_string!(i18n, snapshots.empty_desc).to_owned()
+                                        })
+                                    />
+                                },
+                            )
+                        } else {
+                            Either::Right(
+                                view! {
+                                    <ul class="space-y-2" role="list">
+                                        <For
+                                            each=move || snaps.get()
+                                            key=|s| s.id.clone()
+                                            children=move |s| {
+                                                view! {
+                                                    <SnapshotRow
+                                                        snap=s
+                                                        pending_revert=pending_revert
+                                                        on_delete=Callback::new(delete)
+                                                        on_revert=Callback::new(do_revert)
+                                                        on_recover=Callback::new(do_recover)
+                                                    />
+                                                }
+                                            }
+                                        />
+                                    </ul>
+                                },
+                            )
+                        }
+                    }} // ---- The tweezers: recover picked entries from a snapshot (5.3c) ----
+                    <Show when=move || !preview.get().is_empty() fallback=|| ()>
+                        <div
+                            class="rounded-md border border-border bg-surface-1 p-4 space-y-3"
+                            data-testid="recover-panel"
+                        >
+                            <div class="text-sm font-medium text-text-primary">
+                                {move || t_string!(i18n, snapshots.recover_title).to_owned()}
+                            </div>
+                            <ImportPreviewTable
+                                preview=preview
+                                picked=picked
+                                testid="recover-preview-table"
+                            />
+                            <div class="flex items-center justify-end gap-2">
+                                <Button
+                                    variant=Variant::Secondary
+                                    on:click=move |_: web_sys::MouseEvent| recover_cancel()
+                                >
+                                    {move || t_string!(i18n, snapshots.recover_cancel).to_owned()}
+                                </Button>
+                                {move || {
+                                    let b = busy.get();
+                                    view! {
+                                        <Button
+                                            variant=Variant::Primary
+                                            loading=b
+                                            disabled=b
+                                            attr:data-testid="recover-commit"
+                                            on:click=move |_: web_sys::MouseEvent| recover_commit()
+                                        >
+                                            {move || {
+                                                t_string!(i18n, snapshots.recover_commit).to_owned()
+                                            }}
+                                        </Button>
+                                    }
+                                }}
+                            </div>
                         </div>
-                    </div>
-                </Show>
+                    </Show>
+                </div>
             </div>
         </div>
     }
