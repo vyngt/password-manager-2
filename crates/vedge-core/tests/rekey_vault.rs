@@ -214,6 +214,23 @@ fn derive(
     (*kek, verify)
 }
 
+/// Assert the re-keyed vault is coherent from a fresh open under the new credentials.
+async fn assert_live_coherent(live: &Live, new_pw: &str, sk: &[u8; SECRET_KEY_LEN]) {
+    common::coherence::assert_vault_coherent(
+        &live.home,
+        &common::coherence::Creds {
+            master_password: new_pw,
+            secret_key: sk,
+            recovery_key: None,
+        },
+        Some(&common::coherence::OsState {
+            vault_uuid: &live.vault_uuid,
+            keychain: live.keychain.as_ref(),
+        }),
+    )
+    .await;
+}
+
 async fn run_rekey(
     live: &Live,
     new_pw: &str,
@@ -378,6 +395,10 @@ async fn rekey_reencrypts_every_surface_under_the_new_dek() {
         config.schema_version, live.schema_before,
         "re-key must not bump schema_version"
     );
+
+    // 🔴 PG.1 ④ — the whole re-keyed vault is coherent under the new KEK; every history version
+    // decrypts under its entry's FRESH DEK (invariant #2 — re-introduce the 5.8 bug and this fails).
+    assert_live_coherent(&live, "brand-new-password", &live.secret_key).await;
 }
 
 /// 🔴 The distinguishing property (spec test 2): a captured OLD DEK opens NOTHING that exists
@@ -531,6 +552,9 @@ async fn rekey_opens_on_new_credentials_and_nulls_recovery() {
         config.last_snapshot_at.is_none(),
         "a re-key retires snapshots and nulls last_snapshot_at"
     );
+
+    // Coherent under the new pw + rotated SK: recovery slot nulled (#7), snapshot store retired (#9).
+    assert_live_coherent(&live, "new-pw-4", &new_sk).await;
 }
 
 /// A cancel BEFORE the commit point discards staging and leaves the live vault untouched — the

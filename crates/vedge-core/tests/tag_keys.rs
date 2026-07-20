@@ -73,6 +73,23 @@ async fn change_pw(session: &mut VaultSession, h: &Harness, new_pw: &str) {
     .unwrap();
 }
 
+/// Assert the vault is coherent from a fresh open under the post-change credentials.
+async fn assert_coherent_after(h: &Harness, new_pw: &str, sk: &[u8; SECRET_KEY_LEN]) {
+    common::coherence::assert_vault_coherent(
+        &h.home,
+        &common::coherence::Creds {
+            master_password: new_pw,
+            secret_key: sk,
+            recovery_key: None,
+        },
+        Some(&common::coherence::OsState {
+            vault_uuid: &h.vault_uuid,
+            keychain: h.keychain.as_ref(),
+        }),
+    )
+    .await;
+}
+
 fn login_tagged(name: &str, tag_ids: Vec<TagId>) -> EntryPayload {
     let mut meta = CommonMeta::new(name, EntryType::Login);
     meta.tag_ids = tag_ids;
@@ -134,6 +151,10 @@ async fn tagged_vault_survives_password_change() {
         "github"
     );
     lock_vault(session_new).await.unwrap();
+
+    // 🔴 The 5.6.0 assertion: the tag re-wrapped under the new KEK (invariant #5). Re-introduce
+    // the bug (drop the tag loop in `rewrap_all_deks`) and this fails on the NULL-vs-old-KEK tag.
+    assert_coherent_after(&h, "new-hunter2", &h.secret_key).await;
 }
 
 /// Test 3 — the Secret-Key rotation path bricks the same way if tags are skipped. Rotate
@@ -163,6 +184,9 @@ async fn tagged_vault_survives_secret_key_rotation() {
     let s = unlock(&h, "correct horse battery staple").await.unwrap();
     assert_eq!(s.index().tags.get(&tag_id).unwrap().name, "github");
     lock_vault(s).await.unwrap();
+
+    let new_sk = [0xEEu8; SECRET_KEY_LEN];
+    assert_coherent_after(&h, "correct horse battery staple", &new_sk).await;
 }
 
 /// 🔴 Retirement guard (slice 5.9 ②). The legacy KEK-as-AEAD read path — `decrypt_legacy_tag` and
@@ -229,6 +253,9 @@ async fn snapshot_tags_survive_password_change() {
     );
     drop(repo);
     db.close().await.unwrap();
+
+    // Live tag (#5) + snapshot (#8) both coherent under the new KEK — the 5.6.0 and 5.7 surfaces.
+    assert_coherent_after(&h, "new-hunter2", &h.secret_key).await;
 }
 
 // 🔴 The B2 test (a legacy NULL snapshot tag MIGRATED, not skipped, on a password change) was

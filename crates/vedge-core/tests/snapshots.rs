@@ -132,6 +132,9 @@ async fn snapshot_entry_count_excludes_trashed() {
         .await
         .unwrap();
     assert_eq!(report.entry_count, 2, "3 active + 1 trashed → 2 active");
+
+    // The snapshot opens under the current KEK and last_snapshot_at agrees (#8, #9).
+    h.assert_coherent().await;
 }
 
 /// Test 14 (⑧): `create_snapshot` moves `last_snapshot_at` and leaves `last_backup_at`
@@ -176,6 +179,9 @@ async fn snapshot_and_backup_touch_separate_timestamps() {
         after_backup.last_snapshot_at, after_snap.last_snapshot_at,
         "backup left last_snapshot_at unchanged"
     );
+
+    // create_snapshot + backup_vault both leave the vault coherent.
+    h.assert_coherent().await;
 }
 
 /// Test 6 (⑮-A): a snapshot NEVER enters a `.vbk`. A backup taken with a populated snapshot

@@ -550,6 +550,9 @@ async fn move_entry_updates_folder_and_bumps_version() {
         session.index().entries.get(&id).unwrap().folder_id.as_ref(),
         Some(&folder_id)
     );
+
+    // The moved entry's folder_id resolves to a live Folder entry (invariant #10).
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -635,6 +638,8 @@ async fn set_favorite_roundtrips() {
     // Idempotent flip back clears it.
     set_favorite(&mut session, &id, false).await.unwrap();
     assert!(!session.index().entries.get(&id).unwrap().is_favorite);
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -687,6 +692,8 @@ async fn set_sort_order_roundtrips_and_bumps_version() {
     let v2 = h.repo.get_entry(&id).await.unwrap();
     assert_eq!(v2.version, 2);
     assert_ne!(v1.nonce, v2.nonce);
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -730,6 +737,11 @@ async fn set_tags_roundtrips() {
     // Clearing works too.
     set_tags(&mut session, &id, vec![]).await.unwrap();
     assert!(session.index().entries.get(&id).unwrap().tag_ids.is_empty());
+
+    // Asserted only after the CLEAR: the intermediate [t1, t2] were synthetic ids with no tag
+    // rows (core set_tags does not validate existence), which invariant #10 would flag. The final
+    // state has no tag refs, so it is coherent — and still exercises the set_tags use case.
+    h.assert_coherent().await;
 }
 
 #[tokio::test]

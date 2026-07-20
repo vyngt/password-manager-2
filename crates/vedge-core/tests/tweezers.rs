@@ -175,6 +175,9 @@ async fn tweezers_recovers_a_deleted_entry_from_a_snapshot() {
     // The sibling was never deleted and never double-imported → exactly one of each.
     assert_eq!(count_login(&bundle, "keeper"), 1);
     assert_eq!(count_login(&bundle, "other"), 1);
+
+    // The recovered entry (fresh DEK/ULID) + the untouched snapshot leave the vault coherent.
+    h.assert_coherent().await;
 }
 
 /// spec #15: a snapshot whose `verify_hash_prefix` no longer matches the live vault (a
