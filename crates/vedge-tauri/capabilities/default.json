@@ -1,0 +1,18 @@
+{
+  "identifier": "default",
+  "description": "Curated capability set (PG.2b). Grants ONLY the window controls and file dialogs the WASM frontend actually invokes; everything else VEdge does — all file I/O, HIBP, clipboard, OS info — is Rust-side (thick core) and needs no frontend capability. Replaces the uncurated `tauri migrate` files (migrated.json + desktop.json), which handed the renderer shell:allow-execute, the whole fs:* family and http:default. Each grant below was proven used by a frontend grep; see docs/changelogs PG.2b.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "dialog:allow-open",
+    "dialog:allow-save"
+  ]
+}
