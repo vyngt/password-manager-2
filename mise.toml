@@ -212,6 +212,26 @@ description = "LINK the frontend wasm bundle (trunk build) — the real link `wa
 run = "trunk build --config crates/vedge-app/Trunk.toml"
 
 # ---------------------------------------------------------------------------
+# Release-profile compile gate
+# ---------------------------------------------------------------------------
+
+# 🔴 The third member of the "a build configuration nobody verifies" family (PG.2a).
+# `mise ci`'s wasm phase is a `cargo check` DEBUG; `wasm-link` is a `trunk build`
+# DEBUG; the release bundle is only ever built locally by `mise build`. So a
+# release-ONLY code path — the one `#[cfg(debug_assertions)]`-gating `/playground`
+# introduces — is compiled by NO existing job: an ungated `use` → unused-import →
+# `-D warnings` would pass CI and fail only at release. This type-check closes that
+# gap cheaply. Its own `ci.yml` step beside `wasm-link`; deliberately NOT a
+# `depends` of local `ci` (a release check is minutes — keep the local gate fast,
+# 5.9's reasoning for `wasm-link`).
+[tasks.release-check]
+description = "Release-profile compile gate (PG.2a) — type-check the workspace + frontend wasm under --release. Catches release-only breakage no debug job compiles. Its own ci.yml step; NOT in local `ci`."
+run = [
+  "cargo check --workspace --exclude vedge-e2e --release",
+  "cargo check -p vedge-app --target wasm32-unknown-unknown --release",
+]
+
+# ---------------------------------------------------------------------------
 # Aggregate
 # ---------------------------------------------------------------------------
 

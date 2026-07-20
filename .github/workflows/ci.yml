@@ -68,5 +68,12 @@ jobs:
       - name: Frontend wasm LINK (trunk build)
         run: mise run wasm-link
 
+      # The release-profile compile — `mise run ci`/`wasm-link` are both DEBUG, so
+      # a release-only path (e.g. the `cfg(debug_assertions)`-gated `/playground`)
+      # is otherwise compiled by no job and would fail only at `cargo tauri build`
+      # time. Type-check only, so it stays cheap enough for the PR gate (PG.2a).
+      - name: Release-profile compile check
+        run: mise run release-check
+
       - name: Supply-chain audit (cargo deny)
         run: mise run audit
