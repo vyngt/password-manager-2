@@ -32,8 +32,6 @@ vault_remove: "Gỡ bỏ"
 vault_locate: "Định vị"
 open_file: "Mở…"
 new_vault: "Mới"
-no_vaults_title: "Chưa có kho nào"
-no_vaults_body: "Tạo kho đầu tiên, mở kho có sẵn, hoặc mở một bản sao lưu."
 err_rename: "Không thể đổi tên kho: "
 # --- 5.2.4 quản lý kho (⋯ chi tiết + xóa) ---
 close: "Đóng"

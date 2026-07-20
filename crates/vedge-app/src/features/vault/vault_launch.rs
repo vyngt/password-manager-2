@@ -689,19 +689,32 @@ pub fn VaultLaunch() -> impl IntoView {
                 <EmptyState
                     icon=i::FaFileShieldSolid
                     title=Signal::derive(move || {
-                        t_string!(i18n, unlock.no_vaults_title).to_owned()
+                        t_string!(i18n, unlock.welcome_title).to_owned()
                     })
                     description=Signal::derive(move || {
-                        t_string!(i18n, unlock.no_vaults_body).to_owned()
+                        t_string!(i18n, unlock.welcome_tagline).to_owned()
                     })
                 >
+                    // First-run welcome (PG.5a): set the ONE unrecoverable-by-design
+                    // fact at creation, not after a lockout. Reinforces the create
+                    // wizard's step 3 without duplicating its mechanics; non-blocking,
+                    // Create is right below. Fixed width so it reads well inside the
+                    // centered EmptyState action (which otherwise shrinks to content).
+                    <div class="w-72 max-w-full mb-4 rounded-lg border border-border bg-foreground/5 p-3 text-left">
+                        <div class="text-xs font-medium text-text-primary">
+                            {move || t!(i18n, unlock.welcome_key_point_title)}
+                        </div>
+                        <p class="text-xs text-text-secondary mt-1 leading-relaxed">
+                            {move || t!(i18n, unlock.welcome_key_point)}
+                        </p>
+                    </div>
                     <div class="flex gap-2">
                         <Button
                             variant=Variant::Primary
                             attr:data-testid="launch-new-vault"
                             on:click=move |_: web_sys::MouseEvent| on_new.run(())
                         >
-                            {move || t!(i18n, unlock.new_vault)}
+                            {move || t!(i18n, unlock.create_first)}
                         </Button>
                         <Button
                             variant=Variant::Secondary

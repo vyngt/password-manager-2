@@ -32,8 +32,6 @@ vault_remove: "Remove"
 vault_locate: "Locate"
 open_file: "Open…"
 new_vault: "New"
-no_vaults_title: "No vaults yet"
-no_vaults_body: "Create your first vault, open an existing one, or open a backup."
 err_rename: "Could not rename the vault: "
 # --- 5.2.4 vault management (⋯ details + delete) ---
 close: "Close"
