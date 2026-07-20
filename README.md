@@ -4,6 +4,9 @@ A **local-first, offline** password manager for the desktop. No server, no cloud
 single encrypted file on your machine, unlocked with a master password (+ a device Secret Key). Built
 with **Rust + Tauri v2** and a **Leptos** (Rust → WASM) frontend.
 
+📖 **New here? Read the [User Guide](docs/guide/README.md)** — install, first vault, backups &
+recovery, and the Emergency Kit / Recovery Key.
+
 ## Illustrations
 
 <img src="./illustrations/master_password.jpg" width="700" height="350">
@@ -64,12 +67,13 @@ supply-chain policy lives in **[`deny.toml`](deny.toml)**.
 
 ## Status
 
-Phase 1 (the vault) and Phase 2 (daily-use UX) are complete: create/unlock/lock a vault, nine entry
-types with in-place edit, search + command palette, favorites/tags/folders, auto-lock + clipboard
-auto-clear, entry history, theming, and biometric unlock (Windows Hello). Next up is **Phase 3 —
-password generator**. See the roadmap in the design vault for the longer arc (documents, PKI,
-steganography, LAN sync).
+Working toward the **1.0** release (Windows). Phases 1–5 are complete: the vault and daily-use UX,
+the password generator, audit log / TOTP / password health / breach detection, and the Phase-5 data
+safety & recovery work (snapshots, `.vbk` backups, entry export/import, the Recovery Key, and true
+re-key). The pre-release hardening pass (attack-surface audit, update check, UX sweep, docs) is
+wrapping up. See the roadmap in the design vault for the longer arc (documents, PKI, LAN sync).
 
 ## License
 
-Not yet licensed — the workspace crates are `publish = false` (private, not distributed on crates.io).
+**MIT** — see [`LICENSE`](LICENSE). Third-party attribution ships in the app under
+**Settings ▸ About** and in `THIRD-PARTY-NOTICES.txt` beside the installer.
