@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: 255 194 194;
+  --background: 97 25 74;
+  --primary: 244 31 198;
+  --secondary: 3 169 244;
+  --success: 30 200 135;
+  --danger: 244 37 99;
+  --warning: 224 193 36;
+}
+
+body {
+  @apply h-[100vh] bg-background text-foreground;
+}
+
+.root-layout {
+  height: calc(100% - 40px);
+}
+
+.app-none-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+.app-scrollbar::-webkit-scrollbar {
+  @apply h-1 w-1 rounded-md bg-transparent;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb {
+  @apply rounded-md bg-primary;
+}
