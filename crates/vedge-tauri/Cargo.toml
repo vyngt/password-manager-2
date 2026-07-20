@@ -23,14 +23,12 @@ vedge-core = { path = "../vedge-core" }
 vedge-ipc  = { path = "../vedge-ipc" }
 
 tauri                             = { version = "2", features = [] }
-tauri-plugin-shell                = "2"
-tauri-plugin-notification         = "2"
 tauri-plugin-dialog               = "2"
-tauri-plugin-process              = "2"
-tauri-plugin-fs                   = "2"
-tauri-plugin-clipboard-manager    = "2.3.2"
+# Kept for its `reqwest` re-export (HIBP, `breach/hibp.rs`) — NOT registered as an
+# IPC plugin (see lib.rs), so the frontend has no arbitrary-HTTP capability. The
+# other migrated plugins (shell/notification/process/fs/clipboard-manager/os/
+# global-shortcut) were unused by both frontend and Rust and were dropped (PG.2b).
 tauri-plugin-http                 = "2"
-tauri-plugin-os                   = "2"
 
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
@@ -48,7 +46,6 @@ printpdf    = { version = "0.7", features = ["embedded_images"] }
 qrcodegen   = "1.8"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"
 
 [dev-dependencies]
