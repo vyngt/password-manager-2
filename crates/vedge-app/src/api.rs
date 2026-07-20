@@ -19,6 +19,7 @@ pub mod tauri;
 // unlock in 5.1, and change-password/rotate in 5.6). A still-unused wrapper is kept only when it
 // has a documented near-term consumer, marked `#[allow(dead_code, reason = "…")]` **per
 // function**; a module whose *every* wrapper is still unused carries a single module-level allow.
+pub mod about;
 pub mod audit;
 pub mod backup;
 pub mod biometric;

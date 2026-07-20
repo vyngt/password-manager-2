@@ -1,5 +1,5 @@
-//! Settings — a tabbed shell over five sections:
-//! **Security · Credentials · Appearance · Maintenance · Backup**.
+//! Settings — a tabbed shell over six sections:
+//! **Security · Credentials · Appearance · Maintenance · Backup · About**.
 //!
 //! - **Security** (2.6) — behavioural *preferences* only: idle auto-lock,
 //!   lock-on-blur, the clipboard clear delay, session length, breach-check — all
@@ -22,6 +22,7 @@
 //! house pattern in `vault_filters`): the `t_string!` reads are then tracked —
 //! no owner-less warning — and the labels relocalize on a language switch.
 
+use crate::features::settings::about_panel::AboutPanel;
 use crate::features::settings::backup_panel::BackupPanel;
 use crate::features::settings::biometric_setting::BiometricSetting;
 use crate::features::settings::change_password_setting::ChangeMasterPasswordSetting;
@@ -327,6 +328,12 @@ pub fn SettingsPage() -> impl IntoView {
             id: "backup".to_owned(),
             label: Box::new(move || view! { {move || t!(i18n, settings.backup)} }.into_any()),
             panel: Arc::new(|| view! { <BackupPanel /> }.into_any()),
+            disabled: false,
+        },
+        Tab {
+            id: "about".to_owned(),
+            label: Box::new(move || view! { {move || t!(i18n, settings.about)} }.into_any()),
+            panel: Arc::new(|| view! { <AboutPanel /> }.into_any()),
             disabled: false,
         },
     ];
