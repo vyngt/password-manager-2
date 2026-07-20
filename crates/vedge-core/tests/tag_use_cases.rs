@@ -61,6 +61,8 @@ async fn create_tag_stores_normalized_name() {
     let id = create_tag(&mut session, "GitHub", None).await.unwrap();
     let meta = session.index().tags.get(&id).unwrap();
     assert_eq!(meta.name, "github");
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -97,6 +99,8 @@ async fn rename_tag_is_o1_on_entries() {
         "entries must not be re-encrypted on rename"
     );
     assert_eq!(session.index().tags.get(&tag_id).unwrap().name, "git");
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -157,6 +161,9 @@ async fn delete_tag_removes_from_referencing_entries() {
             .tag_ids
             .contains(&tag_id)
     );
+
+    // 🔴 The 5.6.0-adjacent check: a deleted tag must leave NO dangling tag_ids on any entry.
+    h.assert_coherent().await;
 }
 
 #[tokio::test]

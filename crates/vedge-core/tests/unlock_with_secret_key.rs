@@ -52,6 +52,9 @@ async fn unlock_with_secret_key_happy_path_restores_keychain() {
 
     // Session is live.
     assert_eq!(outcome.session.vault_id(), &h.vault_id);
+
+    // The recovery unlock restored the keychain SK and left the vault coherent.
+    h.assert_coherent().await;
 }
 
 #[tokio::test]

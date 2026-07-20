@@ -50,6 +50,32 @@ async fn reveal(session: &mut VaultSession, id: EntryId) -> EntryPayload {
         .unwrap()
 }
 
+/// PG.1 ⑤ — the one cheap read-only assertion: `get_entry` (a browse) appends only a `Viewed`
+/// audit row, which must NOT bump `commit_counter`. Catches an accidental write in a read path.
+#[tokio::test]
+async fn get_entry_is_read_only_and_leaves_the_vault_coherent() {
+    let h = Harness::fresh().await;
+    let mut session = unlock(&h).await;
+    let id = create(
+        &mut session,
+        EntryPayload::Note(NotePayload {
+            meta: CommonMeta::new("n", EntryType::Note),
+            content: SecretString::from("body"),
+        }),
+    )
+    .await;
+
+    let before = h.repo.load_config().await.unwrap().commit_counter;
+    let _ = reveal(&mut session, id).await;
+    let after = h.repo.load_config().await.unwrap().commit_counter;
+    assert_eq!(
+        before, after,
+        "get_entry is read-only — a Viewed audit row must not bump commit_counter"
+    );
+
+    h.assert_coherent().await;
+}
+
 #[tokio::test]
 async fn get_entry_roundtrips_login() {
     let h = Harness::fresh().await;

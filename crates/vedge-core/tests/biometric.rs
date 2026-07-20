@@ -109,6 +109,9 @@ async fn enroll_then_unlock_with_kek_roundtrip() {
             .any(|e| matches!(e.action, AuditAction::BiometricUnlocked)),
         "biometric unlock is audited"
     );
+
+    // Enrolling biometric stores the KEK behind the gate but does not touch the vault-at-rest.
+    h.assert_coherent().await;
     lock_vault(session2).await.unwrap();
 }
 
@@ -202,6 +205,21 @@ async fn change_password_restores_stored_kek() {
         .unwrap();
     assert_eq!(session2.index().all_active().len(), 1);
     lock_vault(session2).await.unwrap();
+
+    // The vault is coherent under the NEW password (the change re-wrapped every DEK).
+    common::coherence::assert_vault_coherent(
+        &h.home,
+        &common::coherence::Creds {
+            master_password: "new-master",
+            secret_key: &h.secret_key,
+            recovery_key: None,
+        },
+        Some(&common::coherence::OsState {
+            vault_uuid: &h.vault_uuid,
+            keychain: h.keychain.as_ref(),
+        }),
+    )
+    .await;
 }
 
 #[tokio::test]

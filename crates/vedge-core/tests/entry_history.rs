@@ -111,6 +111,9 @@ async fn update_captures_previous_version() {
     // The snapshot decrypts to the pre-edit value.
     let hid = after[1].history_id.clone().unwrap();
     assert_eq!(history_password(&session, &id, &hid).await, "p1");
+
+    // The captured history version decrypts under the live entry's DEK (invariant #2 — 5.8).
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -224,6 +227,8 @@ async fn restore_sets_current_and_snapshots_replaced() {
         snap_pws.contains(&"v2pass".to_owned()),
         "replaced value kept: {snap_pws:?}"
     );
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]

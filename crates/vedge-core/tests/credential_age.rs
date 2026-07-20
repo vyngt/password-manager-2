@@ -77,6 +77,23 @@ async fn latest_credential_action(h: &Harness) -> AuditAction {
         .clone()
 }
 
+/// Assert the vault is coherent from a fresh open under the post-change credentials.
+async fn assert_coherent_after(h: &Harness, new_pw: &str, sk: &[u8; SECRET_KEY_LEN]) {
+    common::coherence::assert_vault_coherent(
+        &h.home,
+        &common::coherence::Creds {
+            master_password: new_pw,
+            secret_key: sk,
+            recovery_key: None,
+        },
+        Some(&common::coherence::OsState {
+            vault_uuid: &h.vault_uuid,
+            keychain: h.keychain.as_ref(),
+        }),
+    )
+    .await;
+}
+
 #[tokio::test]
 async fn plain_change_stamps_password_only() {
     let h = Harness::fresh().await;
@@ -116,6 +133,8 @@ async fn plain_change_stamps_password_only() {
         latest_credential_action(&h).await,
         AuditAction::PasswordChanged
     );
+
+    assert_coherent_after(&h, "new-pw-one", &h.secret_key).await;
 }
 
 #[tokio::test]
@@ -153,6 +172,8 @@ async fn rotate_stamps_both_and_audits_secret_key_rotated() {
         AuditAction::SecretKeyRotated,
         "a rotation is distinguishable from a password change in the audit log"
     );
+
+    assert_coherent_after(&h, PW, &new_sk).await;
 }
 
 /// 🔴 The fail-first guard for the same-key edge (slice 5.9 ③). A recovery reset re-stores the
@@ -199,6 +220,9 @@ async fn recovery_reset_stamps_password_not_rotation() {
         AuditAction::PasswordChanged,
         "recovery reset audits PasswordChanged, never SecretKeyRotated"
     );
+
+    // The recovery reset also nulled the slot (#7 = None, no RK needed).
+    assert_coherent_after(&h, "new-after-recovery", &h.secret_key).await;
 }
 
 /// The credential age must live in `vault_config`, NOT be derived from the retention-pruned audit
@@ -262,4 +286,7 @@ async fn age_stamp_survives_audit_prune() {
             .is_some(),
         "credential age survives an audit-log prune"
     );
+
+    // Coherent even with an EMPTY audit log (#11 handles zero rows; #13 reads the config stamp).
+    assert_coherent_after(&h, "pruned-pw", &h.secret_key).await;
 }

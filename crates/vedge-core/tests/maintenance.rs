@@ -71,6 +71,8 @@ async fn trashed_entry_past_retention_is_hard_deleted() {
         h.repo.get_entry(&id).await.unwrap_err(),
         VaultError::EntryNotFound(_)
     ));
+
+    h.assert_coherent().await;
 }
 
 #[tokio::test]
@@ -133,4 +135,7 @@ async fn orphan_blobs_are_reaped() {
     let report = run_maintenance(&session).await.unwrap();
     assert!(report.orphaned_blobs_deleted >= 1);
     assert!(!blob_path.exists());
+
+    // The orphan is reaped → no orphan blob remains (invariant #4).
+    h.assert_coherent().await;
 }
