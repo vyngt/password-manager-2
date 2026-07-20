@@ -1,6 +1,6 @@
 [package]
 name = "vedge-e2e"
-version = "0.1.0"
+version.workspace = true
 edition = "2024"
 publish = false
 description = "End-to-end WebDriver test harness for the VEdge desktop app (tauri-driver + thirtyfour)."
