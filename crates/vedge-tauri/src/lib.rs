@@ -30,20 +30,19 @@ use tauri::Manager;
     clippy::large_stack_frames
 )]
 pub fn run() {
-    let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_os::init());
+    // Only the plugins the app actually uses are registered (PG.2b). `dialog` is
+    // the one plugin the WASM frontend calls; everything the app does with files,
+    // HTTP (HIBP), clipboard and OS info happens Rust-side and needs no plugin
+    // registration. `tauri-plugin-http` stays a *dependency* (it re-exports the
+    // `reqwest` HIBP uses in `breach/hibp.rs`) but is no longer registered as an
+    // IPC plugin — that closes the frontend's arbitrary-HTTP primitive while HIBP
+    // keeps working. shell/notification/process/fs/clipboard-manager/os/
+    // global-shortcut were registered but unused by both frontend and Rust, so
+    // their deps are dropped from Cargo.toml too.
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init());
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
-        builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
-
         // The single-instance lock is keyed by the app identifier, not the
         // data directory — two instances collide even with distinct
         // `VEDGE_DATA_DIR`s. Skip it in portable/test mode (any non-empty
