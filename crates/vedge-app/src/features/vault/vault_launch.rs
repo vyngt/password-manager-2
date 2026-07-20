@@ -88,6 +88,18 @@ async fn record_unlock(sel: &Selected) {
     }
 }
 
+/// One launch-Help question + answer. Both reactive (`Signal<String>`) so they
+/// relocalise and read under an owner.
+#[component]
+fn HelpTopic(#[prop(into)] q: Signal<String>, #[prop(into)] a: Signal<String>) -> impl IntoView {
+    view! {
+        <div>
+            <div class="text-sm font-medium text-text-primary">{move || q.get()}</div>
+            <p class="text-xs text-text-secondary mt-0.5 leading-relaxed">{move || a.get()}</p>
+        </div>
+    }
+}
+
 #[component]
 pub fn VaultLaunch() -> impl IntoView {
     let i18n = use_i18n();
@@ -97,6 +109,19 @@ pub fn VaultLaunch() -> impl IntoView {
     let new_kit = expect_context::<NewSecretKit>();
     let on_new_kit_close = Callback::new(move |()| new_kit.display.set(None));
     let toast = use_toast();
+
+    // In-app help (PG.5a): a pre-unlock Help door + a passive version line in the
+    // footer. Version comes from the offline `app_version` command (no capability,
+    // no network) — the same source the titlebar About uses.
+    let help_open = RwSignal::new(false);
+    let version = RwSignal::new(String::new());
+    Effect::new(move |_| {
+        spawn_local(async move {
+            if let Ok(v) = api::about::app_version().await {
+                version.set(v);
+            }
+        });
+    });
 
     let registry = RwSignal::new(Vec::<RegisteredVaultStatusDto>::new());
     let loading = RwSignal::new(true);
@@ -664,19 +689,32 @@ pub fn VaultLaunch() -> impl IntoView {
                 <EmptyState
                     icon=i::FaFileShieldSolid
                     title=Signal::derive(move || {
-                        t_string!(i18n, unlock.no_vaults_title).to_owned()
+                        t_string!(i18n, unlock.welcome_title).to_owned()
                     })
                     description=Signal::derive(move || {
-                        t_string!(i18n, unlock.no_vaults_body).to_owned()
+                        t_string!(i18n, unlock.welcome_tagline).to_owned()
                     })
                 >
+                    // First-run welcome (PG.5a): set the ONE unrecoverable-by-design
+                    // fact at creation, not after a lockout. Reinforces the create
+                    // wizard's step 3 without duplicating its mechanics; non-blocking,
+                    // Create is right below. Fixed width so it reads well inside the
+                    // centered EmptyState action (which otherwise shrinks to content).
+                    <div class="w-72 max-w-full mb-4 rounded-lg border border-border bg-foreground/5 p-3 text-left">
+                        <div class="text-xs font-medium text-text-primary">
+                            {move || t!(i18n, unlock.welcome_key_point_title)}
+                        </div>
+                        <p class="text-xs text-text-secondary mt-1 leading-relaxed">
+                            {move || t!(i18n, unlock.welcome_key_point)}
+                        </p>
+                    </div>
                     <div class="flex gap-2">
                         <Button
                             variant=Variant::Primary
                             attr:data-testid="launch-new-vault"
                             on:click=move |_: web_sys::MouseEvent| on_new.run(())
                         >
-                            {move || t!(i18n, unlock.new_vault)}
+                            {move || t!(i18n, unlock.create_first)}
                         </Button>
                         <Button
                             variant=Variant::Secondary
@@ -704,55 +742,75 @@ pub fn VaultLaunch() -> impl IntoView {
     };
 
     view! {
-        <div class="flex h-full w-full items-center justify-center p-2">
-            <Show
-                when=move || !loading.get()
-                fallback=move || {
-                    view! {
-                        <div class="flex items-center justify-center">
-                            <Spinner label=Signal::derive(move || {
-                                t_string!(i18n, unlock.loading).to_owned()
-                            }) />
-                        </div>
+        <div class="flex flex-col h-full w-full p-2">
+            // Main area (PG.5a): keeps the original centering and fills the height
+            // above the footer. `min-h-0` lets this flex-1 item shrink so the
+            // populated two-pane's `h-full` still resolves.
+            <div class="flex flex-1 min-h-0 items-center justify-center">
+                <Show
+                    when=move || !loading.get()
+                    fallback=move || {
+                        view! {
+                            <div class="flex items-center justify-center">
+                                <Spinner label=Signal::derive(move || {
+                                    t_string!(i18n, unlock.loading).to_owned()
+                                }) />
+                            </div>
+                        }
                     }
-                }
-            >
-                <Show when=move || !registry.get().is_empty() fallback=empty_state>
-                    <div class="flex h-full w-full gap-2">
-                        <VaultList
-                            filtered=filtered
-                            query=query
-                            selected=selected
-                            on_select=on_select
-                            on_menu=on_menu
-                            on_locate=on_locate
-                            on_restore=on_restore
-                            on_new=on_new
-                            on_open_file=on_open_file
-                            on_open_backup=on_open_backup
-                        />
-                        <div class="flex flex-1 overflow-hidden rounded-lg border border-border bg-surface">
-                            <VaultUnlockPanel
+                >
+                    <Show when=move || !registry.get().is_empty() fallback=empty_state>
+                        <div class="flex h-full w-full gap-2">
+                            <VaultList
+                                filtered=filtered
+                                query=query
                                 selected=selected
-                                pw=pw
-                                unlocking=unlocking
-                                bio_enrolled=bio_enrolled
-                                show_password=show_password
-                                secret_key_open=secret_key_open
-                                secret_key_input=secret_key_input
-                                recovery_open=recovery_open
-                                recovery_key_input=recovery_key_input
-                                recovery_secret_key_input=recovery_secret_key_input
-                                on_unlock=on_unlock
-                                on_bio_unlock=on_bio_unlock
-                                on_use_password=on_use_password
-                                on_secret_key_unlock=on_secret_key_unlock
-                                on_recovery_unlock=on_recovery_unlock
+                                on_select=on_select
+                                on_menu=on_menu
+                                on_locate=on_locate
+                                on_restore=on_restore
+                                on_new=on_new
+                                on_open_file=on_open_file
+                                on_open_backup=on_open_backup
                             />
+                            <div class="flex flex-1 overflow-hidden rounded-lg border border-border bg-surface">
+                                <VaultUnlockPanel
+                                    selected=selected
+                                    pw=pw
+                                    unlocking=unlocking
+                                    bio_enrolled=bio_enrolled
+                                    show_password=show_password
+                                    secret_key_open=secret_key_open
+                                    secret_key_input=secret_key_input
+                                    recovery_open=recovery_open
+                                    recovery_key_input=recovery_key_input
+                                    recovery_secret_key_input=recovery_secret_key_input
+                                    on_unlock=on_unlock
+                                    on_bio_unlock=on_bio_unlock
+                                    on_use_password=on_use_password
+                                    on_secret_key_unlock=on_secret_key_unlock
+                                    on_recovery_unlock=on_recovery_unlock
+                                />
+                            </div>
                         </div>
-                    </div>
+                    </Show>
                 </Show>
-            </Show>
+            </div>
+            // Footer (PG.5a): passive version + a Help door, shown on both the empty
+            // and populated states. The portaled dialogs below don't affect layout.
+            <footer class="shrink-0 flex items-center justify-between gap-2 px-1 pt-1 border-t border-border text-[11px] text-text-secondary">
+                <span class="font-jetbrains-mono" data-testid="launch-version">
+                    {move || version.get()}
+                </span>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    attr:data-testid="launch-help"
+                    on:click=move |_: web_sys::MouseEvent| help_open.set(true)
+                >
+                    {move || t!(i18n, unlock.help)}
+                </Button>
+            </footer>
             <BackupOpenDialog open=backup_open selected=selected on_done=on_backup_done />
             <RecoveryResetDialog
                 open=recovery_reset_open
@@ -808,6 +866,57 @@ pub fn VaultLaunch() -> impl IntoView {
                         {move || t!(i18n, settings.rekey_continue)}
                     </Button>
                 </DialogFooter>
+            </Dialog>
+            // Launch Help (PG.5a): the pre-unlock answer to the four recovery
+            // questions + the version. A Dialog (not a Popover) — immune to the
+            // inner-scroll detach, and it gives multi-sentence answers a titled,
+            // focus-trapped surface.
+            <Dialog
+                open=Signal::derive(move || help_open.get())
+                on_close=Callback::new(move |()| help_open.set(false))
+                size=DialogSize::Md
+                close_label=Signal::derive(move || t_string!(i18n, unlock.close).to_owned())
+            >
+                <DialogHeader>
+                    <DialogTitle>{move || t!(i18n, unlock.help_title)}</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <div
+                        class="flex flex-col gap-4 min-w-[20rem] max-w-[32rem]"
+                        data-testid="launch-help-dialog"
+                    >
+                        <HelpTopic
+                            q=Signal::derive(move || t_string!(i18n, unlock.help_ek_q).to_owned())
+                            a=Signal::derive(move || t_string!(i18n, unlock.help_ek_a).to_owned())
+                        />
+                        <HelpTopic
+                            q=Signal::derive(move || t_string!(i18n, unlock.help_rk_q).to_owned())
+                            a=Signal::derive(move || {
+                                t_string!(i18n, settings.recovery_key_keep_separate).to_owned()
+                            })
+                        />
+                        <HelpTopic
+                            q=Signal::derive(move || {
+                                t_string!(i18n, unlock.help_forgot_q).to_owned()
+                            })
+                            a=Signal::derive(move || {
+                                t_string!(i18n, unlock.help_forgot_a).to_owned()
+                            })
+                        />
+                        <HelpTopic
+                            q=Signal::derive(move || {
+                                t_string!(i18n, unlock.help_moved_q).to_owned()
+                            })
+                            a=Signal::derive(move || {
+                                t_string!(i18n, unlock.help_moved_a).to_owned()
+                            })
+                        />
+                        <div class="pt-2 mt-1 border-t border-border text-xs text-text-secondary">
+                            <div>{move || t!(i18n, settings.about_licence_body)}</div>
+                            <div class="font-jetbrains-mono mt-0.5">{move || version.get()}</div>
+                        </div>
+                    </div>
+                </DialogBody>
             </Dialog>
         </div>
     }

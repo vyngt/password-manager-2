@@ -17,6 +17,7 @@ use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 use crate::api;
 use crate::api::dialog::{DialogFilter, SaveDialogOptions};
 use crate::api::error::ApiError;
+use crate::features::help_popover::HelpPopover;
 use crate::features::vault::context::ActiveVault;
 use crate::i18n::{t, t_string, use_i18n};
 
@@ -81,8 +82,15 @@ pub fn EmergencyKitSetting() -> impl IntoView {
     view! {
         <div class="flex items-start justify-between gap-5 py-3.5 border-b border-border">
             <div>
-                <div class="text-sm font-medium text-text-primary">
-                    {move || t!(i18n, settings.kit_reexport)}
+                <div class="flex items-center gap-1.5">
+                    <div class="text-sm font-medium text-text-primary">
+                        {move || t!(i18n, settings.kit_reexport)}
+                    </div>
+                    <HelpPopover
+                        body=Signal::derive(move || t_string!(i18n, unlock.help_ek_a).to_owned())
+                        label=Signal::derive(move || t_string!(i18n, settings.help_aria).to_owned())
+                        testid="help-emergency-kit"
+                    />
                 </div>
                 <div class="text-xs text-text-secondary mt-0.5">
                     {move || t!(i18n, settings.kit_reexport_desc)}

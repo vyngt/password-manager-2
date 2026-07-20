@@ -40,6 +40,7 @@ use vedge_ipc::RekeyInputDto;
 
 use crate::api;
 use crate::api::error::ApiError;
+use crate::features::help_popover::HelpPopover;
 use crate::features::vault::context::{ActiveVault, NewSecretKit};
 use crate::features::vault::password_strength::score as password_score;
 use crate::i18n::{t, t_string, use_i18n};
@@ -172,8 +173,17 @@ pub fn RekeySetting() -> impl IntoView {
     view! {
         <div class="flex items-start justify-between gap-5 py-3.5">
             <div>
-                <div class="text-sm font-medium" style="color:var(--color-danger-text)">
-                    {move || t!(i18n, settings.rekey_title)}
+                <div class="flex items-center gap-1.5">
+                    <div class="text-sm font-medium" style="color:var(--color-danger-text)">
+                        {move || t!(i18n, settings.rekey_title)}
+                    </div>
+                    <HelpPopover
+                        body=Signal::derive(move || {
+                            t_string!(i18n, settings.help_password_vs_rekey).to_owned()
+                        })
+                        label=Signal::derive(move || t_string!(i18n, settings.help_aria).to_owned())
+                        testid="help-rekey"
+                    />
                 </div>
                 <div class="text-xs text-text-secondary mt-0.5">
                     {move || t!(i18n, settings.rekey_desc)}
