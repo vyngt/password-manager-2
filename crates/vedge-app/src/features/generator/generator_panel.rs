@@ -280,7 +280,7 @@ pub fn GeneratorPanel(
 
             // ---- Output (shared) ----------------------------------------
             <div class="flex items-center gap-2 rounded-md border border-border bg-primary-muted p-3">
-                <code class="flex-1 select-all break-all font-mono text-sm text-text-primary min-h-[1.25rem]">
+                <code class="flex-1 select-all break-all font-mono text-sm text-text-primary min-h-[1.25rem] max-h-40 overflow-y-auto">
                     {move || display.get()}
                 </code>
                 <IconButton
@@ -443,7 +443,7 @@ pub fn GeneratorPanel(
                                 {move || t!(i18n, generator.bulk_generate)}
                             </Button>
                         </div>
-                        <div class="space-y-2 max-h-56 overflow-y-auto">
+                        <div class="space-y-2">
                             {move || {
                                 bulk.get()
                                     .into_iter()
@@ -520,7 +520,7 @@ pub fn GeneratorPanel(
                         }
                     >
                         <div class="space-y-2">
-                            <div class="space-y-2 max-h-56 overflow-y-auto">
+                            <div class="space-y-2">
                                 <For
                                     each=move || history.items.get()
                                     key=|it| it.id

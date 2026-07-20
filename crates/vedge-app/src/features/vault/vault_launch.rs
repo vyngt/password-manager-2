@@ -32,7 +32,9 @@ use vedge_ipc::{
     RegisteredVaultDto, RegisteredVaultStatusDto, UnlockVaultInputDto,
     UnlockWithRecoveryKeyInputDto, UnlockWithSecretKeyInputDto, VaultDetailsDto,
 };
-use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::dialog::{
+    Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle,
+};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::{Button, EmptyState, Spinner};
@@ -787,25 +789,25 @@ pub fn VaultLaunch() -> impl IntoView {
                     <DialogTitle>{move || t!(i18n, unlock.new_kit_title)}</DialogTitle>
                 </DialogHeader>
                 <DialogBody>
-                    <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                    <div class="flex flex-col gap-4 min-w-[22rem]">
                         <p class="text-sm text-text-primary">
                             {move || t!(i18n, settings.rekey_new_kit_intro)}
                         </p>
                         <SecretDisplay value=Signal::derive(move || {
                             new_kit.display.get().unwrap_or_default()
                         }) />
-                        <div class="flex justify-end">
-                            <Button
-                                variant=Variant::Primary
-                                size=Size::Sm
-                                attr:data-testid="rekey-new-kit-done"
-                                on:click=move |_: web_sys::MouseEvent| on_new_kit_close.run(())
-                            >
-                                {move || t!(i18n, settings.rekey_continue)}
-                            </Button>
-                        </div>
                     </div>
                 </DialogBody>
+                <DialogFooter>
+                    <Button
+                        variant=Variant::Primary
+                        size=Size::Sm
+                        attr:data-testid="rekey-new-kit-done"
+                        on:click=move |_: web_sys::MouseEvent| on_new_kit_close.run(())
+                    >
+                        {move || t!(i18n, settings.rekey_continue)}
+                    </Button>
+                </DialogFooter>
             </Dialog>
         </div>
     }

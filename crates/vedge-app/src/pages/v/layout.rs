@@ -6,7 +6,6 @@ use leptos_icons::Icon;
 use leptos_router::components::Outlet;
 use leptos_router::hooks::use_navigate;
 use vedge_ui::components::Tooltip;
-use vedge_ui::components::icon as ui_icon;
 use vedge_ui::primitives::tokens::Placement;
 
 use crate::api;
@@ -178,20 +177,6 @@ fn Sidebar() -> impl IntoView {
             class=("w-[60px]", move || collapsed.get())
             class=("w-44", move || !collapsed.get())
         >
-            <div
-                class="flex items-center gap-2 h-10 px-1 mb-1 shrink-0"
-                class=("justify-center", move || collapsed.get())
-            >
-                <span class="flex items-center justify-center w-7 h-7 rounded-md bg-primary text-white shrink-0">
-                    <Icon attr:aria-hidden="true" icon=ui_icon::Pm width="16" height="16" />
-                </span>
-                <Show when=move || !collapsed.get()>
-                    <span class="text-[15px] font-semibold text-text-primary tracking-tight truncate">
-                        "VEdge"
-                    </span>
-                </Show>
-            </div>
-
             <For
                 each=move || SIDEBAR_ITEMS.iter().enumerate()
                 key=|(_, record)| record.path
@@ -341,6 +326,14 @@ pub fn VLayout() -> impl IntoView {
     view! {
         <div class="flex flex-row h-full">
             <Sidebar />
+            // The outlet is `h-full w-full` with NO overflow handling, so every page
+            // owns its own scrolling. Two legitimate patterns — pick deliberately, so
+            // the next page doesn't copy whichever neighbour it was pasted from:
+            // A — the page scrolls: `h-full overflow-y-auto p-6`. For document-ish
+            // pages (settings, snapshots, generator).
+            // B — fixed shell, a `flex-1 min-h-0` child scrolls: `h-full p-6 flex
+            // flex-col` + a `flex-1 min-h-0` band. Use whenever the main content
+            // is a table/list that should own its height (audit, health, vault).
             <div class="h-full w-full">
                 <Outlet />
             </div>

@@ -59,6 +59,9 @@ pub fn DialogPage() -> impl IntoView {
     // --- Section 6: Body-only ---
     let body_only_open = RwSignal::new(false);
 
+    // --- Section 7: Flush body (edge-to-edge list) ---
+    let flush_open = RwSignal::new(false);
+
     view! {
         <div class="p-6 max-w-4xl mx-auto space-y-6">
             <h1 class="text-xl font-semibold text-text-primary">"Dialog"</h1>
@@ -429,6 +432,43 @@ pub fn DialogPage() -> impl IntoView {
                     <DialogBody>
                         <div class="py-6 text-center">
                             <p>"Click outside or press Escape to close."</p>
+                        </div>
+                    </DialogBody>
+                </Dialog>
+            </Section>
+
+            // --- Flush body (edge-to-edge list) ---
+            <Section title="Flush body">
+                <p class="text-xs text-text-tertiary">
+                    "`flush` drops the body padding so list rows run to the border. The default (padded) is the safe case — a list dialog opts in."
+                </p>
+                <Button variant=Variant::Secondary on:click=move |_| flush_open.set(true)>
+                    "Open flush list"
+                </Button>
+
+                <Dialog
+                    open=flush_open
+                    on_close=Callback::new(move |()| flush_open.set(false))
+                    size=DialogSize::Sm
+                >
+                    <DialogHeader>
+                        <DialogTitle>"Pick an item"</DialogTitle>
+                    </DialogHeader>
+                    <DialogBody flush=true>
+                        <div class="flex flex-col divide-y divide-border">
+                            {(1..=6)
+                                .map(|n| {
+                                    view! {
+                                        <button
+                                            type="button"
+                                            class="text-left px-6 py-2.5 hover:bg-surface-2"
+                                            on:click=move |_| flush_open.set(false)
+                                        >
+                                            {format!("Item {n}")}
+                                        </button>
+                                    }
+                                })
+                                .collect_view()}
                         </div>
                     </DialogBody>
                 </Dialog>

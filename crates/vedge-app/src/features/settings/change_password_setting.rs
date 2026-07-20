@@ -11,7 +11,9 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::dialog::{
+    Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle,
+};
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
 use vedge_ui::components::form::form_field::FormField;
@@ -175,7 +177,7 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
                 <DialogTitle>{move || t!(i18n, settings.change_password_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     <FormField
                         id="current-master-password"
                         label=Signal::derive(move || {
@@ -264,33 +266,33 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
                             })
                     }}
 
-                    <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, settings.cancel)}
-                        </Button>
-                        {move || {
-                            let loading = busy.get();
-                            let disabled = !can_submit();
-                            view! {
-                                <Button
-                                    variant=Variant::Primary
-                                    size=Size::Sm
-                                    loading=loading
-                                    disabled=disabled
-                                    attr:data-testid="change-password-submit"
-                                    on:click=move |_: web_sys::MouseEvent| submit()
-                                >
-                                    {move || t!(i18n, settings.change_password_submit)}
-                                </Button>
-                            }
-                        }}
-                    </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, settings.cancel)}
+                </Button>
+                {move || {
+                    let loading = busy.get();
+                    let disabled = !can_submit();
+                    view! {
+                        <Button
+                            variant=Variant::Primary
+                            size=Size::Sm
+                            loading=loading
+                            disabled=disabled
+                            attr:data-testid="change-password-submit"
+                            on:click=move |_: web_sys::MouseEvent| submit()
+                        >
+                            {move || t!(i18n, settings.change_password_submit)}
+                        </Button>
+                    }
+                }}
+            </DialogFooter>
         </Dialog>
     }
 }

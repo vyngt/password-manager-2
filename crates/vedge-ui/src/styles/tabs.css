@@ -16,6 +16,23 @@
     overflow-x: auto;
     scrollbar-width: none;
   }
+
+  /* Fill mode (opt-in): the `.tabs` fills its parent's height, the tab bar stays
+     fixed, and the ACTIVE panel owns the remaining height and scrolls — pattern B,
+     for a long-content tab surface like Settings. Hidden panels are `display:none`
+     so the flex sizing only ever applies to the visible one. */
+  .tabs--fill {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .tabs--fill .tabs__list {
+    flex-shrink: 0;
+  }
+  .tabs--fill .tabs__panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
   .tabs__list::-webkit-scrollbar { display: none; }
 
   /* Active indicator — single element, slides to match active trigger */

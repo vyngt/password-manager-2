@@ -68,7 +68,7 @@ pub fn VaultDetailsDialog(
                 <DialogTitle>{move || t!(i18n, unlock.vault_details_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-4 min-w-[22rem]" data-testid="vault-details">
+                <div class="flex flex-col gap-4 min-w-[22rem]" data-testid="vault-details">
                     {move || {
                         target
                             .get()
@@ -241,10 +241,7 @@ pub fn DeleteVaultDialog(
                 <DialogTitle>{move || t!(i18n, unlock.delete_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div
-                    class="flex flex-col gap-4 pb-4 min-w-[22rem]"
-                    data-testid="vault-delete-confirm"
-                >
+                <div class="flex flex-col gap-4 min-w-[22rem]" data-testid="vault-delete-confirm">
                     {move || {
                         target
                             .get()
