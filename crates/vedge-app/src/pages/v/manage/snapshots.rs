@@ -25,6 +25,7 @@ use vedge_ui::components::foundation::empty_state::EmptyState;
 use vedge_ui::primitives::tokens::{ToastVariant, Variant};
 
 use crate::api;
+use crate::features::help_popover::HelpPopover;
 use crate::features::settings::import_preview_table::ImportPreviewTable;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::entry_view::{clock_time, long_date};
@@ -221,9 +222,20 @@ pub fn SnapshotsPage() -> impl IntoView {
                 // ---- Header: title + honesty copy + Take snapshot ----
                 <div class="flex flex-wrap items-start justify-between gap-3 shrink-0">
                     <div class="min-w-0">
-                        <h1 class="text-xl font-semibold text-text-primary">
-                            {move || t_string!(i18n, snapshots.title).to_owned()}
-                        </h1>
+                        <div class="flex items-center gap-1.5">
+                            <h1 class="text-xl font-semibold text-text-primary">
+                                {move || t_string!(i18n, snapshots.title).to_owned()}
+                            </h1>
+                            <HelpPopover
+                                body=Signal::derive(move || {
+                                    t_string!(i18n, snapshots.help_three_way).to_owned()
+                                })
+                                label=Signal::derive(move || {
+                                    t_string!(i18n, settings.help_aria).to_owned()
+                                })
+                                testid="help-snapshots"
+                            />
+                        </div>
                         <p class="text-sm text-text-secondary mt-1 max-w-2xl">
                             {move || t_string!(i18n, snapshots.subtitle).to_owned()}
                         </p>

@@ -29,3 +29,5 @@ err_take: "Couldn't take a snapshot: "
 err_revert: "Couldn't revert: "
 err_delete: "Couldn't delete the snapshot: "
 err_recover: "Couldn't recover: "
+# --- PG.5a help ---
+help_three_way: "A snapshot is a point-in-time copy kept next to the vault — a fast undo, but lost if the drive fails. A backup is an encrypted archive you store somewhere else. An export is a plain-text copy of your entries for another app — it isn't encrypted, so keep it safe and delete it when done."

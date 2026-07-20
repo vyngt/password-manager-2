@@ -29,3 +29,5 @@ err_take: "Không thể chụp ảnh: "
 err_revert: "Không thể hoàn nguyên: "
 err_delete: "Không thể xóa ảnh chụp: "
 err_recover: "Không thể khôi phục: "
+# --- PG.5a trợ giúp ---
+help_three_way: "Ảnh chụp là bản sao theo thời điểm được giữ ngay cạnh kho — hoàn tác nhanh, nhưng mất nếu ổ đĩa hỏng. Bản sao lưu là kho lưu trữ đã mã hóa mà bạn cất ở nơi khác. Bản xuất là bản sao dạng văn bản thuần của các mục để dùng cho ứng dụng khác — nó không được mã hóa, nên hãy giữ an toàn và xóa khi dùng xong."
