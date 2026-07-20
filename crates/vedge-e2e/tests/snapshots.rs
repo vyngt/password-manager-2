@@ -442,11 +442,14 @@ async fn revert_corrupt_vault_from_picker() -> Result<()> {
         .await
         .context("relaunch to re-probe the corrupt vault")?;
 
-    // The picker offers Restore for the corrupt vault.
+    // The picker offers Restore for the corrupt vault. Generous timeout: this now
+    // waits on a cold RELAUNCH (full app boot + a fresh registry re-probe that opens
+    // every vault to check status), not the old lightweight webview reload — under
+    // full-suite load that cold path can run well past the old 25 s.
     session
         .wait_for(
             By::Css("[data-testid='vault-restore']".to_string()),
-            Duration::from_secs(25),
+            Duration::from_secs(60),
         )
         .await
         .context("the corrupt vault must show a Restore action (H0)")?;
