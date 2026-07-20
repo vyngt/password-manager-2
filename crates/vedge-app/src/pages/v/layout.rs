@@ -341,6 +341,14 @@ pub fn VLayout() -> impl IntoView {
     view! {
         <div class="flex flex-row h-full">
             <Sidebar />
+            // The outlet is `h-full w-full` with NO overflow handling, so every page
+            // owns its own scrolling. Two legitimate patterns — pick deliberately, so
+            // the next page doesn't copy whichever neighbour it was pasted from:
+            // A — the page scrolls: `h-full overflow-y-auto p-6`. For document-ish
+            // pages (settings, snapshots, generator).
+            // B — fixed shell, a `flex-1 min-h-0` child scrolls: `h-full p-6 flex
+            // flex-col` + a `flex-1 min-h-0` band. Use whenever the main content
+            // is a table/list that should own its height (audit, health, vault).
             <div class="h-full w-full">
                 <Outlet />
             </div>
