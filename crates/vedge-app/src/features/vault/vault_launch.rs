@@ -787,7 +787,7 @@ pub fn VaultLaunch() -> impl IntoView {
                     <DialogTitle>{move || t!(i18n, unlock.new_kit_title)}</DialogTitle>
                 </DialogHeader>
                 <DialogBody>
-                    <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                    <div class="flex flex-col gap-4 min-w-[22rem]">
                         <p class="text-sm text-text-primary">
                             {move || t!(i18n, settings.rekey_new_kit_intro)}
                         </p>

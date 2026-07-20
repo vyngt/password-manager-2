@@ -35,7 +35,7 @@ pub fn PermanentDeleteDialog(
                 <DialogTitle>{move || t!(i18n, vault.hard_delete_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     {move || {
                         target
                             .get()
@@ -100,7 +100,7 @@ pub fn EmptyTrashDialog(
                 <DialogTitle>{move || t!(i18n, vault.empty_trash_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     <p class="text-sm text-foreground/70">
                         {move || {
                             let n = count.get();

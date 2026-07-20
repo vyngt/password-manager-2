@@ -234,7 +234,7 @@ pub fn EntryHistory(
                 </DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-2 pb-4 min-w-[28rem]">
+                <div class="flex flex-col gap-2 min-w-[28rem]">
                     // Restore confirmation banner.
                     {move || {
                         confirm

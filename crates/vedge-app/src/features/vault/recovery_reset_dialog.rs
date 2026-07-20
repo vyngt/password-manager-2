@@ -48,7 +48,7 @@ pub fn RecoveryResetDialog(
                 <DialogTitle>{move || t!(i18n, unlock.recover_reset_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     <p class="text-sm text-text-secondary">
                         {move || t!(i18n, unlock.recover_reset_body)}
                     </p>

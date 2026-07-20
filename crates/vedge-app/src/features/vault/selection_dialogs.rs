@@ -46,7 +46,7 @@ pub fn BulkTrashDialog(
                 <DialogTitle>{move || t!(i18n, vault.bulk_trash_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     <p class="text-sm text-foreground/70">
                         {move || {
                             let n = count.get();
@@ -121,7 +121,7 @@ pub fn SelectionMoveDialog(
                 </DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     {move || {
                         let mut options = vec![
                             SelectItem::option("", t_string!(i18n, vault.folder_none).to_owned()),
@@ -206,7 +206,7 @@ pub fn SelectionTagDialog(
                 </DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     <Show
                         when=move || !tags.get().is_empty()
                         fallback=move || {

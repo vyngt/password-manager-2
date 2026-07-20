@@ -191,7 +191,7 @@ pub fn RotateSecretKeySetting() -> impl IntoView {
                 <DialogTitle>{move || t!(i18n, settings.rotate_secret_key_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     // 🔴 The reversed "keep your old kit" copy — shown in both phases.
                     <div class="flex flex-col gap-2 rounded-lg border border-border bg-foreground/5 p-3 text-xs text-text-secondary">
                         {move || t!(i18n, settings.rotate_keep_old_kit)}

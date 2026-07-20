@@ -231,7 +231,7 @@ pub fn ThemeList() -> impl IntoView {
                 <DialogTitle>{move || t!(i18n, settings.theme_delete)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     <p class="text-sm text-text-secondary">
                         {move || t!(i18n, settings.theme_delete_confirm)}
                     </p>

@@ -48,7 +48,7 @@ pub fn FolderDelete(
                 <DialogTitle>{move || t!(i18n, vault.folder_delete_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[20rem]">
+                <div class="flex flex-col gap-4 min-w-[20rem]">
                     {move || {
                         target
                             .get()

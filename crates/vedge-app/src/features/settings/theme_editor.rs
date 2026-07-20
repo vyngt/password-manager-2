@@ -191,7 +191,7 @@ pub fn ThemeEditor(
                 <DialogTitle>{title}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[26rem]">
+                <div class="flex flex-col gap-4 min-w-[26rem]">
                     // Name.
                     <div>
                         <div class="text-xs text-text-tertiary mb-1">

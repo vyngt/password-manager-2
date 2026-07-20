@@ -175,7 +175,7 @@ pub fn ChangeMasterPasswordSetting() -> impl IntoView {
                 <DialogTitle>{move || t!(i18n, settings.change_password_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-4 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     <FormField
                         id="current-master-password"
                         label=Signal::derive(move || {

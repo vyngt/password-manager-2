@@ -71,7 +71,7 @@ pub fn FolderCustomize(
                 <DialogTitle>{move || t!(i18n, vault.folder_customize_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     // Live preview chip: the resolved icon tinted by the color.
                     {move || {
                         let name = target.get().map(|e| e.name).unwrap_or_default();

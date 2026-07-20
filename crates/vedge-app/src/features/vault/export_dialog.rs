@@ -144,7 +144,7 @@ pub fn ExportDialog(
                 <DialogTitle>{move || t!(i18n, vault.export_title)}</DialogTitle>
             </DialogHeader>
             <DialogBody>
-                <div class="flex flex-col gap-4 pb-6 min-w-[22rem]">
+                <div class="flex flex-col gap-4 min-w-[22rem]">
                     // ---- Scope ----
                     <div class="flex flex-col gap-1.5">
                         <span class="text-foreground/50 text-xs uppercase tracking-wider">
