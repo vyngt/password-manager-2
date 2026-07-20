@@ -193,7 +193,7 @@ pub fn TagAssign(
                 <div class="flex-1">{add_existing}</div>
             </div>
             <div class="flex gap-2 items-center">
-                <div class="flex-1">
+                <div class="flex-1 min-w-0">
                     <Input
                         id="tag-assign-new"
                         value=Signal::derive(move || new_name.get())

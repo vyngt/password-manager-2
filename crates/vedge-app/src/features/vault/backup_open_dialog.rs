@@ -324,7 +324,7 @@ pub fn BackupOpenDialog(
                         {move || t!(i18n, unlock.ob_archive_label)}
                     </label>
                     <div class="flex items-end gap-2">
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <Input
                                 id="backup-archive"
                                 value=Signal::derive(move || archive.get())
@@ -381,7 +381,7 @@ pub fn BackupOpenDialog(
                                             {move || t!(i18n, unlock.ob_location_label)}
                                         </label>
                                         <div class="flex items-end gap-2">
-                                            <div class="flex-1">
+                                            <div class="flex-1 min-w-0">
                                                 <Input
                                                     id="backup-location"
                                                     value=Signal::derive(move || location.get())
