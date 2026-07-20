@@ -62,6 +62,11 @@ pub async fn update_custom_theme(input: &UpdateCustomThemeInputDto) -> Result<()
     call_void("update_custom_theme", &Args { input }).await
 }
 
+/// Duplicate a custom theme. Its only caller is the dev-only playground theme
+/// gallery (`pages/playground/theme.rs`), so the wrapper is debug-only too —
+/// otherwise gating `/playground` out of release (PG.2a) leaves it dead-coded
+/// under `-D dead-code`. The backend `duplicate_theme` command stays registered.
+#[cfg(debug_assertions)]
 pub async fn duplicate_theme(source_id: &str, new_name: Option<&str>) -> Result<String, ApiError> {
     #[derive(Serialize)]
     struct Args<'a> {
