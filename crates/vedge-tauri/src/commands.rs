@@ -39,4 +39,5 @@ pub mod settings;
 pub mod snapshot;
 pub mod tag;
 pub mod totp;
+pub mod update;
 pub mod vault;

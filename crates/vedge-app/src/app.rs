@@ -6,6 +6,7 @@ use leptos::task::spawn_local;
 use crate::api;
 use crate::features::generator::history::GeneratedHistoryCtx;
 use crate::features::health::context::HealthReportCtx;
+use crate::features::settings::about_panel::UpdateStatusCtx;
 use crate::features::settings::generator_prefs::{self, GeneratorPrefs, GeneratorPrefsCtx};
 use crate::features::settings::security_prefs::{
     self, SecurityPrefs, SecurityPrefsCtx, SecurityPrefsLoaded,
@@ -165,13 +166,31 @@ pub fn App() -> impl IntoView {
     // AutoLock hook, the Settings section, and both clipboard copy sites read.
     let security = SecurityPrefsCtx(RwSignal::new(SecurityPrefs::default()));
     let security_loaded = SecurityPrefsLoaded(RwSignal::new(false));
+    // Last update-check result (slice PG.3), shared with the About tab. Provided
+    // above the router so the quiet launch auto-check below survives navigation.
+    let update_status = UpdateStatusCtx(RwSignal::new(None));
     provide_context(security);
     provide_context(security_loaded);
+    provide_context(update_status);
     Effect::new(move |_| {
         // No tracked reads → runs exactly once after mount.
         spawn_local(async move {
-            security.0.set(security_prefs::load().await);
+            let prefs = security_prefs::load().await;
+            let auto_update = prefs.update_check_enabled;
+            security.0.set(prefs);
             security_loaded.0.set(true);
+            // Quiet update auto-check (PG.3): opt-in only, once per launch, and
+            // SILENT on failure — the shared context is written only for a
+            // definitive result, so the About tab reflects it with no toast or
+            // badge. The check itself is Rust-side (no HTTP capability, no CSP
+            // change). Never auto-installs.
+            if auto_update {
+                if let Ok(result) = api::about::check_for_update().await {
+                    if result.status != vedge_ipc::UpdateStatus::Unknown {
+                        update_status.0.set(Some(result));
+                    }
+                }
+            }
         });
     });
 

@@ -13,6 +13,7 @@ members = [
 
 [workspace.package]
 version = "1.0.0"
+license = "MIT"
 
 # Canonical lint set — see `docs/Design/Vedge/Core/vedge-core/Rust Coding Rules`.
 # Every member crate opts in via `[lints] workspace = true` in its own Cargo.toml.

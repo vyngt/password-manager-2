@@ -24,6 +24,7 @@ run = [
   "cargo install tauri-driver --locked",
   "cargo install leptosfmt --locked",
   "cargo install cargo-audit cargo-deny --locked",
+  "cargo install cargo-about --locked --features cli",
   "git config core.hooksPath .githooks",
 ]
 
@@ -99,6 +100,27 @@ description = "Supply-chain gate — cargo-deny (advisories/bans/licenses/source
 # for CVEs in crypto crates we don't even compile. Run `cargo audit` manually for a
 # raw-lockfile view. Needs network (RustSec DB). Not in `ci`; see docs/testing.md.
 run = "cargo deny check"
+
+# ---------------------------------------------------------------------------
+# Third-party attribution (PG.3, Gate 1.0 §D ⑥)
+# ---------------------------------------------------------------------------
+
+# Regenerate the committed third-party attribution artifacts from the SHIPPED
+# dependency graph (build-graph aware via about.toml's `targets` = windows +
+# wasm32). NOT a build-time step and NOT in `ci`: the artifacts are committed so
+# they are reviewable in a diff and reproducible without cargo-about installed —
+# this only regenerates them after a dependency change. Two outputs:
+#   1. a structured JSON (id + crates only, no licence text) that the About tab
+#      `include_str!`s and renders NATIVELY (no inner_html → no CSP loosening);
+#   2. THIRD-PARTY-NOTICES.txt — the full licence texts, bundled with the app
+#      (tauri.conf.json `bundle.resources`).
+# `--workspace` because the manifest is virtual (no root package).
+[tasks.about]
+description = "Regenerate the committed third-party licence attribution (JSON + THIRD-PARTY-NOTICES.txt) via cargo-about"
+run = [
+  "cargo about generate --workspace about/licenses.json.hbs -o crates/vedge-app/src/features/settings/third-party-licenses.json",
+  "cargo about generate --workspace about/notices.txt.hbs -o THIRD-PARTY-NOTICES.txt",
+]
 
 # ---------------------------------------------------------------------------
 # Test

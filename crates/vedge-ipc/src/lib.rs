@@ -39,6 +39,7 @@ pub mod settings;
 pub mod snapshot;
 pub mod tag;
 pub mod totp;
+pub mod update;
 
 pub use audit::{ACTION_NAMES, AuditEventDto, AuditPageDto, AuditQueryDto};
 pub use backup::{
@@ -78,3 +79,4 @@ pub use settings::{
 pub use snapshot::{RevertReportDto, SeamlessRevertDto, SnapshotDto, SnapshotReportDto};
 pub use tag::{CreateTagDto, RenameTagDto, TagMetaDto};
 pub use totp::{TotpAlgorithmDto, TotpCodeDto, TotpEnrolmentDto, TotpUpdateDto};
+pub use update::{UpdateCheckDto, UpdateStatus};
