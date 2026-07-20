@@ -45,15 +45,16 @@ section in this guide.
 Click **+ New** to add an entry. VEdge supports several entry types, each with fields
 suited to what it holds:
 
-- **Login** — website/username/password, plus optional TOTP two-factor and one-time
-  recovery codes.
+- **Login** — website/username/password, plus an optional TOTP two-factor code.
 - **Card** — card number, cardholder, expiry, CVV, PIN.
 - **Identity** — name, address, and other personal details.
 - **SSH Key** — a private key (multi-line), public key, fingerprint, key type, optional
   passphrase.
 - **API Key** — key and secret.
 - **Environment Variables** — a set of `KEY=value` pairs (handy for `.env` files).
-- **Secure Note** — free-form encrypted text.
+- **Secure Note** — free-form encrypted text. A good home for anything without a
+  dedicated field — **2FA backup / recovery codes**, licence keys, or security-question
+  answers.
 - **Document** — an attached file, encrypted at rest.
 
 ![The vault with several entries](images/10-vault-list.png)
