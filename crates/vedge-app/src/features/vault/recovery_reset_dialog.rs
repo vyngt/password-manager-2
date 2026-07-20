@@ -6,7 +6,9 @@
 //! (`change_password_after_recovery` → navigate into the vault) stays in the orchestrator.
 
 use leptos::prelude::*;
-use vedge_ui::components::feedback::dialog::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::dialog::{
+    Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle,
+};
 use vedge_ui::components::form::form_field::FormField;
 use vedge_ui::components::{Button, Input, PasswordStrengthMeter};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
@@ -121,26 +123,26 @@ pub fn RecoveryResetDialog(
                             })
                     }}
 
-                    <div class="flex justify-end">
-                        {move || {
-                            let loading = busy.get();
-                            let disabled = !can_submit();
-                            view! {
-                                <Button
-                                    variant=Variant::Primary
-                                    size=Size::Md
-                                    loading=loading
-                                    disabled=disabled
-                                    attr:data-testid="recovery-reset-submit"
-                                    on:click=move |_: web_sys::MouseEvent| on_submit.run(())
-                                >
-                                    {move || t!(i18n, unlock.recover_reset_submit)}
-                                </Button>
-                            }
-                        }}
-                    </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                {move || {
+                    let loading = busy.get();
+                    let disabled = !can_submit();
+                    view! {
+                        <Button
+                            variant=Variant::Primary
+                            size=Size::Md
+                            loading=loading
+                            disabled=disabled
+                            attr:data-testid="recovery-reset-submit"
+                            on:click=move |_: web_sys::MouseEvent| on_submit.run(())
+                        >
+                            {move || t!(i18n, unlock.recover_reset_submit)}
+                        </Button>
+                    }
+                }}
+            </DialogFooter>
         </Dialog>
     }
 }

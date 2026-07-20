@@ -11,7 +11,7 @@ use leptos::prelude::*;
 use std::collections::HashSet;
 use vedge_ipc::IndexEntryDto;
 use vedge_ui::components::Button;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::components::select::{Select, SelectItem};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
@@ -94,20 +94,21 @@ pub fn FolderMove(
                                 })
                             />
                         }
-                    }} <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, vault.cancel)}
-                        </Button>
-                        <Button variant=Variant::Primary size=Size::Sm on:click=confirm>
-                            {move || t!(i18n, vault.folder_move_here)}
-                        </Button>
-                    </div>
+                    }}
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, vault.cancel)}
+                </Button>
+                <Button variant=Variant::Primary size=Size::Sm on:click=confirm>
+                    {move || t!(i18n, vault.folder_move_here)}
+                </Button>
+            </DialogFooter>
         </Dialog>
     }
 }

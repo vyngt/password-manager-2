@@ -8,7 +8,7 @@ use crate::i18n::{t, t_string, use_i18n};
 use leptos::prelude::*;
 use leptos_icons::Icon;
 use vedge_ipc::IndexEntryDto;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::components::form::color_picker::{ColorPicker, SwatchItem};
 use vedge_ui::components::{Button, IconButton};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
@@ -166,20 +166,21 @@ pub fn FolderCustomize(
                                 })
                                 .collect_view()}
                         </div>
-                    </div> <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, vault.cancel)}
-                        </Button>
-                        <Button variant=Variant::Primary size=Size::Sm on:click=confirm>
-                            {move || t!(i18n, vault.folder_customize_apply)}
-                        </Button>
                     </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, vault.cancel)}
+                </Button>
+                <Button variant=Variant::Primary size=Size::Sm on:click=confirm>
+                    {move || t!(i18n, vault.folder_customize_apply)}
+                </Button>
+            </DialogFooter>
         </Dialog>
     }
 }

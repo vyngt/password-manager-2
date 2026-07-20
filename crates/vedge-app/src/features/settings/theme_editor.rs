@@ -22,7 +22,7 @@ use leptos_icons::Icon;
 use vedge_ipc::ThemeDto;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::components::form::color_picker::ColorPicker;
 use vedge_ui::components::{Button, Input};
 use vedge_ui::primitives::tokens::{DialogSize, Size, ToastVariant, Variant};
@@ -331,31 +331,31 @@ pub fn ThemeEditor(
                             })
                     }}
 
-                    <div class="flex justify-end gap-2 border-t border-border pt-3">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, settings.cancel)}
-                        </Button>
-                        {move || {
-                            let is_saving = saving.get();
-                            view! {
-                                <Button
-                                    variant=Variant::Primary
-                                    size=Size::Sm
-                                    disabled=is_saving
-                                    loading=is_saving
-                                    on:click=save
-                                >
-                                    {save_label}
-                                </Button>
-                            }
-                        }}
-                    </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, settings.cancel)}
+                </Button>
+                {move || {
+                    let is_saving = saving.get();
+                    view! {
+                        <Button
+                            variant=Variant::Primary
+                            size=Size::Sm
+                            disabled=is_saving
+                            loading=is_saving
+                            on:click=save
+                        >
+                            {save_label}
+                        </Button>
+                    }
+                }}
+            </DialogFooter>
         </Dialog>
     }
 }

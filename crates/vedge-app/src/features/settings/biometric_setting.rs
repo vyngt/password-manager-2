@@ -16,7 +16,7 @@ use leptos::task::spawn_local;
 use leptos_icons::Icon;
 use vedge_ui::components::Button;
 use vedge_ui::components::Input;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::components::toggle::Toggle;
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
@@ -186,30 +186,30 @@ pub fn BiometricSetting() -> impl IntoView {
                                 }
                             })
                     }}
-                    <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, settings.cancel)}
-                        </Button>
-                        {move || {
-                            let loading = busy.get();
-                            view! {
-                                <Button
-                                    variant=Variant::Primary
-                                    size=Size::Sm
-                                    loading=loading
-                                    on:click=move |_: web_sys::MouseEvent| do_enroll()
-                                >
-                                    {move || t!(i18n, settings.biometric_enable)}
-                                </Button>
-                            }
-                        }}
-                    </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, settings.cancel)}
+                </Button>
+                {move || {
+                    let loading = busy.get();
+                    view! {
+                        <Button
+                            variant=Variant::Primary
+                            size=Size::Sm
+                            loading=loading
+                            on:click=move |_: web_sys::MouseEvent| do_enroll()
+                        >
+                            {move || t!(i18n, settings.biometric_enable)}
+                        </Button>
+                    }
+                }}
+            </DialogFooter>
         </Dialog>
     }
 }

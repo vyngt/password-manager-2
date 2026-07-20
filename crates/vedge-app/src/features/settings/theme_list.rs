@@ -20,7 +20,7 @@ use leptos_icons::Icon;
 use vedge_ipc::ThemeDto;
 use vedge_ui::components::Badge;
 use vedge_ui::components::Button;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::components::icon_button::IconButton;
 use vedge_ui::primitives::tokens::{BadgeSize, BadgeVariant, DialogSize, Size, Variant};
 use vedge_ui::theme::{ThemeConfig, use_theme};
@@ -235,24 +235,24 @@ pub fn ThemeList() -> impl IntoView {
                     <p class="text-sm text-text-secondary">
                         {move || t!(i18n, settings.theme_delete_confirm)}
                     </p>
-                    <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| close_delete.run(())
-                        >
-                            {move || t!(i18n, settings.cancel)}
-                        </Button>
-                        <Button
-                            variant=Variant::Danger
-                            size=Size::Sm
-                            on:click=move |_: web_sys::MouseEvent| confirm_delete.run(())
-                        >
-                            {move || t!(i18n, settings.theme_delete)}
-                        </Button>
-                    </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close_delete.run(())
+                >
+                    {move || t!(i18n, settings.cancel)}
+                </Button>
+                <Button
+                    variant=Variant::Danger
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| confirm_delete.run(())
+                >
+                    {move || t!(i18n, settings.theme_delete)}
+                </Button>
+            </DialogFooter>
         </Dialog>
     }
 }

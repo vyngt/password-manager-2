@@ -12,7 +12,7 @@ use leptos::either::Either;
 use leptos::prelude::*;
 use vedge_ipc::IndexEntryDto;
 use vedge_ui::components::Button;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::primitives::tokens::{DialogSize, Size, Variant};
 
 #[component]
@@ -67,26 +67,6 @@ pub fn FolderDelete(
                                     <p class="text-sm text-foreground/70">
                                         {move || t!(i18n, vault.folder_delete_empty_confirm)}
                                     </p>
-                                    <div class="flex justify-end gap-2">
-                                        <Button
-                                            variant=Variant::Ghost
-                                            size=Size::Sm
-                                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                                        >
-                                            {move || t!(i18n, vault.cancel)}
-                                        </Button>
-                                        <Button
-                                            variant=Variant::Danger
-                                            size=Size::Sm
-                                            on:click=move |_: web_sys::MouseEvent| {
-                                                if let Some(e) = target.get_untracked() {
-                                                    on_delete_folder.run(e.id);
-                                                }
-                                            }
-                                        >
-                                            {move || t!(i18n, vault.folder_delete)}
-                                        </Button>
-                                    </div>
                                 },
                             )
                         } else {
@@ -98,30 +78,54 @@ pub fn FolderDelete(
                                             t!(i18n, vault.folder_delete_not_empty, count = n)
                                         }}
                                     </p>
-                                    <div class="flex justify-end gap-2">
-                                        <Button
-                                            variant=Variant::Ghost
-                                            size=Size::Sm
-                                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                                        >
-                                            {move || t!(i18n, vault.cancel)}
-                                        </Button>
-                                        <Button
-                                            variant=Variant::Danger
-                                            size=Size::Sm
-                                            on:click=move |_: web_sys::MouseEvent| {
-                                                on_empty.run(contents());
-                                            }
-                                        >
-                                            {move || t!(i18n, vault.folder_empty_action)}
-                                        </Button>
-                                    </div>
                                 },
                             )
                         }
                     }}
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button
+                    variant=Variant::Ghost
+                    size=Size::Sm
+                    on:click=move |_: web_sys::MouseEvent| close.run(())
+                >
+                    {move || t!(i18n, vault.cancel)}
+                </Button>
+                {move || {
+                    if contents().is_empty() {
+                        Either::Left(
+                            view! {
+                                <Button
+                                    variant=Variant::Danger
+                                    size=Size::Sm
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        if let Some(e) = target.get_untracked() {
+                                            on_delete_folder.run(e.id);
+                                        }
+                                    }
+                                >
+                                    {move || t!(i18n, vault.folder_delete)}
+                                </Button>
+                            },
+                        )
+                    } else {
+                        Either::Right(
+                            view! {
+                                <Button
+                                    variant=Variant::Danger
+                                    size=Size::Sm
+                                    on:click=move |_: web_sys::MouseEvent| {
+                                        on_empty.run(contents());
+                                    }
+                                >
+                                    {move || t!(i18n, vault.folder_empty_action)}
+                                </Button>
+                            },
+                        )
+                    }
+                }}
+            </DialogFooter>
         </Dialog>
     }
 }

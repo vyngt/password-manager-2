@@ -15,7 +15,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use vedge_ui::components::feedback::toast::provider::use_toast;
 use vedge_ui::components::feedback::toast::types::ToastInput;
-use vedge_ui::components::feedback::{Dialog, DialogBody, DialogHeader, DialogTitle};
+use vedge_ui::components::feedback::{Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle};
 use vedge_ui::components::radio_group::{RadioGroup, RadioOption};
 use vedge_ui::components::{Button, Checkbox, Input};
 use vedge_ui::primitives::tokens::{DialogSize, Orientation, ToastVariant, Variant};
@@ -279,33 +279,28 @@ pub fn ExportDialog(
                         </div>
                     </Show>
 
-                    // ---- Actions ----
-                    <div class="flex justify-end gap-2">
-                        <Button
-                            variant=Variant::Ghost
-                            on:click=move |_: web_sys::MouseEvent| close.run(())
-                        >
-                            {move || t!(i18n, vault.cancel)}
-                        </Button>
-                        {move || {
-                            let b = busy.get();
-                            let disabled = b
-                                || (encrypted.get() && passphrase.get().trim().is_empty());
-                            view! {
-                                <Button
-                                    variant=Variant::Primary
-                                    loading=b
-                                    disabled=disabled
-                                    attr:data-testid="export-run"
-                                    on:click=move |_: web_sys::MouseEvent| do_export()
-                                >
-                                    {move || t!(i18n, settings.export_button)}
-                                </Button>
-                            }
-                        }}
-                    </div>
                 </div>
             </DialogBody>
+            <DialogFooter>
+                <Button variant=Variant::Ghost on:click=move |_: web_sys::MouseEvent| close.run(())>
+                    {move || t!(i18n, vault.cancel)}
+                </Button>
+                {move || {
+                    let b = busy.get();
+                    let disabled = b || (encrypted.get() && passphrase.get().trim().is_empty());
+                    view! {
+                        <Button
+                            variant=Variant::Primary
+                            loading=b
+                            disabled=disabled
+                            attr:data-testid="export-run"
+                            on:click=move |_: web_sys::MouseEvent| do_export()
+                        >
+                            {move || t!(i18n, settings.export_button)}
+                        </Button>
+                    }
+                }}
+            </DialogFooter>
         </Dialog>
     }
 }
