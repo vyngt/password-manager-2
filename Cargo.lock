@@ -8299,6 +8299,7 @@ dependencies = [
  "printpdf",
  "qrcodegen",
  "secrecy",
+ "semver",
  "serde",
  "serde_json",
  "tauri",

@@ -133,6 +133,9 @@ pub fn run() {
             commands::password::rotate_secret_key,
             commands::password::credential_status,
             commands::maintenance::run_maintenance,
+            // ---- version + update check (slice PG.3) ----
+            commands::update::app_version,
+            commands::update::check_for_update,
             // ---- export entries (slice 5.3a) ----
             commands::export::export_entries,
             // ---- import entries (slice 5.3b) ----
