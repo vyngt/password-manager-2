@@ -9,7 +9,7 @@ name: CI
 on:
   workflow_dispatch: {}
   pull_request:
-    branches: [develop, master]
+    branches: [develop, main]
 
 concurrency:
   group: ci-${{ github.ref }}

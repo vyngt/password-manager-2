@@ -88,9 +88,9 @@ in an opt-in CI job.
 Two CI substrates, so a fast dev pace never exhausts GitHub-hosted runner minutes:
 
 - **GitHub Actions — the authoritative PR gate.** `.github/workflows/ci.yml` runs the core gate
-  (`mise ci` + `mise audit`) on **`pull_request` into `develop`/`master` + manual dispatch only — no
+  (`mise ci` + `mise audit`) on **`pull_request` into `develop`/`main` + manual dispatch only — no
   `push` trigger**, so feature-branch commits fire nothing (≈ one run per PR). `.github/workflows/e2e.yml`
-  runs `mise e2e` on **`pull_request` into `develop`/`master` + a nightly `schedule`**, on a
+  runs `mise e2e` on **`pull_request` into `develop`/`main` + a nightly `schedule`**, on a
   **self-hosted Windows runner** (your machine already has WebView2 + msedgedriver) — so e2e is part of the
   PR gate (PG.2a). Honest caveat: an offline runner makes the PR check *queue* rather than fail; the nightly
   is the backstop. The e2e job enables the fast-KDF + in-memory-biometric seams via the harness env.

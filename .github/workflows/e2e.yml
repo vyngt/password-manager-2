@@ -16,7 +16,7 @@ name: e2e
 # machine is offline the PR check QUEUES rather than fails, so it cannot block a
 # merge on its own; the machine owner controls both. The nightly `schedule` is the
 # backstop: a regression cannot hide longer than ~24h even if a PR skipped the run.
-# (Scheduled runs use the workflow file from the default branch — `master` — and
+# (Scheduled runs use the workflow file from the default branch — `main` — and
 # are best-effort: silently skipped when the self-hosted runner is down.)
 #
 # Fork-PR note: this repo takes PRs only from its own branches, so running e2e on a
@@ -25,7 +25,7 @@ name: e2e
 # fork code on the owner's machine.
 on:
   pull_request:
-    branches: [develop, master]
+    branches: [develop, main]
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:

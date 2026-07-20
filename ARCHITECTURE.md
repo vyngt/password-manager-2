@@ -214,7 +214,7 @@ supply-chain gate (`cargo audit` + `cargo deny`). See [`docs/technical/testing.m
 [`README.md`](README.md#development) for the commands (`mise ci`, `mise audit`, `mise e2e`).
 
 CI runs on **two substrates**: GitHub Actions (`.github/workflows/ci.yml` — the authoritative PR gate,
-triggered by PR-into-`develop`/`master` + manual dispatch only, deliberately **no `push`**; `e2e.yml`
+triggered by PR-into-`develop`/`main` + manual dispatch only, deliberately **no `push`**; `e2e.yml`
 dispatch-only) and a local **Jenkins-in-Docker** controller (`Jenkinsfile` + `ci/jenkins/`) that runs
 the same core gate off GitHub — both pinned to the project's dev rust toolchain so CI clippy == local.
 The WebDriver e2e drives a fast, locale-independent (`data-testid`) daily-loop; its Argon2 fast-KDF and
