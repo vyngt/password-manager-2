@@ -214,3 +214,6 @@ about_licence_body: "VEdge is free and open-source software, released under the 
 about_copyright: "Copyright © 2026 VyNT"
 about_third_party: "Third-party software"
 about_third_party_desc: "VEdge bundles open-source components. Full licence texts are in THIRD-PARTY-NOTICES.txt, distributed with the app."
+# --- PG.5a contextual "?" help ---
+help_aria: "More information"
+help_password_vs_rekey: "Change your master password if the password itself leaked. Re-key the vault if the vault file may have been copied — re-keying re-encrypts everything under fresh keys, so an old copy can no longer be opened."

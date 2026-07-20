@@ -23,6 +23,7 @@ use vedge_ui::primitives::tokens::{
 use crate::api;
 use crate::api::dialog::{DialogFilter, SaveDialogOptions};
 use crate::api::error::ApiError;
+use crate::features::help_popover::HelpPopover;
 use crate::features::vault::context::ActiveVault;
 use crate::features::vault::secret_display::SecretDisplay;
 use crate::features::vault::timestamps::is_older_than_days;
@@ -156,8 +157,17 @@ pub fn RotateSecretKeySetting() -> impl IntoView {
     view! {
         <div class="flex items-start justify-between gap-5 py-3.5 border-b border-border">
             <div>
-                <div class="text-sm font-medium text-text-primary">
-                    {move || t!(i18n, settings.rotate_secret_key)}
+                <div class="flex items-center gap-1.5">
+                    <div class="text-sm font-medium text-text-primary">
+                        {move || t!(i18n, settings.rotate_secret_key)}
+                    </div>
+                    <HelpPopover
+                        body=Signal::derive(move || {
+                            t_string!(i18n, settings.rotate_keep_old_kit).to_owned()
+                        })
+                        label=Signal::derive(move || t_string!(i18n, settings.help_aria).to_owned())
+                        testid="help-rotate-secret-key"
+                    />
                 </div>
                 <div class="text-xs text-text-secondary mt-0.5">
                     {move || t!(i18n, settings.rotate_secret_key_desc)}

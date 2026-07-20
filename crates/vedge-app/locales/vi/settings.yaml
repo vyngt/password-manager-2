@@ -208,3 +208,6 @@ about_licence_body: "VEdge là phần mềm miễn phí và mã nguồn mở, ph
 about_copyright: "Bản quyền © 2026 VyNT"
 about_third_party: "Phần mềm của bên thứ ba"
 about_third_party_desc: "VEdge sử dụng các thành phần mã nguồn mở. Toàn văn giấy phép nằm trong THIRD-PARTY-NOTICES.txt, được phân phối kèm ứng dụng."
+# --- PG.5a trợ giúp theo ngữ cảnh (?) ---
+help_aria: "Thông tin thêm"
+help_password_vs_rekey: "Đổi mật khẩu chính nếu chính mật khẩu bị lộ. Tạo khóa lại cho kho nếu tệp kho có thể đã bị sao chép — việc tạo khóa lại mã hóa lại mọi thứ bằng khóa mới, nên bản sao cũ không còn mở được nữa."
