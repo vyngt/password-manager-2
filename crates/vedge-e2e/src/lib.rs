@@ -361,6 +361,13 @@ impl Session {
     /// that only greps the reactive-context warning was blind to them. `unreachable`
     /// / `panicked` are also matched directly, in case a panic ever arrives via
     /// `console.error` instead of the `error` event.
+    ///
+    /// - a **Content-Security-Policy violation** (PG.2). A throwing block (dropping
+    ///   `'wasm-unsafe-eval'` → `WebAssembly.instantiate` faults) already surfaces
+    ///   as `uncaught:`, but a NON-throwing one — an `img-src`/`connect-src` beacon
+    ///   block — only emits a `console.error` ("Refused to … Content Security Policy
+    ///   directive …"), which every match above would miss. Matching the phrase
+    ///   turns every e2e scenario into a standing CSP regression test.
     pub async fn assert_console_clean(&self) -> Result<()> {
         let bad: Vec<String> = self
             .console_messages()
@@ -372,6 +379,7 @@ impl Session {
                     || m.starts_with("rejection:")
                     || m.contains("unreachable")
                     || m.contains("panicked")
+                    || m.contains("Content Security Policy")
             })
             .collect();
         if !bad.is_empty() {
