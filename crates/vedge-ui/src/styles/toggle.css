@@ -1,0 +1,100 @@
+@layer components {
+  /* ============================================================
+     Toggle — root label
+     ============================================================ */
+  .toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  /* ---- Hidden native input ---- */
+  .toggle__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  /* ---- Track (pill background) ---- */
+  .toggle__track {
+    border-radius: var(--radius-full);
+    background: var(--color-surface-3);
+    transition: background-color var(--duration-fast) var(--ease-out);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .toggle--sm .toggle__track { width: 32px; height: 18px; }
+  .toggle--md .toggle__track { width: 44px; height: 24px; }
+
+  /* ---- Thumb (sliding circle) ---- */
+  .toggle__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    background: #ffffff;
+    border-radius: var(--radius-full);
+    transition:
+      transform var(--duration-fast) var(--ease-in-out),
+      width     var(--duration-micro) var(--ease-out);
+  }
+
+  .toggle--sm .toggle__thumb { width: 14px; height: 14px; }
+  .toggle--md .toggle__thumb { width: 20px; height: 20px; }
+
+  /* ---- On state ---- */
+  .toggle__input:checked ~ .toggle__track {
+    background: var(--color-primary);
+  }
+
+  .toggle--sm .toggle__input:checked ~ .toggle__track .toggle__thumb {
+    transform: translateX(14px);
+  }
+
+  .toggle--md .toggle__input:checked ~ .toggle__track .toggle__thumb {
+    transform: translateX(20px);
+  }
+
+  /* ---- Hover ---- */
+  .toggle:hover:not(.toggle--disabled) .toggle__input:not(:checked) ~ .toggle__track {
+    background: var(--color-surface-4);
+  }
+
+  .toggle:hover:not(.toggle--disabled) .toggle__input:checked ~ .toggle__track {
+    background: var(--color-primary-hover);
+  }
+
+  /* ---- Active thumb stretch ---- */
+  .toggle:active:not(.toggle--disabled) .toggle--sm .toggle__thumb,
+  .toggle--sm.toggle:active:not(.toggle--disabled) .toggle__thumb {
+    width: 18px;
+  }
+
+  .toggle:active:not(.toggle--disabled) .toggle--md .toggle__thumb,
+  .toggle--md.toggle:active:not(.toggle--disabled) .toggle__thumb {
+    width: 24px;
+  }
+
+  /* ---- Focus ---- */
+  .toggle__input:focus-visible ~ .toggle__track {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* ---- Disabled ---- */
+  .toggle--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .toggle__track,
+    .toggle__thumb {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

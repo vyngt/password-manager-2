@@ -1,0 +1,117 @@
+@layer components {
+  /* ============================================================
+     Sidebar Item — Tier 2 composite: icon + label + optional badge
+     ============================================================ */
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: 32px;
+    padding: 0 var(--space-2);
+    border: none;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-normal);
+    line-height: 1;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    transition:
+      background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  /* Hover — only when not selected and not disabled */
+  .sidebar-item:hover:not(.sidebar-item--disabled):not(.sidebar-item--selected) {
+    background: var(--color-surface-1);
+    color: var(--color-text-primary);
+  }
+
+  /* Active (press) */
+  .sidebar-item:active:not(.sidebar-item--disabled) {
+    background: var(--color-surface-2);
+    transition-duration: var(--duration-micro);
+  }
+
+  /* Focus ring */
+  .sidebar-item:focus-visible {
+    outline-color: var(--color-focus-ring);
+    transition: none;
+  }
+
+  /* Selected — route is active; transition is instant */
+  .sidebar-item--selected {
+    background: var(--color-surface-3);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium);
+    transition: none;
+  }
+
+  /* Disabled */
+  .sidebar-item--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Icon slot — 16x16, decorative */
+  .sidebar-item__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+  .sidebar-item__icon > svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .sidebar-item:hover:not(.sidebar-item--disabled):not(.sidebar-item--selected) .sidebar-item__icon,
+  .sidebar-item:active:not(.sidebar-item--disabled):not(.sidebar-item--selected) .sidebar-item__icon {
+    color: var(--color-text-secondary);
+  }
+
+  .sidebar-item--selected .sidebar-item__icon {
+    color: var(--color-primary);
+    transition: none;
+  }
+
+  /* Label — truncates with ellipsis */
+  .sidebar-item__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Badge slot — trailing edge */
+  .sidebar-item__badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  /* Indent levels */
+  .sidebar-item--indent-1 { padding-left: calc(var(--space-2) + var(--space-4)); }
+  .sidebar-item--indent-2 { padding-left: calc(var(--space-2) + 2 * var(--space-4)); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-item,
+    .sidebar-item__icon {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

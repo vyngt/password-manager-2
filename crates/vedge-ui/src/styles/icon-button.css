@@ -1,0 +1,95 @@
+@layer components {
+  /* ============================================================
+     IconButton — base (square, icon centered)
+     ============================================================ */
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: var(--radius); /* 6px default, overridden by shape */
+    border: 0.5px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    transition:
+      background-color var(--duration-fast)  var(--ease-out),
+      border-color     var(--duration-fast)  var(--ease-out),
+      color            var(--duration-fast)  var(--ease-out),
+      transform        var(--duration-micro) var(--ease-out);
+  }
+
+  /* ---- Sizes — always square (width = height) ---- */
+  .icon-btn--sm { width: var(--height-sm); height: var(--height-sm); }
+  .icon-btn--md { width: var(--height-md); height: var(--height-md); }
+  .icon-btn--lg { width: var(--height-lg); height: var(--height-lg); }
+
+  /* ---- Shape ---- */
+  .icon-btn--square     { border-radius: var(--radius-none); }  /* 0px */
+  .icon-btn--rounded-sm { border-radius: var(--radius-sm); }    /* 4px */
+  .icon-btn--rounded    { border-radius: var(--radius); }       /* 6px — default */
+  .icon-btn--pill       { border-radius: var(--radius-full); }  /* 9999px — circle */
+
+  /* ---- Icon sizing ---- */
+  .icon-btn--sm > svg { width: 14px; height: 14px; }
+  .icon-btn--md > svg { width: 16px; height: 16px; }
+  .icon-btn--lg > svg { width: 20px; height: 20px; }
+
+  /* ---- Variants ---- */
+  .icon-btn--primary   { background: var(--color-primary);   color: var(--color-primary-foreground); }
+  .icon-btn--secondary { background: var(--color-surface-1); color: var(--color-text-primary); border-color: var(--color-border); }
+  .icon-btn--ghost     { background: transparent;            color: var(--color-text-secondary); }
+  .icon-btn--danger    { background: var(--color-danger);    color: var(--color-danger-foreground); }
+  .icon-btn--warning   { background: var(--color-warning);   color: var(--color-warning-foreground); }
+
+  /* ---- Hover ---- */
+  .icon-btn--primary:hover:not(:disabled)   { background: var(--color-primary-hover); }
+  .icon-btn--secondary:hover:not(:disabled) { background: var(--color-surface-2); }
+  .icon-btn--ghost:hover:not(:disabled)     { background: var(--color-surface-2); color: var(--color-text-primary); }
+  .icon-btn--danger:hover:not(:disabled)    { background: var(--color-danger-hover); }
+  .icon-btn--warning:hover:not(:disabled)   { background: var(--color-warning-hover); }
+
+  /* ---- Focus ---- */
+  .icon-btn:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* ---- Active ---- */
+  .icon-btn:active:not(:disabled):not(.icon-btn--loading) {
+    transform: scale(0.97);
+  }
+
+  /* ---- Disabled ---- */
+  .icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ---- Loading ---- */
+  .icon-btn--loading {
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  /* ---- Spinner ---- */
+  @keyframes icon-btn-spin { to { transform: rotate(360deg); } }
+
+  .icon-btn__spinner {
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: icon-btn-spin 700ms linear infinite;
+    flex-shrink: 0;
+  }
+  .icon-btn--sm .icon-btn__spinner { width: 13px; height: 13px; }
+  .icon-btn--md .icon-btn__spinner { width: 14px; height: 14px; }
+  .icon-btn--lg .icon-btn__spinner { width: 16px; height: 16px; }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .icon-btn { transition-duration: 0.01ms !important; }
+    .icon-btn__spinner { animation-duration: 0.01ms !important; }
+  }
+}

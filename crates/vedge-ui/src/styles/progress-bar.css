@@ -1,0 +1,57 @@
+@layer components {
+  /* ============================================================
+     ProgressBar — determinate horizontal progress indicator
+     ============================================================ */
+  .progress {
+    width: 100%;
+  }
+
+  .progress__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .progress__label {
+    color: var(--color-text-secondary);
+  }
+
+  .progress__value {
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress__track {
+    width: 100%;
+    background: var(--color-surface-3);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+
+  .progress__track--sm { height: 4px; }
+  .progress__track--md { height: 8px; }
+  .progress__track--lg { height: 12px; }
+
+  .progress__fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    will-change: width;
+  }
+
+  /* Transition is added after first paint via the --animated modifier so the
+     initial render does not animate from 0 to the current value. */
+  .progress__fill--animated {
+    transition: width var(--duration-base) var(--ease-out);
+  }
+
+  .progress__fill--success { background: var(--color-success); }
+  .progress__fill--danger  { background: var(--color-danger); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress__fill--animated { transition-duration: 0.01ms !important; }
+  }
+}

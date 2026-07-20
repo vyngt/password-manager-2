@@ -1,0 +1,40 @@
+@layer components {
+    /* ============================================================
+     Spinner — animated loading indicator
+     ============================================================ */
+    @keyframes spinner-rotate {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .spinner {
+        display: inline-block;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spinner-rotate 700ms linear infinite;
+        flex-shrink: 0;
+    }
+
+    /* ---- Sizes ---- */
+    .spinner--sm {
+        width: 13px;
+        height: 13px;
+    }
+    .spinner--md {
+        width: 16px;
+        height: 16px;
+    }
+    .spinner--lg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* ---- Reduced motion ---- */
+    @media (prefers-reduced-motion: reduce) {
+        .spinner {
+            animation: none;
+        }
+    }
+}

@@ -1,0 +1,51 @@
+@layer components {
+  /* ============================================================
+     Label — base
+     ============================================================ */
+  .label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-1); /* 4px */
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    cursor: default;
+    user-select: none;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  /* ---- Focus propagation — driven by FormField :focus-within ---- */
+  .form-field:focus-within .label {
+    color: var(--color-text-primary);
+  }
+
+  /* ---- Status overrides — take priority over focus ---- */
+  .label--error   { color: var(--color-danger-text);  transition-duration: var(--duration-instant); }
+  .label--success { color: var(--color-success-text); }
+  .label--warning { color: var(--color-warning-text); }
+
+  /* ---- Disabled ---- */
+  .label--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ---- Required asterisk ---- */
+  .label__required {
+    color: var(--color-danger-text);
+  }
+
+  /* ---- Optional indicator ---- */
+  .label__optional {
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-tertiary);
+  }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .label { transition-duration: 0.01ms !important; }
+  }
+}

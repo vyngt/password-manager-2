@@ -1,0 +1,64 @@
+@layer components {
+  .strength-meter {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .strength-meter__track {
+    display: flex;
+    gap: 4px;
+  }
+
+  .strength-meter__segment {
+    flex: 1;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-3);
+  }
+
+  /* Filled segments animate IN (score increase) */
+  .strength-meter__segment[data-filled="true"] {
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  /* Unfilled segments snap OUT instantly (score decrease) */
+  .strength-meter__segment[data-filled="false"] {
+    transition: background-color 0ms;
+  }
+
+  /* Score-based colors for filled segments */
+  .strength-meter[data-score="1"] .strength-meter__segment[data-filled="true"] {
+    background: var(--color-danger);
+  }
+  .strength-meter[data-score="2"] .strength-meter__segment[data-filled="true"] {
+    background: var(--color-warning);
+  }
+  .strength-meter[data-score="3"] .strength-meter__segment[data-filled="true"] {
+    background: var(--color-primary);
+  }
+  .strength-meter[data-score="4"] .strength-meter__segment[data-filled="true"] {
+    background: var(--color-success);
+  }
+
+  /* Label */
+  .strength-meter__label {
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: var(--font-weight-medium);
+    text-align: right;
+    min-height: 16px;
+    color: transparent;
+  }
+
+  .strength-meter[data-score="1"] .strength-meter__label { color: var(--color-danger-text); }
+  .strength-meter[data-score="2"] .strength-meter__label { color: var(--color-warning-text); }
+  .strength-meter[data-score="3"] .strength-meter__label { color: var(--color-primary-text); }
+  .strength-meter[data-score="4"] .strength-meter__label { color: var(--color-success-text); }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .strength-meter__segment { transition-duration: 0.01ms !important; }
+  }
+}

@@ -1,0 +1,108 @@
+@layer components {
+  /* ============================================================
+     Dropdown Menu — Tier 2: floating action list
+     ============================================================ */
+  .dropdown-menu-trigger {
+    display: inline-flex;
+  }
+
+  .menu-panel {
+    min-width: 160px;
+    max-width: 280px;
+    padding: var(--space-1);
+    margin: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .menu-panel > li {
+    display: block;
+    margin: 0;
+    padding: 0;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: 32px;
+    padding: 0 var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    text-align: left;
+    text-decoration: none;
+    transition: background 100ms var(--ease-out);
+    /* Menus use background highlight for focus indication — no outline ring. */
+    outline: none;
+  }
+
+  .menu-item:hover:not(.menu-item--disabled),
+  .menu-item:focus:not(.menu-item--disabled) {
+    background: var(--color-surface-2);
+  }
+
+  .menu-item:active:not(.menu-item--disabled) {
+    background: var(--color-surface-3);
+    transition-duration: 80ms;
+  }
+
+  .menu-item--danger { color: var(--color-danger-text); }
+  .menu-item--danger:hover,
+  .menu-item--danger:focus { background: var(--color-danger-muted); }
+
+  .menu-item--disabled {
+    color: var(--color-text-tertiary);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .menu-item__icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .menu-item--danger .menu-item__icon { color: var(--color-danger-text); }
+  .menu-item__icon > svg { width: 100%; height: 100%; }
+
+  .menu-item__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .menu-item__hint {
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+
+  .menu-group-label {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    user-select: none;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Separator inside the menu — slightly less padding than the default */
+  .menu-panel .separator {
+    margin: var(--space-1) 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu-item { transition-duration: 0.01ms !important; }
+  }
+}

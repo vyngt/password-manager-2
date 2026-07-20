@@ -1,0 +1,111 @@
+@layer components {
+  /* ============================================================
+     SegmentedControl — track (pill container)
+     ============================================================ */
+  .segmented {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    background: var(--color-surface-2);
+    border-radius: var(--radius);
+    padding: 2px;
+    gap: 0;
+  }
+
+  .segmented--sm { height: 28px; }
+  .segmented--md { height: 32px; }
+
+  /* ============================================================
+     Active indicator — slides between segments
+     ============================================================ */
+  .segmented__indicator {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    background: var(--color-surface-1);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--duration-fast) var(--ease-in-out),
+                width     var(--duration-fast) var(--ease-in-out);
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     Segment button
+     ============================================================ */
+  .segmented__btn {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    transition: color var(--duration-fast) var(--ease-out);
+    user-select: none;
+    outline: none;
+  }
+
+  .segmented--sm .segmented__btn {
+    padding: 0 10px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+  }
+
+  .segmented--md .segmented__btn {
+    padding: 0 12px;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+  }
+
+  /* ---- Active segment ---- */
+  .segmented__btn[aria-checked="true"] {
+    color: var(--color-text-primary);
+  }
+
+  /* ---- Hover (inactive only) ---- */
+  .segmented__btn:hover:not([aria-checked="true"]):not(:disabled) {
+    color: var(--color-text-primary);
+  }
+
+  /* ---- Focus ---- */
+  .segmented__btn:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: -1px;
+  }
+
+  /* ---- Icon sizing ---- */
+  .segmented__btn svg {
+    flex-shrink: 0;
+  }
+
+  .segmented--sm .segmented__btn svg { width: 14px; height: 14px; }
+  .segmented--md .segmented__btn svg { width: 16px; height: 16px; }
+
+  /* ---- Disabled (individual) ---- */
+  .segmented__btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ---- Disabled (entire control) ---- */
+  .segmented--disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .segmented__indicator { transition-duration: 0.01ms !important; }
+    .segmented__btn { transition-duration: 0.01ms !important; }
+  }
+}

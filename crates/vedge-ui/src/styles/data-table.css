@@ -1,0 +1,204 @@
+@layer components {
+  /* Shell */
+  .data-table-wrapper {
+    position: relative;
+    overflow: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .data-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+  }
+
+  /* Header */
+  .data-table thead tr {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--color-surface-1);
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+
+  .data-table__th {
+    height: var(--height-md);
+    padding: 0 var(--space-3);
+    text-align: start;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+  }
+
+  .data-table__th--end {
+    text-align: end;
+  }
+
+  .data-table__th--mono {
+    font-family: var(--font-mono);
+  }
+
+  .data-table__th--action {
+    text-align: end;
+  }
+
+  .data-table__sort-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .data-table__sort-btn:hover {
+    color: var(--color-text-primary);
+  }
+
+  .data-table__sort-btn:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .data-table__sort-icon {
+    display: inline-block;
+    width: 12px;
+    margin-left: var(--space-1);
+    color: var(--color-text-primary);
+    vertical-align: middle;
+    line-height: 1;
+  }
+
+  .data-table__sort-icon--inactive {
+    color: var(--color-text-tertiary);
+  }
+
+  /* Checkbox column — 44px, always first */
+  .data-table__th--checkbox,
+  .data-table__td--checkbox {
+    width: 44px;
+    padding: 0;
+    text-align: center;
+  }
+
+  .data-table__th--checkbox > *,
+  .data-table__td--checkbox > * {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Body rows */
+  .data-table tbody tr {
+    height: var(--height-entry);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-background);
+    transition: background-color var(--duration-fast) var(--ease-out);
+    outline: none;
+  }
+
+  .data-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .data-table tbody tr:hover {
+    background: var(--color-surface-2);
+  }
+
+  .data-table tbody tr[aria-selected="true"] {
+    background: var(--color-surface-3);
+    transition: none;
+  }
+
+  .data-table__row--clickable {
+    cursor: pointer;
+  }
+
+  .data-table tbody tr:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: -2px;
+  }
+
+  /* Body cells */
+  .data-table__td {
+    padding: 0 var(--space-3);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  .data-table__td--end {
+    text-align: end;
+  }
+
+  .data-table__td--mono {
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+  }
+
+  .data-table__td--date {
+    color: var(--color-text-secondary);
+    text-align: end;
+  }
+
+  .data-table__td--action {
+    text-align: end;
+    overflow: visible;
+  }
+
+  /* Empty state */
+  .data-table__empty {
+    height: 200px;
+    text-align: center;
+    vertical-align: middle;
+    color: var(--color-text-tertiary);
+    font-size: var(--text-sm);
+  }
+
+  .data-table__empty-content {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .data-table__empty-icon {
+    color: var(--color-text-tertiary);
+  }
+
+  /* Loading overlay */
+  .data-table__loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-background) 60%, transparent);
+    border-radius: var(--radius-lg);
+    pointer-events: none;
+  }
+
+  .data-table-wrapper--loading tbody tr {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .data-table tbody tr {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

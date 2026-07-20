@@ -1,0 +1,134 @@
+@layer components {
+  /* ============================================================
+     Avatar — identity representation (image / initials / fallback)
+     ============================================================ */
+  .avatar-root {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+    overflow: visible;
+    background: var(--color-surface-2);
+    font-family: var(--font-sans);
+  }
+
+  button.avatar-root {
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: box-shadow var(--duration-fast) var(--ease-out),
+                transform var(--duration-micro) var(--ease-out);
+  }
+
+  /* Media clipping — overflow hides the image & initials at the circle edge.
+     Status indicator sits outside this clipping region (avatar-status-wrap). */
+  .avatar-root::before {
+    content: none;
+  }
+
+  /* ---- Sizes ---- */
+  .avatar-root--xs { width: 20px; height: 20px; }
+  .avatar-root--sm { width: 28px; height: 28px; }
+  .avatar-root--md { width: 36px; height: 36px; }
+  .avatar-root--lg { width: 44px; height: 44px; }
+  .avatar-root--xl { width: 64px; height: 64px; }
+
+  /* ---- Media clip (image + fallback share this inner surface) ---- */
+  .avatar-media {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    background: var(--color-surface-2);
+  }
+
+  /* ---- Image ---- */
+  .avatar-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-full);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+  .avatar-image--loaded { opacity: 1; }
+  .avatar-image[aria-hidden="true"] { display: none; }
+
+  /* ---- Initials ---- */
+  .avatar-initials {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    line-height: 1;
+    text-transform: uppercase;
+    user-select: none;
+  }
+  .avatar-root--xs .avatar-initials,
+  .avatar-root--sm .avatar-initials { font-size: var(--text-xs); }
+  .avatar-root--md .avatar-initials { font-size: var(--text-sm); }
+  .avatar-root--lg .avatar-initials { font-size: var(--text-base); }
+  .avatar-root--xl .avatar-initials {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  /* ---- Fallback icon ---- */
+  .avatar-fallback-icon {
+    width: 55%;
+    height: 55%;
+    color: var(--color-text-tertiary);
+  }
+
+  /* ---- Interactive states ---- */
+  button.avatar-root:hover:not(:disabled) {
+    box-shadow: 0 0 0 3px var(--color-primary-muted);
+  }
+  button.avatar-root:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    transition-duration: 0ms;
+  }
+  button.avatar-root:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  button.avatar-root:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ---- Status indicator ---- */
+  .avatar-status-wrap {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: inline-flex;
+    line-height: 0;
+    pointer-events: none;
+  }
+  .avatar-status {
+    display: block;
+    border-radius: var(--radius-full);
+    border: 2px solid var(--color-background);
+  }
+  .avatar-root--xs .avatar-status { width: 6px;  height: 6px;  }
+  .avatar-root--sm .avatar-status { width: 7px;  height: 7px;  }
+  .avatar-root--md .avatar-status { width: 8px;  height: 8px;  }
+  .avatar-root--lg .avatar-status { width: 10px; height: 10px; }
+  .avatar-root--xl .avatar-status { width: 12px; height: 12px; }
+
+  .avatar-status--online  { background: var(--color-success); }
+  .avatar-status--away    { background: var(--color-warning); }
+  .avatar-status--busy    { background: var(--color-danger);  }
+  .avatar-status--offline { background: var(--color-surface-3); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .avatar-image { transition-duration: 0.01ms !important; }
+    button.avatar-root { transition-duration: 0.01ms !important; }
+  }
+}

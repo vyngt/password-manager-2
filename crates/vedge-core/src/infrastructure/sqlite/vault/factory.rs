@@ -1,0 +1,56 @@
+//! `SqliteVaultRepositoryFactory` — opens a `.vdb`, runs migrations,
+//! returns a live `Arc<dyn VaultRepository>`. Implementation of the
+//! `VaultRepositoryFactory` port.
+
+use std::path::Path;
+use std::sync::Arc;
+
+use async_trait::async_trait;
+
+use crate::application::vault::ports::VaultRepositoryFactory;
+use crate::application::vault::ports::repository::VaultRepository;
+use crate::domain::vault::errors::VaultError;
+use crate::infrastructure::sqlite::vault::{SqliteVaultRepository, VaultDbConnection};
+
+pub struct SqliteVaultRepositoryFactory;
+
+impl SqliteVaultRepositoryFactory {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for SqliteVaultRepositoryFactory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl VaultRepositoryFactory for SqliteVaultRepositoryFactory {
+    async fn open(&self, vault_path: &Path) -> Result<Arc<dyn VaultRepository>, VaultError> {
+        let db = VaultDbConnection::open(vault_path)
+            .await
+            .map_err(VaultError::Storage)?;
+        Ok(Arc::new(SqliteVaultRepository::new(db.handle())))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    #[tokio::test]
+    async fn factory_opens_fresh_vault() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("smoke.vdb");
+        let factory = SqliteVaultRepositoryFactory::new();
+        let repo = factory.open(&path).await.unwrap();
+        // Fresh vault — migrations ran but no entries inserted.
+        let rows = repo.all_entries().await.unwrap();
+        assert!(rows.is_empty());
+    }
+}

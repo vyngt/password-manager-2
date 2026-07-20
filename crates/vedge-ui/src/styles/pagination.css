@@ -1,0 +1,68 @@
+@layer components {
+  /* ============================================================
+     Pagination — composite bar (Select + Button row)
+     ============================================================ */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+  }
+
+  /* Left zone: items-per-page */
+  .pagination__size-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .pagination__size-control label {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  /* Center zone: summary label */
+  .pagination__summary {
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Right zone: page controls */
+  .pagination__controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  /* Page number cell — applied as a class prop on Button */
+  .pagination__page-btn {
+    min-width: 32px;
+  }
+
+  /* Ellipsis — non-interactive */
+  .pagination__ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: var(--height-sm);
+    color: var(--color-text-tertiary);
+    user-select: none;
+    padding: 0 var(--space-1);
+    font-size: var(--text-sm);
+  }
+
+  /* Compact-model label */
+  .pagination__compact-label {
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+  }
+}

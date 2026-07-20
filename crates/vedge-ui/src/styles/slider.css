@@ -1,0 +1,102 @@
+@layer components {
+  /* ============================================================
+     Slider — horizontal range control (single thumb)
+     ============================================================ */
+  .slider-root {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    user-select: none;
+    touch-action: none;
+  }
+
+  /* Leave vertical space above the thumb for the floating value label. */
+  .slider-root--with-label {
+    padding-top: calc(var(--text-xs--line-height) + var(--space-1));
+  }
+
+  .slider-track {
+    position: relative;
+    flex: 1;
+    background: var(--color-surface-3);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+  }
+
+  .slider-root--sm .slider-track { height: 3px; }
+  .slider-root--md .slider-track { height: 4px; }
+  .slider-root--lg .slider-track { height: 6px; }
+
+  .slider-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background: var(--color-primary);
+    border-radius: var(--radius-full);
+    pointer-events: none;
+  }
+
+  .slider-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    background: var(--color-background);
+    border: 1.5px solid var(--color-border-strong);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-sm);
+    cursor: grab;
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .slider-root--sm .slider-thumb { width: 14px; height: 14px; }
+  .slider-root--md .slider-thumb { width: 18px; height: 18px; }
+  .slider-root--lg .slider-thumb { width: 24px; height: 24px; }
+
+  .slider-thumb:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+    box-shadow: var(--shadow-md);
+  }
+
+  .slider-thumb[data-dragging="true"],
+  .slider-thumb:active {
+    transform: translate(-50%, -50%) scale(1.25);
+    box-shadow: var(--shadow-md);
+    cursor: grabbing;
+    transition:
+      transform var(--duration-micro) var(--ease-spring),
+      box-shadow var(--duration-micro) var(--ease-out);
+  }
+
+  .slider-thumb:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    transition-duration: 0ms;
+  }
+
+  .slider-value-label {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--text-xs--line-height);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .slider-root[data-disabled="true"] {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slider-thumb { transition-duration: 0.01ms !important; }
+  }
+}

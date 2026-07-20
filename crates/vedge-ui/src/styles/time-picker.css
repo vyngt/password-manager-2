@@ -1,0 +1,96 @@
+@layer components {
+  .timepicker-root {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: var(--height-md);
+    padding: 0 12px;
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: text;
+    transition: border-color var(--duration-fast) var(--ease-out);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    color: var(--color-text-primary);
+    user-select: none;
+    min-width: 0;
+  }
+
+  .timepicker-root:hover:not(.timepicker-root--disabled) {
+    border-color: var(--color-border-strong);
+  }
+
+  .timepicker-root:focus-within:not(.timepicker-root--disabled) {
+    border-color: var(--color-primary);
+    outline-color: var(--color-focus-ring);
+  }
+
+  .timepicker-root--error {
+    border-color: var(--color-danger);
+    transition-duration: var(--duration-instant);
+  }
+
+  .timepicker-root--error:focus-within {
+    border-color: var(--color-danger);
+  }
+
+  .timepicker-root--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .timepicker-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+
+  .timepicker-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .timepicker-segment {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 22px;
+    padding: 0 3px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+  }
+
+  .timepicker-segment--empty {
+    color: var(--color-text-tertiary);
+  }
+
+  .timepicker-segment--active {
+    background: var(--color-primary-muted);
+    color: var(--color-primary);
+  }
+
+  .timepicker-separator {
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+    padding: 0 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .timepicker-root {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

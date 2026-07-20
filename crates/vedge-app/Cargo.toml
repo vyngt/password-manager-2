@@ -1,0 +1,29 @@
+[package]
+name = "vedge-app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+leptos = { version = "0.8.19", features = ["csr"] }
+leptos_icons = "0.7.1"
+leptos_router = "0.8.13"
+reactive_stores = "0.4.3"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+web-sys = { version = "0.3.95", features = ["HtmlElement", "Element", "Window", "Document", "DomRect", "MouseEvent", "NodeList", "DomTokenList"] }
+wasm-bindgen = "0.2"
+icondata = "0.7.0"
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen-futures = "0.4.68"
+uuid = { version = "1.23.1", features = ["v4", "js"] }
+vedge-ui = {path = "../vedge-ui"}
+leptos_i18n = { version = "0.6.2", features = ["csr"] }
+chrono = { version = "0.4.44", default-features = false, features = ["clock", "wasmbind"] }
+thiserror = "2"
+vedge-ipc = { path = "../vedge-ipc" }
+
+[build-dependencies]
+leptos_i18n_build = { version = "0.6.2", features = ["csr"] }
+
+# TODO(lint-adoption): opt into `[lints] workspace = true` after the UI-layer
+# cleanup pass. See docs/CoreTracking.md §"Lint adoption".

@@ -1,0 +1,63 @@
+@layer components {
+  /* ============================================================
+     Separator — visual divider
+     ============================================================ */
+
+  /* ---- Horizontal (plain <hr>) ---- */
+  .separator--horizontal {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: var(--color-border);
+    border: none;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  /* ---- Vertical ---- */
+  .separator--vertical {
+    display: block;
+    width: 1px;
+    height: auto;
+    align-self: stretch;
+    background: var(--color-border);
+    flex-shrink: 0;
+  }
+
+  /* ---- Strong ---- */
+  .separator--strong.separator--horizontal,
+  .separator--strong.separator--vertical {
+    background: var(--color-border-strong);
+  }
+
+  /* ---- Labeled (horizontal only) ---- */
+  .separator--labeled {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .separator__line {
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+  }
+
+  .separator--strong .separator__line {
+    background: var(--color-border-strong);
+  }
+
+  .separator__label {
+    flex-shrink: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    user-select: none;
+  }
+}

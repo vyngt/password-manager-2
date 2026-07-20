@@ -1,0 +1,56 @@
+@layer components {
+  /* ============================================================
+     Popover — Tier 2: non-blocking floating panel
+     ============================================================ */
+  .popover-panel {
+    position: fixed;
+    z-index: 40;
+    background: var(--color-surface-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-1);
+    min-width: 120px;
+    outline: none;
+  }
+
+  /* Hidden until the first position calculation resolves, so the panel
+     never flashes at (0,0) before placement is computed. */
+  .popover-panel[data-positioned="false"] {
+    visibility: hidden;
+  }
+
+  @keyframes popover-enter-bottom {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0);  }
+  }
+  @keyframes popover-enter-top {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0);   }
+  }
+  @keyframes popover-enter-right {
+    from { opacity: 0; transform: translateX(4px); }
+    to   { opacity: 1; transform: translateX(0);  }
+  }
+  @keyframes popover-enter-left {
+    from { opacity: 0; transform: translateX(-4px); }
+    to   { opacity: 1; transform: translateX(0);   }
+  }
+
+  .popover-panel[data-placement^="bottom"] { animation: popover-enter-bottom var(--duration-fast) var(--ease-out); }
+  .popover-panel[data-placement^="top"]    { animation: popover-enter-top    var(--duration-fast) var(--ease-out); }
+  .popover-panel[data-placement^="right"]  { animation: popover-enter-right  var(--duration-fast) var(--ease-out); }
+  .popover-panel[data-placement^="left"]   { animation: popover-enter-left   var(--duration-fast) var(--ease-out); }
+
+  @keyframes popover-exit {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  .popover-panel[data-state="closing"] {
+    animation: popover-exit 100ms var(--ease-in) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .popover-panel { animation-duration: 0.01ms !important; }
+  }
+}

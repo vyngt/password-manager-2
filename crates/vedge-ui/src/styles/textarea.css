@@ -1,0 +1,84 @@
+@layer components {
+  /* ============================================================
+     Textarea — bare <textarea> element (no wrapper)
+     ============================================================ */
+  .textarea {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    padding: 8px 12px;
+    resize: none;
+    overflow-y: auto;
+    caret-color: var(--color-primary);
+    transition: border-color var(--duration-fast) var(--ease-out);
+    field-sizing: content;
+  }
+
+  /* ---- Sizes ---- */
+  .textarea--sm {
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    padding: 6px 10px;
+  }
+
+  .textarea--lg {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    padding: 10px 16px;
+  }
+
+  /* ---- Placeholder ---- */
+  .textarea::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  /* ---- Hover ---- */
+  .textarea:hover:not(:focus):not(:disabled):not([readonly]):not(.textarea--error):not(.textarea--success):not(.textarea--warning) {
+    border-color: var(--color-border-strong);
+  }
+
+  /* ---- Focus — 2px border with padding compensation ---- */
+  .textarea:focus {
+    outline: none;
+    border: 2px solid var(--color-focus-ring);
+    transition: none;
+  }
+
+  /* Padding compensation per size: reduce by 1px each side */
+  .textarea:focus                { padding: 7px 11px; }
+  .textarea--sm:focus            { padding: 5px 9px; }
+  .textarea--lg:focus            { padding: 9px 15px; }
+
+  /* ---- Status (instant) ---- */
+  .textarea--error   { border-color: var(--color-danger);  transition-duration: var(--duration-instant); }
+  .textarea--success { border-color: var(--color-success); }
+  .textarea--warning { border-color: var(--color-warning); }
+
+  /* Error stays red on focus */
+  .textarea--error:focus { border-color: var(--color-danger); }
+
+  /* ---- Disabled ---- */
+  .textarea:disabled,
+  .textarea--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ---- Read-only ---- */
+  .textarea[readonly] {
+    background: var(--color-surface-1);
+    cursor: default;
+  }
+
+  /* ---- Reduced motion ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .textarea { transition-duration: 0.01ms !important; }
+  }
+}

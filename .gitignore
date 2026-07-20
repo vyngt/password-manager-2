@@ -1,0 +1,12 @@
+draft/
+scripts/
+.vscode/
+target/
+.claude/
+
+*.env
+
+
+# Dev-profile app data: vedge-tauri points `app_dir` here under
+# `cfg(debug_assertions)` so wiping state is `rm -rf local/`.
+local/
