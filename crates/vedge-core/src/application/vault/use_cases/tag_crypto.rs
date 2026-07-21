@@ -10,8 +10,8 @@
 //! - [`open_tag_row`] — the READ side: unwrap the row's DEK under the KEK, decrypt under it.
 //! - [`rewrap_tag_row`] — move a row from `old_kek` to `new_kek`, re-wrapping its DEK.
 //!
-//! 🔴 **The legacy KEK-as-AEAD read path was RETIRED in slice 5.9 ②**, behind a prove-absence
-//! audit (`scripts/tag_legacy_audit.ps1`): `decrypt_legacy_tag` and the at-unlock `migrate_legacy_tag`
+//! 🔴 **The legacy KEK-as-AEAD read path was RETIRED in slice 5.9 ②**, behind a one-time
+//! prove-absence audit: `decrypt_legacy_tag` and the at-unlock `migrate_legacy_tag`
 //! are gone, so a pre-5.6.0 tag (`dek_wrapped = None`) no longer decrypts — it is a hard error. The
 //! security property is now unconditional: **no code uses the KEK as an AEAD key.** Every live tag is
 //! DEK-sealed (5.6.0's at-unlock migration ran for every reachable vault before the audit went green);

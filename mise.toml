@@ -52,6 +52,25 @@ description = "Release-build the desktop app bundle"
 dir = "crates/vedge-tauri"
 run = "cargo tauri build"
 
+# SHA-256 checksums for the built installers — the whole integrity story for an UNSIGNED release
+# (Gate 1.0 §D). The guide's install section tells users to `Get-FileHash` and compare against these,
+# so a real release must publish them. Run AFTER `mise build`; writes SHA256SUMS.txt beside the
+# bundles and prints them. Fails loudly if no installer is found (i.e. run before a build).
+[tasks.checksums]
+description = "SHA-256 checksums for the release installers (NSIS + MSI) → target/release/bundle/SHA256SUMS.txt"
+run = "pwsh -NoProfile -File scripts/release_checksums.ps1"
+
+# Full release pipeline (Gate 1.0 §D): run the code gates first, then build the bundle, then emit
+# the SHA-256 checksums — so cutting a release is ONE reproducible command, not a remembered
+# sequence. `depends` gates the whole thing (any failure aborts before the build); the `run` steps
+# are strictly ordered (build must finish before checksums reads its output).
+# 🔴 A full pre-release should ALSO run `mise e2e` + `mise kill-smoke` — they need a display /
+# real process-spawn, so they stay deliberate rather than folded into every `release` invocation.
+[tasks.release]
+description = "Release pipeline: code gates → bundle → SHA-256 checksums (Gate 1.0 §D)"
+depends = ["ci", "wasm-link", "release-check", "audit"]
+run = ["mise run build", "mise run checksums"]
+
 # ---------------------------------------------------------------------------
 # Format
 # ---------------------------------------------------------------------------
@@ -207,21 +226,6 @@ run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Delete"
 [tasks.e2e-clean]
 description = "Purge the keychain entries left by e2e runs (always safe — never touches a real vault)"
 run = "pwsh -NoProfile -File scripts/keychain_audit.ps1 -Service vedge-e2e-test -Delete"
-
-# Prove — from evidence, never deletes — that no pre-5.2 legacy artifact (a bare `<name>.vdb`
-# file, a `vault:*` keychain account, a path-hashed biometric credential, a null vault_uuid)
-# survives on this machine. It must be GREEN before slice 5.2.5 retires the migration code, since
-# that code is the only thing that could ever reach such an artifact. Cannot-see ⇒ FAIL.
-[tasks.legacy-audit]
-description = "Prove no legacy (.vdb / vault:* / path-hashed) artifact remains — read-only, exit 0 only if clean"
-run = "pwsh -NoProfile -File scripts/legacy_audit.ps1"
-
-# Prove — from evidence — that no pre-5.6.0 KEK-sealed tag (`tags.dek_wrapped IS NULL`) survives on
-# any reachable surface (live vaults, snapshots, scannable `.vbk`s), so slice 5.9 ② can retire the
-# legacy-tag read path. Cannot-see ⇒ FAIL; if it can't be made GREEN, the honest outcome is keep.
-[tasks.tag-legacy-audit]
-description = "Prove no legacy (KEK-sealed) tag remains — read-only, exit 0 only if clean (slice 5.9 ②)"
-run = "pwsh -NoProfile -File scripts/tag_legacy_audit.ps1"
 
 # ---------------------------------------------------------------------------
 # Frontend wasm type-check
