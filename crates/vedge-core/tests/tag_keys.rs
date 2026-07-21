@@ -190,8 +190,8 @@ async fn tagged_vault_survives_secret_key_rotation() {
 }
 
 /// 🔴 Retirement guard (slice 5.9 ②). The legacy KEK-as-AEAD read path — `decrypt_legacy_tag` and
-/// the at-unlock `migrate_legacy_tag` — was RETIRED behind a prove-absence audit
-/// (`mise tag-legacy-audit`). So a pre-5.6.0 KEK-sealed tag (`dek_wrapped = None`) no longer
+/// the at-unlock `migrate_legacy_tag` — was RETIRED behind a one-time prove-absence audit.
+/// So a pre-5.6.0 KEK-sealed tag (`dek_wrapped = None`) no longer
 /// migrates on unlock; it HARD-FAILS (`DecryptionFailed`). Unreachable for a vault whose tags
 /// migrated before the audit went green — this pins that the door is gone, not just unused.
 #[tokio::test]
@@ -262,4 +262,4 @@ async fn snapshot_tags_survive_password_change() {
 // REMOVED in slice 5.9 ②: its scenario is retired. A legacy snapshot tag no longer migrates — the
 // snapshot rewrap now fails on it gracefully (non-fatal, badged stale, per rewrap_snapshots's L1),
 // and the retirement guard `retired_legacy_tag_hard_fails_unlock` covers the "legacy → hard fail"
-// property. The audit (`mise tag-legacy-audit`) proved no reachable vault carries such a tag.
+// property. A one-time prove-absence audit confirmed no reachable vault carries such a tag.
