@@ -60,6 +60,17 @@ run = "cargo tauri build"
 description = "SHA-256 checksums for the release installers (NSIS + MSI) → target/release/bundle/SHA256SUMS.txt"
 run = "pwsh -NoProfile -File scripts/release_checksums.ps1"
 
+# Full release pipeline (Gate 1.0 §D): run the code gates first, then build the bundle, then emit
+# the SHA-256 checksums — so cutting a release is ONE reproducible command, not a remembered
+# sequence. `depends` gates the whole thing (any failure aborts before the build); the `run` steps
+# are strictly ordered (build must finish before checksums reads its output).
+# 🔴 A full pre-release should ALSO run `mise e2e` + `mise kill-smoke` — they need a display /
+# real process-spawn, so they stay deliberate rather than folded into every `release` invocation.
+[tasks.release]
+description = "Release pipeline: code gates → bundle → SHA-256 checksums (Gate 1.0 §D)"
+depends = ["ci", "wasm-link", "release-check", "audit"]
+run = ["mise run build", "mise run checksums"]
+
 # ---------------------------------------------------------------------------
 # Format
 # ---------------------------------------------------------------------------
