@@ -99,8 +99,7 @@ data-safety work — snapshots, `.vbk` backups, entry export/import, the Recover
 English + Vietnamese.
 
 **Deliberately not in 1.0:** no cloud sync, no auto-update (a manual update *check* only — VEdge
-never installs code by itself), no macOS/Linux build, no browser extension. See the roadmap in the
-design vault for the longer arc (documents, PKI, LAN sync).
+never installs code by itself), no macOS/Linux build, no browser extension.
 
 ## License
 

@@ -5,9 +5,9 @@ VEdge is a **local-first, offline** password manager built with **Rust + Tauri v
 folder on disk, unlocked with a master password (+ a device Secret Key), and every secret is encrypted
 **at the application level, per entry** — the database file itself is plaintext SQLite.
 
-This document describes the shipped (v3) architecture. It is kept in sync with the code; every crypto
-claim below is drawn from `crates/vedge-core`. The canonical, deeper specs live in the design vault
-(`03 Specs/10 Core/10.3 - Key Hierarchy`, `20.0/20.2 Database`).
+This document describes the architecture as shipped in **1.0**. It is kept in sync with the code, and
+`crates/vedge-core` is the source of truth — every crypto claim below is drawn from it, so where this
+document and the code ever disagree, the code wins.
 
 ## Workspace layout
 
