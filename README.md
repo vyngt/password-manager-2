@@ -1,12 +1,22 @@
-# VEdge
+<p align="center">
+  <img src="crates/vedge-tauri/icons/128x128@2x.png" width="128" height="128" alt="VEdge">
+</p>
 
-A **local-first, offline** password manager for the desktop. No server, no cloud — your vault is a
-single encrypted folder on your machine, unlocked with a master password (+ a device Secret Key). Built
-with **Rust + Tauri v2** and a **Leptos** (Rust → WASM) frontend.
+<h1 align="center">VEdge</h1>
 
-[![Release](https://img.shields.io/github/v/release/vyngt/vedge?label=release)](https://github.com/vyngt/vedge/releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)
+<p align="center">
+  A <strong>local-first, offline</strong> password manager for the desktop.<br/>
+  No server, no cloud — your vault is a single encrypted folder on your machine.
+</p>
+
+<p align="center">
+  <a href="https://github.com/vyngt/vedge/releases/latest"><img src="https://img.shields.io/github/v/release/vyngt/vedge?label=release" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform: Windows">
+</p>
+
+Unlocked with a master password **+ a device Secret Key** — so a stolen vault file and a guessed
+password still aren't enough. Built with **Rust + Tauri v2** and a **Leptos** (Rust → WASM) frontend.
 
 📖 **New here? Read the [User Guide](docs/guide/README.md)** — install, first vault, backups &
 recovery, and the Emergency Kit / Recovery Key.
