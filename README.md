@@ -4,8 +4,27 @@ A **local-first, offline** password manager for the desktop. No server, no cloud
 single encrypted folder on your machine, unlocked with a master password (+ a device Secret Key). Built
 with **Rust + Tauri v2** and a **Leptos** (Rust → WASM) frontend.
 
+[![Release](https://img.shields.io/github/v/release/vyngt/vedge?label=release)](https://github.com/vyngt/vedge/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)
+
 📖 **New here? Read the [User Guide](docs/guide/README.md)** — install, first vault, backups &
 recovery, and the Emergency Kit / Recovery Key.
+
+## Download
+
+**[⬇ Get VEdge 1.0.0](https://github.com/vyngt/vedge/releases/latest)** — Windows 10/11 (64-bit).
+Pick the `-setup.exe` (NSIS) or the `.msi`.
+
+Two things to know before you run it:
+
+- **Verify the download.** The release page lists a SHA-256 for each installer — check yours with
+  `Get-FileHash .\VEdge_1.0.0_x64-setup.exe -Algorithm SHA256` and compare.
+- **Windows SmartScreen will warn you.** The build is unsigned (no code-signing certificate for
+  1.0), so you'll get *"Windows protected your PC"* → **More info → Run anyway**. That warning is
+  exactly why the checksum above matters — verify first, then click through.
+
+Full walkthrough: **[Install & verify](docs/guide/README.md#install--verify)**.
 
 ## Screenshots
 
@@ -45,6 +64,7 @@ A single Cargo workspace of Rust crates:
 | `vedge-ipc` | The serde wire types shared frontend ↔ shell. |
 | `vedge-app` | The Leptos (CSR) frontend application. |
 | `vedge-ui` | The Leptos design-system component library + theme engine. |
+| `vedge-generator` | The password/passphrase/PIN generation engine. |
 | `vedge-codegen` | Proc-macros. |
 | `vedge-e2e` | WebDriver end-to-end test harness (opt-in). |
 
@@ -71,11 +91,16 @@ supply-chain policy lives in **[`deny.toml`](deny.toml)**.
 
 ## Status
 
-Working toward the **1.0** release (Windows). Phases 1–5 are complete: the vault and daily-use UX,
-the password generator, audit log / TOTP / password health / breach detection, and the Phase-5 data
-safety & recovery work (snapshots, `.vbk` backups, entry export/import, the Recovery Key, and true
-re-key). The pre-release hardening pass (attack-surface audit, update check, UX sweep, docs) is
-wrapping up. See the roadmap in the design vault for the longer arc (documents, PKI, LAN sync).
+🎉 **v1.0.0 is released** (Windows) — [download it here](https://github.com/vyngt/vedge/releases/latest).
+
+Shipped in 1.0: the vault and daily-use UX (eight entry types, folders/tags/search, entry history,
+trash), the password generator, TOTP, password health + breach detection, the audit log, and the
+data-safety work — snapshots, `.vbk` backups, entry export/import, the Recovery Key, and true re-key.
+English + Vietnamese.
+
+**Deliberately not in 1.0:** no cloud sync, no auto-update (a manual update *check* only — VEdge
+never installs code by itself), no macOS/Linux build, no browser extension. See the roadmap in the
+design vault for the longer arc (documents, PKI, LAN sync).
 
 ## License
 
