@@ -157,8 +157,12 @@ supply-chain policy lives in **[`deny.toml`](deny.toml)**.
 
 ## Reporting a security issue
 
-Please **open an issue** — but for anything security-sensitive, say so and keep the details out of
-the public title while we sort out a fix.
+🔴 **Please don't open a public issue for a security bug** — a public report on a password manager
+publishes a working attack before a fix exists. Use
+**[private vulnerability reporting](https://github.com/vyngt/vedge/security/advisories/new)** instead.
+
+See **[`SECURITY.md`](SECURITY.md)** for what's in scope, what's deliberately out of scope, and what
+to expect after you report.
 
 ## License
 
