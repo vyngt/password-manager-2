@@ -21,20 +21,31 @@ password still aren't enough. Built with **Rust + Tauri v2** and a **Leptos** (R
 📖 **New here? Read the [User Guide](docs/guide/README.md)** — install, first vault, backups &
 recovery, and the Emergency Kit / Recovery Key.
 
-## Download
+## Features
 
-**[⬇ Get VEdge 1.0.0](https://github.com/vyngt/vedge/releases/latest)** — Windows 10/11 (64-bit).
-Pick the `-setup.exe` (NSIS) or the `.msi`.
+**Store more than passwords** — eight entry types, each with fields that fit: **Login** ·
+**Card** · **Identity** · **SSH Key** · **API Key** · **Environment Variables** · **Secure Note** ·
+**Document** (files encrypted at rest). Every save keeps the previous version, so you can restore an
+entry's **history**; deletes go to a **trash** you can undo.
 
-Two things to know before you run it:
+**Find it fast** — instant search, folders, tags, saved *smart folder* views, and a command palette.
 
-- **Verify the download.** The release page lists a SHA-256 for each installer — check yours with
-  `Get-FileHash .\VEdge_1.0.0_x64-setup.exe -Algorithm SHA256` and compare.
-- **Windows SmartScreen will warn you.** The build is unsigned (no code-signing certificate for
-  1.0), so you'll get *"Windows protected your PC"* → **More info → Run anyway**. That warning is
-  exactly why the checksum above matters — verify first, then click through.
+**Passwords & 2FA** — a generator with three modes (**Random**, **Passphrase**, **PIN**, plus bulk),
+built-in **TOTP** codes so you don't need a separate authenticator app, **password health** (weak,
+reused, ageing), and an optional **breach check** against Have I Been Pwned using k-anonymity — only
+a partial hash prefix ever leaves your machine, never the password. *Off by default.*
 
-Full walkthrough: **[Install & verify](docs/guide/README.md#install--verify)**.
+**Locking & privacy** — unlock with **Windows Hello**, auto-lock on idle / window blur / OS screen
+lock, a hard maximum session length, and clipboard auto-clear on a timer you choose. The **audit
+log** distinguishes *browsing* an entry from actually **copying or revealing** a secret, so you can
+see what really left the vault.
+
+**Backup & recovery** — **snapshots** (in-vault restore points for undoing a mistake), portable
+**`.vbk` backups** (the whole vault, to keep elsewhere), **export/import** of entries, an optional
+**Recovery Key** for a forgotten password, and **re-key** — a full re-encryption under brand-new
+keys if you ever think your vault file was copied.
+
+**Interface** — English + Vietnamese, light/dark and custom themes, keyboard-driven throughout.
 
 ## Screenshots
 
@@ -45,6 +56,39 @@ Full walkthrough: **[Install & verify](docs/guide/README.md#install--verify)**.
 </p>
 
 More screens and a full walkthrough are in the **[User Guide](docs/guide/README.md)**.
+
+## Download
+
+**[⬇ Get VEdge 1.0.0](https://github.com/vyngt/vedge/releases/latest)** — Windows 10/11 (64-bit).
+Pick the `-setup.exe` (NSIS) or the `.msi`.
+
+Two things to know before you run it:
+
+- **Verify the download.** The release page publishes a SHA-256 for each installer (and a
+  `SHA256SUMS.txt`) — check yours with
+  `Get-FileHash .\VEdge_1.0.0_x64-setup.exe -Algorithm SHA256` and compare.
+- **Windows SmartScreen will warn you.** The build is unsigned (no code-signing certificate for
+  1.0), so you'll get *"Windows protected your PC"* → **More info → Run anyway**. That warning is
+  exactly why the checksum above matters — verify first, then click through.
+
+Full walkthrough: **[Install & verify](docs/guide/README.md#install--verify)**.
+
+## Before you trust it with your passwords
+
+Local-first means **you hold the only keys** — nobody can reset them for you. Four facts worth
+knowing up front:
+
+- 🔑 **Save your Emergency Kit.** It carries your Secret Key, is shown **once**, and can't be
+  regenerated. Master password **+** Emergency Kit is what gets you back in on a new machine.
+- 🚪 **A forgotten password is unrecoverable by default.** The optional **Recovery Key** is the cure
+  — but it's a *separate* document, and **neither one opens the vault alone**. Keep them apart.
+- 📸 **A snapshot is not a backup.** Snapshots live *inside* the vault folder: they undo mistakes,
+  they don't survive a lost disk. For that, make a `.vbk` and store it somewhere else.
+- ⏳ **Re-key protects you going forward — it can't un-leak the past.** If someone already copied
+  your vault *and* had your credentials, re-keying stops future opens of that copy; it can't retract
+  what was already read.
+
+The **[User Guide](docs/guide/README.md)** explains each of these properly.
 
 ## Security model
 
@@ -101,15 +145,20 @@ supply-chain policy lives in **[`deny.toml`](deny.toml)**.
 
 ## Status
 
-🎉 **v1.0.0 is released** (Windows) — [download it here](https://github.com/vyngt/vedge/releases/latest).
+🎉 **v1.0.0 is released** — see [Features](#features) for what's in it.
 
-Shipped in 1.0: the vault and daily-use UX (eight entry types, folders/tags/search, entry history,
-trash), the password generator, TOTP, password health + breach detection, the audit log, and the
-data-safety work — snapshots, `.vbk` backups, entry export/import, the Recovery Key, and true re-key.
-English + Vietnamese.
+**Deliberately not in 1.0**, so the absences read as decisions rather than gaps:
 
-**Deliberately not in 1.0:** no cloud sync, no auto-update (a manual update *check* only — VEdge
-never installs code by itself), no macOS/Linux build, no browser extension.
+- **No cloud sync.** Moving a vault between machines is a deliberate `.vbk` step.
+- **No auto-update** — only a manual update *check*. A silent updater is a standing
+  remote-code-execution channel into a process holding every user's vault keys; VEdge will tell you
+  a new version exists, but it will never install code by itself.
+- **Windows only**, and **no browser extension**.
+
+## Reporting a security issue
+
+Please **open an issue** — but for anything security-sensitive, say so and keep the details out of
+the public title while we sort out a fix.
 
 ## License
 
